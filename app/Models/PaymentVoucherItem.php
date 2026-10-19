@@ -6,7 +6,7 @@ class PaymentVoucherItem extends Model
 {
     public static $hasAccount = false;
 
-    protected $fillable = ['line_number', 'particulars', 'amount', 'transport_record_id', 'transport_loading_payment_id'];
+    protected $fillable = ['line_number', 'particulars', 'amount', 'transport_record_id', 'transport_loading_payment_id', 'travel_agent_payment_id'];
 
     public function paymentVoucher()
     {

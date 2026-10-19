@@ -35,6 +35,8 @@ class QrRegistry
             'delivery_note' => ['label' => 'Delivery Note', 'model' => $m('DeliveryNote'), 'route' => 'delivery-notes.show', 'param' => 'delivery_note', 'can' => ['read-delivery-notes']],
             'gate_pass' => ['label' => 'Gate Pass', 'model' => $m('GatePass'), 'route' => 'gate-passes.show', 'param' => 'gate_pass', 'can' => ['read-gate-passes']],
             'external_stock' => ['label' => 'External Stock', 'model' => $m('ExternalStockMovement'), 'route' => 'external-stock.show', 'param' => 'movement', 'can' => ['read-external-stock'], 'scope' => 'visibleTo'],
+            'travel' => ['label' => 'Travel', 'model' => $m('Travel'), 'route' => 'travels.show', 'param' => 'travel', 'can' => ['read-travels'], 'scope' => 'visibleTo'],
+            'travel_payment' => ['label' => 'Travel Agent Payment', 'model' => $m('TravelAgentPayment'), 'route' => 'travels.agents.payments.show', 'param' => 'payment', 'can' => ['read-travel-agents']],
             'subcontract_agreement' => ['label' => 'Subcontract Agreement', 'model' => $m('SubcontractAgreement'), 'route' => 'subcontracts.agreements.show', 'param' => 'agreement', 'can' => ['read-subcontract-agreements'], 'scope' => 'visibleTo'],
             'subcontract_request' => ['label' => 'Subcontract Payment Request', 'model' => $m('SubcontractPaymentRequest'), 'route' => 'subcontracts.requests.show', 'param' => 'payreq', 'can' => ['read-subcontract-requests']],
             'subcontract_variation' => ['label' => 'Subcontract Variation', 'model' => $m('SubcontractVariation'), 'route' => 'subcontracts.variations.show', 'param' => 'variation', 'can' => ['read-subcontract-variations']],
@@ -100,6 +102,7 @@ class QrRegistry
         'Suppliers and payments' => ['supplier', 'purchase_request', 'purchase_order', 'quotation', 'goods_receipt', 'supplier_invoice', 'payment_request', 'supplier_payment', 'payment_voucher', 'payment_batch', 'salary_voucher'],
         'Accounts and salary' => ['acct_account', 'acct_transaction', 'acct_transfer', 'acct_reconciliation', 'acct_fund', 'salary_period', 'salary_advance', 'salary_loan'],
         'People' => ['staff', 'workforce', 'labour', 'contact', 'subcontractor', 'loading_worker'],
+        'Travels' => ['travel', 'travel_payment'],
         'Assets and transport' => ['asset', 'vehicle', 'transport_record'],
         'Documents and site records' => ['archive', 'site_diary', 'site_meeting', 'site_report', 'case', 'notice'],
     ];
@@ -107,7 +110,7 @@ class QrRegistry
     /** The icon that stands for each kind on the QR Activation page. */
     public const ICONS = [
         'transfer' => 'truck', 'multi_transfer' => 'collection', 'checkin' => 'in', 'checkout' => 'out', 'adjustment' => 'adjustments', 'super_adjustment' => 'toggle', 'issue' => 'refresh',
-        'material_request' => 'doc-text', 'material_reallocation' => 'forward', 'delivery_note' => 'doc', 'gate_pass' => 'lock-open', 'external_stock' => 'truck', 'subcontract_agreement' => 'doc-text', 'subcontract_variation' => 'adjustments', 'subcontract_reconciliation' => 'tick', 'acct_account' => 'cash', 'acct_reconciliation' => 'check-double', 'acct_fund' => 'collection', 'salary_period' => 'calendar', 'salary_advance' => 'cash', 'salary_loan' => 'cash', 'payment_batch' => 'collection', 'subcontractor' => 'users', 'loading_worker' => 'user', 'notice' => 'bell', 'subcontract_request' => 'send', 'acct_transaction' => 'cash', 'acct_transfer' => 'refresh', 'item' => 'chip',
+        'material_request' => 'doc-text', 'material_reallocation' => 'forward', 'delivery_note' => 'doc', 'gate_pass' => 'lock-open', 'external_stock' => 'truck', 'travel' => 'plane', 'travel_payment' => 'cash', 'subcontract_agreement' => 'doc-text', 'subcontract_variation' => 'adjustments', 'subcontract_reconciliation' => 'tick', 'acct_account' => 'cash', 'acct_reconciliation' => 'check-double', 'acct_fund' => 'collection', 'salary_period' => 'calendar', 'salary_advance' => 'cash', 'salary_loan' => 'cash', 'payment_batch' => 'collection', 'subcontractor' => 'users', 'loading_worker' => 'user', 'notice' => 'bell', 'subcontract_request' => 'send', 'acct_transaction' => 'cash', 'acct_transfer' => 'refresh', 'item' => 'chip',
         'project' => 'building', 'project_contract' => 'doc-text', 'certificate' => 'tick', 'compliance' => 'check-double', 'work_package' => 'list', 'fund_allocation' => 'cash',
         'supplier' => 'group', 'purchase_request' => 'cart', 'purchase_order' => 'bag', 'quotation' => 'calculator', 'goods_receipt' => 'in', 'supplier_invoice' => 'doc', 'payment_request' => 'send',
         'supplier_payment' => 'cash', 'payment_voucher' => 'doc-text', 'salary_voucher' => 'cash',

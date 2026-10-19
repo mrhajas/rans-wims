@@ -11,11 +11,16 @@ class Contact extends Model
     public const CATEGORIES = [
         'Engineers', 'Technicians', 'Suppliers', 'Foreman', 'SubContractors', 'Workers', 'General',
         'Drivers', 'Dispatchers', 'Movers', 'Logistics', 'Consultants', 'Architects', 'Surveyors', 'Security', 'Equipment Rental',
-        'Clients', 'Loading & UnLoading', 'External Personnel',
+        'Clients', 'Loading & UnLoading', 'External Personnel', 'Ticket Agent', 'Visa Agent',
     ];
 
     /** Contacts in this category hold stock in our warehouses (External Stock module). */
     public const EXTERNAL_CATEGORY = 'External Personnel';
+
+    /** Contacts in these categories issue tickets and visas for Travels; their balance, payments and history live in the Travels module. */
+    public const TICKET_AGENT_CATEGORY = 'Ticket Agent';
+
+    public const VISA_AGENT_CATEGORY = 'Visa Agent';
 
     /** Contacts in this category are the Loading & Unloading workers (Transport Routes > Loading & Unloading attendance). */
     public const LOADING_CATEGORY = 'Loading & UnLoading';

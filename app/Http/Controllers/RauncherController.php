@@ -322,6 +322,42 @@ class RauncherController extends Controller
                 'title' => fn ($m) => $m->reference . ' - ' . optional($m->contact)->name,
                 'subtitle' => fn ($m) => trim(__($m->kindLabel()) . ' · ' . $m->status),
             ],
+            // Travels: travels the person may see (their own, ones they travel on, or all for approvers), only while the module is on.
+            'travels' => [
+                'label' => 'Travels',
+                'icon' => 'plane',
+                'permission' => 'read-travels',
+                'route' => 'travels.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\Travel::query()->visibleTo($u)
+                        ->where(fn ($q) => $q->where('reference', 'like', $like)->orWhere('to_place', 'like', $like)->orWhere('to_country', 'like', $like)->orWhere('flight_number', 'like', $like)->orWhere('booking_reference', 'like', $like)
+                            ->orWhereHas('travellers', fn ($t) => $t->where('name', 'like', $like)->orWhere('ticket_number', 'like', $like)))
+                        ->when(! \App\Services\FeatureManager::canAccess('travels', $u), fn ($q) => $q->whereRaw('1 = 0'))
+                        ->with('travellers:id,travel_id,name')->orderByDesc('depart_date');
+                },
+                'title' => fn ($m) => $m->reference . ' - ' . $m->to_place,
+                'subtitle' => fn ($m) => trim($m->travellerNames() . ' · ' . $m->depart_date->format('d M Y') . ' · ' . __($m->status)),
+            ],
+            // Travel ticket agents: the account (balance, payments, statement) of each agent, only for people who may see agent accounts.
+            'travel-agents' => [
+                'label' => 'Travel Ticket Agents',
+                'icon' => 'cash',
+                'permission' => 'read-travel-agents',
+                'route' => 'travels.agents.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\Contact::query()->whereIn('id', \App\Services\Travels\TravelLedger::agentIds() ?: [0])
+                        ->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('phone', 'like', $like))
+                        ->when(! \App\Services\FeatureManager::canAccess('travel_agents', $u), fn ($q) => $q->whereRaw('1 = 0'))->orderBy('name');
+                },
+                'title' => fn ($m) => $m->name,
+                'subtitle' => fn ($m) => trim(($m->category ?: '') . ' ' . ($m->phone ? '· ' . $m->phone : '')),
+            ],
             // Accounts Tracking: transactions of the accounts the person may see, only while the module is on.
             'acct-transactions' => [
                 'label' => 'Account Transactions',

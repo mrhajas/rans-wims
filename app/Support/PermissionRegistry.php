@@ -217,6 +217,22 @@ class PermissionRegistry
                 ],
             ],
 
+            'travels' => [
+                'label' => __('Travels'),
+                'abilities' => [
+                    'read-travels' => __('Open Travels: the travel records, ticket agent accounts and reports'),
+                    'create-travels' => __('Record a travel (each is held for approval)'),
+                    'update-travels' => __('Edit a travel that is still waiting for approval, and the flight details of an approved one'),
+                    'approve-travels' => __('Approve or reject travels (an approved travel is what the ticket agent is owed for)'),
+                    'cancel-travels' => __('Cancel a travel, even one that is already approved'),
+                    'print-travels' => __('Print and download travel records, statements and reports'),
+                    'read-travel-agents' => __('See ticket agent accounts: balances, statements and payments'),
+                    'create-payment-voucher-from-travels' => __('Make a Payment Voucher for a ticket agent from the agent balance (the voucher then waits for approval in the Payment Vouchers module)'),
+                    'manage-travel-agents' => __('Set or change the opening balance of a ticket agent (what they were owed before Travels started)'),
+                    'manage-travel-settings' => __('Change the Travels settings: currencies, travel types and reminder days'),
+                ],
+            ],
+
             'subcontracts' => [
                 'label' => __('Subcontractor Management'),
                 'abilities' => [

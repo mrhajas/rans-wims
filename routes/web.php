@@ -454,6 +454,48 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('{movement}/transport-route', [Controllers\ExternalStock\RouteController::class, 'store'])->whereNumber('movement')->name('transport-route.store');
     });
 
+    // Travels: the travels of staff and users (approval based), ticket agents and what they are owed, reports. Names all start "travels." so Global Feature Control covers them.
+    Route::prefix('travels')->name('travels.')->group(function () {
+        $tr = Controllers\Travels\TravelController::class;
+        $ag = Controllers\Travels\AgentController::class;
+        $rp = Controllers\Travels\ReportController::class;
+        $st = Controllers\Travels\SettingsController::class;
+        Route::get('/', [$tr, 'index'])->name('index');
+        Route::get('create', [$tr, 'create'])->name('create');
+        Route::post('/', [$tr, 'store'])->middleware('throttle:60,1,travels.store')->name('store');
+        Route::get('settings', [$st, 'index'])->name('settings');
+        Route::put('settings', [$st, 'update'])->middleware('throttle:30,1,travels.settings.update')->name('settings.update');
+        Route::get('reports', [$rp, 'index'])->name('reports.index');
+        Route::get('reports/print', [$rp, 'print'])->middleware('throttle:30,1,travels.reports.print')->name('reports.print');
+        Route::get('reports/pdf', [$rp, 'pdf'])->middleware('throttle:20,1,travels.reports.pdf')->name('reports.pdf');
+        Route::get('reports/csv', [$rp, 'csv'])->middleware('throttle:20,1,travels.reports.csv')->name('reports.csv');
+        Route::get('reports/xlsx', [$rp, 'xlsx'])->middleware('throttle:20,1,travels.reports.xlsx')->name('reports.xlsx');
+        // ticket agents and visa issuers: balance, opening balance, payments, statement
+        Route::get('agents', [$ag, 'index'])->name('agents.index');
+        Route::get('agents/payments/{payment}', [$ag, 'paymentShow'])->whereNumber('payment')->name('agents.payments.show');
+        Route::get('agents/payments/{payment}/print', [$ag, 'paymentPrint'])->whereNumber('payment')->middleware('throttle:60,1,travels.agents.payments.print')->name('agents.payments.print');
+        Route::get('agents/payments/{payment}/pdf', [$ag, 'paymentPdf'])->whereNumber('payment')->middleware('throttle:60,1,travels.agents.payments.pdf')->name('agents.payments.pdf');
+        Route::post('agents/payments/{payment}/files', [$ag, 'paymentAttach'])->whereNumber('payment')->middleware('throttle:60,1,travels.agents.payments.attach')->name('agents.payments.attach');
+        Route::get('agents/payments/{payment}/files/{file}', [$ag, 'paymentDownload'])->whereNumber(['payment', 'file'])->middleware('throttle:120,1,travels.agents.payments.download')->name('agents.payments.download');
+        Route::delete('agents/payments/{payment}/files/{file}', [$ag, 'paymentRemoveFile'])->whereNumber(['payment', 'file'])->middleware('throttle:60,1,travels.agents.payments.remove-file')->name('agents.payments.remove-file');
+        Route::get('agents/{contact}', [$ag, 'show'])->whereNumber('contact')->name('agents.show');
+        Route::post('agents/{contact}/opening', [$ag, 'setOpening'])->whereNumber('contact')->middleware('throttle:30,1,travels.agents.opening')->name('agents.opening.store');
+        Route::delete('agents/{contact}/opening/{opening}', [$ag, 'removeOpening'])->whereNumber(['contact', 'opening'])->middleware('throttle:30,1,travels.agents.opening.destroy')->name('agents.opening.destroy');
+        Route::post('agents/{contact}/payments', [$ag, 'requestPayment'])->whereNumber('contact')->middleware('throttle:30,1,travels.agents.payments.store')->name('agents.payments.store');
+        // the travel records
+        Route::get('{travel}', [$tr, 'show'])->whereNumber('travel')->name('show');
+        Route::get('{travel}/edit', [$tr, 'edit'])->whereNumber('travel')->name('edit');
+        Route::put('{travel}', [$tr, 'update'])->whereNumber('travel')->middleware('throttle:60,1,travels.update')->name('update');
+        Route::post('{travel}/approve', [$tr, 'approve'])->whereNumber('travel')->middleware('throttle:60,1,travels.approve')->name('approve');
+        Route::post('{travel}/reject', [$tr, 'reject'])->whereNumber('travel')->middleware('throttle:60,1,travels.reject')->name('reject');
+        Route::post('{travel}/cancel', [$tr, 'cancel'])->whereNumber('travel')->middleware('throttle:60,1,travels.cancel')->name('cancel');
+        Route::get('{travel}/print', [$tr, 'print'])->whereNumber('travel')->middleware('throttle:60,1,travels.print')->name('print');
+        Route::get('{travel}/pdf', [$tr, 'pdf'])->whereNumber('travel')->middleware('throttle:60,1,travels.pdf')->name('pdf');
+        Route::post('{travel}/files', [$tr, 'attach'])->whereNumber('travel')->middleware('throttle:60,1,travels.attach')->name('attach');
+        Route::get('{travel}/files/{file}', [$tr, 'download'])->whereNumber(['travel', 'file'])->middleware('throttle:120,1,travels.download')->name('download');
+        Route::delete('{travel}/files/{file}', [$tr, 'removeFile'])->whereNumber(['travel', 'file'])->middleware('throttle:60,1,travels.remove-file')->name('remove-file');
+    });
+
     // Subcontractor Management: subcontractors (Contacts), agreements, work schedules, variations, payment requests (paid only through Payment Vouchers), statements, import, reports.
     // Names all start "subcontracts." so Global Feature Control covers them.
     Route::prefix('subcontracts')->name('subcontracts.')->group(function () {
