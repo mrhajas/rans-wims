@@ -1,11 +1,13 @@
 ---
-# cPanel > Git Version Control > Manage > "Deploy HEAD Commit" runs these steps. It COPIES the program over the live folder and never deletes anything;
-# .env, storage, vendor, uploads, the web server files (public/index.php, .htaccess) and the data folders are not touched.
+# cPanel > Git Version Control > Manage > "Deploy HEAD Commit" runs these steps. It COPIES the program over the live folder (plain cp, no rsync needed)
+# and never deletes anything. .env, storage, vendor, uploads, the web server files (public/index.php, .htaccess) and the data folders are not touched.
+# Each line is self contained (no shared variables) so it works whether cPanel runs the lines in one shell or in separate shells.
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/ranscoco/wims.ransco.co.tz/
-    - export PHP=/opt/cpanel/ea-php82/root/usr/bin/php
-    - /usr/bin/rsync -rlt --exclude='.git' --exclude='.cpanel.yml' --exclude='.gitignore' --exclude='.env' --exclude='.htaccess' --exclude='storage' --exclude='vendor' --exclude='node_modules' --exclude='public/index.php' --exclude='public/.htaccess' --exclude='public/uploads' --exclude='public/storage' --exclude='tests' --exclude='scripts' ./ $DEPLOYPATH
-    - cd $DEPLOYPATH && $PHP artisan migrate --force > /home/ranscoco/deploy-log.txt 2>&1
-    - cd $DEPLOYPATH && $PHP artisan optimize:clear >> /home/ranscoco/deploy-log.txt 2>&1
-    - cd $DEPLOYPATH && ($PHP artisan simulation:sync >> /home/ranscoco/deploy-log.txt 2>&1 || true)
+    - echo "deploy started" > /home/ranscoco/deploy-log.txt
+    - for d in app bootstrap config database docs lang packages resources routes; do mkdir -p /home/ranscoco/wims.ransco.co.tz/$d && cp -a $d/. /home/ranscoco/wims.ransco.co.tz/$d/ || exit 1; done >> /home/ranscoco/deploy-log.txt 2>&1
+    - for f in artisan composer.json composer.lock package.json package-lock.json phpunit.xml postcss.config.js server.php tailwind.config.js vite.config.js; do cp -a $f /home/ranscoco/wims.ransco.co.tz/$f || exit 1; done >> /home/ranscoco/deploy-log.txt 2>&1
+    - for f in public/*; do if [ "$f" != "public/index.php" ]; then cp -a "$f" /home/ranscoco/wims.ransco.co.tz/public/ || exit 1; fi; done >> /home/ranscoco/deploy-log.txt 2>&1
+    - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan migrate --force >> /home/ranscoco/deploy-log.txt 2>&1
+    - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan optimize:clear >> /home/ranscoco/deploy-log.txt 2>&1
+    - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan simulation:sync >> /home/ranscoco/deploy-log.txt 2>&1 || true
