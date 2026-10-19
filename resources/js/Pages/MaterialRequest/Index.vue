@@ -1,0 +1,473 @@
+<template>
+  <admin-layout :title="$t('Material Requests')">
+    <div class="lg-page px-4 md:px-0">
+      <page-header icon="clip" :title="$t('Material Requests')" :subtitle="$t('View and manage material requests')">
+        <Link v-if="canCreate" :href="route('material-requests.create')" class="lg-btn lg-btn-primary">
+          <icons name="plus" class="w-4 h-4" />{{ $t('Create Material Request') }}
+        </Link>
+      </page-header>
+
+      <stat-tiles :items="statTiles" @select="pickTile" />
+
+      <div class="txn-toolbar mb-6 flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between print:hidden relative z-20">
+        <search-filter v-model="form.search" class="w-full max-w-lg" @reset="reset">
+          <auto-complete
+            id="status"
+            position="left"
+            :label="$t('Status')"
+            v-model="form.status"
+            class="mt-1 w-full"
+            :suggestions="statusOptions"
+          />
+
+          <auto-complete
+            v-if="!ownRequestsOnly"
+            id="warehouse"
+            position="left"
+            :label="$t('Warehouse')"
+            v-model="form.warehouse_id"
+            class="mt-1 w-full"
+            :suggestions="warehouses"
+          />
+
+          <auto-complete
+            v-if="!ownRequestsOnly"
+            id="site-engineer"
+            position="left"
+            :label="$t('Requested By')"
+            v-model="form.user_id"
+            class="mt-1 w-full"
+            :suggestions="requesters"
+          />
+
+          <text-input type="date" v-model="form.start_date" :label="$t('Date From')" class="mt-1 w-full" />
+          <text-input type="date" v-model="form.end_date" :label="$t('Date To')" class="mt-1 w-full" />
+        </search-filter>
+      </div>
+
+      <transition name="mr-bulk">
+        <div v-if="canForce && picked.length" class="mr-bulk print:hidden" role="region" :aria-label="$t('Selected requests')">
+          <span class="mr-bulk-ico"><icons name="lock-closed" class="w-5 h-5" /></span>
+          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Admin Force Clearance clears them in one step, skipping approval, issue and delivery. Needs your Super Admin password.') }}</small></div>
+          <button v-if="clearableIds.length > picked.length" type="button" class="lg-btn bulk-btn bulk-btn-all" @click="picked = [...clearableIds]"><icons name="collection" class="w-4 h-4" />{{ $t('Select all :n', { n: clearableIds.length }) }}</button>
+          <button type="button" class="lg-btn bulk-btn bulk-btn-none" @click="picked = []"><icons name="x-circle" class="w-4 h-4" />{{ $t('Clear selection') }}</button>
+          <button type="button" class="lg-btn mr-bulk-go" @click="askForce"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Clear Selected') }}</button>
+        </div>
+      </transition>
+
+      <section class="lg-card mr-card">
+        <div class="lg-table-wrap">
+          <table class="lg-table lg-responsive">
+            <thead>
+              <tr>
+                <th v-if="canForce" class="mr-th-pick">
+                  <label class="mr-pick lg-tip" :data-tip="$t('Select every request on this page that can be cleared')"><input type="checkbox" :checked="allPicked" :disabled="!pickable.length" :aria-label="$t('Select every request on this page that can be cleared')" @change="toggleAll" /></label>
+                </th>
+                <th class="mr-th-no">{{ $t('No') }}</th>
+                <th>{{ $t('Request') }}</th>
+                <th>{{ $t('Warehouse / Site') }}</th>
+                <th>{{ $t('Requested By') }}</th>
+                <th>{{ $t('Status') }}</th>
+                <th class="lg-sticky-end">{{ $t('Actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(materialRequest, index) in materialRequests.data" :key="materialRequest.id" class="is-click" :class="{ 'is-picked': picked.includes(materialRequest.id) }" @click="goto(materialRequest.id)">
+                <td v-if="canForce" class="mr-td-pick" :data-label="$t('Select')" @click.stop>
+                  <label v-if="isClearable(materialRequest)" class="mr-pick"><input type="checkbox" :value="materialRequest.id" v-model="picked" :aria-label="$t('Select this request')" /></label>
+                </td>
+                <td class="mr-td-no" :data-label="$t('No')">{{ rowNo(index) }}</td>
+                <td :data-label="$t('Request')">
+                  <div>
+                    <div class="lg-main mr-ref">
+                      <hover-preview category="material-requests" :id="materialRequest.id">{{ materialRequest.reference }}</hover-preview>
+                      <span
+                        v-if="materialRequest.status === 'Cleared'"
+                        class="mr-lock lg-tip"
+                        tabindex="0"
+                        role="img"
+                        :data-tip="$t('This request has been Delivered, Cleared and Locked. Contact Administrator for more info.')"
+                        :aria-label="$t('This request has been Delivered, Cleared and Locked. Contact Administrator for more info.')"
+                        @click.stop
+                      ><icons name="lock-closed" class="w-3.5 h-3.5" /></span>
+                    </div>
+                    <div class="lg-subtext">{{ $date(materialRequest.date_requested) }}</div>
+                  </div>
+                </td>
+                <td :data-label="$t('Warehouse / Site')">{{ materialRequest.warehouse?.name }}</td>
+                <td :data-label="$t('Requested By')">{{ materialRequest.user?.name }}</td>
+                <td :data-label="$t('Status')" class="mr-status-cell">
+                  <div class="mr-chips">
+                    <span
+                      class="lg-chip mr-chip"
+                      :class="[statusChip(materialRequest), { 'lg-tip': materialRequest.force_cleared }]"
+                      :data-tip="materialRequest.force_cleared ? $t('Admin Force Clearance') : null"
+                      :tabindex="materialRequest.force_cleared ? 0 : null"
+                      style="text-transform: none"
+                    >{{ statusLabel(materialRequest) }}</span>
+                    <span v-if="materialRequest.delivery_state" class="lg-chip mr-chip" :class="materialRequest.delivery_state === 'Fully Delivered' ? 'mr-chip-fdel' : 'lg-chip-amber'" style="text-transform: none">
+                      <icons name="tick" class="w-3 h-3" /><icons v-if="materialRequest.delivery_state === 'Fully Delivered'" name="tick" class="w-3 h-3 mr-tick2" />{{ $t(materialRequest.delivery_state) }}
+                    </span>
+                  </div>
+                  <ol v-if="materialRequest.history && materialRequest.history.length" class="mr-trail">
+                    <li v-for="h in materialRequest.history" :key="h.status" :class="'mr-trail-' + trailTone(h.status)">
+                      <span class="mr-trail-dot"></span>
+                      <span class="mr-trail-text">
+                        <b>{{ trailLabel(h.status) }}</b> {{ h.by || '-' }}
+                        <em>{{ $datetime(h.at) }}</em>
+                      </span>
+                    </li>
+                  </ol>
+                </td>
+                <td :data-label="$t('Actions')" class="lg-sticky-end">
+                  <div class="lg-actions" @click.stop>
+                    <Link :href="route('material-requests.show', materialRequest.id)" class="lg-icon-btn lg-tip" :data-tip="$t('View')">
+                      <icons name="eye-flat" class="w-4 h-4" />
+                    </Link>
+                    <Link
+                      v-if="canEdit(materialRequest)"
+                      :href="route('material-requests.edit', materialRequest.id)"
+                      class="lg-icon-btn is-amber lg-tip"
+                      :data-tip="$t('Edit')"
+                    >
+                      <icons name="edit" class="w-4 h-4" />
+                    </Link>
+                    <button
+                      v-if="canDelete(materialRequest)"
+                      type="button"
+                      @click="deleteRequest(materialRequest)"
+                      class="lg-icon-btn is-red lg-tip"
+                      :data-tip="$t('Delete')"
+                    >
+                      <icons name="trash" class="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="materialRequests.data.length === 0" class="lg-empty-row">
+                <td class="lg-empty" :colspan="canForce ? 7 : 6">{{ $t('There is no data to display.') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <pagination class="mt-6" :meta="materialRequests.meta" :links="materialRequests.links" />
+    </div>
+
+    <super-admin-password-modal
+      :show="forceAsk"
+      :title="$t('Admin Force Clearance')"
+      :content="$t(':n request(s) will be cleared in one step and locked, without approval, issuing or delivery. This cannot be undone.', { n: picked.length })"
+      :lines="pickedNames"
+      :confirm-text="$t('Clear them')"
+      :processing="forceBusy"
+      :error="forceError"
+      @confirm="forceClear"
+      @close="forceAsk = false"
+    />
+  </admin-layout>
+</template>
+
+<script>
+import pickBy from 'lodash/pickBy';
+import throttle from 'lodash/throttle';
+import mapValues from 'lodash/mapValues';
+import PageHeader from '@/Shared/Page/PageHeader.vue';
+import StatTiles from '@/Shared/Page/StatTiles.vue';
+import Pagination from '@/Shared/Pagination.vue';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
+import TextInput from '@/Shared/TextInput.vue';
+import AutoComplete from '@/Shared/AutoComplete.vue';
+import SearchFilter from '@/Shared/SearchFilter.vue';
+import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
+import SuperAdminPasswordModal from '@/Shared/SuperAdminPasswordModal.vue';
+
+export default {
+  components: {
+    PageHeader,
+    StatTiles,
+    Pagination,
+    AdminLayout,
+    TextInput,
+    AutoComplete,
+    SearchFilter,
+    HoverPreview,
+    SuperAdminPasswordModal,
+  },
+
+  props: {
+    filters: Object,
+    statuses: Array,
+    warehouses: Array,
+    requesters: Array,
+    canCreate: Boolean,
+    ownRequestsOnly: Boolean,
+    materialRequests: Object,
+    stats: { type: Object, default: null },
+    clearable: { type: Object, default: () => ({}) },
+  },
+
+  data() {
+    return {
+      picked: [],
+      forceAsk: false,
+      forceBusy: false,
+      forceError: '',
+      form: {
+        search: this.filters.search,
+        status: this.filters.status,
+        warehouse_id: this.filters.warehouse_id,
+        user_id: this.filters.user_id,
+        start_date: this.filters.start_date,
+        end_date: this.filters.end_date,
+      },
+    };
+  },
+
+  computed: {
+    // Super Admin only: tick Approved requests and clear them in one step (Admin Force Clearance)
+    canForce() {
+      return !!this.$super;
+    },
+    pickable() {
+      return (this.materialRequests.data || []).filter(m => this.isClearable(m));
+    },
+    clearableIds() {
+      return Object.keys(this.clearable || {}).map(Number);
+    },
+    allPicked() {
+      return this.pickable.length > 0 && this.pickable.every(m => this.picked.includes(m.id));
+    },
+    pickedNames() {
+      // always the references of what is selected right now (never bare ids)
+      const byId = { ...(this.clearable || {}), ...Object.fromEntries((this.materialRequests.data || []).map(m => [m.id, m.reference])) };
+      return this.picked.map(id => byId[id]).filter(Boolean);
+    },
+    statTiles() {
+      if (!this.stats) {
+        return [];
+      }
+
+      return [
+        { icon: 'clip', tone: 'navy', label: this.$t('All'), value: this.stats.total, status: null, active: !this.form.status },
+        { icon: 'clock', tone: 'amber', label: this.$t('Pending Approval'), value: this.stats.pending, status: 'Pending Approval', active: this.form.status === 'Pending Approval' },
+        { icon: 'tick', tone: 'sky', label: this.$t('Approved'), value: this.stats.approved, status: 'Approved', active: this.form.status === 'Approved' },
+        { icon: 'x-circle', tone: 'rose', label: this.$t('Rejected'), value: this.stats.rejected, status: 'Rejected', active: this.form.status === 'Rejected' },
+        { icon: 'truck', tone: 'violet', label: this.$t('Partially Issued'), value: this.stats.partially_issued, status: 'Partially Issued', active: this.form.status === 'Partially Issued' },
+        { icon: 'truck', tone: 'teal', label: this.$t('Fully Issued'), value: this.stats.issued, status: 'Issued', active: this.form.status === 'Issued' },
+        { icon: 'lock-closed', tone: 'emerald', label: this.$t('Cleared'), value: this.stats.cleared, status: 'Cleared', active: this.form.status === 'Cleared' },
+      ];
+    },
+    statusOptions() {
+      return (this.statuses || []).map(s => ({ label: this.$t(s === 'Issued' ? 'Fully Issued' : s), value: s }));
+    },
+  },
+
+  watch: {
+    form: {
+      handler: throttle(function () {
+        const query = pickBy(this.form);
+        this.$inertia.visit(this.route('material-requests.index', Object.keys(query).length ? query : { remember: 'forget' }), {
+          preserveState: true,
+          replace: true,
+          onFinish: () => {
+            const search = document.getElementById('page-search');
+            if (search) {
+              search.focus();
+              const len = search.value ? search.value.length : 0;
+              search.setSelectionRange(len, len);
+            }
+          },
+        });
+      }, 250),
+      deep: true,
+    },
+  },
+
+  methods: {
+    // every status except Rejected, Cleared and Closed can be cleared by force
+    isClearable(m) {
+      return !['Rejected', 'Cleared', 'Closed'].includes(m.status);
+    },
+    rowNo(index) {
+      return ((this.materialRequests.meta && this.materialRequests.meta.from) || 1) + index;
+    },
+    toggleAll() {
+      this.picked = this.allPicked ? this.picked.filter(id => !this.pickable.some(m => m.id === id)) : [...new Set([...this.picked, ...this.pickable.map(m => m.id)])];
+    },
+    askForce() {
+      this.forceError = '';
+      this.forceAsk = true;
+    },
+    forceClear(password) {
+      this.forceBusy = true;
+      this.forceError = '';
+      this.$inertia.post(route('material-requests.force-clear'), { ids: this.picked, password }, {
+        preserveScroll: true,
+        onSuccess: () => { this.forceAsk = false; this.picked = []; },
+        onError: e => { this.forceError = e.password || e.ids || Object.values(e)[0] || this.$t('That did not work.'); },
+        onFinish: () => (this.forceBusy = false),
+      });
+    },
+    pickTile(item) {
+      this.form.status = item.status || null;
+    },
+    statusChip(materialRequest) {
+      return (
+        {
+          Draft: 'lg-chip-slate',
+          'Pending Approval': 'lg-chip-amber',
+          Approved: 'lg-chip-blue',
+          Rejected: 'lg-chip-red',
+          'Partially Issued': 'lg-chip-violet',
+          Issued: 'lg-chip-cyan',
+          Cleared: materialRequest.force_cleared ? 'mr-chip-force' : 'mr-chip-cleared',
+          Closed: 'lg-chip-slate',
+        }[materialRequest.status] || 'lg-chip-slate'
+      );
+    },
+    trailLabel(status) {
+      return (
+        {
+          'Pending Approval': this.$t('Submitted by'),
+          Approved: this.$t('Approved by'),
+          Rejected: this.$t('Rejected by'),
+          'Partially Issued': this.$t('Partially issued by'),
+          Issued: this.$t('Fully issued by'),
+          'Delivery Update': this.$t('Delivery update by'),
+          'Partially Delivered': this.$t('Partially delivered by'),
+          'Fully Delivered': this.$t('Fully delivered by'),
+          Cleared: this.$t('Cleared by'),
+          Closed: this.$t('Closed by'),
+        }[status] || status
+      );
+    },
+    trailTone(status) {
+      return (
+        {
+          'Pending Approval': 'amber',
+          Approved: 'blue',
+          Rejected: 'red',
+          'Partially Issued': 'violet',
+          Issued: 'cyan',
+          'Delivery Update': 'teal',
+          'Partially Delivered': 'amber',
+          'Fully Delivered': 'green',
+          Cleared: 'green',
+          Closed: 'slate',
+        }[status] || 'slate'
+      );
+    },
+    // "Approved by Jane · 3 Oct 2026, 14:05" — who put the request into its current status.
+    statusVerb(status) {
+      return (
+        {
+          'Pending Approval': this.$t('Submitted by'),
+          Approved: this.$t('Approved by'),
+          Rejected: this.$t('Rejected by'),
+          'Partially Issued': this.$t('Partially issued by'),
+          Issued: this.$t('Fully issued by'),
+          Cleared: this.$t('Cleared by'),
+          Closed: this.$t('Closed by'),
+        }[status] || this.$t('By')
+      );
+    },
+    reset() {
+      this.form = mapValues(this.form, () => null);
+    },
+    goto(id) {
+      this.$inertia.visit(route('material-requests.show', id));
+    },
+    statusLabel(materialRequest) {
+      return this.$t(materialRequest.status_label || materialRequest.status);
+    },
+    canEdit(materialRequest) {
+      // Backend-computed (MaterialRequestResource::can_edit, via
+      // MaterialRequestPolicy::update()) — not re-derived from role here,
+      // so it can never drift from what the server actually allows.
+      return !!materialRequest.can_edit;
+    },
+    canDelete(materialRequest) {
+      return !!materialRequest.can_delete;
+    },
+    async deleteRequest(materialRequest) {
+      if (!(await this.$confirm(this.$t('Are you sure you want to delete this material request?'), { variant: 'danger' }))) {
+        return;
+      }
+
+      this.$inertia.delete(route('material-requests.destroy', materialRequest.id));
+    },
+  },
+};
+</script>
+
+<style scoped>
+.mr-status-cell { min-width: 330px; }
+.mr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* status and delivery chips are the same size; Cleared is the deeper green, Fully Delivered the lighter one */
+.mr-chip { min-width: 8.6rem; justify-content: center; gap: 4px; }
+.mr-chip-cleared { color: #064e3b; background: rgba(5, 150, 105, 0.26); }
+/* Cleared by Admin Force Clearance: a cleared request in every way, shown in orange */
+.mr-chip-force { color: #9a3412; background: rgba(249, 115, 22, 0.22); box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.45); cursor: help; }
+html.dark .mr-chip-force { color: #fdba74; }
+.mr-pick { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border-radius: 9px; background: #fff; cursor: pointer; box-shadow: 0 6px 12px -5px rgba(194, 65, 12, 0.55), 0 1px 3px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(234, 88, 12, 0.28); transition: box-shadow 0.15s ease, transform 0.15s ease; } .mr-pick:hover { transform: translateY(-1px); box-shadow: 0 9px 16px -6px rgba(194, 65, 12, 0.65), 0 1px 3px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(234, 88, 12, 0.45); } .mr-pick input { width: 18px; height: 18px; accent-color: #c2410c; cursor: pointer; }
+html.dark .mr-pick { background: #1e293b; }
+.mr-th-pick, .mr-td-pick { width: 44px; } .mr-th-no, .mr-td-no { width: 56px; font-variant-numeric: tabular-nums; color: var(--lg-mute); font-weight: 700; }
+tr.is-picked td { background: rgba(251, 146, 60, 0.1); }
+.mr-bulk { position: sticky; top: 0.5rem; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 1rem; padding: 0.7rem 0.9rem; border-radius: 18px; background: linear-gradient(135deg, rgba(254, 215, 170, 0.92), rgba(255, 237, 213, 0.95)); border: 1px solid rgba(234, 88, 12, 0.35); box-shadow: 0 16px 28px -16px rgba(194, 65, 12, 0.55); backdrop-filter: blur(10px); }
+.mr-bulk-ico { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 13px; color: #fff; background: linear-gradient(145deg, #fb923c, #c2410c); }
+.mr-bulk-text { flex: 1 1 240px; min-width: 0; color: #7c2d12; font-size: 0.92rem; } .mr-bulk-text small { display: block; font-size: 0.74rem; opacity: 0.85; }
+.bulk-btn { border: 0; color: #fff; }
+.bulk-btn-all { background: linear-gradient(145deg, #60a5fa, #1d4ed8); box-shadow: 0 10px 18px -8px rgba(29, 78, 216, 0.85), 0 2px 4px rgba(15, 23, 42, 0.15); }
+.bulk-btn-none { background: linear-gradient(145deg, #fb7185, #be123c); box-shadow: 0 10px 18px -8px rgba(190, 18, 60, 0.8), 0 2px 4px rgba(15, 23, 42, 0.15); }
+.bulk-btn:hover { transform: translateY(-1px); }
+.mr-bulk-go { color: #fff; background: linear-gradient(145deg, #fb923c, #c2410c); box-shadow: 0 10px 18px -10px rgba(194, 65, 12, 0.9); }
+.mr-bulk-enter-active, .mr-bulk-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; } .mr-bulk-enter-from, .mr-bulk-leave-to { opacity: 0; transform: translateY(-8px); }
+html.dark .mr-bulk { background: linear-gradient(135deg, rgba(124, 45, 18, 0.7), rgba(67, 20, 7, 0.75)); } html.dark .mr-bulk-text { color: #fed7aa; }
+.mr-chip-fdel { color: #15803d; background: rgba(34, 197, 94, 0.16); }
+html.dark .mr-chip-cleared { color: #6ee7b7; }
+html.dark .mr-chip-fdel { color: #86efac; }
+.mr-tick2 { margin-left: -7px; }
+.mr-ref { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (min-width: 768px) { .mr-ref { justify-content: flex-start; } }
+.mr-lock { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 9999px; color: #064e3b; background: rgba(5, 150, 105, 0.2); cursor: help; }
+html.dark .mr-lock { color: #6ee7b7; }
+/* two statuses per line, so a request does not take a tall row */
+.mr-trail { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
+.mr-trail li { text-align: left; display: flex; align-items: flex-start; gap: 7px; font-size: 0.74rem; line-height: 1.3; color: var(--lg-mute); }
+.mr-trail-dot { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 9999px; background: var(--lg-faint); }
+.mr-trail-text { min-width: 0; overflow-wrap: anywhere; }
+.mr-trail-text b { font-weight: 800; color: var(--lg-ink); }
+.mr-trail-text em { display: block; font-style: normal; font-size: 0.7rem; color: var(--lg-faint); font-variant-numeric: tabular-nums; }
+.mr-trail-amber .mr-trail-dot { background: #f59e0b; }
+.mr-trail-blue .mr-trail-dot { background: #3b82f6; }
+.mr-trail-red .mr-trail-dot { background: #ef4444; }
+.mr-trail-violet .mr-trail-dot { background: #8b5cf6; }
+.mr-trail-cyan .mr-trail-dot { background: #06b6d4; }
+.mr-trail-teal .mr-trail-dot { background: #14b8a6; }
+.mr-trail-green .mr-trail-dot { background: #10b981; }
+.mr-card {
+  padding: 0.9rem;
+}
+.mr-status-by {
+  margin-top: 4px;
+}
+.lg-icon-btn.is-amber {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.16);
+}
+html.dark .lg-icon-btn.is-amber {
+  color: #fcd34d;
+}
+@media (max-width: 767.98px) {
+  .mr-status-cell { min-width: 0; flex-wrap: wrap; }
+  .mr-trail { flex: 1 1 100%; margin-top: 8px; gap: 8px 10px; }
+  .mr-card {
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+}
+</style>

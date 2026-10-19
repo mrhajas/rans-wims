@@ -1,0 +1,367 @@
+<template>
+  <admin-layout :title="$t(edit ? 'Edit Material Request' : 'Create Material Request')">
+    <div class="lg-page px-4 md:px-0 fx-form">
+      <page-header
+        icon="clip"
+        :title="$t(edit ? 'Edit Material Request' : 'Create Material Request')"
+        :subtitle="$t('Fill in the details below to submit the material request.')"
+      >
+        <span v-if="edit" class="lg-chip lg-chip-green" style="text-transform: none">{{ edit.reference }}</span>
+        <Link :href="route('material-requests.index')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Material Requests') }}</Link>
+      </page-header>
+
+      <form @submit.prevent="submit">
+        <section class="lg-card">
+          <header class="lg-card-head">
+            <span class="lg-card-ico lg-ico-emerald"><icons name="clip" class="w-5 h-5" /></span>
+            <div class="min-w-0">
+              <h2 class="lg-card-title">{{ $t('Details') }}</h2>
+              <p class="lg-card-sub">{{ $t('Request Number') }} / {{ $t('Date Requested') }} / {{ $t('Warehouse / Site') }}</p>
+            </div>
+          </header>
+          <div class="lg-fields">
+            <div>
+              <text-input :label="$t('Request Number')" :model-value="requestNumber" disabled />
+            </div>
+            <div>
+              <date-picker :label="$t('Date Requested')" v-model="form.date_requested" :error="$page.props.errors.date_requested" />
+            </div>
+            <div>
+              <text-input :label="$t('Requested By')" :model-value="requestedBy?.name" disabled />
+            </div>
+            <div>
+              <auto-complete
+                id="warehouse"
+                :label="$t('Warehouse / Site')"
+                :suggestions="warehouses"
+                v-model="form.warehouse_id"
+                :error="$page.props.errors.warehouse_id"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section class="lg-card">
+          <header class="lg-card-head">
+            <span class="lg-card-ico lg-ico-indigo"><icons name="bag" class="w-5 h-5" /></span>
+            <div class="min-w-0 flex-1">
+              <h2 class="lg-card-title">{{ $t('Items') }}</h2>
+              <p class="lg-card-sub">{{ $t('Add at least one item') }}</p>
+            </div>
+            <span class="lg-chip lg-chip-indigo" style="text-transform: none">{{ form.items.length }} {{ $t('Items') }}</span>
+          </header>
+
+          <div class="lg-table-wrap fx-mr-wrap">
+            <table class="lg-table lg-responsive fx-mr-table">
+              <thead>
+                <tr>
+                  <th class="w-12"></th>
+                  <th>{{ $t('Item') }}</th>
+                  <th class="w-40">{{ $t('Quantity') }}</th>
+                  <th class="w-40">{{ $t('Unit') }}</th>
+                  <th class="w-48">{{ $t('Priority') }}</th>
+                  <th>{{ $t('Remarks') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(item, index) in form.items" :key="index">
+                  <td :data-label="$t('Remove')">
+                    <button type="button" @click="removeItem(index)" class="lg-icon-btn is-red lg-tip tip-left" :data-tip="$t('Remove')">
+                      <icons name="trash" class="w-4 h-4" />
+                    </button>
+                  </td>
+                  <td :data-label="$t('Item')" class="fx-item-td">
+                    <div class="fx-cell">
+                      <auto-complete
+                        :id="`mr-item-${index}`"
+                        :suggestions="itemSuggestions"
+                        :placeholder="$t('Search item')"
+                        position="bottom-100 mb-2"
+                        v-model="item.item_id"
+                        @update:modelValue="onItemChange(index, $event)"
+                        clearable
+                      />
+                      <div v-if="$page.props.errors['items.' + index + '.item_id']" class="text-red-600 text-xs mt-1 wims-field-error">
+                        {{ $page.props.errors['items.' + index + '.item_id'] }}
+                      </div>
+                    </div>
+                  </td>
+                  <td :data-label="$t('Quantity')">
+                    <div class="fx-cell">
+                      <text-input type="number" step="0.01" v-model="item.quantity" />
+                      <div v-if="$page.props.errors['items.' + index + '.quantity']" class="text-red-600 text-xs mt-1 wims-field-error">
+                        {{ $page.props.errors['items.' + index + '.quantity'] }}
+                      </div>
+                    </div>
+                  </td>
+                  <td :data-label="$t('Unit')">
+                    <div class="fx-cell">
+                      <input type="hidden" v-model="item.unit_id" />
+                      <text-input :model-value="unitName(item.unit_id) || '-'" disabled class="w-full" />
+                    </div>
+                  </td>
+                  <td :data-label="$t('Priority')">
+                    <div class="fx-cell">
+                      <select-input v-model="item.priority" class="w-full">
+                        <option value="Low">{{ $t('Low') }}</option>
+                        <option value="Normal">{{ $t('Normal') }}</option>
+                        <option value="High">{{ $t('High') }}</option>
+                        <option value="Emergency">{{ $t('Emergency') }}</option>
+                      </select-input>
+                    </div>
+                  </td>
+                  <td :data-label="$t('Remarks')">
+                    <div class="fx-cell">
+                      <text-input v-model="item.remarks" />
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="form.items.length === 0" class="lg-empty-row">
+                  <td class="lg-empty" colspan="6">{{ $t('Add at least one item') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-4">
+            <button type="button" @click="addItem" class="lg-btn lg-btn-soft">
+              <icons name="plus" class="w-4 h-4" />
+              {{ $t('Add Item') }}
+            </button>
+            <div v-if="$page.props.errors.items" class="text-red-600 text-sm mt-2">{{ $page.props.errors.items }}</div>
+          </div>
+        </section>
+
+        <section class="lg-card">
+          <header class="lg-card-head">
+            <span class="lg-card-ico lg-ico-amber"><icons name="upload" class="w-5 h-5" /></span>
+            <div class="min-w-0">
+              <h2 class="lg-card-title">{{ $t('Notes & Attachments') }}</h2>
+              <p class="lg-card-sub">{{ $t('PDF, DOC, or DOCX files') }}</p>
+            </div>
+          </header>
+          <div class="fx-notes">
+            <div class="fx-attach">
+              <label class="fx-label">{{ $t('Attachments') }}</label>
+              <div class="flex flex-col gap-2 items-start">
+                <button type="button" class="lg-btn lg-btn-soft" @click.prevent="$refs.file?.click()">
+                  <icons name="upload" class="w-4 h-4" />
+                  {{ $t('Choose files') }}
+                </button>
+                <input
+                  ref="file"
+                  id="material-request-attachments"
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx"
+                  class="sr-only"
+                  @change="onFiles"
+                />
+                <ul v-if="pickedFiles.length" class="fx-files">
+                  <li v-for="(name, fi) in pickedFiles" :key="fi"><icons name="clip" class="w-3.5 h-3.5 flex-none" /><span class="truncate">{{ name }}</span></li>
+                </ul>
+              </div>
+              <div v-if="$page.props.errors.attachments" class="text-red-600 text-sm mt-1">{{ $page.props.errors.attachments }}</div>
+              <div v-if="edit && edit.attachments && edit.attachments.length" class="mt-3">
+                <ul class="fx-files fx-files-list">
+                  <li v-for="attachment in edit.attachments" :key="attachment.id">
+                    <span class="truncate">{{ attachment.title }}</span>
+                    <a class="fx-dl" :href="route('media.download', attachment.id)">{{ $t('Download') }}</a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="lg-fields fx-notes-fields">
+              <div class="lg-span-all">
+                <textarea-input v-model="form.reason" :error="$page.props.errors.reason" :label="$t('Reason for Request')" />
+              </div>
+              <div class="lg-span-all">
+                <textarea-input v-model="form.comments" :error="$page.props.errors.comments" :label="$t('Comments & Notes')" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="lg-actionbar">
+          <span class="lg-actionbar-note">{{ form.items.length }} {{ $t('Items') }}</span>
+          <div class="lg-actionbar-btns">
+            <button type="submit" :disabled="form.processing" class="lg-btn lg-btn-primary">
+              <icons :name="form.processing ? 'refresh' : 'tick'" class="w-4 h-4" :class="{ 'animate-spin': form.processing }" /> {{ $t('Submit Request') }}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </admin-layout>
+</template>
+
+<script>
+import pick from 'lodash/pick';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
+import TextareaInput from '@/Shared/TextareaInput.vue';
+import TextInput from '@/Shared/TextInput.vue';
+import DatePicker from '@/Shared/DatePicker.vue';
+import AutoComplete from '@/Shared/AutoComplete.vue';
+import SelectInput from '@/Shared/SelectInput.vue';
+import PageHeader from '@/Shared/Page/PageHeader.vue';
+
+export default {
+  components: {
+    AdminLayout,
+    TextareaInput,
+    TextInput,
+    DatePicker,
+    AutoComplete,
+    SelectInput,
+    PageHeader,
+  },
+
+  props: {
+    edit: Object,
+    items: Array,
+    units: Array,
+    warehouses: Array,
+    requestNumber: String,
+    requestedBy: Object,
+    dateRequested: String,
+  },
+
+  data() {
+    return {
+      pickedFiles: [],
+      form: this.$inertia.form({
+        _method: this.edit ? 'PUT' : 'POST',
+        warehouse_id: this.edit ? this.edit.warehouse_id : null,
+        date_requested: this.edit ? this.edit.date_requested : this.dateRequested,
+        reason: this.edit ? this.edit.reason : '',
+        comments: this.edit ? this.edit.comments : '',
+        attachments: null,
+        items: this.edit
+          ? this.edit.items.map(i => ({
+              item_id: i.item_id,
+              quantity: i.quantity,
+              unit_id: i.unit_id,
+              priority: i.priority || 'Normal',
+              remarks: i.remarks || '',
+            }))
+          : [this.blankItem()],
+      }),
+    };
+  },
+
+  computed: {
+    itemSuggestions() {
+      return this.items.map(item => ({
+        id: item.id,
+        label: `${item.code} - ${item.name}`,
+      }));
+    },
+  },
+
+  methods: {
+    onFiles(e) {
+      this.pickedFiles = Array.from((e.target && e.target.files) || []).map(f => f.name);
+    },
+    blankItem() {
+      return { item_id: null, quantity: null, unit_id: null, priority: 'Normal', remarks: '' };
+    },
+    addItem() {
+      this.form.items.push(this.blankItem());
+    },
+    removeItem(index) {
+      this.form.items.splice(index, 1);
+      if (!this.form.items.length) {
+        this.addItem();
+      }
+    },
+    onItemChange(index, value = null) {
+      if (value !== null && value !== undefined) {
+        this.form.items[index].item_id = value;
+      }
+
+      const selected = this.items.find(i => i.id == this.form.items[index].item_id);
+      this.form.items[index].unit_id = selected ? selected.unit_id : null;
+    },
+    unitName(unitId) {
+      const selected = this.units.find(u => u.id == unitId);
+      return selected ? selected.name || selected.code : '';
+    },
+    submit() {
+      if (this.$refs.file) {
+        this.form.attachments = this.$refs.file.files;
+      }
+
+      const payload = pick(this.form, ['warehouse_id', 'date_requested', 'reason', 'comments', 'attachments', 'items', '_method']);
+      this.form.transform(() => payload);
+
+      if (this.edit) {
+        this.form.post(route('material-requests.update', this.edit.id));
+      } else {
+        this.form.post(route('material-requests.store'));
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.fx-form :deep(label:not(:has(input[type='checkbox']))),
+.fx-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--lg-mute);
+  margin-bottom: 0.25rem;
+}
+.fx-form :deep(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden'])),
+.fx-form :deep(select),
+.fx-form :deep(textarea) {
+  border-radius: 0.85rem !important;
+  border-color: var(--lg-line) !important;
+  background: var(--lg-card);
+  color: var(--lg-ink);
+  padding-top: 0.55rem !important;
+  padding-bottom: 0.55rem !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.fx-form :deep(input:disabled) {
+  background: var(--lg-soft);
+}
+.fx-form :deep(input:not([type='checkbox']):not([type='radio']):not([type='file']):hover),
+.fx-form :deep(select:hover) {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+}
+.fx-form :deep(input:not([type='checkbox']):not([type='radio']):not([type='file']):focus),
+.fx-form :deep(select:focus),
+.fx-form :deep(textarea:focus) {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18) !important;
+}
+
+.fx-cell { min-width: 0; text-align: left; }
+.fx-cell :deep(.mb-2) { margin-bottom: 0; }
+.fx-mr-table th.w-12 { width: 3rem; }
+@media (min-width: 768px) {
+  .fx-item-td { min-width: 18rem; }
+}
+@media (max-width: 767.98px) {
+  .fx-mr-table .fx-cell { flex: 1 1 auto; }
+}
+
+.fx-notes { display: grid; gap: 1.25rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) {
+  .fx-notes { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+}
+.fx-notes-fields { grid-template-columns: minmax(0, 1fr); }
+.fx-attach { min-width: 0; }
+.fx-files { width: 100%; font-size: 0.8rem; color: var(--lg-ink); }
+.fx-files li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 2px; }
+.fx-files-list { border: 1px solid var(--lg-line); border-radius: 14px; overflow: hidden; }
+.fx-files-list li { justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--lg-line); }
+.fx-files-list li:last-child { border-bottom: 0; }
+.fx-dl { flex: none; font-weight: 700; color: var(--lg-navy); }
+.fx-dl:hover { text-decoration: underline; }
+html.dark .fx-dl { color: #93c5fd; }
+</style>

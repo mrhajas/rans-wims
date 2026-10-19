@@ -1,0 +1,106 @@
+<?php
+
+return [
+    'group' => 'admin',
+    'title' => 'Download / Print Logs',
+    'icon' => 'printer',
+    'order' => 70,
+    'summary' => 'An automatic record of who printed, downloaded or exported something from WIMS, what it was, when, and from which device and place.',
+    'where' => 'Sidebar > **Download / Print Logs**, or the **Download / Print Logs** card on the Dashboard. Super Admin only.',
+    'path' => '/download-print-logs',
+    'permissions' => [
+        'read-download-print-logs' => 'Listed in the role editor. The page itself is limited to the **Super Admin** role: other roles cannot open it even if given this permission.',
+    ],
+    'overview' => [
+        'Reports, vouchers, receipts and spreadsheets can leave WIMS on paper or as a file. This log answers "who printed or took this out, and when?". Nobody has to remember to record anything: WIMS notices when a signed-in person opens a print page, downloads a PDF or Excel file, exports a list or downloads an attachment, and writes one line.',
+        'Each line shows the **person and their role**, the **action** (print or download), the **module** it came from (for example `checkins` or `payment-vouchers`), the **file name** when there is one, the **IP address and place**, and the **device**.',
+        'The log shows that a print or download page was **opened**. It cannot know what happens next, for example whether the paper really came out of the printer.',
+    ],
+    'concepts' => [
+        ['Print', 'A page meant for the printer, such as a "print" view of a Checkin, a voucher or a report. Opening it counts as one print.'],
+        ['Download', 'A file saved to the computer: a PDF, an Excel sheet, a CSV, a ZIP, a backup, or an attachment.'],
+        ['Module', 'The area of WIMS the page belongs to, taken from the first part of the page\'s internal name. It is shown in capital-first words, for example `Checkins` or `Payment-vouchers`.'],
+    ],
+    'functions' => [
+        [
+            'id' => 'open-the-log',
+            'title' => 'Open the Download / Print Logs and read the list',
+            'icon' => 'list',
+            'summary' => 'See the newest print and download events first.',
+            'steps' => [
+                'Sign in as a Super Admin.',
+                'Click **Download / Print Logs** in the sidebar.',
+                'Read the three tiles: **Total Events**, **Downloads** and **Prints**. They follow your filters.',
+                'Read the table. **When** has the date and time. **User** has the name and role. **Action** is a **print** or **download** tag. **Module** is the area. **File** is the file name (or a dash) with the internal page name under it. **IP** shows the address and place. **Device** shows the device type, operating system and browser.',
+                'Hover over the file name to see it in full.',
+            ],
+            'shots' => [['download-print-logs-list', 'The Download / Print Logs. Indigo tags are prints, green tags are downloads. The File column shows the file name and the internal page name.', 'Download and print logs']],
+        ],
+        [
+            'id' => 'filter-and-sort',
+            'title' => 'Search, filter and sort',
+            'icon' => 'filter',
+            'summary' => 'Find who took out a particular document.',
+            'steps' => [
+                'Type in the search box. It looks in the person\'s name, role, action, module, page name, address, file name, IP address, device, operating system, browser and place.',
+                'Pick **Download** or **Print** in **All Actions**.',
+                'Pick an area in **All Modules**. Only areas that already have lines are offered.',
+                'Pick **Date From** and **Date To**. Both days are included.',
+                'Click **When**, **User**, **Action**, **Module** or **Device** in the header to sort. Click again to reverse.',
+                'Use the reset button in the search box to clear everything.',
+            ],
+            'shots' => [['download-print-logs-filtered', 'The log filtered to one action. The Downloads and Prints tiles still show the split for the other filters.', 'Filtered download and print logs']],
+            'tips' => ['To find who printed a particular document, search for its reference (for example `RSC-0015`) because the reference is part of the address that was opened.'],
+        ],
+        [
+            'id' => 'print-or-download-the-log',
+            'title' => 'Print or download the log itself',
+            'icon' => 'download',
+            'summary' => 'Take the lines that match your filters to a meeting or an audit file.',
+            'steps' => [
+                'Set the filters you want.',
+                'Click **Print** at the top right to open a print-ready page in a new tab. The print window opens by itself.',
+                'Or click **Download** to save a PDF named `download-print-logs-<date>-<time>.pdf` (landscape A4).',
+            ],
+            'warnings' => ['Up to **3,000** lines are included. Narrow the dates for a longer period.'],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => ['Printing or downloading this log is **not** added to the log (otherwise it would record itself forever).']],
+        ],
+        [
+            'id' => 'what-gets-logged',
+            'title' => 'What exactly is logged',
+            'icon' => 'eye',
+            'summary' => 'The rules WIMS uses to decide that a request is a print or a download.',
+            'steps' => [
+                'A signed-in person opens a page or link in WIMS.',
+                'WIMS lets the page load normally, then looks at the request. If it succeeded and looks like a print or a file download, one line is written.',
+                'Open the log to see it. There is no button to press and nothing for the user to approve.',
+            ],
+            'fields' => [
+                ['Counted as Print', 'The address or internal name contains the word `print` (for example a Checkin print page or a list print page), or the address says `output=print`. A page that is also a file download is counted as a download instead.'],
+                ['Counted as Download', 'The address or name contains `download`, `export`, `pdf` or `backup`, or the address says `output=pdf`, `output=download` or `output=export`. Also any answer that is a file: it has an attachment file name, or it is a PDF, an Excel or Word file, a CSV, a ZIP, plain text or a generic binary file.'],
+                ['Not counted', 'Requests that failed (an error answer), requests from people who are not signed in, the log\'s own print and PDF pages, and viewing (not downloading) media: Site Diary photos and videos, Archive previews and "open in new tab", and WIMSChat picture previews and avatars. Those are tracked in their own modules\' logs.'],
+            ],
+            'inner' => ['title' => 'What WIMS stores for each line', 'items' => [
+                'Who: the user\'s name and first role at that moment.',
+                'What: print or download, the module, the internal page name, the full address that was opened (including the reference of the record) and the file name when the answer had one.',
+                'Where from: IP address, approximate place, device type, operating system, browser and the full browser text.',
+                'When and result: the exact time and the answer code (200 for success).',
+            ]],
+            'warnings' => ['Because the rule is based on the words in the address, a normal page with `export`, `print` or `backup` in its name is also counted (for example, just opening the Backup page is recorded as a download). Treat the log as "who opened print/download pages", which is what matters for control.'],
+        ],
+    ],
+    'behind' => [
+        ['title' => 'It runs on every page', 'text' => 'The logger is built into every page request of a signed-in user, so new reports and new print pages added in future are logged without anyone remembering to add them.', 'icon' => 'shield-check'],
+        ['title' => 'Backups and Terms count too', 'text' => 'Downloading a database backup ([[backup-and-restore]]), printing the Terms, exporting the [[login-logs]] and printing the [[activity-logs]] all create lines here.', 'icon' => 'database'],
+        ['title' => 'Kept until you remove them', 'text' => 'These lines are not cleaned up automatically. The monthly count shows on the Dashboard card **Download / Print Logs**.', 'icon' => 'clock'],
+        ['title' => 'Location is approximate', 'text' => 'The place is worked out from the IP address with a free public lookup and remembered for 30 days. A private office network shows "Local network".', 'icon' => 'map-pin'],
+    ],
+    'faq' => [
+        ['q' => 'Can ordinary users see this log?', 'a' => 'No. Only the Super Admin role can open it.'],
+        ['q' => 'Someone used the browser\'s own Ctrl+P on a screen. Is it logged?', 'a' => 'No. Only pages opened through WIMS print and download buttons and links are logged. Printing a normal screen with the browser menu is invisible to WIMS.'],
+        ['q' => 'Why is the file name empty on a print line?', 'a' => 'A print page is an ordinary page, not a file, so it has no file name. The internal page name under the dash tells you which one it was.'],
+        ['q' => 'Can I delete a line?', 'a' => 'No. There is no delete button.'],
+        ['q' => 'A user says they never downloaded that file.', 'a' => 'Check the IP address, device and time on the line against the person\'s [[login-logs]] for the same moment.'],
+    ],
+    'related' => ['login-logs', 'activity-logs', 'backup-and-restore', 'reports', 'roles-and-permissions-explained'],
+];

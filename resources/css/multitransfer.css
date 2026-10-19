@@ -1,0 +1,41 @@
+/* Multi Transfer: list, request page and the create form (the shared lg-* kit does the rest) */
+.mt .mt-stats { margin-bottom: 0.9rem; }
+.mt .mt-search { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.8rem; margin-bottom: 0.9rem; }
+.mt .mt-search input { flex: 1 1 auto; min-width: 0; height: 40px; border: 0; background: transparent; font-size: 0.9rem; outline: none; box-shadow: none !important; }
+.mt .mt-src { display: block; min-width: 180px; max-width: 320px; white-space: normal; overflow-wrap: break-word; line-height: 1.35; }
+.mt .mt-pages { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 1rem; }
+.mt .mt-page { min-width: 36px; padding: 6px 12px; text-align: center; border-radius: 12px; font-size: 0.82rem; font-weight: 700; color: var(--lg-ink); background: var(--lg-card); box-shadow: 0 6px 12px -8px rgba(15, 37, 64, 0.4), 0 0 0 1px var(--lg-line); }
+.mt .mt-page.is-on { color: #fff; background: linear-gradient(145deg, #3b82c4, #16365c); } .mt .mt-page.is-off { opacity: 0.45; }
+.mt .mt-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.mt .mt-meta { font-size: 0.82rem; color: var(--lg-mute); } .mt .mt-details { flex: 1 0 100%; margin: 0; color: var(--lg-ink); }
+.mt .mt-actions { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 0.5rem; } .mt .mt-actions .lg-btn { white-space: nowrap; }
+.mt .mt-cancel { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 0.5rem; } .mt .mt-cancel input { flex: 1 1 260px; min-width: 0; height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--lg-line); background: var(--lg-card); }
+.mt .mt-lines, .mt .mt-form-lines, .mt .mt-plan-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.mt .mt-lines li { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.8rem; border-radius: 14px; background: var(--lg-card); box-shadow: 0 8px 14px -12px rgba(15, 37, 64, 0.5), 0 0 0 1px var(--lg-line); }
+.mt .mt-no { flex: none; display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 9px; font-size: 0.74rem; font-weight: 800; color: #1c3f66; background: rgba(47, 111, 179, 0.12); }
+.mt .mt-item { flex: 1; min-width: 0; display: grid; } .mt .mt-item b { font-size: 0.9rem; overflow-wrap: anywhere; } .mt .mt-item small { font-size: 0.72rem; color: var(--lg-faint); }
+.mt .mt-qty { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mt .mt-add { margin-bottom: 0.8rem; }
+.mt .mt-form-lines > li { padding: 0.8rem; border-radius: 16px; background: var(--lg-card); box-shadow: 0 10px 16px -12px rgba(15, 37, 64, 0.5), 0 0 0 1px var(--lg-line); }
+.mt .mt-form-lines > li.is-bad { box-shadow: 0 10px 16px -12px rgba(190, 18, 60, 0.4), 0 0 0 1.5px #e11d48; }
+.mt .mt-form-top { display: flex; align-items: center; gap: 0.6rem; }
+.mt .mt-form-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 0.7rem; margin-top: 0.6rem; }
+.mt .mt-f { display: grid; gap: 4px; min-width: 0; } .mt .mt-f label { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-faint); }
+.mt .mt-f :is(select, input) { width: 100%; height: 42px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--lg-line); background: var(--lg-card); color: var(--lg-ink); font-size: 0.88rem; }
+.mt .mt-err { margin: 0.5rem 0 0; font-size: 0.78rem; font-weight: 700; color: #be123c; } .mt .mt-hint, .mt .mt-empty { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--lg-faint); }
+.mt .mt-plan-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.8rem; border-radius: 14px; background: var(--lg-soft); font-size: 0.86rem; } .mt .mt-plan-list span { color: var(--lg-mute); }
+.mt .mt-submit { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0 2rem; } .mt .mt-submit .lg-btn { white-space: nowrap; }
+@media (max-width: 767.98px) { .mt .mt-form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .mt .mt-form-grid .mt-f:first-child { grid-column: 1 / -1; } .mt .mt-submit .lg-btn { flex: 1 1 100%; justify-content: center; } }
+
+/* shadows below every major field and component of the module */
+.mt :is(input:not([type='checkbox'], [type='radio']), textarea, select) { box-shadow: 0 10px 16px -12px rgba(15, 37, 64, 0.55), 0 2px 4px rgba(15, 37, 64, 0.07); }
+.mt :is(input:not([type='checkbox'], [type='radio']), textarea, select):focus { box-shadow: 0 0 0 3px rgba(47, 111, 179, 0.2), 0 10px 16px -12px rgba(15, 37, 64, 0.55); }
+.mt .mt-search, .mt .lg-table-wrap, .mt .lg-stat, .mt .mt-plan-list li, .mt .mt-no { box-shadow: 0 14px 22px -16px rgba(15, 37, 64, 0.55), 0 2px 6px rgba(15, 37, 64, 0.07), 0 0 0 1px var(--lg-line); }
+.mt .mt-search input { box-shadow: none !important; }
+.mt .lg-card { box-shadow: 0 22px 36px -24px rgba(15, 37, 64, 0.6), 0 4px 10px -4px rgba(15, 37, 64, 0.1), 0 0 0 1px var(--lg-line); }
+.mt .lg-icon-btn, .mt .lg-chip { box-shadow: 0 8px 14px -10px rgba(15, 37, 64, 0.5); }
+.mt .lg-btn { box-shadow: 0 12px 20px -12px rgba(15, 37, 64, 0.55); }
+.mt .mt-add .ac-input, .mt .mt-add input { box-shadow: 0 12px 20px -12px rgba(15, 37, 64, 0.6), 0 2px 5px rgba(15, 37, 64, 0.08); }
+.mt .apple-field-grid { grid-template-columns: minmax(200px, 1fr) minmax(260px, 2fr); }
+.mt .apple-field-grid > .lg-span-all { grid-column: 1 / -1; }
+@media (max-width: 767.98px) { .mt .apple-field-grid { grid-template-columns: minmax(0, 1fr); } }

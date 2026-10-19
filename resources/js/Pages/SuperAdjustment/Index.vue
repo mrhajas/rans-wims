@@ -1,0 +1,242 @@
+<template>
+  <admin-layout :title="$t('Super Adjustments')">
+    <div class="lg-page px-4 md:px-0">
+      <page-header icon="adjustments" :title="$t('Super Adjustments')" :subtitle="$t('Physical stock counts pending or already reconciled against system stock.')">
+        <Link v-if="canCreate" :href="route('super-adjustments.create')" class="lg-btn lg-btn-primary">
+          <icons name="plus" class="w-4 h-4" />
+          <span>{{ $t('New Super Adjustment') }}</span>
+        </Link>
+      </page-header>
+
+      <section class="lg-card sa-rule">
+        <span class="lg-card-ico lg-ico-emerald"><icons name="lock-closed" class="w-5 h-5" /></span>
+        <div class="min-w-0 flex-1">
+          <h2 class="lg-card-title">{{ rule.approvals === 2 ? $t('Two Super Admin approvals') : $t('One Super Admin approval') }}</h2>
+          <p class="lg-card-sub">{{ rule.approvals === 2 ? $t('A Super Adjustment changes the stock only after two different Super Admins approve it, each with their own password. After the first, the other Super Admins are told by SMS, email and the app bell.') : $t('A Super Adjustment changes the stock after one Super Admin approves it with their password.') }}</p>
+        </div>
+        <button v-if="rule.can_change" type="button" class="lg-btn lg-btn-soft" @click="openRule"><icons name="cog" class="w-4 h-4" />{{ $t('Change rule') }}</button>
+      </section>
+      <tec-dialog-modal :show="ruleOpen" max-width="sm" @close="ruleOpen = false">
+        <template #title><span class="sa-rule-title"><icons name="lock-closed" class="w-5 h-5" />{{ $t('How many Super Admin approvals?') }}</span></template>
+        <template #content>
+          <label class="sa-opt" :class="{ 'is-on': ruleForm.approvals === 2 }"><input v-model.number="ruleForm.approvals" type="radio" :value="2" /><span><b>{{ $t('Two Super Admins') }}</b><small>{{ $t('Two different Super Admins approve, each with their password. Recommended.') }}</small></span></label>
+          <label class="sa-opt" :class="{ 'is-on': ruleForm.approvals === 1 }"><input v-model.number="ruleForm.approvals" type="radio" :value="1" /><span><b>{{ $t('One Super Admin') }}</b><small>{{ $t('One Super Admin approves with their password (a Super Admin\'s own count is approved when saved).') }}</small></span></label>
+          <p v-if="ruleForm.approvals === 2 && rule.super_admins < 2" class="sa-rule-warn">{{ $t('Two approvals need at least two active Super Admins. There is only :n.', { n: rule.super_admins }) }}</p>
+          <label class="sa-pw-l">{{ $t('Your password') }}</label>
+          <input v-model="ruleForm.password" type="password" class="sa-pw" autocomplete="current-password" :placeholder="$t('Type your password to save')" @keyup.enter="saveRule" />
+          <p v-if="ruleError" class="sa-rule-warn">{{ ruleError }}</p>
+          <p class="lg-sub mt-2">{{ $t('Records already waiting keep the approvals they have; the new rule applies from their next approval.') }}</p>
+        </template>
+        <template #footer>
+          <div class="flex items-center justify-between gap-2 w-full">
+            <button type="button" class="lg-btn lg-btn-soft" @click="ruleOpen = false"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button>
+            <button type="button" class="lg-btn lg-btn-green" :disabled="ruleForm.processing || !ruleForm.password" @click="saveRule"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button>
+          </div>
+        </template>
+      </tec-dialog-modal>
+
+      <stat-tiles :items="statItems" @select="pickTile" />
+
+      <section class="lg-card lg-filters">
+        <div class="lg-fields sa-filters">
+          <text-input v-model="form.search" :label="$t('Search')" :placeholder="$t('Search reference, warehouse, user…')" />
+          <select-input v-model="form.status" :label="$t('Status')">
+            <option :value="null">{{ $t('All Statuses') }}</option>
+            <option v-for="s in statuses" :key="s" :value="s">{{ $t(statusName(s)) }}</option>
+          </select-input>
+          <div class="sa-filter-reset">
+            <button type="button" class="lg-btn lg-btn-soft" :disabled="!hasFilters" @click="reset">
+              <icons name="refresh" class="w-4 h-4" />{{ $t('Reset') }}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="lg-table-wrap">
+        <table class="lg-table lg-responsive">
+          <thead>
+            <tr>
+              <th>{{ $t('Reference') }}</th>
+              <th>{{ $t('Status') }}</th>
+              <th>{{ $t('Project / Warehouse') }}</th>
+              <th>{{ $t('Submitted By') }}</th>
+              <th>{{ $t('Date') }}</th>
+              <th class="lg-sticky-end"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="sa in superAdjustments.data" :key="sa.id" class="is-click" @click="$inertia.visit(route('super-adjustments.show', sa.id))">
+              <td :data-label="$t('Reference')"><span class="lg-main lg-mono">{{ sa.reference }}</span></td>
+              <td :data-label="$t('Status')">
+                <span class="lg-chip" :class="statusChip(sa.status)">
+                  <icons v-if="sa.status !== 'Approved'" :name="statusIcon(sa.status)" class="w-3 h-3 inline-flex" />
+                  {{ sa.status === 'Approved' ? $t(statusName(sa.status)).toUpperCase() : $t(statusName(sa.status)) }}
+                </span>
+                <div v-if="sa.phases && sa.status !== 'Rejected'" class="sa-ph">
+                  <span v-for="ph in sa.phases" :key="ph.phase" class="sa-phchip" :class="ph.done ? 'is-p' + ph.phase : 'is-wait'" :title="ph.done ? (ph.user + ' · ' + $datetime(ph.at) + (ph.note ? ' · ' + ph.note : '')) : $t('Not given yet')">
+                    <icons :name="ph.done ? 'tick' : 'clock'" class="w-3 h-3" />{{ ph.done ? $t('Phase :n approved', { n: ph.phase }) : $t('Phase :n pending', { n: ph.phase }) }}<small v-if="ph.done">{{ ph.user }}</small>
+                  </span>
+                </div>
+                <div v-else-if="sa.status === 'Approved' && sa.approver" class="sa-by">{{ sa.approver.name }}<span v-if="sa.approved_by_role"> · {{ sa.approved_by_role }}</span></div>
+                <div v-else-if="sa.status === 'Rejected' && sa.rejecter" class="sa-by">{{ sa.rejecter.name }}</div>
+              </td>
+              <td :data-label="$t('Project / Warehouse')" class="sa-wrap">{{ sa.warehouse?.name }}</td>
+              <td :data-label="$t('Submitted By')" class="sa-wrap">{{ sa.user?.name }}</td>
+              <td :data-label="$t('Date')" class="tabular-nums">{{ $date(sa.date) }}</td>
+              <td class="lg-sticky-end" :data-label="$t('Actions')" @click.stop>
+                <div class="lg-actions">
+                  <approval-actions :adjustment="sa" route-prefix="super-adjustments" compact />
+                  <change-status :adjustment="sa" route-prefix="super-adjustments" compact />
+                  <Link :href="route('super-adjustments.show', sa.id)" class="lg-icon-btn lg-tip" :data-tip="$t('View')" :aria-label="$t('View')">
+                    <icons name="doc" />
+                  </Link>
+                  <a v-if="sa.can_print" :href="route('super-adjustments.print', sa.id)" target="_blank" rel="noopener" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')">
+                    <icons name="printer" />
+                  </a>
+                  <a v-if="sa.can_print" :href="route('super-adjustments.pdf', sa.id)" class="lg-icon-btn lg-tip" :data-tip="$t('Download')" :aria-label="$t('Download')">
+                    <icons name="download" />
+                  </a>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="!superAdjustments.data.length" class="lg-empty-row">
+              <td class="lg-empty" colspan="6">{{ $t('There is no data to display.') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <pagination class="mt-4" :meta="superAdjustments.meta" :links="superAdjustments.links" />
+    </div>
+  </admin-layout>
+</template>
+
+<script>
+import throttle from 'lodash/throttle';
+import pickBy from 'lodash/pickBy';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
+import Pagination from '@/Shared/Pagination.vue';
+import PageHeader from '@/Shared/Page/PageHeader.vue';
+import StatTiles from '@/Shared/Page/StatTiles.vue';
+import TextInput from '@/Shared/TextInput.vue';
+import SelectInput from '@/Shared/SelectInput.vue';
+import TecDialogModal from '@/Jetstream/DialogModal.vue';
+import ApprovalActions from '@/Shared/Adjustment/ApprovalActions.vue';
+import ChangeStatus from '@/Shared/Adjustment/ChangeStatus.vue';
+
+export default {
+  components: { TecDialogModal, AdminLayout, Pagination, PageHeader, StatTiles, TextInput, SelectInput, ApprovalActions, ChangeStatus },
+
+  props: {
+    filters: Object,
+    superAdjustments: Object,
+    statuses: Array,
+    stats: { type: Object, default: () => ({}) },
+    canCreate: Boolean,
+    rule: { type: Object, default: () => ({ approvals: 2, can_change: false, super_admins: 0 }) },
+  },
+
+  data() {
+    return {
+      ruleOpen: false,
+      ruleForm: this.$inertia.form({ approvals: 2, password: '' }),
+      form: {
+        search: this.filters.search,
+        status: this.filters.status || null,
+      },
+    };
+  },
+
+  computed: {
+    ruleError() { return (this.$page.props.errors || {}).password || (this.$page.props.errors || {}).approvals || ''; },
+    hasFilters() {
+      return !!(this.form.search || this.form.status);
+    },
+    // Whole-list figures from the server; each card filters the list to that status and lights up while applied.
+    statItems() {
+      const s = this.stats || {};
+      const tile = (status, icon, tone, label, value) => ({ icon, tone, label, value: Number(value || 0), status, active: (this.form.status || null) === status });
+      return [
+        tile(null, 'collection', 'navy', this.$t('Total Super Adjustments'), s.total),
+        tile('Draft', 'clock', 'amber', this.$t('Pending approval'), s.Draft),
+        tile('Awaiting Phase 2', 'lock-closed', 'sky', this.$t('Awaiting 2nd approval'), s.Awaiting),
+        tile('Approved', 'tick', 'emerald', this.$t('Approved and Completed'), s.Approved),
+        tile('Rejected', 'cross', 'rose', this.$t('Rejected'), s.Rejected),
+      ];
+    },
+  },
+
+  watch: {
+    form: {
+      handler: throttle(function () {
+        this.$inertia.get(this.route('super-adjustments.index'), pickBy(this.form), { preserveState: true, replace: true });
+      }, 300),
+      deep: true,
+    },
+  },
+
+  methods: {
+    // Clicking a card filters to that status; clicking the lit card (or the Total card) shows everything again.
+    pickTile(tile) {
+      this.form.status = tile.status && this.form.status !== tile.status ? tile.status : null;
+    },
+    statusName(s) {
+      return s === 'Draft' ? 'Pending approval' : s === 'Awaiting Phase 2' ? 'Awaiting 2nd approval' : s === 'Approved' ? 'Approved and Completed' : s;
+    },
+    openRule() {
+      this.ruleForm.approvals = this.rule.approvals;
+      this.ruleForm.password = '';
+      this.ruleOpen = true;
+    },
+    saveRule() {
+      this.ruleForm.put(this.route('super-adjustments.approval-rule'), { preserveScroll: true, onSuccess: () => { this.ruleOpen = false; this.ruleForm.password = ''; } });
+    },
+    statusIcon(status) {
+      if (status === 'Awaiting Phase 2') return 'lock-closed';
+      if (status === 'Approved') return 'tick';
+      if (status === 'Rejected') return 'cross';
+      return 'clock';
+    },
+    statusChip(status) {
+      if (status === 'Awaiting Phase 2') return 'lg-chip-sky';
+      if (status === 'Approved') return 'sa-final';
+      if (status === 'Rejected') return 'lg-chip-red';
+      return 'lg-chip-amber';
+    },
+    reset() {
+      this.form.search = '';
+      this.form.status = null;
+    },
+  },
+};
+</script>
+
+<style scoped>
+.sa-rule { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sa-rule-title { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; }
+.sa-opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin-bottom: 8px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4); }
+.sa-opt.is-on { box-shadow: inset 0 0 0 2px #10b981; background: rgba(16, 185, 129, 0.08); }
+.sa-opt span { display: grid; gap: 2px; } .sa-opt small { color: var(--lg-mute, #64748b); }
+.sa-pw-l { display: block; margin: 12px 0 4px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lg-mute, #64748b); }
+.sa-pw { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #d1d5db; background: transparent; }
+.sa-rule-warn { margin-top: 8px; font-size: 0.8rem; font-weight: 700; color: #b91c1c; }
+.sa-filters {
+  grid-template-columns: minmax(220px, 2fr) minmax(180px, 1fr) auto;
+  align-items: end;
+}
+.sa-wrap { white-space: normal; min-width: 130px; max-width: 240px; }
+.sa-ph { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+.sa-phchip { display: inline-flex; align-items: center; gap: 5px; width: fit-content; max-width: 100%; padding: 2px 9px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; white-space: nowrap; }
+.sa-phchip small { font-weight: 600; opacity: 0.85; margin-left: 2px; overflow: hidden; text-overflow: ellipsis; }
+.sa-phchip.is-p1 { background: #ffe0bd; color: #9a3f00; } .sa-phchip.is-p2 { background: #d4f2e0; color: #0a6140; } .sa-phchip.is-wait { background: #e8edf3; color: #55657a; }
+.sa-final { background: #14306b; color: #fff; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.sa-by { margin-top: 3px; font-size: 0.7rem; font-weight: 600; color: var(--lg-faint); }
+.sa-filter-reset {
+  display: flex;
+  align-items: flex-end;
+}
+@media (max-width: 720px) {
+  .sa-filters {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

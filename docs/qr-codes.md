@@ -1,0 +1,3 @@
+
+## More record kinds (2026-10-18)
+Now 57 kinds. Added: subcontract variation, subcontract reconciliation, subcontractor profile, tracked account (Accounts Tracking), account transaction, account transfer, account reconciliation, funds allocation (Accounts), salary period, salary advance, salary loan, payment voucher batch, loading and unloading worker, notice. Left out on purpose: system pages (login logs, WIMS Connect logs and recipients, WIMSChat user pages, responsive audit runs, signatory person pages, the supplier ledger view, the public manual) and the digital attendance record (a pop-up, not a page). Accounts Tracking records are found in their own schema (`QrRegistry::findAny`) and a code made for them belongs to the WIMS account.

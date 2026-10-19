@@ -1,0 +1,20 @@
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Defense-in-depth for a whole-repo-as-webroot deploy: if the host's document
+# root ever points here instead of public/ (the recommended setup), or this
+# rewrite fails for any reason, these paths must never become directly
+# reachable — .env, storage/ (which holds real database backups), and every
+# other directory that isn't the public/ webroot. Harmless when the document
+# root already IS public/, since these paths are unreachable from there anyway.
+RewriteRule ^(\.env.*|storage(/.*)?|database(/.*)?|bootstrap(/.*)?|vendor(/.*)?|app(/.*)?|config(/.*)?|routes(/.*)?|resources(/.*)?|tests(/.*)?|WIMS23(/.*)?|SAVE_NOW(/.*)?|artisan)$ - [F,L]
+
+# nothing at the top level may be fetched when it is a secret, a dump, a backup or a package list
+RewriteRule \.(sql|bak|old|orig|log|sh|ini|ya?ml|lock|md)$ - [F,L,NC]
+RewriteRule ^(composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|webpack\.mix\.js|vite\.config\.js|\.git(/.*)?|\.gitignore)$ - [F,L,NC]
+
+RewriteCond %{REQUEST_URI} !^public
+RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

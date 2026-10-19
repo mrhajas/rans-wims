@@ -1,0 +1,131 @@
+<?php
+
+return [
+    'group' => 'admin',
+    'title' => 'Maintenance Lock',
+    'icon' => 'lock',
+    'order' => 30,
+    'summary' => 'A one-click switch that keeps everyone out of WIMS except Super Admins, Admins and Project Managers, for upgrades, backups and restores.',
+    'where' => 'Dashboard > the dark **System Access Control** bar near the top.',
+    'path' => '/',
+    'permissions' => [
+        'Super Admin or Admin role' => 'Turn the lock on or off (and enter their own password to confirm).',
+        'Project Manager role' => 'See whether the lock is on. The bar shows a **Read Only** tag instead of a button.',
+        'bypass-system-lockdown' => 'Appears in the role editor under "System Access Control" but is **not used** by the lock today. Who may stay signed in is decided by the three roles above, not by this permission.',
+    ],
+    'overview' => [
+        'The **Maintenance Lock** (also called system lockdown) protects the system while you work on it. When it is **on**, only people with the roles **Super Admin**, **Admin** or **Project Manager** can sign in or stay signed in. Everyone else is signed out on their next click and sees a "System Maintenance Notice" when they try to sign in again. When it is **off**, everyone works as normal.',
+        'Typical uses: before you restore a backup (see [[backup-and-restore]]), while an update is installed, or when a serious data problem needs to be fixed without people adding new records.',
+        'The lock is an on/off switch for **people**, not for modules. To hide chosen modules from everybody, use [[global-feature-control]] instead.',
+    ],
+    'concepts' => [
+        ['Allowed roles', 'Super Admin, Admin and Project Manager. People who hold any of these roles keep working while the lock is on.'],
+        ['Blocked', 'Every other role: Store Manager, Engineers, QS, Procurement, Account, Technician, Funds and Transfer roles and any custom role.'],
+        ['Maintenance notice', 'The yellow message shown on the sign-in page: "System is currently under maintenance. Access is temporarily limited to Admin, Super Admin, and Project Manager. Please try again later."'],
+    ],
+    'functions' => [
+        [
+            'id' => 'see-lock-status',
+            'title' => 'See whether the lock is on',
+            'icon' => 'eye',
+            'summary' => 'The Dashboard shows the current state to Super Admins, Admins and Project Managers.',
+            'steps' => [
+                'Sign in and open the **Dashboard**.',
+                'Find the dark bar titled **System Access Control** under the welcome area.',
+                'Read the second line. **Maintenance mode is OFF. All permitted users can access the system.** means normal working. **Maintenance mode is ON. System access is restricted except for Admin, Super Admin, and Project Manager.** means the lock is on.',
+                'The round icon on the left is green with an open padlock when the lock is off, and red with a closed padlock when it is on.',
+            ],
+            'shots' => [['maintenance-lock-card-off', 'The System Access Control bar with the lock OFF. The green button on the right turns it on.', 'Maintenance lock bar (off)']],
+            'tips' => ['Project Managers see the bar with a **Read Only** tag. They can see the state but cannot change it.'],
+            'warnings' => ['Other roles do not see the bar at all. A Store Manager, for example, only learns about the lock when they are signed out.'],
+        ],
+        [
+            'id' => 'turn-lock-on',
+            'title' => 'Turn the Maintenance Lock on',
+            'icon' => 'lock',
+            'summary' => 'Restrict access immediately. You must type your own password.',
+            'steps' => [
+                'Tell your team a few minutes ahead, so they can save their work. People who are blocked lose their session on their next click.',
+                'On the **Dashboard**, click **Enable Maintenance Lock** in the System Access Control bar.',
+                'In the box read "This will immediately restrict system access except for Admin, Super Admin, and Project Manager."',
+                'Type **your own** sign-in password in **Password**.',
+                'Click **Enable Lock**. The bar turns red and the button now reads **Disable Maintenance Lock**.',
+            ],
+            'fields' => [
+                ['Password', 'Required. Your own current password. A wrong one shows "The provided password is incorrect." under the box and the lock does not change.'],
+            ],
+            'shots' => [
+                ['maintenance-lock-dialog', 'The confirmation box. The red **Enable Lock** button only works after a password is typed.', 'Enable maintenance lock dialog'],
+                ['maintenance-lock-card-on', 'The bar after the lock is switched ON: red icon, closed padlock and a button to disable it.', 'Maintenance lock bar (on)'],
+            ],
+            'warnings' => [
+                'Only **Super Admin** and **Admin** can do this. The server refuses the change for any other role (the message is "You are not allowed to update system lockdown."), even if someone tries to send it without the button.',
+                'Turning the lock on does not stop work that people are in the middle of saving. Their next click is what ends their session.',
+            ],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => [
+                'Your password is checked first. If it is right the setting is saved and a line "System Lockdown has been enabled." is written to the activity log with your name ([[activity-logs]]).',
+                'The change is effective at once for every user, on every page, with no restart.',
+            ]],
+        ],
+        [
+            'id' => 'turn-lock-off',
+            'title' => 'Turn the Maintenance Lock off',
+            'icon' => 'lock',
+            'summary' => 'Let everyone back in.',
+            'steps' => [
+                'On the **Dashboard**, click **Disable Maintenance Lock**.',
+                'Read "This will restore access for all permitted users in the system."',
+                'Type your own password and click **Disable Lock**.',
+                'The bar turns green and says **Maintenance mode is OFF**.',
+            ],
+            'tips' => ['People who were signed out must sign in again. WIMS does not sign them back in by itself.'],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => ['The log line is "System Lockdown has been disabled." with your name and the time.']],
+        ],
+        [
+            'id' => 'what-blocked-users-see',
+            'title' => 'What blocked users see',
+            'icon' => 'alert',
+            'summary' => 'Signed-in users are signed out, and nobody blocked can sign in until the lock is off.',
+            'steps' => [
+                'A blocked user is working, then clicks anything. WIMS ends their session and sends them to the sign-in page.',
+                'A **System Maintenance Notice** box opens on top of the sign-in page with the message and an **OK** button.',
+                'If they enter their username and password anyway, the correct password is checked first and then the sign-in is refused with "System is currently under maintenance. Access is restricted except for Admin, Super Admin, and Project Manager." and the same notice box opens.',
+                'If they use two-step verification, the same thing happens at the code step: they are sent back to the sign-in page with the notice, and their half-finished sign-in is cleared.',
+            ],
+            'shots' => [['maintenance-lock-login-notice', 'The sign-in page with the System Maintenance Notice box that blocked users see.', 'Maintenance notice on the sign-in page']],
+            'tips' => ['Tell blocked users this is normal and temporary. A wrong username or password gives the usual "invalid credentials" message, not the maintenance notice.'],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => [
+                'The lock is checked in three places so no route slips through: at the password step (before any code is sent), at the two-step code step (a code typed after the lock went on is refused), and on **every** request of anyone already signed in.',
+                'Each blocked sign-in is stopped before WIMS writes a row to the sign-in log, so blocked attempts do **not** show up as Failed in [[login-logs]] and do not count towards the extra "What is 3 + 4?" question on the sign-in page.',
+                'Programs that connect with an access token (no browser session) are refused with the maintenance message (error 503), because they have no session to end.',
+                'The public knowledge base (this manual) is not affected by the lock.',
+            ]],
+        ],
+        [
+            'id' => 'admin-impersonation-during-lock',
+            'title' => 'Using "Login As User" while the lock is on',
+            'icon' => 'users',
+            'summary' => 'An admin who is acting as another user keeps working, even if that user\'s role is blocked.',
+            'steps' => [
+                'Turn the lock on.',
+                'Use **Login As User** from the Users page as usual (see [[users]]).',
+                'Work as that person. WIMS lets the request through because a Super Admin or Admin is the real actor.',
+            ],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => ['The check sees the active impersonation and allows the request. Only admins can start an impersonation, so this does not open a back door for blocked users.']],
+        ],
+    ],
+    'behind' => [
+        ['title' => 'Checked on every request', 'text' => 'The lock is not just a screen. It is a rule that runs before every page, so a user cannot avoid it by using a bookmark, a second tab or the back button.', 'icon' => 'shield-check'],
+        ['title' => 'Blocked sign-ins are not logged as failures', 'text' => 'Because the sign-in is refused before WIMS records a result, blocked attempts do not appear in the Login Logs and cannot trigger the "verification question" that appears after repeated wrong passwords.', 'icon' => 'key'],
+        ['title' => 'Roles are fixed, not configurable', 'text' => 'The three allowed roles are built into WIMS. Giving a role the permission `bypass-system-lockdown` does not let it through.', 'icon' => 'users'],
+        ['title' => 'Always on the record', 'text' => 'Every switch on or off is saved in the activity log with the person who did it and their device and place, so you can see exactly who locked or unlocked the system and when.', 'icon' => 'activity'],
+    ],
+    'faq' => [
+        ['q' => 'I turned the lock on but a Project Manager is still working.', 'a' => 'That is intended. Project Managers are one of the three allowed roles.'],
+        ['q' => 'Can I let one more role through during maintenance?', 'a' => 'No. The allowed roles cannot be changed from the screen. Give the person the Admin or Project Manager role temporarily if you must, see [[roles-and-permissions-explained]].'],
+        ['q' => 'I forgot the lock was on, how do I turn it off if I am blocked?', 'a' => 'Sign in as a Super Admin, Admin or Project Manager. Only a Super Admin or Admin can switch it off, from the Dashboard.'],
+        ['q' => 'Will the lock stop the automatic backups and scheduled jobs?', 'a' => 'No. Scheduled jobs run on the server, not through a user session. See [[backup-and-restore]].'],
+        ['q' => 'Why is my Password box not accepting my password?', 'a' => 'It needs the password of the account you are signed in with, not another admin\'s. If you are acting through **Login As User**, switch back to your own account first.'],
+    ],
+    'related' => ['system-settings', 'global-feature-control', 'backup-and-restore', 'login-logs', 'users', 'roles-and-permissions-explained'],
+];

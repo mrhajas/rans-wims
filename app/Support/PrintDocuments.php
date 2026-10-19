@@ -1,0 +1,412 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Adjustment;
+use App\Models\Checkin;
+use App\Models\Checkout;
+use App\Models\DeliveryNote;
+use App\Models\GatePass;
+use App\Models\Transfer;
+use Illuminate\Support\Carbon;
+
+/**
+ * Builds the neutral "document" array rendered by resources/views/print/document.blade.php,
+ * so Check-in / Check-out / Transfer / Adjustment prints and the Delivery Note all share
+ * one polished layout and only differ in the data they feed it.
+ */
+class PrintDocuments
+{
+    public static function qty($value): string
+    {
+        $text = number_format((float) $value, 2, '.', ',');
+
+        return rtrim(rtrim($text, '0'), '.') ?: '0';
+    }
+
+    private static function date($value): string
+    {
+        return $value ? Carbon::parse($value)->format('d M Y') : '-';
+    }
+
+    private static function valuedLines($items, bool $useLinePrice = false): array
+    {
+        $lines = [];
+        $total = 0.0;
+        $totalQty = 0.0;
+
+        foreach ($items as $line) {
+            $unitValue = (float) (($useLinePrice ? ($line->price ?: optional($line->item)->price) : optional($line->item)->price) ?: 0);
+            $lineTotal = (float) $line->quantity * $unitValue;
+            $total += $lineTotal;
+            $totalQty += (float) $line->quantity;
+
+            $lines[] = [
+                'name' => optional($line->item)->name ?? '-',
+                'code' => optional($line->item)->code,
+                'unit' => optional($line->unit)->name ?? optional($line->unit)->code ?? '-',
+                'qty' => self::qty($line->quantity),
+                'unit_value' => number_format($unitValue, 2),
+                'total' => number_format($lineTotal, 2),
+            ];
+        }
+
+        return [$lines, $total, $totalQty];
+    }
+
+    private static function base(array $doc): array
+    {
+        return $doc + ['parent' => null, 'notes' => null, 'show_values' => true, 'draft' => false, 'stamp_boxes' => false, 'extra_cols' => false, 'tick_col' => false, 'extra_parties' => [], 'gate_security' => false, 'site_receipt' => false, 'copies' => [], 'compact' => false, 'typed_signers' => []];
+    }
+
+    public static function checkin(Checkin $checkin): array
+    {
+        [$lines, $total, $totalQty] = self::valuedLines($checkin->items, true);
+
+        return self::base([
+            'accent' => '#2f9be6', 'accent_dark' => '#0b6fb8', 'accent_soft' => '#eef7ff', 'accent_line' => '#bfe0fb',
+            'icon' => 'download', 'title' => 'CHECK-IN RECEIPT', 'subtitle' => 'Goods received into the warehouse',
+            'reference' => $checkin->reference,
+            'status' => ['label' => $checkin->draft ? 'Draft' : 'Completed', 'class' => $checkin->draft ? 'status-warn' : 'status-info'],
+            'draft' => (bool) $checkin->draft,
+            'stats' => [
+                ['icon' => 'calendar', 'label' => 'Date', 'value' => self::date($checkin->date)],
+                ['icon' => 'package', 'label' => 'Line Items', 'value' => count($lines)],
+                ['icon' => 'hash', 'label' => 'Total Quantity', 'value' => self::qty($totalQty)],
+                ['icon' => 'cash', 'label' => 'Total Value', 'value' => number_format($total, 2)],
+            ],
+            'parties' => [
+                ['title' => 'Supplier / Contact', 'icon' => 'user', 'rows' => [
+                    ['Name', optional($checkin->contact)->name ?? '-'],
+                    ['Phone', optional($checkin->contact)->phone ?? '-'],
+                    ['Email', optional($checkin->contact)->email ?? '-'],
+                ]],
+                ['title' => 'Delivered To', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($checkin->warehouse)->name ?? '-'],
+                    ['Responsible', optional($checkin->user)->name ?? '-'],
+                ]],
+            ],
+            'lines' => $lines, 'total' => number_format($total, 2), 'total_qty' => self::qty($totalQty),
+            'notes' => $checkin->details,
+            'signatures' => [
+                ['role' => 'Received By', 'name' => optional($checkin->user)->name, 'date' => self::date($checkin->date)],
+                ['role' => 'Delivered By', 'name' => optional($checkin->contact)->name, 'date' => null],
+            ],
+            // Signatories module: when the new block is on, "Received By" comes from it and the supplier (a contact, not a WIMS user) stays a typed line.
+            'typed_signers' => [['role' => 'Delivered By', 'name' => optional($checkin->contact)->name, 'date' => null]],
+            'footer' => 'Check-in ' . $checkin->reference,
+        ]);
+    }
+
+    public static function checkout(Checkout $checkout): array
+    {
+        [$lines, $total, $totalQty] = self::valuedLines($checkout->items, true);
+
+        return self::base([
+            'accent' => '#ea580c', 'accent_dark' => '#c2410c', 'accent_soft' => '#fff7ed', 'accent_line' => '#fed7aa',
+            'icon' => 'upload', 'title' => 'CHECK-OUT RECEIPT', 'subtitle' => 'Materials issued from the warehouse',
+            'reference' => $checkout->reference,
+            'status' => ['label' => $checkout->draft ? 'Draft' : 'Completed', 'class' => $checkout->draft ? 'status-warn' : 'status-active'],
+            'draft' => (bool) $checkout->draft,
+            'stats' => [
+                ['icon' => 'calendar', 'label' => 'Date', 'value' => self::date($checkout->date)],
+                ['icon' => 'package', 'label' => 'Line Items', 'value' => count($lines)],
+                ['icon' => 'hash', 'label' => 'Total Quantity', 'value' => self::qty($totalQty)],
+                ['icon' => 'cash', 'label' => 'Total Value', 'value' => number_format($total, 2)],
+            ],
+            'parties' => [
+                ['title' => 'Issued From', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($checkout->warehouse)->name ?? '-'],
+                    ['Responsible', optional($checkout->user)->name ?? '-'],
+                    ['Work Activity', optional($checkout->workActivity)->name ?? '-'],
+                ]],
+                ['title' => 'Issued To', 'icon' => 'user', 'rows' => [
+                    ['Name', optional($checkout->contact)->name ?? 'Consumed on site'],
+                    ['Phone', optional($checkout->contact)->phone ?? '-'],
+                ]],
+            ],
+            'lines' => $lines, 'total' => number_format($total, 2), 'total_qty' => self::qty($totalQty),
+            'notes' => $checkout->details,
+            'signatures' => [
+                ['role' => 'Issued By', 'name' => optional($checkout->user)->name, 'date' => self::date($checkout->date)],
+                ['role' => 'Received By', 'name' => optional($checkout->contact)->name, 'date' => null],
+            ],
+            // Signatories module: when the new block is on, "Issued By" comes from it and the receiving contact stays a typed line.
+            'typed_signers' => [['role' => 'Received By', 'name' => optional($checkout->contact)->name, 'date' => null]],
+            'footer' => 'Check-out ' . $checkout->reference,
+        ]);
+    }
+
+    public static function transfer(Transfer $transfer): array
+    {
+        [$lines, $total, $totalQty] = self::valuedLines($transfer->items);
+
+        $status = $transfer->draft ? 'Draft' : ($transfer->received_at ? 'Received' : 'Approved');
+        $statusClass = $transfer->draft ? 'status-warn' : ($transfer->received_at ? 'status-active' : 'status-neutral');
+
+        return self::base([
+            'accent' => '#2563eb', 'accent_dark' => '#1d4ed8', 'accent_soft' => '#eff6ff', 'accent_line' => '#bfdbfe',
+            'icon' => 'transfer', 'title' => 'TRANSFER NOTE', 'subtitle' => 'Stock moved between warehouses',
+            'reference' => $transfer->reference,
+            'status' => ['label' => $status, 'class' => $statusClass],
+            'draft' => (bool) $transfer->draft,
+            'stats' => [
+                ['icon' => 'calendar', 'label' => 'Date', 'value' => self::date($transfer->date)],
+                ['icon' => 'package', 'label' => 'Line Items', 'value' => count($lines)],
+                ['icon' => 'hash', 'label' => 'Total Quantity', 'value' => self::qty($totalQty)],
+                ['icon' => 'cash', 'label' => 'Total Value', 'value' => number_format($total, 2)],
+            ],
+            'parties' => [
+                ['title' => 'Transferred From', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($transfer->fromWarehouse)->name ?? '-'],
+                    ['Dispatched By', optional($transfer->user)->name ?? '-'],
+                ]],
+                ['title' => 'Transferred To', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($transfer->toWarehouse)->name ?? '-'],
+                    ['Received By', optional($transfer->receivedBy)->name ?? 'Pending'],
+                    ['Received On', $transfer->received_at ? Carbon::parse($transfer->received_at)->format('d M Y H:i') : '-'],
+                ]],
+            ],
+            'lines' => $lines, 'total' => number_format($total, 2), 'total_qty' => self::qty($totalQty),
+            'notes' => $transfer->details,
+            'signatures' => [
+                ['role' => 'Dispatched By', 'name' => optional($transfer->user)->name, 'date' => self::date($transfer->date)],
+                ['role' => 'Received By', 'name' => optional($transfer->receivedBy)->name ?? 'Pending', 'date' => $transfer->received_at ? Carbon::parse($transfer->received_at)->format('d M Y H:i') : null],
+            ],
+            'footer' => 'Transfer ' . $transfer->reference,
+        ]);
+    }
+
+    public static function adjustment(Adjustment $adjustment): array
+    {
+        [$lines, $total, $totalQty] = self::valuedLines($adjustment->items);
+
+        return self::base([
+            'accent' => '#7c3aed', 'accent_dark' => '#6d28d9', 'accent_soft' => '#f5f3ff', 'accent_line' => '#ddd6fe',
+            'icon' => 'sliders', 'title' => 'STOCK ADJUSTMENT', 'subtitle' => 'Correction to recorded stock levels',
+            'reference' => $adjustment->reference,
+            'status' => match ($adjustment->status) {
+                'Rejected' => ['label' => 'Rejected', 'class' => 'status-danger'],
+                'Approved' => ['label' => 'Approved', 'class' => 'status-active'],
+                default => ['label' => 'Pending Approval', 'class' => 'status-warn'],
+            },
+            'draft' => (bool) $adjustment->draft,
+            'stats' => [
+                ['icon' => 'calendar', 'label' => 'Date', 'value' => self::date($adjustment->date)],
+                ['icon' => 'package', 'label' => 'Line Items', 'value' => count($lines)],
+                ['icon' => 'hash', 'label' => 'Total Quantity', 'value' => self::qty($totalQty)],
+                ['icon' => 'cash', 'label' => 'Total Value', 'value' => number_format($total, 2)],
+            ],
+            'parties' => [
+                ['title' => 'Adjustment', 'icon' => 'sliders', 'rows' => [
+                    ['Warehouse', optional($adjustment->warehouse)->name ?? '-'],
+                    ['Type', $adjustment->type ?? '-'],
+                ]],
+                ['title' => 'Authorisation', 'icon' => 'user', 'rows' => [
+                    ['Requested By', optional($adjustment->user)->name ?? '-'],
+                    $adjustment->rejected_at
+                        ? ['Rejected By', (optional($adjustment->rejecter)->name ?? '-') . ' - ' . self::date($adjustment->rejected_at)]
+                        : ['Approved By', trim((optional($adjustment->approver)->name ?? '-') . ($adjustment->approved_by_role ? ' (' . $adjustment->approved_by_role . ')' : ''))],
+                    ...($adjustment->rejected_at && $adjustment->rejection_reason ? [['Rejection Reason', $adjustment->rejection_reason]] : []),
+                ]],
+            ],
+            'lines' => $lines, 'total' => number_format($total, 2), 'total_qty' => self::qty($totalQty),
+            'notes' => $adjustment->details,
+            'signatures' => [
+                ['role' => 'Requested By', 'name' => optional($adjustment->user)->name, 'date' => self::date($adjustment->date)],
+                $adjustment->rejected_at
+                    ? ['role' => 'Rejected By', 'name' => optional($adjustment->rejecter)->name, 'date' => self::date($adjustment->rejected_at)]
+                    : ['role' => 'Approved By' . ($adjustment->approved_by_role ? ' (' . $adjustment->approved_by_role . ')' : ''), 'name' => optional($adjustment->approver)->name, 'date' => $adjustment->approved_at ? self::date($adjustment->approved_at) : null],
+            ],
+            'footer' => 'Adjustment ' . $adjustment->reference,
+        ]);
+    }
+
+    /** Delivery Note: always rendered live from its parent Transfer/Checkin, so edits to the parent show up automatically. */
+    /** The parties of a Gate Pass / Delivery Note for an External Stock movement: our warehouse on one side, the External Personnel (and who collects or brings) on the other. */
+    private static function externalParties($parent, bool $gate): array
+    {
+        $out = $parent->kind === 'withdrawal';
+        $contact = optional($parent->contact);
+        $person = ['title' => $out ? ($gate ? 'Released To (External Personnel)' : 'Delivered To (External Personnel)') : ($gate ? 'Arriving From (External Personnel)' : 'Delivered From (External Personnel)'), 'icon' => 'user', 'rows' => array_values(array_filter([
+            ['Name', $contact->name ?? '-'],
+            ['Phone', $contact->phone ?? '-'],
+            ($parent->location ?: ($contact->location ?? null)) ? ['Location', $parent->location ?: $contact->location] : null,
+            [$out ? 'Collected By' : 'Brought By', trim(($parent->collector_name ?: '-') . ($parent->collector_phone ? ' (' . $parent->collector_phone . ')' : ''))],
+            $parent->collector_id_no ? ['ID / Licence No.', $parent->collector_id_no] : null,
+        ]))];
+        $store = ['title' => $out ? ($gate ? 'Released From' : 'Delivered From') : ($gate ? 'Delivering To' : 'Delivered To'), 'icon' => 'pin', 'rows' => [
+            ['Warehouse', optional($parent->warehouse)->name ?? '-'],
+            [$out ? 'Recorded By' : 'Received By', optional($parent->user)->name ?? '-'],
+        ]];
+
+        return $out ? [$store, $person] : [$person, $store];
+    }
+
+    public static function deliveryNote(DeliveryNote $note, $parent): array
+    {
+        $isTransfer = $note->source_type === DeliveryNote::SOURCE_TRANSFER;
+        $isExternal = $note->source_type === DeliveryNote::SOURCE_EXTERNAL;
+
+        $lines = [];
+        $totalQty = 0.0;
+        foreach ($parent->items as $line) {
+            $totalQty += (float) $line->quantity;
+            $lines[] = [
+                'name' => optional($line->item)->name ?? '-',
+                'code' => optional($line->item)->code,
+                'unit' => optional($line->unit)->name ?? optional($line->unit)->code ?? '-',
+                'qty' => self::qty($line->quantity),
+            ];
+        }
+
+        if ($isExternal) {
+            $parties = self::externalParties($parent, false);
+        } elseif ($isTransfer) {
+            $parties = [
+                ['title' => 'Delivered From', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($parent->fromWarehouse)->name ?? '-'],
+                    ['Dispatched By', optional($parent->user)->name ?? '-'],
+                ]],
+                ['title' => 'Delivered To', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($parent->toWarehouse)->name ?? '-'],
+                    ['Received By', optional($parent->receivedBy)->name ?? 'Pending'],
+                ]],
+            ];
+        } else {
+            $parties = [
+                ['title' => 'Delivered From (Supplier)', 'icon' => 'user', 'rows' => [
+                    ['Name', optional($parent->contact)->name ?? '-'],
+                    ['Phone', optional($parent->contact)->phone ?? '-'],
+                    ['Email', optional($parent->contact)->email ?? '-'],
+                ]],
+                ['title' => 'Delivered To', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($parent->warehouse)->name ?? '-'],
+                    ['Responsible', optional($parent->user)->name ?? '-'],
+                ]],
+            ];
+        }
+
+        return self::base([
+            'accent' => '#2f9be6', 'accent_dark' => '#0b6fb8', 'accent_soft' => '#eef7ff', 'accent_line' => '#bfe0fb', 'ink_saver' => true,
+            'icon' => 'truck', 'title' => 'DELIVERY NOTE', 'subtitle' => 'Goods delivered - for signature on receipt',
+            'reference' => $note->reference,
+            'status' => ['label' => 'Issued', 'class' => 'status-info'],
+            'draft' => false,
+            'parent' => ['label' => $isExternal ? 'External Stock' : ($isTransfer ? 'Transfer' : 'Check-in'), 'reference' => $parent->reference],
+            'stats' => [
+                ['icon' => 'calendar', 'label' => 'Date', 'value' => self::date($parent->date)],
+                ['icon' => 'file', 'label' => $isExternal ? 'Parent External Stock' : ($isTransfer ? 'Parent Transfer' : 'Parent Check-in'), 'value' => $parent->reference],
+                ['icon' => 'package', 'label' => 'Line Items', 'value' => count($lines)],
+                ['icon' => 'hash', 'label' => 'Total Quantity', 'value' => self::qty($totalQty)],
+            ],
+            'parties' => $parties,
+            'lines' => $lines, 'total_qty' => self::qty($totalQty),
+            'show_values' => false, 'extra_cols' => true,
+            'notes' => $isExternal ? $parent->purpose : $parent->details,
+            'stamp_boxes' => true,
+            // A third, separate block: whoever receives the items on site signs and dates here.
+            'site_receipt' => true,
+            'copies' => ['ORIGINAL', 'COPY'],
+            'signatures' => [
+                ['role' => 'Prepared By', 'name' => optional($note->createdBy)->name, 'date' => null],
+                ['role' => 'Approved By', 'name' => null, 'date' => null],
+            ],
+            'footer' => 'Delivery Note ' . $note->reference . ' / ' . ($isExternal ? 'External Stock ' : ($isTransfer ? 'Transfer ' : 'Check-in ')) . $parent->reference,
+        ]);
+    }
+
+    /**
+     * Gate Pass: same live-from-parent idea as the Delivery Note, plus the driver and vehicle that carry
+     * the goods, a tick box per item for the gate check, and a Gate Security / Security Guard sign-off.
+     */
+    public static function gatePass(GatePass $pass, $parent): array
+    {
+        $isTransfer = $pass->source_type === GatePass::SOURCE_TRANSFER;
+        $isExternal = $pass->source_type === GatePass::SOURCE_EXTERNAL;
+        $outgoing = $isExternal ? $parent->kind === 'withdrawal' : $isTransfer;
+
+        $lines = [];
+        $totalQty = 0.0;
+        foreach ($parent->items as $line) {
+            $totalQty += (float) $line->quantity;
+            $lines[] = [
+                'name' => optional($line->item)->name ?? '-',
+                'code' => optional($line->item)->code,
+                'unit' => optional($line->unit)->name ?? optional($line->unit)->code ?? '-',
+                'qty' => self::qty($line->quantity),
+            ];
+        }
+
+        if ($isExternal) {
+            $parties = self::externalParties($parent, true);
+        } elseif ($isTransfer) {
+            $parties = [
+                ['title' => 'Released From', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($parent->fromWarehouse)->name ?? '-'],
+                    ['Dispatched By', optional($parent->user)->name ?? '-'],
+                ]],
+                ['title' => 'Destination', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($parent->toWarehouse)->name ?? '-'],
+                    ['Received By', optional($parent->receivedBy)->name ?? 'Pending'],
+                ]],
+            ];
+        } else {
+            $parties = [
+                ['title' => 'Arriving From (Supplier)', 'icon' => 'user', 'rows' => [
+                    ['Name', optional($parent->contact)->name ?? '-'],
+                    ['Phone', optional($parent->contact)->phone ?? '-'],
+                    ['Email', optional($parent->contact)->email ?? '-'],
+                ]],
+                ['title' => 'Delivering To', 'icon' => 'pin', 'rows' => [
+                    ['Warehouse', optional($parent->warehouse)->name ?? '-'],
+                    ['Responsible', optional($parent->user)->name ?? '-'],
+                ]],
+            ];
+        }
+
+        $driver = $pass->driverDisplay();
+        $vehicle = $pass->vehicleDisplay();
+        $dash = fn ($v) => filled($v) ? $v : '-';
+
+        $transport = [
+            ['title' => 'Driver', 'icon' => 'user', 'rows' => [
+                ['Name', $dash($driver['name'])],
+                ['Phone', $dash($driver['phone'])],
+            ]],
+            ['title' => 'Vehicle', 'icon' => 'truck', 'rows' => array_values(array_filter([
+                ['Registration No.', $dash($vehicle['plate'])],
+                ['Make / Model', $dash($vehicle['details'])],
+                filled($vehicle['type']) && $vehicle['type'] !== $vehicle['plate'] ? ['Vehicle', $vehicle['type']] : null,
+            ]))],
+        ];
+
+        return self::base([
+            'accent' => '#6d63e8', 'accent_dark' => '#4338ca', 'accent_soft' => '#f3f1ff', 'accent_line' => '#d3cef9', 'ink_saver' => true,
+            'icon' => 'shield', 'title' => 'GATE PASS',
+            'subtitle' => $outgoing ? 'Authorisation to release the goods below from the premises' : 'Authorisation to admit the goods below onto the premises',
+            'reference' => $pass->reference,
+            'status' => ['label' => 'Issued', 'class' => 'status-violet'],
+            'draft' => false,
+            'parent' => ['label' => $isExternal ? 'External Stock' : ($isTransfer ? 'Transfer' : 'Check-in'), 'reference' => $parent->reference],
+            'stats' => [
+                ['icon' => 'calendar', 'label' => 'Date', 'value' => self::date($parent->date)],
+                ['icon' => 'transfer', 'label' => 'Movement', 'value' => $outgoing ? 'Outgoing' : 'Incoming'],
+                ['icon' => 'package', 'label' => 'Line Items', 'value' => count($lines)],
+                ['icon' => 'hash', 'label' => 'Total Quantity', 'value' => self::qty($totalQty)],
+            ],
+            'parties' => $parties,
+            'extra_parties' => $transport,
+            'lines' => $lines, 'total_qty' => self::qty($totalQty),
+            'show_values' => false, 'extra_cols' => true, 'tick_col' => true,
+            'notes' => $isExternal ? $parent->purpose : $parent->details,
+            'stamp_boxes' => true,
+            'signatures' => [
+                ['role' => 'Prepared By', 'name' => optional($pass->createdBy)->name, 'date' => null],
+                ['role' => 'Approved By', 'name' => null, 'date' => null],
+            ],
+            'gate_security' => true, 'compact' => true, 'copies' => ['ORIGINAL', 'COPY'],
+            'footer' => 'Gate Pass ' . $pass->reference . ' / ' . ($isExternal ? 'External Stock ' : ($isTransfer ? 'Transfer ' : 'Check-in ')) . $parent->reference,
+        ]);
+    }
+}

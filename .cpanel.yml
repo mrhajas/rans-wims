@@ -1,0 +1,11 @@
+---
+# cPanel > Git Version Control > Manage > "Deploy HEAD Commit" runs these steps. It COPIES the program over the live folder and never deletes anything;
+# .env, storage, vendor, uploads, the web server files (public/index.php, .htaccess) and the data folders are not touched.
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/ranscoco/wims.ransco.co.tz/
+    - export PHP=/opt/cpanel/ea-php82/root/usr/bin/php
+    - /usr/bin/rsync -rlt --exclude='.git' --exclude='.cpanel.yml' --exclude='.gitignore' --exclude='.env' --exclude='.htaccess' --exclude='storage' --exclude='vendor' --exclude='node_modules' --exclude='public/index.php' --exclude='public/.htaccess' --exclude='public/uploads' --exclude='public/storage' --exclude='tests' --exclude='scripts' ./ $DEPLOYPATH
+    - cd $DEPLOYPATH && $PHP artisan migrate --force > /home/ranscoco/deploy-log.txt 2>&1
+    - cd $DEPLOYPATH && $PHP artisan optimize:clear >> /home/ranscoco/deploy-log.txt 2>&1
+    - cd $DEPLOYPATH && ($PHP artisan simulation:sync >> /home/ranscoco/deploy-log.txt 2>&1 || true)

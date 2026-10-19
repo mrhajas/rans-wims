@@ -1,0 +1,147 @@
+<?php
+
+return [
+    'group' => 'stock',
+    'title' => 'Categories',
+    'icon' => 'folder',
+    'order' => 60,
+    'summary' => 'The groups and sub-groups you sort your items into, such as Electrical > Cables.',
+    'where' => 'Sidebar > **Categories** > **List All Categories** (also **Create New Category** and **Import Categories**).',
+    'path' => '/categories',
+    'permissions' => [
+        'read-categories' => 'See the category list and open a category.',
+        'create-categories' => 'Create a category.',
+        'update-categories' => 'Edit a category (click its row).',
+        'delete-categories' => 'Delete, restore and permanently delete a category.',
+        'read-item-category-report' => 'Open the Item Category report (see [[reports]]).',
+    ],
+    'overview' => [
+        'A **category** is a label for a family of items, for example Cement, Electrical or Safety. Categories come in two levels: a **parent category** (Electrical) and **sub-categories** under it (Cables, Switches).',
+        'Every item must belong to one category, and may also have a child category. Categories make the item list easier to search and let reports group stock by family. A category holds no stock and no price of its own.',
+    ],
+    'concepts' => [
+        ['Parent category', 'A top-level category. It has no "Child of" value.'],
+        ['Sub-category', 'A category placed under a parent. Items are usually filed in the sub-category.'],
+        ['Code', 'A short unique tag for the category, such as `cable`. It is also what the Excel import and export use to refer to the category.'],
+        ['In Use', 'A category that at least one item is filed under.'],
+    ],
+    'functions' => [
+        [
+            'id' => 'view-categories',
+            'title' => 'View and search categories',
+            'icon' => 'list',
+            'summary' => 'See all categories with their type and parent, and find one by name or code.',
+            'steps' => [
+                'Open **Categories > List All Categories**.',
+                'Read the tiles: **Total Categories**, **Parent Categories**, **Sub-categories** and **In Use**.',
+                'Type in **Search** to find a category by name or code.',
+                'Click **Filter** to narrow the list: **Child of** shows only the sub-categories of one parent, **Trashed** shows deleted ones (**Not Trashed**, **With Trashed**, **Only Trashed**).',
+                'Click **Reset** to clear the filters.',
+                'Read the columns **Name**, **Code**, **Type** (**Parent category** or **Sub-category**) and **Child of**.',
+            ],
+            'shots' => [
+                ['categories-list', 'The category list. Green means a parent, violet a sub-category.', 'Category list'],
+                ['categories-filter', 'The **Filter** menu: **Child of** and **Trashed**.', 'Category filter menu'],
+            ],
+            'tips' => ['Hover over a category name to see a quick preview card of it.'],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => [
+                'The newest category is listed first.',
+                'The **In Use** tile counts categories that have at least one active (not deleted) item.',
+                'When you are offline the list shows the copy saved on your device.',
+            ]],
+        ],
+        [
+            'id' => 'create-category',
+            'title' => 'Create a category or sub-category',
+            'icon' => 'plus',
+            'summary' => 'Add a new group for your items, either at the top level or under an existing parent.',
+            'steps' => [
+                'Open **Categories > Create New Category**.',
+                'Type the **Name**.',
+                'Type a unique **Code** using letters, numbers, dashes or underscores only, for example `helmets`.',
+                'To make a sub-category choose the parent in **Parent Category**. Leave it on **Select** for a top-level category.',
+                'Click **Save**. You return to the list and see "Category has been created."',
+            ],
+            'fields' => [
+                ['Name', 'Required.'],
+                ['Code', 'Required. Letters, numbers, `-` and `_` only (no spaces). Must be different from every other category code.'],
+                ['Parent Category', 'Optional. Lists top-level categories only, so a sub-category cannot have its own sub-categories. The box is hidden until at least two top-level categories exist.'],
+            ],
+            'shots' => [['categories-create-form', 'The create form with a parent chosen.', 'Create category form']],
+            'warnings' => ['Spaces in the code give the error "may only contain letters, numbers, dashes and underscores."'],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => [
+                'The category is saved straight away and appears in the **Category** and **Child Category** lists of the [[items|item form]].',
+                'Creation is written to the activity log.',
+            ]],
+        ],
+        [
+            'id' => 'edit-category',
+            'title' => 'Edit a category',
+            'icon' => 'pen',
+            'summary' => 'Rename a category, change its code or move it under another parent.',
+            'steps' => [
+                'On the list click the row of the category (the arrow at the right shows you may open it).',
+                'Change the **Name**, **Code** or **Parent Category**.',
+                'Click **Save**. The message **Saved.** appears.',
+            ],
+            'shots' => [['categories-edit-form', 'The edit form: **Delete Category** bottom left, **Save** bottom right.', 'Edit category form']],
+            'tips' => ['Renaming is safe: items follow the category, not its name.'],
+            'warnings' => ['The code is used by Excel imports. If you change it, update your spreadsheets too.'],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => ['Items stay filed under the category. Search on the item list matches the new name and code immediately.']],
+        ],
+        [
+            'id' => 'delete-category',
+            'title' => 'Delete, restore and delete permanently',
+            'icon' => 'trash',
+            'summary' => 'Remove a category that is no longer needed, or bring a deleted one back.',
+            'steps' => [
+                'Open the category and click **Delete Category**, then confirm.',
+                'To see deleted categories use **Filter > Trashed > Only Trashed**.',
+                'Open a deleted category. A banner says "This record has been deleted." Click **Restore** in the banner and confirm to bring it back.',
+                'To erase it for good click **Delete Permanently** and confirm.',
+            ],
+            'shots' => [['categories-trashed', 'A deleted category is marked with a red bin and can be opened to restore it.', 'Deleted categories']],
+            'warnings' => [
+                'A category **cannot be deleted** while it still has sub-categories or items filed under it. You see "The record can not be deleted." Move the items to another category, and delete the sub-categories first.',
+                'Permanent deletion cannot be undone.',
+                'Restoring needs the `delete-categories` permission.',
+            ],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => [
+                'Only active items count when WIMS checks if a category is in use.',
+                'Permanent deletion writes an entry to the activity log.',
+            ]],
+        ],
+        [
+            'id' => 'import-export-categories',
+            'title' => 'Import and export categories with Excel',
+            'icon' => 'upload',
+            'summary' => 'Create or update many categories from one Excel sheet, or download them all.',
+            'steps' => [
+                'On the list click **More > Export Categories** to download `categories.xlsx` with the columns `name`, `code` and `parent`.',
+                'Add rows. For a sub-category write the **code** of its parent in the `parent` column. Leave `parent` empty for a top-level category.',
+                'Open **Categories > Import Categories** (or **More > Import Categories**).',
+                'Choose or drag the `.xls` / `.xlsx` file and click **Import**.',
+            ],
+            'shots' => [['categories-import', 'The import page lists the columns and the rules.', 'Category import page']],
+            'warnings' => [
+                'The `name` and `code` columns must be filled on every row, otherwise the whole import stops with "name & code are required."',
+                'The parent must exist already. Put parent rows above or import them first, otherwise the import stops. Rows saved before the error stay saved.',
+                'The **More** menu is shown only to Super Admin at the moment, because it asks for permissions (`import-categories`, `export-categories`) that are not in the role screen.',
+            ],
+            'inner' => ['title' => 'What happens behind the scenes', 'items' => [
+                'A row whose code already exists updates that category (name and parent). Other rows create new categories.',
+                'The success message says how many records were imported or updated.',
+            ]],
+        ],
+    ],
+    'behind' => [
+        ['title' => 'Two levels only in the screens', 'text' => 'The parent list on the category form and on the item form offers only top-level categories, so the screens produce at most two levels: a parent and its sub-categories.', 'icon' => 'sitemap'],
+        ['title' => 'Where categories are used', 'text' => 'The item form (Category and Child Category), the item list search, the Excel import of items and category based reports such as the item category report all read this list.', 'icon' => 'link'],
+    ],
+    'faq' => [
+        ['q' => 'Why is there no Parent Category box on my form?', 'a' => 'The box appears only when there are at least two top-level categories. Create another top-level category first.'],
+        ['q' => 'Can an item be in two categories?', 'a' => 'Yes, in a category and one child category (for example Safety and Helmets). Choose both on the item form.'],
+        ['q' => 'I deleted a category by mistake.', 'a' => 'Use **Filter > Trashed > Only Trashed**, open it and click **Restore**.'],
+    ],
+    'related' => ['items', 'units'],
+];

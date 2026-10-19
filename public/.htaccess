@@ -1,0 +1,79 @@
+<IfModule mod_php.c>
+    php_value upload_max_filesize 200M
+    php_value post_max_size 210M
+</IfModule>
+
+# Compress text responses (pages, JSON from Inertia, JavaScript, CSS). On a slow line this is the biggest single
+# saving: an Inertia page of 1-3 MB of JSON travels as a fraction of that. Ignored if the host already compresses.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/x-javascript application/json application/xml application/manifest+json image/svg+xml application/wasm application/octet-stream
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Vite build output in /assets is content-hashed (new filename on every change), so it is safe to cache for a year.
+    # The face scanner's models and WebAssembly engine (about 21 MB) never change under the same name either.
+    # (FilesMatch only ever sees the file name, never the folder, so these use <If> on the request path.)
+    <If "%{REQUEST_URI} =~ m#^/(assets|face-models)/.+\.(js|css|wasm|bin|task|json|woff2?|png|svg|webp|jpe?g)$#">
+        ExpiresDefault "access plus 1 year"
+        <IfModule mod_headers.c>
+            Header set Cache-Control "public, max-age=31536000, immutable"
+        </IfModule>
+    </If>
+
+    # Icons/manifest are versioned via a ?v= query string in app.blade.php,
+    # so a year-long cache is safe here too.
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/manifest+json "access plus 1 week"
+</IfModule>
+
+# Files that must never be downloaded from the web: dot files (.env, .git ...), database dumps, backups, logs, scripts, configuration.
+<FilesMatch "^\.|\.(sql|bak|old|orig|save|swp|log|sh|ini|env|ya?ml|lock|dist|phps|inc)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+# the web server must not announce its version
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+
