@@ -199,6 +199,10 @@ function installRequestHeader() {
       if (error?.response?.status === 401 && error.response.data?.idle_logout) {
         toLogin();
       }
+      // a background request of a sign-in that the devices-per-user limit is holding: take the person to the page where they choose a device to sign out
+      if (error?.response?.status === 423 && error.response.data?.device_limit && error.response.data.url && !window.location.pathname.startsWith('/device-limit')) {
+        window.location.assign(error.response.data.url);
+      }
 
       return Promise.reject(error);
     }

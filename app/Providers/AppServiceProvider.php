@@ -12,6 +12,13 @@ class AppServiceProvider extends ServiceProvider
     {
         app()->useLangPath(base_path('lang'));
 
+        // a logout frees the device slot at once
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Logout::class, function () {
+            try {
+                \App\Services\Security\DeviceLimit::release((string) session()->getId());
+            } catch (\Throwable $e) { /* never block a logout */ }
+        });
+
         // A live server never runs debug tools, whatever the .env says by mistake: they print passwords and database details and the debug bar can run SQL
         if (app()->environment('production')) {
             config(['app.debug' => false, 'debugbar.enabled' => false, 'ignition.enable_runnable_solutions' => false]);

@@ -59,12 +59,16 @@
         <span class="lg-chip lg-chip-green" v-if="session.is_current_device"><span class="ses-dot"></span>{{ $t('This device') }}</span>
         <span class="lg-chip lg-chip-green" v-else-if="session.is_online"><span class="ses-dot"></span>{{ $t('Online now') }}</span>
         <span class="lg-chip lg-chip-slate" style="text-transform: none" v-else>{{ $t('Last active') }} {{ session.last_active }}</span>
+        <button v-if="!session.is_current_device && session.token" type="button" class="ses-out" :disabled="working" @click="signOutOne(session)"><icons name="out" class="w-3.5 h-3.5" />{{ $t('Sign out') }}</button>
       </div>
     </div>
 
     <div class="pf-foot" style="justify-content: space-between">
       <tec-action-message :on="form.recentlySuccessful" class="text-sm font-semibold text-emerald-600">{{ $t('Done.') }}</tec-action-message>
-      <button type="button" class="lg-btn lg-btn-dark" @click="confirmLogout"><icons name="out" class="w-4 h-4" />{{ $t('Log Out Other Browser Sessions') }}</button>
+      <div class="ses-btns">
+        <button type="button" class="lg-btn lg-btn-dark" @click="confirmLogout"><icons name="out" class="w-4 h-4" />{{ $t('Log Out Other Browser Sessions') }}</button>
+        <button type="button" class="lg-btn lg-btn-soft" :disabled="working" @click="signOutAll"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Sign out of every device') }}</button>
+      </div>
     </div>
 
     <!-- Log Out Other Devices Confirmation Modal -->
@@ -128,6 +132,7 @@ export default {
   data() {
     return {
       confirmingLogout: false,
+      working: false,
 
       form: this.$inertia.form({
         password: '',
@@ -151,6 +156,19 @@ export default {
       });
     },
 
+    // one device, no password: you are already signed in here (a device that used "Remember me" signs in again unless you sign out of every device)
+    signOutOne(session) {
+      if (!window.confirm(this.$t('Sign out :d?', { d: session.agent.platform + ' - ' + session.agent.browser + ' (' + session.ip_address + ')' }))) return;
+      this.working = true;
+      this.$inertia.post(route('device-limit.sign-out', session.token), {}, { preserveScroll: true, onFinish: () => (this.working = false) });
+    },
+
+    signOutAll() {
+      if (!window.confirm(this.$t('Sign out of every device, this one too?'))) return;
+      this.working = true;
+      this.$inertia.post(route('device-limit.sign-out-all'), {}, { onFinish: () => (this.working = false) });
+    },
+
     closeModal() {
       this.confirmingLogout = false;
 
@@ -166,5 +184,9 @@ export default {
 .ses-current { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.06); }
 .ses-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 42px; height: 42px; border-radius: 13px; color: var(--lg-mute); background: var(--lg-card); border: 1px solid var(--lg-line); }
 .ses-current .ses-ico { color: #fff; background: linear-gradient(145deg, #34d399, #047857); border-color: transparent; }
+.ses-out { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; border: 1px solid #fecaca; background: #fff5f5; color: #b91c1c; font-size: 0.74rem; font-weight: 800; cursor: pointer; }
+.ses-out:disabled { opacity: 0.55; cursor: not-allowed; }
+.ses-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+@media (max-width: 560px) { .ses-btns { width: 100%; } .ses-btns .lg-btn { flex: 1 1 100%; justify-content: center; } .ses-item .ses-out { margin-left: auto; } }
 .ses-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
 </style>

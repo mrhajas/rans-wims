@@ -368,6 +368,39 @@
             </form>
           </section>
 
+          <!-- Devices per user (Super Admin) -->
+          <section v-if="$super" id="st-devices" class="lg-card">
+            <header class="lg-card-head">
+              <span class="lg-card-ico lg-ico-sky"><icons name="desktop-computer" class="w-5 h-5" /></span>
+              <div class="min-w-0">
+                <h2 class="lg-card-title">{{ $t('Devices per user') }}</h2>
+                <p class="lg-card-sub">{{ $t('How many devices one person may be signed in on at the same time.') }} · {{ $t('Currently') }} {{ deviceLimitCurrent === 0 ? $t('no limit') : deviceLimitCurrent }}</p>
+              </div>
+            </header>
+            <form @submit.prevent="submitDeviceLimit">
+              <p class="lg-note lg-note-blue mb-4">
+                <icons name="info" class="w-4 h-4" />
+                {{ $t('A new sign-in beyond this number is held on a page where the person signs out one device, several, or all of them, then carries on. Devices already signed in stay signed in when you lower the number. Type 0 for no limit.') }}
+              </p>
+              <div class="lg-fields">
+                <div>
+                  <text-input type="number" min="0" max="50" v-model="deviceLimitForm.max_devices" :label="$t('Devices allowed per user')" :error="deviceLimitForm.errors.max_devices" />
+                </div>
+                <div>
+                  <text-input type="password" autocomplete="current-password" v-model="deviceLimitForm.password" :label="$t('Confirm your password')" :placeholder="$t('Your own Super Admin password')" :error="deviceLimitForm.errors.password" />
+                </div>
+              </div>
+              <div class="st-card-foot">
+                <span v-if="deviceLimitSaved" class="st-saved-badge"><icons name="tick" class="w-3.5 h-3.5" />{{ $t('Saved!') }}</span>
+                <span v-else></span>
+                <button type="submit" class="lg-btn lg-btn-primary" :disabled="deviceLimitForm.processing">
+                  <icons name="tick" class="w-4 h-4" />
+                  {{ deviceLimitForm.processing ? $t('Saving…') : $t('Save Device Limit') }}
+                </button>
+              </div>
+            </form>
+          </section>
+
           <!-- About -->
           <section id="st-about" class="lg-card">
             <header class="lg-card-head">
@@ -458,6 +491,9 @@ export default {
       // of mutating it directly.
       impersonationExpiryCurrent: this.current.impersonation_expiry_minutes ? +this.current.impersonation_expiry_minutes : 30,
       impersonationExpirySaved: false,
+      deviceLimitForm: { max_devices: this.current.max_devices_per_user !== undefined && this.current.max_devices_per_user !== null && this.current.max_devices_per_user !== '' ? +this.current.max_devices_per_user : 3, password: '', processing: false, errors: {} },
+      deviceLimitCurrent: this.current.max_devices_per_user !== undefined && this.current.max_devices_per_user !== null && this.current.max_devices_per_user !== '' ? +this.current.max_devices_per_user : 3,
+      deviceLimitSaved: false,
       // A dedicated login-logo.png may not exist yet (nothing uploaded so
       // far) — this tracks whether the preview has already fallen back to
       // the shared app logo, matching Login.vue/ForgotPassword.vue's own
@@ -487,6 +523,7 @@ export default {
       if (this.$super) {
         items.unshift({ id: 'features', icon: 'toggle', label: this.$t('Feature Control') });
         items.push({ id: 'security', icon: 'impersonate', label: this.$t('User Impersonation') });
+        items.push({ id: 'devices', icon: 'desktop-computer', label: this.$t('Devices per user') });
       }
       items.push({ id: 'about', icon: 'info', label: this.$t('About') });
       return items;
@@ -560,6 +597,31 @@ export default {
     },
     submitTerms() {
       this.termsForm.put(route('settings.terms.update'), { preserveScroll: true });
+    },
+    submitDeviceLimit() {
+      const f = this.deviceLimitForm;
+      if (f.processing) return;
+      this.deviceLimitSaved = false;
+      const errors = {};
+      if (f.max_devices === '' || f.max_devices === null || Number(f.max_devices) < 0 || Number(f.max_devices) > 50) errors.max_devices = this.$t('Enter a number from 0 to 50 (0 means no limit).');
+      if (!f.password) errors.password = this.$t('Enter your password to confirm this change.');
+      if (errors.max_devices || errors.password) { f.errors = errors; return; }
+      f.processing = true;
+      f.errors = {};
+      axios
+        .put(this.route('settings.device-limit.update'), { max_devices: Number(f.max_devices), password: f.password })
+        .then(res => {
+          f.processing = false;
+          f.password = '';
+          this.deviceLimitCurrent = res.data.max_devices;
+          this.deviceLimitSaved = true;
+          setTimeout(() => { this.deviceLimitSaved = false; }, 3000);
+        })
+        .catch(err => {
+          f.processing = false;
+          const raw = err.response?.data?.errors || {};
+          f.errors = { max_devices: raw.max_devices?.[0] || '', password: raw.password?.[0] || (!raw.max_devices ? err.response?.data?.message || this.$t('Could not save right now.') : '') };
+        });
     },
     submitImpersonationExpiry() {
       if (this.impersonationExpiryForm.processing) {

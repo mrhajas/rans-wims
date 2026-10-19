@@ -144,6 +144,23 @@ class SettingController extends Controller
         ]);
     }
 
+    /** How many devices one person may be signed in on at once (0 = no limit). Super Admin, with their own password. See App\Services\Security\DeviceLimit. */
+    public function updateDeviceLimit(Request $request)
+    {
+        $user = $request->user();
+        if (! $user || ! $user->hasRole('Super Admin')) {
+            throw ValidationException::withMessages(['max_devices' => __('You are not allowed to update this setting.')]);
+        }
+        $validated = $request->validate(['max_devices' => 'required|integer|min:0|max:'.\App\Services\Security\DeviceLimit::MAX, 'password' => 'required|string']);
+        if (! Hash::check($validated['password'], $user->password)) {
+            throw ValidationException::withMessages(['password' => __('The provided password is incorrect.')]);
+        }
+        Setting::updateOrCreate(['tec_key' => \App\Services\Security\DeviceLimit::KEY, 'account_id' => $user->account_id], ['tec_value' => (string) $validated['max_devices']]);
+        log_activity(__('Devices per user set to :n.', ['n' => $validated['max_devices'] ?: __('no limit')]), ['max_devices' => (int) $validated['max_devices']], null, 'Setting');
+
+        return response()->json(['success' => true, 'max_devices' => (int) $validated['max_devices']]);
+    }
+
     /** How long a "Login As User" session stays active — see App\Support\Impersonation. */
     public function updateImpersonationExpiry(Request $request)
     {

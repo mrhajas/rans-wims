@@ -11,8 +11,8 @@ use Laravel\Jetstream\Http\Controllers\Inertia\UserProfileController;
  * Profile page with an honest "Browser Sessions" list.
  *
  * Jetstream lists every row in the sessions table for the user, including sessions that expired long ago (Laravel only
- * garbage-collects them on a lottery) and one row per past login. Here only sessions that are still valid are shown,
- * the same browser/IP appears once, and recent activity is flagged as online.
+ * garbage-collects them on a lottery) and one row per past login. Here only sessions that are still valid are shown, every one of them
+ * (each is a device that counts toward the devices-per-user limit), and recent activity is flagged as online.
  */
 class ProfileSessionsController extends UserProfileController
 {
@@ -33,23 +33,7 @@ class ProfileSessionsController extends UserProfileController
         (clone $table)->where('user_id', $userId)->where('last_activity', '<', $cutoff)->where('id', '!=', $currentId)->delete();
 
         $rows = (clone $table)->where('user_id', $userId)->where('last_activity', '>=', $cutoff)->orderByDesc('last_activity')->get();
-
-        // One entry per browser + address (the most recent), but never hide the current device.
-        $seen = [];
-        $kept = $rows->filter(function ($row) use (&$seen, $currentId) {
-            if ($row->id === $currentId) {
-                $seen[$row->user_agent.'|'.$row->ip_address] = true;
-
-                return true;
-            }
-            $key = $row->user_agent.'|'.$row->ip_address;
-            if (isset($seen[$key])) {
-                return false;
-            }
-            $seen[$key] = true;
-
-            return true;
-        })->sortByDesc(fn ($r) => $r->id === $currentId ? PHP_INT_MAX : $r->last_activity)->take(10)->values();
+        $kept = $rows->sortByDesc(fn ($r) => $r->id === $currentId ? PHP_INT_MAX : $r->last_activity)->values();
 
         return $kept->map(function ($session) use ($currentId) {
             $agent = $this->createAgent($session);
@@ -61,6 +45,7 @@ class ProfileSessionsController extends UserProfileController
                     'platform' => $agent->platform(),
                     'browser' => $agent->browser(),
                 ],
+                'token' => \App\Services\Security\DeviceLimit::token($session->id),
                 'ip_address' => $session->ip_address,
                 'is_current_device' => $session->id === $currentId,
                 'is_online' => $last->gt(now()->subMinutes(self::ONLINE_MINUTES)),

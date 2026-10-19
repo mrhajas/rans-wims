@@ -313,6 +313,12 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('settings/logo', [Controllers\SettingController::class, 'uploadLogo'])->name('settings.logo.upload');
     Route::put('settings/terms', [Controllers\SettingController::class, 'updateTerms'])->name('settings.terms.update');
     Route::put('settings/impersonation-expiry', [Controllers\SettingController::class, 'updateImpersonationExpiry'])->name('settings.impersonation-expiry.update');
+    Route::put('settings/device-limit', [Controllers\SettingController::class, 'updateDeviceLimit'])->name('settings.device-limit.update');
+    // the devices a person is signed in on: the held sign-in page and the sign-out actions (Profile uses the same ones)
+    Route::get('device-limit', [Controllers\DeviceController::class, 'show'])->name('device-limit.show');
+    Route::post('device-limit/sign-out-others', [Controllers\DeviceController::class, 'signOutOthers'])->middleware('throttle:20,1,device-limit.others')->name('device-limit.sign-out-others');
+    Route::post('device-limit/sign-out-all', [Controllers\DeviceController::class, 'signOutAll'])->middleware('throttle:10,1,device-limit.all')->name('device-limit.sign-out-all');
+    Route::post('device-limit/sign-out/{token}', [Controllers\DeviceController::class, 'signOut'])->where('token', '[a-f0-9]{24}')->middleware('throttle:30,1,device-limit.one')->name('device-limit.sign-out');
 
     // WIMS Licence (Super Admins with read-wims-licence) and the Licence Manager (Dr Hajas only, hard-coded)
     Route::get('wims-licence', [Controllers\WimsLicenceController::class, 'show'])->name('wims-licence.show');

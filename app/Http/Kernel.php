@@ -74,6 +74,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ImpersonationGuard::class,
             \App\Http\Middleware\EnforceIdleTimeout::class,
+            \App\Http\Middleware\EnforceDeviceLimit::class,
             // Maintenance Lock for EVERY web request (not just the main route group), so no authenticated
             // route — Jetstream's /user/* pages included — can be reached by a non-allowed role while it is on.
             \App\Http\Middleware\SystemLockdown::class,
