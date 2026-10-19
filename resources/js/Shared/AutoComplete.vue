@@ -172,6 +172,14 @@ export default {
   },
 
   watch: {
+    // an option's tooltip belongs to an open list: the moment the list closes (a pick, a click away, Escape) or its options are re-filtered,
+    // the hovered option is gone and its mouseleave never fires, so the bubble would stay on screen
+    open: function (o) {
+      if (!o) this.hideOptionTooltip();
+    },
+    result: function () {
+      this.hideOptionTooltip();
+    },
     modelValue: function (v) {
       if (!v) {
         this.search = '';
@@ -240,6 +248,7 @@ export default {
   },
 
   beforeUnmount() {
+    this.hideOptionTooltip();
     window.removeEventListener('resize', this.onWindowReposition);
     window.removeEventListener('scroll', this.onWindowReposition, true);
   },
@@ -278,6 +287,7 @@ export default {
       }
     },
     onWindowReposition() {
+      this.hideOptionTooltip();
       if (this.open && this.absoluteDropdown) {
         this.positionDropdown();
       }
@@ -446,7 +456,7 @@ export default {
       };
     },
     hideOptionTooltip() {
-      this.optionTooltip.visible = false;
+      if (this.optionTooltip && this.optionTooltip.visible) this.optionTooltip.visible = false;
     },
     // Generic opt-in indicator: any suggestion object carrying a
     // `completed_at` field (warehouses/projects only, today) renders a

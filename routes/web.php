@@ -575,6 +575,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('project-mapping/upload', [$pm, 'upload'])->middleware('throttle:20,1,subcontracts.project-mapping.upload')->name('project-mapping.upload');
         Route::post('project-mapping/import', [$pm, 'import'])->middleware('throttle:20,1,subcontracts.project-mapping.import')->name('project-mapping.import');
         Route::post('project-mapping/confirm', [$pm, 'confirm'])->middleware('throttle:10,1,subcontracts.project-mapping.confirm')->name('project-mapping.confirm');
+        Route::get('project-mapping/print', [$pm, 'print'])->middleware('throttle:30,1,subcontracts.project-mapping.print')->name('project-mapping.print');
+        Route::get('project-mapping/pdf', [$pm, 'pdf'])->middleware('throttle:30,1,subcontracts.project-mapping.pdf')->name('project-mapping.pdf');
         Route::get('project-mapping/template', [$pm, 'template'])->middleware('throttle:20,1,subcontracts.project-mapping.template')->name('project-mapping.template');
 
         // Alerts: what needs attention on the subcontract accounts

@@ -81,46 +81,61 @@
         </collapse-section>
         <collapse-section>
           <template #head><span class="lg-card-ico lg-ico-navy"><icons name="info" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Details') }}</h2></div></template>
-          <div class="ad-grid">
-            <section class="ad-box is-indigo">
+          <div class="agd-grid">
+            <section class="agd-box is-indigo">
               <h3><span><icons name="users" class="w-4 h-4" /></span>{{ $t('Parties and project') }}</h3>
-              <div class="ad-row"><small>{{ $t('Subcontractor') }}</small><b><Link v-if="contactUrl" :href="contactUrl">{{ a.contact }}</Link><template v-else>{{ a.contact || '-' }}</template></b><em v-if="a.contact_phone">{{ a.contact_phone }}</em></div>
-              <div class="ad-row"><small>{{ $t('Project(s) / Warehouse(s)') }}</small>
-                <div v-if="projList.length" class="ad-chips"><span v-for="(p, pi) in projList" :key="pi" class="ad-chip"><icons name="building" class="w-3 h-3" />{{ p }}</span></div>
-                <b v-else class="ad-none">-</b></div>
-              <div v-if="a.site" class="ad-row"><small>{{ $t('Site / building / phase') }}</small><b>{{ a.site }}</b></div>
+              <div class="agd-row"><small>{{ $t('Subcontractor') }}</small><b><Link v-if="contactUrl" :href="contactUrl">{{ a.contact }}</Link><template v-else>{{ a.contact || '-' }}</template></b><em v-if="a.contact_phone">{{ a.contact_phone }}</em></div>
+              <div class="agd-row"><small>{{ $t('Project(s) / Warehouse(s)') }}</small>
+                <div v-if="projList.length" class="agd-chips"><span v-for="(p, pi) in projList" :key="pi" class="agd-chip"><icons name="building" class="w-3 h-3" />{{ p }}</span></div>
+                <b v-else class="agd-none">-</b></div>
+              <div v-if="a.site" class="agd-row"><small>{{ $t('Site / building / phase') }}</small><b>{{ a.site }}</b></div>
             </section>
-            <section class="ad-box is-violet">
+            <section class="agd-box is-violet">
               <h3><span><icons name="calendar" class="w-4 h-4" /></span>{{ $t('Dates') }}</h3>
-              <div class="ad-two">
-                <div class="ad-row"><small>{{ $t('Agreement date') }}</small><b :class="{ 'ad-none': !a.agreement_date }">{{ sd(a.agreement_date) }}</b></div>
-                <div class="ad-row"><small>{{ $t('Start date') }}</small><b :class="{ 'ad-none': !a.start_date }">{{ sd(a.start_date) }}</b></div>
-                <div class="ad-row"><small>{{ $t('Expected completion') }}</small><b :class="{ 'ad-none': !a.expected_completion }">{{ sd(a.expected_completion) }}</b></div>
-                <div class="ad-row"><small>{{ $t('Completed on') }}</small><b :class="{ 'ad-none': !a.actual_completion }">{{ sd(a.actual_completion) }}</b></div>
+              <div class="agd-two">
+                <div class="agd-row"><small>{{ $t('Agreement date') }}</small><b :class="{ 'agd-none': !a.agreement_date }">{{ sd(a.agreement_date) }}</b></div>
+                <div class="agd-row"><small>{{ $t('Start date') }}</small><b :class="{ 'agd-none': !a.start_date }">{{ sd(a.start_date) }}</b></div>
+                <div class="agd-row"><small>{{ $t('Expected completion') }}</small><b :class="{ 'agd-none': !a.expected_completion }">{{ sd(a.expected_completion) }}</b></div>
+                <div class="agd-row"><small>{{ $t('Completed on') }}</small><b :class="{ 'agd-none': !a.actual_completion }">{{ sd(a.actual_completion) }}</b></div>
               </div>
-              <div v-if="a.as_at_date" class="ad-asat"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Position as at (workbook)') }}</span><b>{{ sd(a.as_at_date) }}</b></div>
+              <div v-if="a.as_at_date" class="agd-asat"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Position as at (workbook)') }}</span><b>{{ sd(a.as_at_date) }}</b></div>
             </section>
-            <section class="ad-box is-teal">
+            <section class="agd-box is-teal">
               <h3><span><icons name="user" class="w-4 h-4" /></span>{{ $t('Administration') }}</h3>
-              <div class="ad-two">
-                <div class="ad-row"><small>{{ $t('Administrator') }}</small><b :class="{ 'ad-none': !a.administrator }">{{ a.administrator || '-' }}</b></div>
-                <div class="ad-row"><small>{{ $t('Created by') }}</small><b>{{ a.created_by || '-' }}</b></div>
-                <div v-if="Number(a.retention_percent) > 0" class="ad-row"><small>{{ $t('Retention') }}</small><b>{{ a.retention_percent }}%</b></div>
-                <div v-if="a.vat_treatment" class="ad-row"><small>{{ $t('VAT / tax') }}</small><b>{{ a.vat_treatment }}</b></div>
+              <div class="agd-two">
+                <div class="agd-row"><small>{{ $t('Administrator') }}</small><b :class="{ 'agd-none': !a.administrator }">{{ a.administrator || '-' }}</b></div>
+                <div class="agd-row"><small>{{ $t('Created by') }}</small><b>{{ a.created_by || '-' }}</b></div>
+                <div v-if="Number(a.retention_percent) > 0" class="agd-row"><small>{{ $t('Retention') }}</small><b>{{ a.retention_percent }}%</b></div>
+                <div v-if="a.vat_treatment" class="agd-row"><small>{{ $t('VAT / tax') }}</small><b>{{ a.vat_treatment }}</b></div>
               </div>
             </section>
-            <section v-if="customDefs.length" class="ad-box is-amber">
+            <section v-if="customDefs.length" class="agd-box is-amber">
               <h3><span><icons name="adjustments" class="w-4 h-4" /></span>{{ $t('More details') }}</h3>
-              <dl class="ac-kv ad-custom"><custom-view :defs="customDefs" :values="custom || {}" /></dl>
+              <dl class="ac-kv agd-custom"><custom-view :defs="customDefs" :values="custom || {}" /></dl>
             </section>
           </div>
-          <div v-if="a.scope || a.payment_terms || a.advance_terms || a.remarks" class="ad-notes">
-            <div v-if="a.scope" class="ad-note"><span><icons name="clip" class="w-4 h-4" />{{ $t('Scope of work') }}</span><p>{{ a.scope }}</p></div>
-            <div v-if="a.payment_terms" class="ad-note"><span><icons name="cash" class="w-4 h-4" />{{ $t('Payment terms') }}</span><p>{{ a.payment_terms }}</p></div>
-            <div v-if="a.advance_terms" class="ad-note"><span><icons name="forward" class="w-4 h-4" />{{ $t('Advance payment terms') }}</span><p>{{ a.advance_terms }}</p></div>
-            <div v-if="a.remarks" class="ad-note"><span><icons name="info" class="w-4 h-4" />{{ $t('Remarks') }}</span><p>{{ a.remarks }}</p></div>
+          <div v-if="a.scope || a.payment_terms || a.advance_terms || a.remarks" class="agd-notes">
+            <div v-if="a.scope" class="agd-note"><span><icons name="clip" class="w-4 h-4" />{{ $t('Scope of work') }}</span><p>{{ a.scope }}</p></div>
+            <div v-if="a.payment_terms" class="agd-note"><span><icons name="cash" class="w-4 h-4" />{{ $t('Payment terms') }}</span><p>{{ a.payment_terms }}</p></div>
+            <div v-if="a.advance_terms" class="agd-note"><span><icons name="forward" class="w-4 h-4" />{{ $t('Advance payment terms') }}</span><p>{{ a.advance_terms }}</p></div>
+            <div v-if="a.remarks" class="agd-note"><span><icons name="info" class="w-4 h-4" />{{ $t('Remarks') }}</span><p>{{ a.remarks }}</p></div>
           </div>
         </collapse-section>
+        <section v-if="detailsError" class="lg-card">
+          <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="info" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Details (plain view)') }}</h2></div></header>
+          <div class="lg-note lg-note-red" role="alert"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('The Details boxes could not be drawn on this screen. Please send this message to support:') }} <b>{{ detailsError }}</b></span></div>
+          <dl class="ac-kv" style="margin-top: 10px">
+            <dt>{{ $t('Subcontractor') }}</dt><dd>{{ a.contact || '-' }}</dd>
+            <dt>{{ $t('Project(s) / Warehouse(s)') }}</dt><dd>{{ projList.length ? projList.join(', ') : '-' }}</dd>
+            <dt>{{ $t('Agreement date') }}</dt><dd>{{ sd(a.agreement_date) }}</dd>
+            <dt>{{ $t('Start date') }}</dt><dd>{{ sd(a.start_date) }}</dd>
+            <dt>{{ $t('Expected completion') }}</dt><dd>{{ sd(a.expected_completion) }}</dd>
+            <dt>{{ $t('Completed on') }}</dt><dd>{{ sd(a.actual_completion) }}</dd>
+            <dt>{{ $t('Administrator') }}</dt><dd>{{ a.administrator || '-' }}</dd>
+            <dt>{{ $t('Created by') }}</dt><dd>{{ a.created_by || '-' }}</dd>
+            <dt>{{ $t('Scope of work') }}</dt><dd>{{ a.scope || '-' }}</dd>
+          </dl>
+        </section>
       </template>
 
       <template v-if="tab === 'schedule'">
@@ -261,7 +276,7 @@ export default {
   mixins: [sc, fieldCfg, tableFind],
   props: { completion: Object, claims: { type: Array, default: () => [] }, fields: Object, custom: Object, item_fields: Object, variation_fields: Object, a: Object, figures: Object, groups: Array, loose: Array, variations: Array, requests: Array, payments: Array, legacy: Object, attachments: Array, history: Array, units: Array, categories: Array, projects: Array, group_kinds: Array, pricing: Array, money: Boolean, can: Object },
   data() {
-    return { comp: { action: '', note: '', date: '' }, looseOpen: true, opened: {}, tab: this.startTab(), asking: '', reason: '', busy: false, showGroup: false, showVar: false, newItem: null, editItem: null, gf: this.$inertia.form({ name: '', kind: 'location' }), vf: this.$inertia.form({ custom: {}, title: '', direction: 'increase', amount: '', reason: '' }), up: this.$inertia.form({ attachments: [] }) };
+    return { detailsError: '', comp: { action: '', note: '', date: '' }, looseOpen: true, opened: {}, tab: this.startTab(), asking: '', reason: '', busy: false, showGroup: false, showVar: false, newItem: null, editItem: null, gf: this.$inertia.form({ name: '', kind: 'location' }), vf: this.$inertia.form({ custom: {}, title: '', direction: 'increase', amount: '', reason: '' }), up: this.$inertia.form({ attachments: [] }) };
   },
   computed: {
     // the Details boxes never break the page: every value is read defensively
@@ -287,7 +302,10 @@ export default {
         { key: 'payments', label: this.$t('Payments'), icon: 'cash', tone: 'emerald', n: this.requests.length }, ...(this.can.documents ? [{ key: 'documents', label: this.$t('Documents'), icon: 'clip', tone: 'sky', n: this.attachments.length }] : []), ...(this.history.length ? [{ key: 'history', label: this.$t('History'), icon: 'clock', tone: 'slate' }] : [])];
     },
   },
-  watch: { tab() { this.tq = ''; } },
+  // a Details box that cannot be drawn must never leave the card blank: the reason is shown with a plain view of the same facts
+  errorCaptured(err) { this.detailsError = String((err && err.message) || err).slice(0, 300); return false; },
+  mounted() { this.checkDetails(); },
+  watch: { tab() { this.tq = ''; this.checkDetails(); } },
   methods: {
     // ?tab=documents opens that tab (the claim page links to the completion evidence this way)
     startTab() { try { const t = new URLSearchParams(window.location.search).get('tab'); return ['overview', 'schedule', 'variations', 'payments', 'documents', 'history'].includes(t) ? t : 'overview'; } catch (e) { return 'overview'; } },
@@ -295,6 +313,20 @@ export default {
     runComp() {
       const c = this.comp; this.busy = true;
       this.$inertia.post(route('subcontracts.agreements.transition', [this.a.id, c.action]), { reason: c.note, ...(c.action === 'complete' && c.date ? { actual_completion: c.date } : {}) }, { preserveScroll: true, onSuccess: () => { this.comp.action = ''; }, onFinish: () => (this.busy = false) });
+    },
+    // after drawing, the Details boxes must have a size; when they do not, say what was measured and show the plain view
+    checkDetails() {
+      if (this.tab !== 'overview') return;
+      setTimeout(() => {
+        try {
+          if (this.detailsError || !this.$el || !this.$el.querySelector) return;
+          const g = this.$el.querySelector('.agd-grid');
+          if (!g) { this.detailsError = 'the Details boxes are not on the page'; return; }
+          const h = g.getBoundingClientRect().height; const cs = window.getComputedStyle(g); const body = g.closest('.sc-cbody'); const bs = body ? window.getComputedStyle(body) : null;
+          if (h < 20) this.detailsError = 'the Details boxes have no height (boxes ' + g.children.length + ', display ' + cs.display + ', visibility ' + cs.visibility + ', opacity ' + cs.opacity + ', body display ' + (bs ? bs.display : '-') + ', body opacity ' + (bs ? bs.opacity : '-') + ', width ' + Math.round(g.getBoundingClientRect().width) + ')';
+          else if (bs && (bs.display === 'none' || Number(bs.opacity) < 0.05)) this.detailsError = 'the Details card is hidden (body display ' + bs.display + ', opacity ' + bs.opacity + ')';
+        } catch (e) { /* never break the page */ }
+      }, 600);
     },
     sd(v) { if (!v) return '-'; try { return this.$date(v); } catch (e) { return String(v); } },
     doit(action, reason) { this.busy = true; this.$inertia.post(route('subcontracts.agreements.transition', [this.a.id, action]), { reason: reason || '' }, { preserveScroll: true, onFinish: () => (this.busy = false) }); },

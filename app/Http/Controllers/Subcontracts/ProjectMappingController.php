@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Subcontracts;
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse;
 use App\Services\Subcontracts\SubcontractProjectMapping as Pm;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -53,6 +54,96 @@ class ProjectMappingController extends Controller
 
         return Inertia::render('Subcontracts/ProjectMapping', ['rows' => $rows, 'projects' => $this->projectOptions(), 'counts' => $counts, 'money' => $money, 'can' => ['map' => true, 'create_project' => (bool) $request->user()->can('create-warehouses')],
             'categories' => ['Main Warehouse', 'Rans Warehouse', 'Directors', 'Private', 'Government', 'General']]);
+    }
+
+    /**
+     * The table as it is on the page: the same filter (all / matched / waiting / not matched), search and sort, saved choices only (an unsaved pick is not a record yet).
+     * Printed with the WIMS header and footer (reports.pdf). The print and pdf routes are named so the Download / Print Logs record them, and the audit log gets a line too.
+     */
+    private function printPayload(Request $request, bool $autoPrint): array
+    {
+        $this->need('map-projects-subcontracts');
+        $money = $this->money();
+        $filter = in_array($request->query('filter'), ['all', 'matched', 'pending', 'none'], true) ? $request->query('filter') : 'all';
+        $q = mb_strtolower(trim(mb_substr((string) $request->query('q', ''), 0, 100)));
+        $sk = in_array($request->query('sk'), ['excel_name', 'agreements', 'items', 'contract', 'project', 'state'], true) ? $request->query('sk') : '';
+        $desc = $request->query('sd') === 'desc';
+        $names = Warehouse::ofAccount()->pluck('name', 'id');
+        $label = ['confirmed' => 'Confirmed', 'pending' => 'Waiting', 'none' => 'Not Set'];
+        $rows = collect(Pm::names())->map(function ($r) use ($names) {
+            $r['project'] = $r['warehouse_id'] ? (string) ($names[$r['warehouse_id']] ?? '') : '';
+
+            return $r;
+        })->filter(function ($r) use ($filter, $q) {
+            if ($filter === 'matched' && $r['state'] === 'none') {
+                return false;
+            }
+            if ($filter === 'pending' && $r['state'] !== 'pending') {
+                return false;
+            }
+            if ($filter === 'none' && $r['state'] !== 'none') {
+                return false;
+            }
+            if ($q === '') {
+                return true;
+            }
+            $hay = array_merge([$r['excel_name'], $r['project']], array_map(fn ($a) => $a['reference'] . ' ' . $a['title'], $r['agreement_list']));
+
+            return collect($hay)->contains(fn ($v) => str_contains(mb_strtolower((string) $v), $q));
+        })->values();
+        if ($sk !== '') {
+            $val = fn ($r) => match ($sk) {
+                'excel_name' => mb_strtolower($r['excel_name']),
+                'project' => mb_strtolower($r['project']),
+                'contract' => (float) array_sum(array_map('floatval', $r['totals'])),
+                'state' => $r['state'],
+                default => (float) $r[$sk],
+            };
+            $rows = $rows->sort(function ($a, $b) use ($val, $desc) {
+                $x = $val($a);
+                $y = $val($b);
+                $empty = fn ($v) => $v === '' || $v === null;
+                if ($empty($x) && $empty($y)) {
+                    return 0;
+                }
+                if ($empty($x)) {
+                    return 1;
+                }
+                if ($empty($y)) {
+                    return -1;
+                }
+                $c = is_string($x) ? strnatcasecmp($x, $y) : $x <=> $y;
+
+                return $desc ? -$c : $c;
+            })->values();
+        }
+        $columns = array_merge(['No', 'Excel Name', 'Work Groups', 'Used In (accounts)', 'Items'], $money ? ['Contract'] : [], ['Project(s) / Warehouse(s)', 'Status']);
+        $out = [];
+        foreach ($rows as $i => $r) {
+            $tot = $money ? (collect($r['totals'])->map(fn ($v, $c) => $c . ' ' . number_format((float) $v, 2))->implode('; ') ?: '-') : null;
+            $out[] = array_merge([$i + 1, $r['excel_name'], $r['groups'], $r['agreements'] . ($r['archived'] ? ' (' . $r['archived'] . ' archived)' : ''), $r['items']], $money ? [$tot] : [], [$r['project'] !== '' ? $r['project'] : '-', $label[$r['state']] ?? $r['state']]);
+        }
+        $all = collect(Pm::names())->countBy('state');
+        $filterName = ['all' => 'All names', 'matched' => 'Matched', 'pending' => 'Waiting to be confirmed', 'none' => 'Not matched'][$filter];
+        $meta = array_filter([
+            'Show' => $filterName,
+            'Search' => $q !== '' ? $q : null,
+            'Names Listed' => (string) count($out),
+            'All Names' => (string) array_sum($all->all()) . ' (confirmed ' . ($all['confirmed'] ?? 0) . ', waiting ' . ($all['pending'] ?? 0) . ', not set ' . ($all['none'] ?? 0) . ')',
+        ], fn ($v) => filled($v));
+        log_activity('Subcontract project mapping ' . ($autoPrint ? 'printed' : 'downloaded as PDF'), ['filter' => $filter, 'search' => $q, 'rows' => count($out)], null, 'Subcontracts');
+
+        return ['title' => 'Project Name Mapping', 'companyName' => optional($request->user()->account ?? null)->name, 'columns' => $columns, 'rows' => $out, 'meta' => $meta, 'autoPrint' => $autoPrint];
+    }
+
+    public function print(Request $request)
+    {
+        return view('reports.pdf', $this->printPayload($request, true));
+    }
+
+    public function pdf(Request $request)
+    {
+        return Pdf::loadView('reports.pdf', $this->printPayload($request, false))->setPaper('a4', 'landscape')->download('project-name-mapping-' . now()->format('Ymd-His') . '.pdf');
     }
 
     /**

@@ -62,6 +62,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const target = e => (e.target && e.target.closest ? e.target.closest('.lg-tip[data-tip]') : null);
 
   document.addEventListener('mouseover', e => {
+    // the control the bubble belongs to was re-drawn or removed, or the pointer is somewhere else now: the bubble goes at once
+    if (current && (!current.isConnected || !current.contains(e.target))) hide();
     const el = target(e);
     if (el && el !== current) show(el);
   });

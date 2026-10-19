@@ -67,18 +67,8 @@
           <tbody>
             <tr v-for="sa in superAdjustments.data" :key="sa.id" class="is-click" @click="$inertia.visit(route('super-adjustments.show', sa.id))">
               <td :data-label="$t('Reference')"><span class="lg-main lg-mono">{{ sa.reference }}</span></td>
-              <td :data-label="$t('Status')">
-                <span class="lg-chip" :class="statusChip(sa.status)">
-                  <icons v-if="sa.status !== 'Approved'" :name="statusIcon(sa.status)" class="w-3 h-3 inline-flex" />
-                  {{ sa.status === 'Approved' ? $t(statusName(sa.status)).toUpperCase() : $t(statusName(sa.status)) }}
-                </span>
-                <div v-if="sa.phases && sa.status !== 'Rejected'" class="sa-ph">
-                  <span v-for="ph in sa.phases" :key="ph.phase" class="sa-phchip" :class="ph.done ? 'is-p' + ph.phase : 'is-wait'" :title="ph.done ? (ph.user + ' · ' + $datetime(ph.at) + (ph.note ? ' · ' + ph.note : '')) : $t('Not given yet')">
-                    <icons :name="ph.done ? 'tick' : 'clock'" class="w-3 h-3" />{{ ph.done ? $t('Phase :n approved', { n: ph.phase }) : $t('Phase :n pending', { n: ph.phase }) }}<small v-if="ph.done">{{ ph.user }}</small>
-                  </span>
-                </div>
-                <div v-else-if="sa.status === 'Approved' && sa.approver" class="sa-by">{{ sa.approver.name }}<span v-if="sa.approved_by_role"> · {{ sa.approved_by_role }}</span></div>
-                <div v-else-if="sa.status === 'Rejected' && sa.rejecter" class="sa-by">{{ sa.rejecter.name }}</div>
+              <td :data-label="$t('Status')" class="sa-status">
+                <approval-track :status="sa.status" :phases="sa.phases || []" :approver="sa.approver" :approver-role="sa.approved_by_role || ''" :rejecter="sa.rejecter" />
               </td>
               <td :data-label="$t('Project / Warehouse')" class="sa-wrap">{{ sa.warehouse?.name }}</td>
               <td :data-label="$t('Submitted By')" class="sa-wrap">{{ sa.user?.name }}</td>
@@ -122,9 +112,10 @@ import SelectInput from '@/Shared/SelectInput.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import ApprovalActions from '@/Shared/Adjustment/ApprovalActions.vue';
 import ChangeStatus from '@/Shared/Adjustment/ChangeStatus.vue';
+import ApprovalTrack from '@/Shared/Adjustment/ApprovalTrack.vue';
 
 export default {
-  components: { TecDialogModal, AdminLayout, Pagination, PageHeader, StatTiles, TextInput, SelectInput, ApprovalActions, ChangeStatus },
+  components: { TecDialogModal, AdminLayout, Pagination, PageHeader, StatTiles, TextInput, SelectInput, ApprovalActions, ChangeStatus, ApprovalTrack },
 
   props: {
     filters: Object,
@@ -212,6 +203,15 @@ export default {
 
 <style scoped>
 .sa-rule { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* on a phone the rule card is stacked: icon and title on one line, the explanation across the full width, the button full width underneath */
+@media (max-width: 720px) {
+  .sa-rule { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 14px; }
+  .sa-rule > .lg-card-ico { grid-column: 1; grid-row: 1; margin: 0; }
+  .sa-rule > div { display: contents; }
+  .sa-rule .lg-card-title { grid-column: 2; grid-row: 1; margin: 0; font-size: 1.02rem; line-height: 1.25; }
+  .sa-rule .lg-card-sub { grid-column: 1 / -1; margin: 0; font-size: 0.86rem; line-height: 1.5; }
+  .sa-rule > .lg-btn { grid-column: 1 / -1; width: 100%; justify-content: center; }
+}
 .sa-rule-title { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; }
 .sa-opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin-bottom: 8px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4); }
 .sa-opt.is-on { box-shadow: inset 0 0 0 2px #10b981; background: rgba(16, 185, 129, 0.08); }
@@ -224,12 +224,9 @@ export default {
   align-items: end;
 }
 .sa-wrap { white-space: normal; min-width: 130px; max-width: 240px; }
-.sa-ph { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
-.sa-phchip { display: inline-flex; align-items: center; gap: 5px; width: fit-content; max-width: 100%; padding: 2px 9px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; white-space: nowrap; }
-.sa-phchip small { font-weight: 600; opacity: 0.85; margin-left: 2px; overflow: hidden; text-overflow: ellipsis; }
-.sa-phchip.is-p1 { background: #ffe0bd; color: #9a3f00; } .sa-phchip.is-p2 { background: #d4f2e0; color: #0a6140; } .sa-phchip.is-wait { background: #e8edf3; color: #55657a; }
-.sa-final { background: #14306b; color: #fff; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
-.sa-by { margin-top: 3px; font-size: 0.7rem; font-weight: 600; color: var(--lg-faint); }
+/* the status cell is drawn by ApprovalTrack */
+.sa-status { min-width: 250px; vertical-align: top; }
+@media (max-width: 720px) { .sa-status { min-width: 0; } }
 .sa-filter-reset {
   display: flex;
   align-items: flex-end;

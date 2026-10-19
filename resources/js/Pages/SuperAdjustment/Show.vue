@@ -2,7 +2,7 @@
   <admin-layout :title="superAdjustment.reference">
     <div class="lg-page px-4 md:px-0">
       <page-header icon="adjustments" :title="superAdjustment.reference" :subtitle="$t('Super Adjustments')">
-        <span class="lg-chip" :class="statusTone">{{ statusText }}</span>
+        <span class="lg-chip" :class="statusTone"><icons v-if="superAdjustment.status === 'Approved'" name="tick" class="w-3.5 h-3.5 inline-flex" />{{ statusText }}</span>
         <Link :href="route('super-adjustments.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" />{{ $t('Super Adjustments') }}</Link>
         <a v-if="superAdjustment.can_print" :href="route('super-adjustments.print', superAdjustment.id)" target="_blank" class="lg-btn lg-btn-soft">
           <icons name="printer" class="w-4 h-4" />{{ $t('Print') }}
@@ -27,7 +27,7 @@
             <h2 class="lg-card-title">{{ $t('Approvals') }}</h2>
             <p class="lg-card-sub">{{ approval.required > 1 ? $t(':n different Super Admins must approve, each with their own password. The stock changes only after the last phase.', { n: approval.required }) : $t('One Super Admin approval is needed.') }}</p>
           </div>
-          <span class="lg-chip" :class="statusTone">{{ statusText }}</span>
+          <span class="lg-chip" :class="statusTone"><icons v-if="superAdjustment.status === 'Approved'" name="tick" class="w-3.5 h-3.5 inline-flex" />{{ statusText }}</span>
         </header>
         <div class="sa-phases">
           <div v-for="ph in approval.phases" :key="ph.phase" class="sa-phase" :class="{ 'is-done': ph.done, ['is-p' + ph.phase]: ph.done, 'is-next': !ph.done && ph.phase === nextPhase }">
@@ -133,16 +133,21 @@
               <tr v-for="(row, index) in sortedItems" :key="row.id" :class="{ 'is-shifted': stockShifted(row) }">
                 <td class="sa-muted" :data-label="$t('No')">{{ index + 1 }}</td>
                 <td :data-label="$t('Item')">
-                  <span class="lg-main">{{ row.name }}</span> <span class="sa-muted">({{ row.code }})</span>
-                  <span
-                    v-if="row.auto_cleared"
-                    class="sa-cleared-tag"
-                    tabindex="0"
-                    @mouseenter="showTooltip($event, $t('Auto-added at zero via Clear, not physically counted'))"
-                    @mouseleave="hideTooltip"
-                    @focus="showTooltip($event, $t('Auto-added at zero via Clear, not physically counted'))"
-                    @blur="hideTooltip"
-                  >{{ $t('Cleared') }}</span>
+                  <div class="sa-itemcell">
+                    <span class="lg-main">{{ row.name }}</span>
+                    <span class="sa-itemmeta">
+                      <span class="sa-muted">({{ row.code }})</span>
+                      <span
+                        v-if="row.auto_cleared"
+                        class="sa-cleared-tag"
+                        tabindex="0"
+                        @mouseenter="showTooltip($event, $t('Auto-added at zero via Clear, not physically counted'))"
+                        @mouseleave="hideTooltip"
+                        @focus="showTooltip($event, $t('Auto-added at zero via Clear, not physically counted'))"
+                        @blur="hideTooltip"
+                      >{{ $t('Cleared') }}</span>
+                    </span>
+                  </div>
                 </td>
                 <td :data-label="$t('Unit')">{{ row.unit }}</td>
                 <td class="num" :data-label="$t('System (at submission)')">{{ $number(row.system_quantity_at_submission) }}</td>
@@ -519,7 +524,7 @@ export default {
 .sa-phase-n { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lg-mute, #64748b); }
 .sa-phase.is-done.is-p1 { background: rgba(249, 115, 22, 0.12); box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.55); }
 .sa-phase.is-done.is-p1 .sa-phase-who { color: #c2410c; }
-.sa-final { background: #14306b; color: #fff; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.sa-final { display: inline-flex; align-items: center; gap: 6px; background: #0b5d3b; color: #fff; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .sa-phase-who { display: inline-flex; align-items: center; gap: 6px; font-size: 0.98rem; color: #047857; }
 .sa-phase-who.sa-wait { color: #b45309; }
 .sa-phase-meta { font-size: 0.78rem; color: var(--lg-mute, #64748b); }
@@ -590,8 +595,17 @@ html.dark .sa-pill-subtraction { color: #fda4af; }
   .sa-teleport-tooltip { font-size: 0.68rem; }
 }
 
-.sa-cleared-tag { display: inline-block; margin-left: 0.4rem; padding: 0.05rem 0.55rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; background: rgba(244, 63, 94, 0.13); color: #be123c; vertical-align: middle; cursor: help; outline: none; }
+.sa-cleared-tag { display: inline-block; white-space: nowrap; margin-left: 0.4rem; padding: 0.05rem 0.55rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; background: rgba(244, 63, 94, 0.13); color: #be123c; vertical-align: middle; cursor: help; outline: none; }
 html.dark .sa-cleared-tag { color: #fda4af; }
+/* the item cell is ONE block (name, then reference and Cleared tag), so on a phone it never splits into narrow columns */
+.sa-itemcell { min-width: 0; }
+.sa-itemmeta { white-space: nowrap; }
+@media (max-width: 720px) {
+  .sa-itemcell { text-align: right; display: grid; justify-items: end; gap: 4px; min-width: 0; }
+  .sa-itemcell .lg-main { display: block; white-space: normal; overflow-wrap: anywhere; }
+  .sa-itemmeta { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+  .sa-itemmeta .sa-cleared-tag { margin-left: 0; }
+}
 
 .sa-files { display: flex; flex-direction: column; gap: 8px; }
 .sa-file { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: var(--lg-soft); border: 1px solid var(--lg-line); }

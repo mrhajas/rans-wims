@@ -16,6 +16,7 @@
 
 let tooltipEl = null;
 let hideTimer = null;
+let activeEl = null;
 
 function ensureTooltipEl() {
   if (tooltipEl) return tooltipEl;
@@ -57,13 +58,25 @@ function show(el) {
   const text = el._tooltipText;
   if (!text) return;
   clearTimeout(hideTimer);
+  activeEl = el;
   position(el, text);
 }
 
 function hide() {
   hideTimer = setTimeout(() => {
+    activeEl = null;
     if (tooltipEl) tooltipEl.style.display = 'none';
   }, 60);
+}
+
+// a tooltip never outlives its control: when the pointer is elsewhere, the control was re-drawn, or the page scrolls, it goes
+if (typeof document !== 'undefined') {
+  const drop = () => {
+    activeEl = null;
+    if (tooltipEl) tooltipEl.style.display = 'none';
+  };
+  document.addEventListener('mouseover', e => { if (activeEl && (!activeEl.isConnected || !activeEl.contains(e.target))) drop(); });
+  window.addEventListener('scroll', () => { if (activeEl) drop(); }, true);
 }
 
 export default {

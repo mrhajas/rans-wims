@@ -1,12 +1,16 @@
 <template>
   <admin-layout :title="$t('Project Name Mapping')">
     <div class="lg-page ac sc-ui px-4 md:px-0">
+      <div ref="headBar">
       <page-header icon="building" :title="$t('Project Name Mapping')" :subtitle="$t('Match every project or location name typed in the Excel workbook to a Project(s) / Warehouse(s). Your choices stay a draft until you confirm them; then the accounts show the Project(s) / Warehouse(s) name.')">
         <a :href="route('subcontracts.project-mapping.template')" class="lg-btn lg-btn-soft t-teal lg-tip" :data-tip="$t('An Excel file with every name, ready to fill in')"><icons name="download" class="w-4 h-4" /><span>{{ $t('Download Excel Template') }}</span></a>
         <button type="button" class="lg-btn lg-btn-soft" @click="openUpload"><icons name="upload" class="w-4 h-4" /><span>{{ $t('Upload Matched Excel') }}</span></button>
+        <button type="button" class="lg-btn lg-btn-soft t-slate lg-tip" :data-tip="$t('Prints the table as it is now, with the filter and search you have set')" @click="printList"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print') }}</span></button>
+        <button type="button" class="lg-btn lg-btn-soft t-slate lg-tip" :data-tip="$t('The same table as a PDF')" @click="pdfList"><icons name="download" class="w-4 h-4" /><span>{{ $t('PDF') }}</span></button>
         <button type="button" class="lg-btn lg-btn-primary" :disabled="!dirtyKeys.length || busy" @click="saveDraft()"><icons name="edit" class="w-4 h-4" /><span>{{ $t('Save Draft') }}</span><b v-if="dirtyKeys.length" class="pm-badge">{{ dirtyKeys.length }}</b></button>
         <button type="button" class="lg-btn lg-btn-green" :disabled="busy || (!counts.pending && !dirtyKeys.length)" @click="openConfirm"><icons name="tick" class="w-4 h-4" /><span>{{ $t('Confirm Mapping') }}</span></button>
       </page-header>
+      </div>
 
       <p v-if="notice" class="lg-note lg-note-green pm-notice" role="status"><icons name="tick" class="w-4 h-4" /><span>{{ notice }}</span><button type="button" class="pm-x" :aria-label="$t('Close')" @click="notice = ''"><icons name="cross" class="w-4 h-4" /></button></p>
       <p v-if="problem" class="lg-note lg-note-red pm-notice" role="alert"><icons name="exclamation" class="w-4 h-4" /><span>{{ problem }}</span><button type="button" class="pm-x" :aria-label="$t('Close')" @click="problem = ''"><icons name="cross" class="w-4 h-4" /></button></p>
@@ -48,6 +52,17 @@
         </tbody>
       </table></div>
     </div>
+
+    <!-- the buttons of the page header follow the person down the list: they show here once the header has scrolled out of view -->
+    <transition name="pm-float">
+      <div v-if="headOut" class="pm-float sc-ui" role="toolbar" :aria-label="$t('Mapping actions')">
+        <span class="pm-float-n" :class="{ 'is-on': dirtyKeys.length }"><i></i>{{ dirtyKeys.length ? $t(':n unsaved', { n: dirtyKeys.length }) : (counts.pending ? $t(':n waiting to be confirmed', { n: counts.pending }) : $t('Nothing waiting')) }}</span>
+        <button type="button" class="lg-btn lg-btn-primary" :disabled="!dirtyKeys.length || busy" @click="saveDraft()"><icons name="edit" class="w-4 h-4" /><span>{{ $t('Save Draft') }}</span></button>
+        <button type="button" class="lg-btn lg-btn-green" :disabled="busy || (!counts.pending && !dirtyKeys.length)" @click="openConfirm"><icons name="tick" class="w-4 h-4" /><span>{{ $t('Confirm Mapping') }}</span></button>
+        <button type="button" class="lg-icon-btn" :aria-label="$t('Print')" @click="printList"><icons name="printer" class="w-4 h-4" /></button>
+        <button type="button" class="lg-icon-btn pm-float-top" :aria-label="$t('Back to the top')" @click="toTop"><icons name="chevron-down" class="w-4 h-4" style="transform: rotate(180deg)" /></button>
+      </div>
+    </transition>
 
     <div v-if="tip" class="pm-tipbox sc-ui" :style="tip.style" role="tooltip">
       <b>{{ tip.row.excel_name }}</b>
@@ -183,7 +198,7 @@ export default {
   data() {
     return {
       sk: '', sd: 'asc', creating: null, cf: {}, cerrors: {}, createProblem: '',
-      q: '', filter: 'all', choice: {}, busy: false, notice: '', problem: '', tip: null,
+      q: '', filter: 'all', choice: {}, busy: false, notice: '', problem: '', tip: null, headOut: false, headObs: null,
       uploading: false, files: [], reading: false, uploadError: '', preview: null, pfilter: 'all',
       confirming: false, password: '', confirmError: '', done: null,
     };
@@ -216,11 +231,26 @@ export default {
     },
     previewShown() { return this.preview.rows.filter(p => this.pfilter === 'all' || p.status === this.pfilter); },
   },
+  mounted() {
+    // the header buttons are watched: when they scroll out of sight the floating bar takes over
+    try {
+      if (this.$refs.headBar && 'IntersectionObserver' in window) {
+        this.headObs = new IntersectionObserver(([e]) => { this.headOut = !e.isIntersecting && e.boundingClientRect.top < 0; }, { threshold: 0 });
+        this.headObs.observe(this.$refs.headBar);
+      }
+    } catch (e) { /* the header buttons still work */ }
+  },
+  beforeUnmount() { if (this.headObs) this.headObs.disconnect(); },
   watch: {
     rows: { handler() { this.initChoice(); }, immediate: true },
     files(v) { if (v.length) this.readFile(v[0]); else { this.preview = null; this.uploadError = ''; } },
   },
   methods: {
+    // the table as it is: the same filter, search and sort as on the screen (saved choices only)
+    listQuery() { return { filter: this.filter, q: this.q.trim(), sk: this.sk || undefined, sd: this.sk ? this.sd : undefined }; },
+    printList() { window.open(route('subcontracts.project-mapping.print', this.listQuery()), '_blank'); },
+    pdfList() { window.location.href = route('subcontracts.project-mapping.pdf', this.listQuery()); },
+    toTop() { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } },
     // click once: ascending; again: descending; again: the usual order
     sortBy(col) { if (this.sk !== col) { this.sk = col; this.sd = 'asc'; } else if (this.sd === 'asc') { this.sd = 'desc'; } else { this.sk = ''; this.sd = 'asc'; } },
     cerr(k) { return (this.cerrors[k] || [])[0] || ''; },
