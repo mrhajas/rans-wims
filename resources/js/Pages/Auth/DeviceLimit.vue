@@ -33,9 +33,9 @@
       </ul>
 
       <div class="dl-actions">
-        <button type="button" class="dl-btn is-main" :disabled="busy || !devices.length" @click="signOutOthers"><icons name="out" class="w-4 h-4" /><span>{{ $t('Sign out all other devices and continue') }}</span></button>
+        <button type="button" class="dl-btn is-main" :disabled="busy || !devices.length" @click="signOutOthers"><icons name="out" class="w-4 h-4" /><span>{{ $t('Sign Out Other Devices') }}</span></button>
         <button v-if="!devices.length" type="button" class="dl-btn is-main" @click="go"><icons name="tick" class="w-4 h-4" /><span>{{ $t('Continue') }}</span></button>
-        <button type="button" class="dl-btn" :disabled="busy" @click="signOutAll"><icons name="lock-closed" class="w-4 h-4" /><span>{{ $t('Sign out of every device, including this one') }}</span></button>
+        <button type="button" class="dl-btn" :disabled="busy" @click="signOutAll"><icons name="lock-closed" class="w-4 h-4" /><span>{{ $t('Sign Out All Devices') }}</span></button>
         <button type="button" class="dl-link" :disabled="busy" @click="logout">{{ $t('Not now, log out here') }}</button>
       </div>
       <p class="dl-foot">{{ $t('A device that used "Remember me" signs itself in again unless you sign out of every device.') }}</p>

@@ -66,8 +66,8 @@
     <div class="pf-foot" style="justify-content: space-between">
       <tec-action-message :on="form.recentlySuccessful" class="text-sm font-semibold text-emerald-600">{{ $t('Done.') }}</tec-action-message>
       <div class="ses-btns">
-        <button type="button" class="lg-btn lg-btn-dark" @click="confirmLogout"><icons name="out" class="w-4 h-4" />{{ $t('Log Out Other Browser Sessions') }}</button>
-        <button type="button" class="lg-btn lg-btn-soft" :disabled="working" @click="signOutAll"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Sign out of every device') }}</button>
+        <button type="button" class="lg-btn lg-btn-dark" @click="confirmLogout"><icons name="out" class="w-4 h-4" />{{ $t('Sign Out Other Devices') }}</button>
+        <button type="button" class="lg-btn lg-btn-soft" :disabled="working" @click="signOutAll"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Sign Out All Devices') }}</button>
       </div>
     </div>
 
@@ -76,7 +76,7 @@
       <template #title>
         <div class="flex items-center gap-3">
           <span class="lg-card-ico lg-ico-slate"><icons name="out" class="w-5 h-5" /></span>
-          <div class="lg-card-title">{{ $t('Log Out Other Browser Sessions') }}</div>
+          <div class="lg-card-title">{{ $t('Sign Out Other Devices') }}</div>
         </div>
       </template>
 
@@ -105,7 +105,7 @@
         <div class="flex items-center justify-end gap-2">
           <button type="button" class="lg-btn lg-btn-soft" @click="closeModal">{{ $t('Cancel') }}</button>
           <button type="button" class="lg-btn lg-btn-dark" :disabled="form.processing" @click="logoutOtherBrowserSessions">
-            <icons :name="form.processing ? 'refresh' : 'out'" class="w-4 h-4" :class="{ 'animate-spin': form.processing }" />{{ $t('Log Out Other Browser Sessions') }}
+            <icons :name="form.processing ? 'refresh' : 'out'" class="w-4 h-4" :class="{ 'animate-spin': form.processing }" />{{ $t('Sign Out Other Devices') }}
           </button>
         </div>
       </template>
@@ -164,7 +164,7 @@ export default {
     },
 
     signOutAll() {
-      if (!window.confirm(this.$t('Sign out of every device, this one too?'))) return;
+      if (!window.confirm(this.$t('Sign out of all devices, this one too?'))) return;
       this.working = true;
       this.$inertia.post(route('device-limit.sign-out-all'), {}, { onFinish: () => (this.working = false) });
     },
