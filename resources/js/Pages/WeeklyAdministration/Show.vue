@@ -176,7 +176,7 @@ export default {
     stages() {
       const d = this.d; const order = ['Requested', 'Approved', 'Authorized']; const at = order.indexOf(d.status);
       const dead = d.status === 'Rejected' || d.status === 'Cancelled';
-      const mk = (key, label, icon, who, when, i) => ({ key, label, icon, who, at: when, cls: dead ? (i === 0 ? 'is-done' : '') : (i < at ? 'is-done' : i === at ? (key === 'Authorized' ? 'is-done' : 'is-now') : '') });
+      const mk = (key, label, icon, who, when, i) => ({ key, label, icon, who, at: when, cls: dead ? (i === 0 ? 'is-done' : '') : (i <= at ? 'is-done' : i === at + 1 ? 'is-now' : '') }); // a stage the document has reached is done; the next one is the one it waits for
       const s = [mk('Requested', this.$t('Requested'), 'doc-text', d.beneficiary, this.$date(d.doc_date), 0), mk('Approved', this.$t('Approved'), 'tick', d.approved_by, d.approved_at, 1), mk('Authorized', this.$t('Authorized'), 'check-double', d.authorized_by, d.authorized_at, 2)];
       if (dead) { const i = d.status === 'Rejected' ? (d.approved_by ? 2 : 1) : 1; s[i].cls = 'is-bad'; s[i].who = d.status === 'Rejected' ? this.$t('Rejected') : this.$t('Cancelled'); s[i].at = d.status === 'Rejected' ? d.rejected_by : ''; s[i].icon = 'cross'; }
       if (d.status === 'Authorized') s[2].cls = 'is-done';
