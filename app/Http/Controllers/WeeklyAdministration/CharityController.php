@@ -17,6 +17,14 @@ class CharityController extends Controller
         $this->setAbilities([]);
     }
 
+    /** A query value as plain text: an array (?search[]=x) or anything else odd becomes empty instead of an error. */
+    private function qs(Request $r, string $k): string
+    {
+        $v = $r->query($k, '');
+
+        return is_string($v) ? trim($v) : '';
+    }
+
     private function manage(): void
     {
         abort_unless(auth()->user()->can('manage-administration-charity'), 403);
@@ -25,10 +33,13 @@ class CharityController extends Controller
     public function index(Request $request)
     {
         abort_unless($request->user()->can('read-administration-charity'), 403);
-        $f = ['search' => trim((string) $request->query('search', '')), 'view' => in_array($request->query('view'), ['active', 'inactive'], true) ? $request->query('view') : '', 'hq' => trim((string) $request->query('hq', ''))];
+        $f = ['search' => $this->qs($request, 'search'), 'view' => in_array($this->qs($request, 'view'), ['active', 'inactive'], true) ? $this->qs($request, 'view') : '', 'hq' => $this->qs($request, 'hq')];
         $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $f['search']) . '%';
-        $paid = DB::table('admin_document_charities as c')->join('admin_documents as d', 'd.id', '=', 'c.admin_document_id')->whereNull('c.deleted_at')->whereNull('d.deleted_at')->where('d.include_charity', true)->where('d.status', AdminDocument::AUTHORIZED)
-            ->whereNotNull('c.admin_charity_person_id')->groupBy('c.admin_charity_person_id')->selectRaw('c.admin_charity_person_id pid, COUNT(*) n, SUM(c.amount) total, MAX(d.doc_date) last_on')->get()->keyBy('pid');
+        // what has really been PAID to each person (payments marked paid, or paid through a voucher)
+        $paid = DB::table('admin_document_payment_lines as pl')->join('admin_document_payments as p', 'p.id', '=', 'pl.admin_document_payment_id')->join('admin_document_charities as c', function ($j) {
+            $j->on('c.id', '=', 'pl.line_id')->where('pl.line_type', '=', 'charity');
+        })->whereNull('pl.deleted_at')->whereNull('p.deleted_at')->whereNull('c.deleted_at')->where('p.status', 'Paid')->whereNotNull('c.admin_charity_person_id')
+            ->groupBy('c.admin_charity_person_id')->selectRaw('c.admin_charity_person_id pid, COUNT(DISTINCT p.id) n, SUM(pl.amount) total, MAX(p.paid_on) last_on')->get()->keyBy('pid');
         $rows = AdminCharityPerson::query()->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', $like)->orWhere('phone', 'like', $like)->orWhere('notes', 'like', $like)))
             ->when($f['hq'] !== '', fn ($q) => $q->where('hq', $f['hq']))
             ->when($f['view'] === 'active', fn ($q) => $q->where('is_active', true))->when($f['view'] === 'inactive', fn ($q) => $q->where('is_active', false))

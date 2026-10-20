@@ -112,6 +112,9 @@ return new class extends Migration
         if (Schema::hasColumn('payment_voucher_items', 'admin_document_payment_id')) {
             Schema::table('payment_voucher_items', fn (Blueprint $t) => $t->dropColumn('admin_document_payment_id'));
         }
+        if (Schema::hasTable('payment_voucher_types')) {
+            DB::table('payment_voucher_types')->where('text', 'Weekly Administration')->delete();
+        }
         Permission::query()->whereIn('name', ['mark-paid-weekly-administration', 'reverse-payments-weekly-administration', 'create-payment-voucher-from-administration'])->delete();
         if (Schema::hasTable('system_features')) {
             DB::table('system_features')->where('key', 'administration_payments')->delete();

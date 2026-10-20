@@ -17,6 +17,9 @@ class AdminReports
 {
     public const LIMIT = 5000;
 
+    /** How many rows the report being built may hold: the screen and the PDF stop at LIMIT, an Excel / CSV export goes further. Set by build(). */
+    private static int $cap = self::LIMIT;
+
     private const MONEY = ['by_hq', 'by_category', 'category_monthly', 'by_staff', 'by_item', 'item_monthly', 'lines', 'by_month', 'by_beneficiary', 'charity', 'charity_people', 'payments'];
 
     public static function fmt($v): string
@@ -29,15 +32,15 @@ class AdminReports
         $common = ['hq', 'from', 'to', 'status'];
 
         return [
-            ['key' => 'register', 'title' => __('Document register'), 'about' => __('Every weekly document in the period: date, who requested it, the three stages, its lines, the charity section and the total.'), 'filters' => array_merge(['search', 'user_id', 'category', 'staff_id', 'charity', 'pay'], $common, ['amount_min', 'amount_max'])],
+            ['key' => 'register', 'title' => __('Document register'), 'about' => __('Every weekly document in the period: date, who requested it, the three stages, its lines, the charity section and the total.'), 'filters' => array_merge(['search', 'user_id', 'category', 'person', 'charity', 'pay'], $common, ['amount_min', 'amount_max'])],
             ['key' => 'payments', 'title' => __('Payments made'), 'about' => __('Every payment on the documents: when, to whom (user or staff), how much, the method, the reference and the Payment Voucher. Choose the status of the payment, the period or the person paid.'), 'filters' => ['hq', 'search', 'from', 'to', 'pstatus']],
             ['key' => 'by_hq', 'title' => __('Totals by headquarters'), 'about' => __('Each headquarters (Unguja HQ, Pemba HQ...) with its documents, lines, charity, total and what is paid.'), 'filters' => array_merge(['category'], ['from', 'to', 'status'])],
-            ['key' => 'by_category', 'title' => __('Expenses by category'), 'about' => __('Each category (Fuel, Cleaning, Allowance...) with how many times it was paid, how much and its share of the total. Choose a staff member to see only what was paid for them.'), 'filters' => array_merge(['category', 'staff_id', 'beneficiary', 'section'], $common)],
-            ['key' => 'category_monthly', 'title' => __('Category expenses month by month'), 'about' => __('Each category as a row and each month as a column: for example what fuel cost every month. Filter by staff member and dates.'), 'filters' => array_merge(['category', 'staff_id'], $common)],
-            ['key' => 'by_staff', 'title' => __('Expenses by staff member'), 'about' => __('Each staff member linked to the items, by category: for example the fuel of one person. Choose a category and / or a staff member.'), 'filters' => array_merge(['category', 'staff_id', 'item_id'], $common)],
-            ['key' => 'by_item', 'title' => __('Expenses by item'), 'about' => __('Each item with how many times it was paid and how much, in the period. Choose one item to see only that item.'), 'filters' => array_merge(['search', 'item_id', 'category', 'staff_id', 'beneficiary', 'section'], $common)],
-            ['key' => 'item_monthly', 'title' => __('Item expenses month by month'), 'about' => __('Each item as a row and each month as a column, with the total: see what an item cost every month, or between two dates.'), 'filters' => array_merge(['search', 'item_id', 'category', 'staff_id', 'beneficiary'], $common)],
-            ['key' => 'lines', 'title' => __('Every line (detail)'), 'about' => __('Every line of every document, one row each: date, document, item, beneficiary and amount.'), 'filters' => array_merge(['search', 'item_id', 'category', 'staff_id', 'beneficiary', 'section', 'amount_min', 'amount_max'], $common)],
+            ['key' => 'by_category', 'title' => __('Expenses by category'), 'about' => __('Each category (Fuel, Cleaning, Allowance...) with how many times it was paid, how much and its share of the total. Choose a staff member or contact to see only what was paid for them.'), 'filters' => array_merge(['category', 'person', 'beneficiary', 'section'], $common)],
+            ['key' => 'category_monthly', 'title' => __('Category expenses month by month'), 'about' => __('Each category as a row and each month as a column: for example what fuel cost every month. Filter by staff member or contact and dates.'), 'filters' => array_merge(['category', 'person'], $common)],
+            ['key' => 'by_staff', 'title' => __('Expenses by staff / contact'), 'about' => __('Each staff member or contact linked to the items, by category: for example the fuel of one person. Choose a category and / or a staff member or contact.'), 'filters' => array_merge(['category', 'person', 'item_id'], $common)],
+            ['key' => 'by_item', 'title' => __('Expenses by item'), 'about' => __('Each item with how many times it was paid and how much, in the period. Choose one item to see only that item.'), 'filters' => array_merge(['search', 'item_id', 'category', 'person', 'beneficiary', 'section'], $common)],
+            ['key' => 'item_monthly', 'title' => __('Item expenses month by month'), 'about' => __('Each item as a row and each month as a column, with the total: see what an item cost every month, or between two dates.'), 'filters' => array_merge(['search', 'item_id', 'category', 'person', 'beneficiary'], $common)],
+            ['key' => 'lines', 'title' => __('Every line (detail)'), 'about' => __('Every line of every document, one row each: date, document, item, beneficiary and amount.'), 'filters' => array_merge(['search', 'item_id', 'category', 'person', 'beneficiary', 'section', 'amount_min', 'amount_max'], $common)],
             ['key' => 'by_month', 'title' => __('Totals by month'), 'about' => __('Each month with the number of documents, the lines, the charity and the total.'), 'filters' => array_merge(['user_id', 'charity'], $common)],
             ['key' => 'by_beneficiary', 'title' => __('By beneficiary'), 'about' => __('Each beneficiary with their number of lines and the total, from the Beneficiary column of the documents.'), 'filters' => array_merge(['search', 'item_id', 'beneficiary'], $common)],
             ['key' => 'charity', 'title' => __('Charity paid (detail)'), 'about' => __('Every charity line of the documents: who received it, for which month, the document and the amount.'), 'filters' => array_merge(['search', 'beneficiary'], $common)],
@@ -52,6 +55,7 @@ class AdminReports
 
     public static function build(User $user, string $type, array $f, int $limit = self::LIMIT): array
     {
+        self::$cap = $limit;
         $f = self::normalize($f, $type);
         [$cols, $rows, $title, $about, $tiles] = match ($type) {
             'payments' => self::payments($f, $user),
@@ -92,11 +96,18 @@ class AdminReports
 
     private static function normalize(array $f, string $type): array
     {
+        $f = array_map(fn ($v) => is_array($v) ? '' : $v, $f); // ?search[]=x is no filter
         $date = fn ($v) => ! empty($v) && strtotime($v) ? date('Y-m-d', strtotime($v)) : null;
         $status = in_array($f['status'] ?? '', array_merge(AdminDocument::STATUSES, ['open']), true) ? $f['status'] : null;
         $given = $status !== null;
         if ($status === null && in_array($type, self::MONEY, true)) {
             $status = AdminDocument::AUTHORIZED;
+        }
+        // the staff member / contact: the combined dropdown value ("s:5" staff, "c:7" contact) or a plain staff_id / contact_id (staff wins)
+        $pid = AdminCategories::parsePerson((string) ($f['person'] ?? ''));
+        if (! $pid['staff_id'] && ! $pid['contact_id']) {
+            $pid['staff_id'] = ctype_digit((string) ($f['staff_id'] ?? '')) && ($f['staff_id'] ?? '') !== '' ? (int) $f['staff_id'] : null;
+            $pid['contact_id'] = $pid['staff_id'] || ! ctype_digit((string) ($f['contact_id'] ?? '')) || ($f['contact_id'] ?? '') === '' ? null : (int) $f['contact_id'];
         }
         $num = fn ($v) => isset($v) && $v !== '' && is_numeric($v) ? (float) $v : null;
 
@@ -104,7 +115,7 @@ class AdminReports
             'item_id' => ctype_digit((string) ($f['item_id'] ?? '')) && ($f['item_id'] ?? '') !== '' ? (int) $f['item_id'] : null, 'user_id' => ctype_digit((string) ($f['user_id'] ?? '')) && ($f['user_id'] ?? '') !== '' ? (int) $f['user_id'] : null,
             'beneficiary' => mb_substr(trim((string) ($f['beneficiary'] ?? '')), 0, 100), 'hq' => mb_substr(trim((string) ($f['hq'] ?? '')), 0, 60), 'section' => in_array($f['section'] ?? '', ['items', 'charity'], true) ? $f['section'] : null,
             'charity' => in_array($f['charity'] ?? '', ['1', '0'], true) ? (string) $f['charity'] : null, 'amount_min' => $num($f['amount_min'] ?? null), 'amount_max' => $num($f['amount_max'] ?? null),
-            'category' => mb_substr(trim((string) ($f['category'] ?? '')), 0, 60), 'staff_id' => ctype_digit((string) ($f['staff_id'] ?? '')) && ($f['staff_id'] ?? '') !== '' ? (int) $f['staff_id'] : null,
+            'category' => mb_substr(trim((string) ($f['category'] ?? '')), 0, 60), 'staff_id' => $pid['staff_id'], 'contact_id' => $pid['contact_id'], 'has_person' => (bool) ($pid['staff_id'] || $pid['contact_id']),
             'pay' => in_array($f['pay'] ?? '', ['Unpaid', 'Partially Paid', 'Paid'], true) ? $f['pay'] : null, 'pstatus' => in_array($f['pstatus'] ?? '', \App\Models\AdminDocumentPayment::STATUSES, true) ? $f['pstatus'] : null];
     }
 
@@ -132,7 +143,9 @@ class AdminReports
             $o[__('Category')] = $f['category'];
         }
         if ($f['staff_id']) {
-            $o[__('Staff member')] = optional(\App\Models\Staff::withTrashed()->find($f['staff_id']))->name ?? '#' . $f['staff_id'];
+            $o[__('Staff / Contact')] = optional(\App\Models\Staff::withTrashed()->find($f['staff_id']))->name ?? '#' . $f['staff_id'];
+        } elseif ($f['contact_id']) {
+            $o[__('Staff / Contact')] = optional(\App\Models\Contact::find($f['contact_id']))->name ?? '#' . $f['contact_id'];
         }
         if ($f['section']) {
             $o[__('Section')] = $f['section'] === 'items' ? __('Administration only') : __('Charity only');
@@ -173,9 +186,9 @@ class AdminReports
             ->when($f['user_id'], fn ($q, $v) => $q->where(fn ($w) => $w->where('beneficiary_user_id', $v)->orWhere('user_id', $v)))
             ->when($f['charity'] !== null, fn ($q) => $q->where('include_charity', $f['charity'] === '1'))
             ->when($f['hq'] !== '', fn ($q) => $q->where('hq', $f['hq']))
-            ->when($f['category'] !== '' || $f['staff_id'], fn ($q) => $q->where(function ($w) use ($f) {
-                $w->whereHas('lines', fn ($l) => $l->when($f['category'] !== '', fn ($x) => $x->where('category', $f['category']))->when($f['staff_id'], fn ($x, $v) => $x->where('staff_id', $v)));
-                if (mb_strtolower($f['category']) === 'charity' && ! $f['staff_id']) {
+            ->when($f['category'] !== '' || $f['has_person'], fn ($q) => $q->where(function ($w) use ($f) {
+                $w->whereHas('lines', fn ($l) => $l->when($f['category'] !== '', fn ($x) => $x->where('category', $f['category']))->when($f['staff_id'], fn ($x, $v) => $x->where('staff_id', $v))->when($f['contact_id'], fn ($x, $v) => $x->where('contact_id', $v)));
+                if (mb_strtolower($f['category']) === 'charity' && ! $f['has_person']) {
                     $w->orWhere('include_charity', true);
                 }
             }))
@@ -184,10 +197,10 @@ class AdminReports
 
     private static function lineQuery(array $f, User $user)
     {
-        return DB::table('admin_document_items as l')->join('admin_documents as d', 'd.id', '=', 'l.admin_document_id')->leftJoin('admin_items as i', 'i.id', '=', 'l.admin_item_id')->leftJoin('staffs as sf', 'sf.id', '=', 'l.staff_id')
+        return DB::table('admin_document_items as l')->join('admin_documents as d', 'd.id', '=', 'l.admin_document_id')->leftJoin('admin_items as i', 'i.id', '=', 'l.admin_item_id')->leftJoin('staffs as sf', 'sf.id', '=', 'l.staff_id')->leftJoin('contacts as ct', 'ct.id', '=', 'l.contact_id')
             ->whereNull('l.deleted_at')->whereIn('d.id', self::docs($f, $user)->select('admin_documents.id'))
             ->when($f['item_id'], fn ($q, $v) => $q->where('l.admin_item_id', $v))
-            ->when($f['category'] !== '', fn ($q) => $q->where('l.category', $f['category']))->when($f['staff_id'], fn ($q, $v) => $q->where('l.staff_id', $v))
+            ->when($f['category'] !== '', fn ($q) => $q->where('l.category', $f['category']))->when($f['staff_id'], fn ($q, $v) => $q->where('l.staff_id', $v))->when($f['contact_id'], fn ($q, $v) => $q->where('l.contact_id', $v))
             ->when($f['beneficiary'] !== '', fn ($q) => $q->where('l.beneficiary', 'like', self::like($f['beneficiary'])))
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('l.description', 'like', self::like($f['search']))->orWhere('l.beneficiary', 'like', self::like($f['search']))->orWhere('d.reference', 'like', self::like($f['search']))))
             ->when($f['amount_min'] !== null, fn ($q) => $q->where('l.amount', '>=', $f['amount_min']))->when($f['amount_max'] !== null, fn ($q) => $q->where('l.amount', '<=', $f['amount_max']));
@@ -197,7 +210,7 @@ class AdminReports
     {
         return DB::table('admin_document_charities as c')->join('admin_documents as d', 'd.id', '=', 'c.admin_document_id')
             ->whereNull('c.deleted_at')->where('d.include_charity', 1)->whereIn('d.id', self::docs($f, $user)->select('admin_documents.id'))
-            ->when($f['staff_id'] || ($f['category'] !== '' && mb_strtolower($f['category']) !== 'charity'), fn ($q) => $q->whereRaw('1 = 0')) // charity lines are the category Charity and are not linked to staff
+            ->when($f['has_person'] || ($f['category'] !== '' && mb_strtolower($f['category']) !== 'charity'), fn ($q) => $q->whereRaw('1 = 0')) // charity lines are the category Charity and are not linked to staff or contacts
             ->when($f['beneficiary'] !== '', fn ($q) => $q->where('c.name', 'like', self::like($f['beneficiary'])))
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('c.name', 'like', self::like($f['search']))->orWhere('c.description', 'like', self::like($f['search']))->orWhere('d.reference', 'like', self::like($f['search']))));
     }
@@ -225,7 +238,7 @@ class AdminReports
         $ds = self::docs($f, $user)
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', self::like($f['search']))->orWhere('beneficiary_name', 'like', self::like($f['search']))->orWhereHas('lines', fn ($l) => $l->where('description', 'like', self::like($f['search']))->orWhere('beneficiary', 'like', self::like($f['search'])))))
             ->when($f['amount_min'] !== null, fn ($q) => $q->where('total_amount', '>=', $f['amount_min']))->when($f['amount_max'] !== null, fn ($q) => $q->where('total_amount', '<=', $f['amount_max']))
-            ->with(['user:id,name', 'approvedBy:id,name', 'authorizedBy:id,name'])->withCount(['lines', 'charityLines'])->orderBy('doc_date')->orderBy('id')->limit(self::LIMIT + 1)->get();
+            ->with(['user:id,name', 'approvedBy:id,name', 'authorizedBy:id,name'])->withCount(['lines', 'charityLines'])->orderBy('doc_date')->orderBy('id')->limit(self::$cap + 1)->get();
         $rows = $ds->map(fn ($d) => ['doc_id' => $d->id, 'reference' => $d->reference, 'hq' => $d->hq, 'date' => $d->doc_date->toDateString(), 'requested_by' => $d->beneficiary_name, 'status' => __($d->status), 'lines' => $d->lines_count, 'charity_lines' => $d->include_charity ? $d->charity_lines_count : 0,
             'items' => (string) $d->items_total, 'charity' => (string) $d->charity_total, 'total' => (string) $d->total_amount, 'paid' => (string) $d->paid_total, 'balance' => (string) max(0, (float) $d->total_amount - (float) $d->paid_total), 'payment' => $d->status === AdminDocument::AUTHORIZED ? __($d->payment_status) : '', 'approved_by' => optional($d->approvedBy)->name, 'authorized_by' => optional($d->authorizedBy)->name, 'prepared_by' => optional($d->user)->name])->all();
         $cols = [['key' => 'reference', 'label' => __('Reference')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'date', 'label' => __('Date')], ['key' => 'requested_by', 'label' => __('Requested by')], ['key' => 'status', 'label' => __('Status')],
@@ -251,7 +264,7 @@ class AdminReports
         $cur = AdminDocument::currency();
         $rows = [];
         if ($f['section'] !== 'charity') {
-            $q = self::lineQuery($f, $user)->groupBy('l.admin_item_id', 'i.name')->selectRaw('l.admin_item_id, COALESCE(i.name, MAX(l.description)) name, MAX(l.category) cat, MAX(sf.name) person, COUNT(*) n, SUM(l.amount) total, MIN(d.doc_date) first_on, MAX(d.doc_date) last_on, MAX(l.amount) top')->orderByDesc('total')->get();
+            $q = self::lineQuery($f, $user)->groupBy('l.admin_item_id', 'i.name')->selectRaw('l.admin_item_id, COALESCE(i.name, MAX(l.description)) name, MAX(l.category) cat, MAX(COALESCE(sf.name, ct.name)) person, COUNT(*) n, SUM(l.amount) total, MIN(d.doc_date) first_on, MAX(d.doc_date) last_on, MAX(l.amount) top')->orderByDesc('total')->get();
             foreach ($q as $r) {
                 $rows[] = ['item' => $r->name, 'category' => $r->cat, 'staff' => $r->person, 'section' => __('Administration'), 'times' => (int) $r->n, 'total' => (string) $r->total, 'average' => (string) round(((float) $r->total) / max(1, (int) $r->n), 2), 'first' => $r->first_on, 'last' => $r->last_on];
             }
@@ -263,8 +276,8 @@ class AdminReports
             }
         }
         usort($rows, fn ($a, $b) => (float) $b['total'] <=> (float) $a['total']);
-        $cols = [['key' => 'item', 'label' => __('Item')], ['key' => 'category', 'label' => __('Category')], ['key' => 'staff', 'label' => __('Staff member')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'average', 'label' => __('Average'), 'type' => 'money'],
-            ['key' => 'first', 'label' => __('First paid')], ['key' => 'last', 'label' => __('Last paid')]];
+        $cols = [['key' => 'item', 'label' => __('Item')], ['key' => 'category', 'label' => __('Category')], ['key' => 'staff', 'label' => __('Staff / Contact')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'average', 'label' => __('Average'), 'type' => 'money'],
+            ['key' => 'first', 'label' => __('First date')], ['key' => 'last', 'label' => __('Last date')]];
 
         return [$cols, $rows, __('Expenses by item'), __('What each item cost in the period.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['total']), $rows)), $cur)]];
     }
@@ -274,7 +287,7 @@ class AdminReports
     {
         $cur = AdminDocument::currency();
         $q = self::lineQuery($f, $user)->groupBy('l.admin_item_id', 'i.name', DB::raw("DATE_FORMAT(d.doc_date, '%Y-%m')"))
-            ->selectRaw("l.admin_item_id, COALESCE(i.name, MAX(l.description)) name, MAX(l.category) cat, MAX(sf.name) person, DATE_FORMAT(d.doc_date, '%Y-%m') ym, SUM(l.amount) total")->get();
+            ->selectRaw("l.admin_item_id, COALESCE(i.name, MAX(l.description)) name, MAX(l.category) cat, MAX(COALESCE(sf.name, ct.name)) person, DATE_FORMAT(d.doc_date, '%Y-%m') ym, SUM(l.amount) total")->get();
         $months = $q->pluck('ym')->unique()->sort()->values();
         if ($f['from'] || $f['to']) {
             $a = Carbon::parse($f['from'] ?: ($months->first() ? $months->first() . '-01' : now()->toDateString()))->startOfMonth();
@@ -308,7 +321,7 @@ class AdminReports
             $rows[] = $row;
         }
         usort($rows, fn ($a, $b) => (float) $b['total'] <=> (float) $a['total']);
-        $cols = [['key' => 'item', 'label' => __('Item')], ['key' => 'category', 'label' => __('Category')], ['key' => 'staff', 'label' => __('Staff member')]];
+        $cols = [['key' => 'item', 'label' => __('Item')], ['key' => 'category', 'label' => __('Category')], ['key' => 'staff', 'label' => __('Staff / Contact')]];
         foreach ($months as $m) {
             $cols[] = ['key' => 'm_' . $m, 'label' => Carbon::parse($m . '-01')->translatedFormat('M Y'), 'type' => 'money'];
         }
@@ -330,17 +343,17 @@ class AdminReports
         $cur = AdminDocument::currency();
         $rows = [];
         if ($f['section'] !== 'charity') {
-            foreach (self::lineQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, COALESCE(i.name, l.description) item, l.description, l.beneficiary, l.category, sf.name person, l.amount')->orderBy('d.doc_date')->orderBy('d.id')->orderBy('l.sort_order')->limit(self::LIMIT + 1)->get() as $r) {
+            foreach (self::lineQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, COALESCE(i.name, l.description) item, l.description, l.beneficiary, l.category, COALESCE(sf.name, ct.name) person, l.amount')->orderBy('d.doc_date')->orderBy('d.id')->orderBy('l.sort_order')->limit(self::$cap + 1)->get() as $r) {
                 $rows[] = ['doc_id' => $r->doc_id, 'date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'requested_by' => $r->req, 'section' => __('Administration'), 'item' => $r->description, 'category' => $r->category, 'staff' => $r->person, 'beneficiary' => $r->beneficiary, 'amount' => (string) $r->amount];
             }
         }
         if ($f['section'] !== 'items' && ! $f['item_id'] && $f['amount_min'] === null && $f['amount_max'] === null) {
-            foreach (self::charityQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, c.description, c.name, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::LIMIT + 1)->get() as $r) {
+            foreach (self::charityQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, c.description, c.name, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::$cap + 1)->get() as $r) {
                 $rows[] = ['doc_id' => $r->doc_id, 'date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'requested_by' => $r->req, 'section' => __('Charity'), 'item' => $r->description, 'category' => 'Charity', 'staff' => null, 'beneficiary' => $r->name, 'amount' => (string) $r->amount];
             }
         }
         usort($rows, fn ($a, $b) => strcmp($a['date'] . $a['reference'], $b['date'] . $b['reference']));
-        $cols = [['key' => 'date', 'label' => __('Date')], ['key' => 'reference', 'label' => __('Document')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'status', 'label' => __('Status')], ['key' => 'item', 'label' => __('Description')], ['key' => 'category', 'label' => __('Category')], ['key' => 'staff', 'label' => __('Staff member')],
+        $cols = [['key' => 'date', 'label' => __('Date')], ['key' => 'reference', 'label' => __('Document')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'status', 'label' => __('Status')], ['key' => 'item', 'label' => __('Description')], ['key' => 'category', 'label' => __('Category')], ['key' => 'staff', 'label' => __('Staff / Contact')],
             ['key' => 'beneficiary', 'label' => __('Beneficiary')], ['key' => 'requested_by', 'label' => __('Requested by')], ['key' => 'amount', 'label' => __('Amount'), 'type' => 'money']];
 
         return [$cols, $rows, __('Every line (detail)'), __('Every line of the documents.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['amount']), $rows)), $cur)]];
@@ -365,7 +378,7 @@ class AdminReports
         $cur = AdminDocument::currency();
         $q = self::lineQuery($f, $user)->selectRaw("COALESCE(NULLIF(l.beneficiary, ''), d.beneficiary_name) who, COUNT(*) n, SUM(l.amount) total, MAX(d.doc_date) last_on")->groupBy('who')->orderByDesc('total')->get();
         $rows = $q->map(fn ($r) => ['beneficiary' => $r->who ?: __('Not named'), 'lines' => (int) $r->n, 'total' => (string) $r->total, 'last' => $r->last_on])->all();
-        $cols = [['key' => 'beneficiary', 'label' => __('Beneficiary')], ['key' => 'lines', 'label' => __('Lines'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'last', 'label' => __('Last paid')]];
+        $cols = [['key' => 'beneficiary', 'label' => __('Beneficiary')], ['key' => 'lines', 'label' => __('Lines'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'last', 'label' => __('Last date')]];
 
         return [$cols, $rows, __('By beneficiary'), __('Each beneficiary.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['total']), $rows)), $cur)]];
     }
@@ -373,10 +386,10 @@ class AdminReports
     private static function charity(array $f, User $user): array
     {
         $cur = AdminDocument::currency();
-        $rows = self::charityQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, c.name, c.description, c.monthly_amount, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::LIMIT + 1)->get()
+        $rows = self::charityQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, c.name, c.description, c.monthly_amount, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::$cap + 1)->get()
             ->map(fn ($r) => ['doc_id' => $r->doc_id, 'date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'name' => $r->name, 'description' => $r->description, 'monthly' => (string) $r->monthly_amount, 'amount' => (string) $r->amount])->all();
         $cols = [['key' => 'date', 'label' => __('Date')], ['key' => 'reference', 'label' => __('Document')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'status', 'label' => __('Status')], ['key' => 'name', 'label' => __('Person / place')], ['key' => 'description', 'label' => __('Description')],
-            ['key' => 'monthly', 'label' => __('Monthly amount'), 'type' => 'money'], ['key' => 'amount', 'label' => __('Paid'), 'type' => 'money']];
+            ['key' => 'monthly', 'label' => __('Monthly amount'), 'type' => 'money'], ['key' => 'amount', 'label' => __('Amount'), 'type' => 'money']];
 
         return [$cols, $rows, __('Charity paid (detail)'), __('Every charity line.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['amount']), $rows)), $cur)]];
     }
@@ -386,8 +399,8 @@ class AdminReports
         $cur = AdminDocument::currency();
         $rows = self::charityQuery($f, $user)->groupBy('c.name')->selectRaw('c.name, COUNT(*) n, SUM(c.amount) total, MAX(c.monthly_amount) monthly, MIN(d.doc_date) first_on, MAX(d.doc_date) last_on')->orderByDesc('total')->get()
             ->map(fn ($r) => ['name' => $r->name, 'times' => (int) $r->n, 'monthly' => (string) $r->monthly, 'total' => (string) $r->total, 'first' => $r->first_on, 'last' => $r->last_on])->all();
-        $cols = [['key' => 'name', 'label' => __('Person / place')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'monthly', 'label' => __('Monthly amount'), 'type' => 'money'], ['key' => 'total', 'label' => __('Total paid'), 'type' => 'money'],
-            ['key' => 'first', 'label' => __('First paid')], ['key' => 'last', 'label' => __('Last paid')]];
+        $cols = [['key' => 'name', 'label' => __('Person / place')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'monthly', 'label' => __('Monthly amount'), 'type' => 'money'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'],
+            ['key' => 'first', 'label' => __('First date')], ['key' => 'last', 'label' => __('Last date')]];
 
         return [$cols, $rows, __('Charity by person'), __('Each person or place.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['total']), $rows)), $cur)]];
     }
@@ -402,7 +415,7 @@ class AdminReports
             ->when($f['from'], fn ($w, $v) => $w->whereDate(DB::raw('COALESCE(p.paid_on, p.requested_on)'), '>=', $v))->when($f['to'], fn ($w, $v) => $w->whereDate(DB::raw('COALESCE(p.paid_on, p.requested_on)'), '<=', $v))
             ->when($f['search'] !== '', fn ($w) => $w->where(fn ($x) => $x->where('p.paid_to_name', 'like', self::like($f['search']))->orWhere('p.reference', 'like', self::like($f['search']))->orWhere('d.reference', 'like', self::like($f['search']))->orWhere('p.payment_reference', 'like', self::like($f['search']))->orWhere('v.pv_number', 'like', self::like($f['search']))))
             ->selectRaw('d.id doc_id, COALESCE(p.paid_on, p.requested_on) on_date, p.reference, d.reference doc, d.hq, p.paid_to_name, p.payee_type, p.total_amount, p.method, p.payment_reference, v.pv_number, p.status, p.source, u.name by_name, (select count(*) from admin_document_payment_lines l where l.admin_document_payment_id = p.id and l.deleted_at is null) n')
-            ->orderBy('on_date')->orderBy('p.id')->limit(self::LIMIT + 1)->get();
+            ->orderBy('on_date')->orderBy('p.id')->limit(self::$cap + 1)->get();
         $rows = $q->map(fn ($r) => ['doc_id' => $r->doc_id, 'date' => $r->on_date, 'payment' => $r->reference, 'document' => $r->doc, 'hq' => $r->hq, 'paid_to' => $r->paid_to_name, 'type' => __(ucfirst((string) $r->payee_type)), 'lines' => (int) $r->n, 'amount' => (string) $r->total_amount, 'method' => $r->method,
             'reference' => $r->payment_reference, 'voucher' => $r->pv_number, 'how' => $r->source === 'voucher' ? __('Payment Voucher') : __('Marked paid'), 'status' => __($r->status), 'by' => $r->by_name])->all();
         $cols = [['key' => 'date', 'label' => __('Date')], ['key' => 'payment', 'label' => __('Payment')], ['key' => 'document', 'label' => __('Document')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'paid_to', 'label' => __('Paid to')], ['key' => 'type', 'label' => __('User / staff')], ['key' => 'lines', 'label' => __('Lines'), 'type' => 'num'],
@@ -414,7 +427,7 @@ class AdminReports
     /** The charity lines as pseudo-lines of the category Charity (only when the filters allow them): [['cat','ym','total'(cents)]]. */
     private static function charityAsCategory(array $f, User $user): array
     {
-        if ($f['section'] === 'items' || $f['staff_id'] || $f['item_id'] || ($f['category'] !== '' && mb_strtolower($f['category']) !== 'charity') || $f['amount_min'] !== null || $f['amount_max'] !== null) {
+        if ($f['section'] === 'items' || $f['has_person'] || $f['item_id'] || ($f['category'] !== '' && mb_strtolower($f['category']) !== 'charity') || $f['amount_min'] !== null || $f['amount_max'] !== null) {
             return [];
         }
 
@@ -426,12 +439,12 @@ class AdminReports
         $cur = AdminDocument::currency();
         $by = [];
         if ($f['section'] !== 'charity') {
-            foreach (self::lineQuery($f, $user)->selectRaw("COALESCE(l.category, 'Not categorised') cat, COUNT(*) n, SUM(l.amount) total, COUNT(DISTINCT l.staff_id) people, MIN(d.doc_date) first_on, MAX(d.doc_date) last_on")->groupBy('cat')->get() as $r) {
+            foreach (self::lineQuery($f, $user)->selectRaw("COALESCE(l.category, 'Not categorised') cat, COUNT(*) n, SUM(l.amount) total, COUNT(DISTINCT COALESCE(CONCAT('s', l.staff_id), CONCAT('c', l.contact_id))) people, MIN(d.doc_date) first_on, MAX(d.doc_date) last_on")->groupBy('cat')->get() as $r) {
                 $by[$r->cat] = ['n' => (int) $r->n, 'c' => self::cents($r->total), 'people' => (int) $r->people, 'first' => $r->first_on, 'last' => $r->last_on];
             }
         }
         foreach (self::charityQuery($f, $user)->selectRaw('COUNT(*) n, SUM(c.amount) total, MIN(d.doc_date) first_on, MAX(d.doc_date) last_on')->get() as $r) {
-            if ((int) $r->n > 0 && $f['section'] !== 'items' && ! $f['staff_id'] && ! $f['item_id']) {
+            if ((int) $r->n > 0 && $f['section'] !== 'items' && ! $f['has_person'] && ! $f['item_id']) {
                 $x = $by['Charity'] ?? ['n' => 0, 'c' => 0, 'people' => 0, 'first' => $r->first_on, 'last' => $r->last_on];
                 $by['Charity'] = ['n' => $x['n'] + (int) $r->n, 'c' => $x['c'] + self::cents($r->total), 'people' => $x['people'], 'first' => min($x['first'], $r->first_on), 'last' => max($x['last'], $r->last_on)];
             }
@@ -442,8 +455,8 @@ class AdminReports
         foreach ($by as $cat => $x) {
             $rows[] = ['category' => $cat, 'times' => $x['n'], 'people' => $x['people'], 'total' => self::money($x['c']), 'share' => $grand ? number_format($x['c'] * 100 / $grand, 1) . ' %' : '', 'first' => $x['first'], 'last' => $x['last']];
         }
-        $cols = [['key' => 'category', 'label' => __('Category')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'people', 'label' => __('Staff members'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'share', 'label' => __('Share'), 'type' => 'num'],
-            ['key' => 'first', 'label' => __('First paid')], ['key' => 'last', 'label' => __('Last paid')]];
+        $cols = [['key' => 'category', 'label' => __('Category')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'people', 'label' => __('Staff / Contacts'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'share', 'label' => __('Share'), 'type' => 'num'],
+            ['key' => 'first', 'label' => __('First date')], ['key' => 'last', 'label' => __('Last date')]];
 
         return [$cols, $rows, __('Expenses by category'), __('Each category.'), [self::tile(__('Total'), $grand, $cur), ['label' => __('Categories'), 'value' => count($rows)]]];
     }
@@ -510,18 +523,36 @@ class AdminReports
     private static function byStaff(array $f, User $user): array
     {
         $cur = AdminDocument::currency();
-        $q = self::lineQuery($f, $user)->whereNotNull('l.staff_id')->selectRaw("sf.name person, COALESCE(l.category, 'Not categorised') cat, COUNT(*) n, SUM(l.amount) total, MAX(d.doc_date) last_on")->groupBy('l.staff_id', 'sf.name', 'cat')->orderBy('person')->orderByDesc('total')->get();
-        $rows = $q->map(fn ($r) => ['staff' => $r->person, 'category' => $r->cat, 'times' => (int) $r->n, 'total' => (string) $r->total, 'last' => $r->last_on])->all();
-        $cols = [['key' => 'staff', 'label' => __('Staff member')], ['key' => 'category', 'label' => __('Category')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'last', 'label' => __('Last paid')]];
+        $q = self::lineQuery($f, $user)->where(fn ($w) => $w->whereNotNull('l.staff_id')->orWhereNotNull('l.contact_id'))->selectRaw("COALESCE(sf.name, ct.name) person, IF(l.staff_id IS NOT NULL, 'Staff', 'Contact') ptype, COALESCE(l.category, 'Not categorised') cat, COUNT(*) n, SUM(l.amount) total, MAX(d.doc_date) last_on")->groupBy('l.staff_id', 'l.contact_id', 'person', 'ptype', 'cat')->orderBy('person')->orderByDesc('total')->get();
+        $rows = $q->map(fn ($r) => ['staff' => $r->person, 'type' => __($r->ptype), 'category' => $r->cat, 'times' => (int) $r->n, 'total' => (string) $r->total, 'last' => $r->last_on])->all();
+        $cols = [['key' => 'staff', 'label' => __('Staff / Contact')], ['key' => 'type', 'label' => __('Type')], ['key' => 'category', 'label' => __('Category')], ['key' => 'times', 'label' => __('Times'), 'type' => 'num'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'last', 'label' => __('Last date')]];
 
-        return [$cols, $rows, __('Expenses by staff member'), __('Each staff member by category.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['total']), $rows)), $cur), ['label' => __('Staff members'), 'value' => count(array_unique(array_column($rows, 'staff')))]]];
+        return [$cols, $rows, __('Expenses by staff / contact'), __('Each staff member or contact by category.'), [self::tile(__('Total'), (int) array_sum(array_map(fn ($r) => self::cents($r['total']), $rows)), $cur), ['label' => __('Staff / Contacts'), 'value' => count(array_unique(array_column($rows, 'staff')))]]];
     }
 
     private static function byHq(array $f, User $user): array
     {
         $cur = AdminDocument::currency();
-        $docs = self::docs($f, $user)->selectRaw('hq, COUNT(*) n, SUM(items_total) i, SUM(charity_total) c, SUM(total_amount) t, SUM(paid_total) p')->groupBy('hq')->orderBy('hq')->get();
-        $rows = $docs->map(fn ($r) => ['hq' => $r->hq ?: __('Not set'), 'documents' => (int) $r->n, 'items' => (string) $r->i, 'charity' => (string) $r->c, 'total' => (string) $r->t, 'paid' => (string) $r->p, 'balance' => (string) max(0, (float) $r->t - (float) $r->p)])->all();
+        if ($f['category'] !== '' || $f['has_person']) {
+            // only what matches the category / staff member or contact counts, so the totals are the lines themselves and not the whole documents they are on
+            $by = [];
+            foreach (self::lineQuery($f, $user)->selectRaw('d.hq, COUNT(DISTINCT d.id) n, SUM(l.amount) t')->groupBy('d.hq')->get() as $r) {
+                $by[$r->hq ?: __('Not set')] = ['n' => (int) $r->n, 'i' => self::cents($r->t), 'c' => 0];
+            }
+            foreach (self::charityQuery($f, $user)->selectRaw('d.hq, SUM(c.amount) t')->groupBy('d.hq')->get() as $r) {
+                $k = $r->hq ?: __('Not set');
+                $by[$k] = ($by[$k] ?? ['n' => 0, 'i' => 0, 'c' => 0]);
+                $by[$k]['c'] += self::cents($r->t);
+            }
+            ksort($by);
+            $rows = [];
+            foreach ($by as $hq => $x) {
+                $rows[] = ['hq' => $hq, 'documents' => $x['n'], 'items' => self::money($x['i']), 'charity' => self::money($x['c']), 'total' => self::money($x['i'] + $x['c']), 'paid' => '', 'balance' => ''];
+            }
+        } else {
+            $docs = self::docs($f, $user)->selectRaw('hq, COUNT(*) n, SUM(items_total) i, SUM(charity_total) c, SUM(total_amount) t, SUM(paid_total) p')->groupBy('hq')->orderBy('hq')->get();
+            $rows = $docs->map(fn ($r) => ['hq' => $r->hq ?: __('Not set'), 'documents' => (int) $r->n, 'items' => (string) $r->i, 'charity' => (string) $r->c, 'total' => (string) $r->t, 'paid' => (string) $r->p, 'balance' => (string) max(0, (float) $r->t - (float) $r->p)])->all();
+        }
         $cols = [['key' => 'hq', 'label' => __('Headquarters')], ['key' => 'documents', 'label' => __('Documents'), 'type' => 'num'], ['key' => 'items', 'label' => __('Administration'), 'type' => 'money'], ['key' => 'charity', 'label' => __('Charity'), 'type' => 'money'],
             ['key' => 'total', 'label' => __('Total'), 'type' => 'money'], ['key' => 'paid', 'label' => __('Paid'), 'type' => 'money'], ['key' => 'balance', 'label' => __('Balance'), 'type' => 'money']];
 

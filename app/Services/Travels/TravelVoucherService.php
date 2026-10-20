@@ -118,9 +118,33 @@ class TravelVoucherService
         });
     }
 
+    /** A rejected voucher is sent again WITHOUT being edited: its payment holds its amount again, or the voucher is refused (so nothing is paid that the agent account does not know about). */
+    public static function resubmit(PaymentVoucher $voucher): void
+    {
+        if ($voucher->type !== self::VOUCHER_TYPE) {
+            return;
+        }
+        $p = TravelAgentPayment::query()->where('payment_voucher_id', $voucher->id)->whereIn('status', [TravelAgentPayment::PENDING_VOUCHER, TravelAgentPayment::RELEASED])->lockForUpdate()->first();
+        if (! $p) {
+            throw ValidationException::withMessages(['status' => __('This voucher is no longer linked to a travel agent payment, so it cannot be sent.')]);
+        }
+        if ($p->status !== TravelAgentPayment::RELEASED) {
+            return;
+        }
+        Contact::whereKey($p->contact_id)->lockForUpdate()->first();
+        if ((float) $p->amount > TravelLedger::available((int) $p->contact_id, $p->currency) + 0.001) {
+            throw ValidationException::withMessages(['items' => __('The agent no longer has this much available (:c :a), so the voucher cannot be sent again.', ['c' => $p->currency, 'a' => number_format(max(0, TravelLedger::available((int) $p->contact_id, $p->currency)), 2)])]);
+        }
+        $p->update(['status' => TravelAgentPayment::PENDING_VOUCHER, 'released_at' => null, 'release_reason' => null]);
+        log_activity(__('Payment Voucher sent again, travel agent payment reserved again.'), ['pv_number' => $voucher->pv_number, 'payment' => $p->reference, 'amount' => (string) $p->amount], $p, 'Travels');
+    }
+
     /** The voucher was marked paid: the payment is now real and reduces the balance. Call inside the paid transaction. */
     public static function markPaid(PaymentVoucher $voucher): void
     {
+        if (! TravelAgentPayment::query()->where('payment_voucher_id', $voucher->id)->pendingVoucher()->exists() && $voucher->type === self::VOUCHER_TYPE) {
+            throw ValidationException::withMessages(['payment_reference' => __('This voucher is not waiting on a travel agent payment (it was released). Make the payment again from the agent account before paying.')]);
+        }
         foreach (TravelAgentPayment::query()->where('payment_voucher_id', $voucher->id)->pendingVoucher()->get() as $p) {
             $p->update(['status' => TravelAgentPayment::PAID, 'paid_on' => $voucher->paid_at ? $voucher->paid_at->toDateString() : now()->toDateString(), 'method' => $voucher->payment_method,
                 'payment_reference' => $voucher->payment_reference ?: $voucher->pv_number, 'paid_by_user_id' => $voucher->paid_by_user_id]);

@@ -467,7 +467,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::get('/', [$dc, 'index'])->name('index');
         Route::get('create', [$dc, 'create'])->name('create');
         Route::post('/', [$dc, 'store'])->middleware('throttle:60,1,weekly-administration.store')->name('store');
-        Route::get('charity-pull', [$dc, 'charityPull'])->middleware('throttle:60,1,weekly-administration.charity-pull')->name('charity-pull');
+        Route::get('charity-pull', [$dc, 'charityPull'])->middleware('throttle:60,1,weekly-administration.charity.pull')->name('charity.pull');
         Route::get('settings', [$st, 'index'])->name('settings');
         Route::put('settings', [$st, 'update'])->middleware('throttle:30,1,weekly-administration.settings.update')->name('settings.update');
         Route::get('items', [$it, 'index'])->name('items.index');

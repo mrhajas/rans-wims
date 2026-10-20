@@ -51,6 +51,31 @@ class AdminCategories
         return 'Administration';
     }
 
+    /** "s:5" (a staff member) or "c:7" (a contact) from a dropdown into the two columns; anything else is nobody. */
+    public static function parsePerson(?string $v): array
+    {
+        if (preg_match('/^s:(\d+)$/', (string) $v, $m)) {
+            return ['staff_id' => (int) $m[1], 'contact_id' => null];
+        }
+        if (preg_match('/^c:(\d+)$/', (string) $v, $m)) {
+            return ['staff_id' => null, 'contact_id' => (int) $m[1]];
+        }
+
+        return ['staff_id' => null, 'contact_id' => null];
+    }
+
+    /** The one dropdown list of people: every staff member in a first section, every contact in a second (values "s:ID" / "c:ID"), each A to Z. */
+    public static function peopleOptions(bool $everyone = false): array
+    {
+        // filters and reports list every staff member (also those who left, their old lines are still there); forms only those on the payroll
+        $staff = \App\Models\Staff::query()->when(! $everyone, fn ($q) => $q->whereIn('status', \App\Models\Staff::PAYROLL_STATUSES))->orderBy('name')->get(['id', 'name'])
+            ->map(fn ($x) => ['value' => 's:' . $x->id, 'label' => $x->name, 'section' => __('Staff'), 'section_icon' => 'users', 'section_tone' => 'emerald']);
+        $contacts = \App\Models\Contact::query()->orderBy('name')->get(['id', 'name'])
+            ->map(fn ($x) => ['value' => 'c:' . $x->id, 'label' => $x->name, 'section' => __('Contacts'), 'section_icon' => 'group', 'section_tone' => 'amber']);
+
+        return $staff->concat($contacts)->values()->all();
+    }
+
     /** The staff member whose name is exactly this text (a person on the payroll), or null. */
     public static function staffByName(?string $name): ?Staff
     {

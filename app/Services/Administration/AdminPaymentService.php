@@ -134,17 +134,22 @@ class AdminPaymentService
                 }
             }
         } else {
+            // the same line sent twice is added up first, so two requests of 80 cannot both pass on a line with 100 left
+            $want = [];
             foreach ($given as $g) {
                 $k = (string) ($g['key'] ?? ($g['type'] ?? '') . ':' . ($g['id'] ?? ''));
                 $r = $table->get($k);
                 if (! $r) {
                     throw ValidationException::withMessages(['lines' => __('One of the chosen lines is not on this document.')]);
                 }
-                $left = self::cents($r['balance']);
-                $c = isset($g['amount']) && $g['amount'] !== '' && $g['amount'] !== null ? self::cents($g['amount']) : $left;
-                if ($c <= 0) {
-                    continue;
+                $c = isset($g['amount']) && $g['amount'] !== '' && $g['amount'] !== null ? self::cents($g['amount']) : self::cents($r['balance']);
+                if ($c > 0) {
+                    $want[$k] = ($want[$k] ?? 0) + $c;
                 }
+            }
+            foreach ($want as $k => $c) {
+                $r = $table->get($k);
+                $left = self::cents($r['balance']);
                 if ($c > $left) {
                     throw ValidationException::withMessages(['lines' => __('":d" has only :b left to pay.', ['d' => $r['description'], 'b' => number_format($left / 100, 2)])]);
                 }
@@ -156,6 +161,14 @@ class AdminPaymentService
         }
 
         return $out;
+    }
+
+    /** Payment Vouchers are in TZS only: a document in another currency can be marked paid directly but not sent to a voucher. */
+    private static function needTzs(AdminDocument $d): void
+    {
+        if (strtoupper((string) $d->currency) !== 'TZS') {
+            throw ValidationException::withMessages(['lines' => __('Payment Vouchers are in TZS. This document is in :c, so mark it paid directly instead.', ['c' => $d->currency])]);
+        }
     }
 
     private static function lockedAuthorized(int $id): AdminDocument
@@ -171,8 +184,8 @@ class AdminPaymentService
     private static function make(AdminDocument $d, array $alloc, array $payee, array $attrs, User $by): AdminDocumentPayment
     {
         $total = array_sum(array_column($alloc, 'cents'));
-        $p = ReferenceLock::run('admin_payments', fn () => AdminDocumentPayment::create($payee + $attrs + ['reference' => AdminDocumentPayment::nextReference(), 'admin_document_id' => $d->id, 'requested_on' => now()->toDateString(),
-            'total_amount' => self::money($total), 'user_id' => $by->id]));
+        $p = AdminDocumentPayment::create($payee + $attrs + ['reference' => AdminDocumentPayment::nextReference(), 'admin_document_id' => $d->id, 'requested_on' => now()->toDateString(),
+            'total_amount' => self::money($total), 'user_id' => $by->id]);
         foreach ($alloc as $a) {
             $p->lines()->create(['line_type' => $a['type'], 'line_id' => $a['id'], 'amount' => self::money($a['cents'])]);
         }
@@ -185,7 +198,7 @@ class AdminPaymentService
     {
         $payee = self::resolvePayee($payeeKey);
 
-        return DB::transaction(function () use ($document, $mode, $given, $payee, $meta, $by, $distribute) {
+        return ReferenceLock::run('admin_payments', fn () => DB::transaction(function () use ($document, $mode, $given, $payee, $meta, $by, $distribute) {
             $d = self::lockedAuthorized($document->id);
             $alloc = self::allocations($d, $mode, $given);
             $p = self::make($d, $alloc, $payee, ['status' => AdminDocumentPayment::PAID, 'source' => 'direct', 'paid_on' => $meta['paid_on'] ?? now()->toDateString(), 'method' => $meta['method'] ?? null,
@@ -194,7 +207,7 @@ class AdminPaymentService
             log_activity('Administration ' . $d->reference . ' payment ' . $p->reference . ' recorded', ['amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'lines' => count($alloc), 'mode' => $mode, 'payment_status' => $d->payment_status, 'method' => $p->method, 'distribute' => $distribute], $d, 'Administration');
 
             return $p->setRelation('document', $d);
-        });
+        }));
     }
 
     /** A Draft Payment Voucher is made for the chosen lines; the amount is reserved until the voucher is marked paid (then it becomes a real payment) or released. */
@@ -202,15 +215,16 @@ class AdminPaymentService
     {
         $payee = self::resolvePayee($payeeKey);
 
-        return PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($document, $mode, $given, $payee, $notes, $by, $distribute) {
+        return ReferenceLock::run('admin_payments', fn () => PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($document, $mode, $given, $payee, $notes, $by, $distribute) {
             $d = self::lockedAuthorized($document->id);
+            self::needTzs($d);
             $alloc = self::allocations($d, $mode, $given);
             $p = self::voucherPayment($d, $alloc, $payee, $notes, $by, null, $distribute);
             self::recalc($d);
             log_activity('Administration ' . $d->reference . ' sent to Payment Voucher ' . $p->voucher->pv_number, ['payment' => $p->reference, 'amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'lines' => count($alloc), 'distribute' => $distribute], $d, 'Administration');
 
             return $p->setRelation('document', $d);
-        }));
+        })));
     }
 
     /**
@@ -221,8 +235,9 @@ class AdminPaymentService
      */
     public static function requestBatch(AdminDocument $document, string $mode, array $given, ?string $notes, User $by): array
     {
-        return PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($document, $mode, $given, $notes, $by) {
+        return ReferenceLock::run('admin_payments', fn () => PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($document, $mode, $given, $notes, $by) {
             $d = self::lockedAuthorized($document->id);
+            self::needTzs($d);
             $alloc = self::allocations($d, $mode, $given);
             $groups = self::groupByBeneficiary($d, $alloc);
             $batch = PaymentVoucherNumbers::createBatch(['type' => self::VOUCHER_TYPE, 'payee_type' => PaymentVoucher::PAYEE_TYPE_EXTERNAL, 'voucher_date' => now()->toDateString(),
@@ -239,7 +254,7 @@ class AdminPaymentService
             }
 
             return [$batch, $made];
-        }));
+        })));
     }
 
     /** The allocations grouped by who each line is for: [['name' => ..., 'alloc' => [...]], ...] in the order they appear. */
@@ -322,10 +337,19 @@ class AdminPaymentService
 
     // ---------------------------------------------------------------------------------------------------- Payment Voucher hooks
 
-    /** The voucher was marked paid: its payment becomes real. Call inside the paid transaction. */
+    /** The voucher was marked paid: its payment becomes real. Call inside the paid transaction. A voucher of this module with no payment waiting on it is refused, so money never leaves unrecorded. */
     public static function markPaid(PaymentVoucher $voucher): void
     {
-        foreach (AdminDocumentPayment::query()->where('payment_voucher_id', $voucher->id)->pendingVoucher()->get() as $p) {
+        $waiting = AdminDocumentPayment::query()->where('payment_voucher_id', $voucher->id)->pendingVoucher()->get();
+        if ($waiting->isEmpty()) {
+            if ($voucher->type === self::VOUCHER_TYPE) {
+                throw ValidationException::withMessages(['payment_reference' => __('This voucher is not waiting on an Administration payment (it was released). Send its lines to a voucher again from the document before paying.')]);
+            }
+
+            return;
+        }
+        foreach ($waiting as $p) {
+            AdminDocument::withoutGlobalScopes()->whereKey($p->admin_document_id)->lockForUpdate()->first();
             $p->update(['status' => AdminDocumentPayment::PAID, 'paid_on' => $voucher->paid_at ? $voucher->paid_at->toDateString() : now()->toDateString(), 'method' => $voucher->payment_method,
                 'payment_reference' => $voucher->payment_reference ?: $voucher->pv_number, 'paid_by_user_id' => $voucher->paid_by_user_id]);
             $d = self::recalc(AdminDocument::withoutGlobalScopes()->findOrFail($p->admin_document_id));
@@ -338,11 +362,45 @@ class AdminPaymentService
     public static function release(PaymentVoucher $voucher, string $reason): void
     {
         AdminDocumentPayment::query()->where('payment_voucher_id', $voucher->id)->pendingVoucher()->get()->each(function ($p) use ($voucher, $reason) {
+            AdminDocument::withoutGlobalScopes()->whereKey($p->admin_document_id)->lockForUpdate()->first();
             $p->update(['status' => AdminDocumentPayment::RELEASED, 'released_at' => now(), 'release_reason' => $reason]);
             $d = self::recalc(AdminDocument::withoutGlobalScopes()->findOrFail($p->admin_document_id));
             log_activity('Administration ' . $d->reference . ' payment ' . $p->reference . ' released: ' . $reason . ' (voucher ' . $voucher->pv_number . ')', ['amount' => (string) $p->total_amount], $d, 'Administration');
             DB::afterCommit(fn () => AdminNotifier::firePayment('voucher_released', $d->fresh(), $p->fresh(), auth()->user(), (string) $reason));
         });
+    }
+
+    /** A rejected voucher is sent again WITHOUT being edited: its payment must hold its lines again, or the voucher is refused (nothing is paid that the document does not know about). */
+    public static function resubmit(PaymentVoucher $voucher): void
+    {
+        if ($voucher->type !== self::VOUCHER_TYPE) {
+            return;
+        }
+        $p = AdminDocumentPayment::query()->where('payment_voucher_id', $voucher->id)->whereIn('status', [AdminDocumentPayment::PENDING_VOUCHER, AdminDocumentPayment::RELEASED])->lockForUpdate()->first();
+        if (! $p) {
+            throw ValidationException::withMessages(['status' => __('This voucher is no longer linked to an Administration payment, so it cannot be sent.')]);
+        }
+        if ($p->status === AdminDocumentPayment::RELEASED) {
+            self::reserveAgain($p, $voucher);
+        }
+    }
+
+    /** Puts a released payment back on hold: the document must still be Authorized and every line must still have what the payment needs. */
+    private static function reserveAgain(AdminDocumentPayment $p, PaymentVoucher $voucher): void
+    {
+        $d = AdminDocument::withoutGlobalScopes()->whereKey($p->admin_document_id)->lockForUpdate()->firstOrFail();
+        if ($d->status !== AdminDocument::AUTHORIZED) {
+            throw ValidationException::withMessages(['items' => __('The Administration document :r is no longer authorized, so this voucher cannot be sent again.', ['r' => $d->reference])]);
+        }
+        $table = collect(self::lineTable($d))->keyBy('key');
+        foreach ($p->lines()->get() as $l) {
+            if (self::cents($table->get($l->line_type . ':' . $l->line_id)['balance'] ?? 0) < self::cents($l->amount)) {
+                throw ValidationException::withMessages(['items' => __('One of the lines of this voucher has been paid in the meantime, so the voucher cannot be sent again.')]);
+            }
+        }
+        $p->update(['status' => AdminDocumentPayment::PENDING_VOUCHER, 'released_at' => null, 'release_reason' => null]);
+        self::recalc($d);
+        log_activity('Administration ' . $d->reference . ' payment ' . $p->reference . ' reserved again (voucher ' . $voucher->pv_number . ' sent again)', ['amount' => (string) $p->total_amount], $d, 'Administration');
     }
 
     /**
@@ -358,17 +416,8 @@ class AdminPaymentService
         if (abs(round($total, 2) - (float) $p->total_amount) > 0.001) {
             throw ValidationException::withMessages(['items' => __('The amount of this voucher follows the lines of the Administration document (:a). To pay a different amount, make a new payment on the document.', ['a' => number_format((float) $p->total_amount, 2)])]);
         }
-        $d = AdminDocument::withoutGlobalScopes()->whereKey($p->admin_document_id)->lockForUpdate()->firstOrFail();
         if ($p->status === AdminDocumentPayment::RELEASED) {
-            $table = collect(self::lineTable($d))->keyBy('key');
-            foreach ($p->lines()->get() as $l) {
-                if (self::cents($table->get($l->line_type . ':' . $l->line_id)['balance'] ?? 0) < self::cents($l->amount)) {
-                    throw ValidationException::withMessages(['items' => __('One of the lines of this voucher has been paid in the meantime, so the voucher cannot be sent again.')]);
-                }
-            }
-            $p->update(['status' => AdminDocumentPayment::PENDING_VOUCHER, 'released_at' => null, 'release_reason' => null]);
-            self::recalc($d);
-            log_activity('Administration ' . $d->reference . ' payment ' . $p->reference . ' reserved again (voucher ' . $voucher->pv_number . ' edited)', ['amount' => (string) $p->total_amount], $d, 'Administration');
+            self::reserveAgain($p, $voucher);
         }
 
         return $p->id;

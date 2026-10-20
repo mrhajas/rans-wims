@@ -12,7 +12,7 @@
           <div v-if="uses('search')" class="ac-f"><label>{{ $t('Search') }}</label><input v-model="f.search" :placeholder="$t('Description, beneficiary, reference')" /></div>
           <div v-if="uses('item_id')" class="ac-f"><label>{{ $t('Item') }}</label><acct-select v-model="f.item_id" :options="items" :placeholder="$t('All items')" clearable /></div>
           <div v-if="uses('category')" class="ac-f"><label>{{ $t('Category') }}</label><acct-select v-model="f.category" :options="categories.map(c => ({ value: c, label: c }))" :placeholder="$t('All categories')" clearable /></div>
-          <div v-if="uses('staff_id')" class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="f.staff_id" :options="staffOptions" :placeholder="$t('All staff')" clearable /></div>
+          <div v-if="uses('person')" class="ac-f"><label>{{ $t('Staff / Contact') }}</label><acct-select v-model="f.person" :options="people" :placeholder="$t('Anyone')" clearable /></div>
           <div v-if="uses('beneficiary')" class="ac-f"><label>{{ $t('Beneficiary') }}</label><input v-model="f.beneficiary" :placeholder="$t('Part of the name')" /></div>
           <div v-if="uses('user_id')" class="ac-f"><label>{{ $t('Requested by') }}</label><acct-select v-model="f.user_id" :options="users" :placeholder="$t('Anyone')" clearable /></div>
           <div v-if="uses('section')" class="ac-f"><label>{{ $t('Section') }}</label><acct-select v-model="f.section" :options="sections" :placeholder="$t('Both')" clearable /></div>
@@ -65,7 +65,7 @@ const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOStri
 
 export default {
   components: { ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect },
-  props: { catalog: Array, type: String, filters: Object, statuses: Array, hqs: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, payStatuses: Array, paymentStatuses: Array, items: Array, users: Array, can: Object },
+  props: { catalog: Array, type: String, filters: Object, statuses: Array, hqs: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, people: { type: Array, default: () => [] }, payStatuses: Array, paymentStatuses: Array, items: Array, users: Array, can: Object },
   data() { return { t: this.type, report: null, loading: false, f: { ...this.filters }, timer: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {

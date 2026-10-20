@@ -228,7 +228,16 @@ export default {
 
   computed: {
     // sections apply only to a full project / warehouse list (Main Warehouses and Projects together) and can be switched off in Settings
+    // a list whose options carry their own `section` (for example Staff and Contacts) is shown in those sections, in the order they first appear
+    sectioned() {
+      const l = this.suggestions;
+      if (!this.group || !Array.isArray(l) || l.length < 2) return false;
+      if (!l.every(o => o !== null && typeof o === 'object' && typeof o.section === 'string' && o.section !== '')) return false;
+
+      return new Set(l.map(o => o.section)).size > 1;
+    },
     grouped() {
+      if (this.sectioned) return true;
       if (!this.group || !Array.isArray(this.suggestions)) return false;
       const page = this.$page && this.$page.props;
       if (page && page.groupedWarehouseLists === false) return false;
@@ -486,21 +495,26 @@ export default {
     },
     // section order for a full project / warehouse list, otherwise the list exactly as it came
     ordered(list) {
+      if (this.sectioned && Array.isArray(list)) {
+        const order = [...new Set(this.suggestions.map(o => o.section))];
+        return list.map((o, i) => [o, i]).sort((a, b) => order.indexOf(a[0].section) - order.indexOf(b[0].section) || a[1] - b[1]).map(x => x[0]);
+      }
       return this.grouped && Array.isArray(list) ? orderWarehouses(list) : list;
     },
     groupKey(r) {
-      return groupKeyOf(r);
+      return this.sectioned ? r.section : groupKeyOf(r);
     },
     groupInfo(r) {
-      return groupMeta(groupKeyOf(r));
+      return this.sectioned ? { label: r.section, icon: r.section_icon || 'folder', tone: r.section_tone || 'blue' } : groupMeta(groupKeyOf(r));
     },
     groupCount(r) {
-      const k = groupKeyOf(r);
-      return this.result.filter(x => groupKeyOf(x) === k).length;
+      const k = this.groupKey(r);
+      return this.result.filter(x => this.groupKey(x) === k).length;
     },
     // the hover text of an option: its full name and, in a sectioned list, its category (the same tooltip idea as the top bar)
     optionTipText(r) {
       const l = this.cLabel(r);
+      if (this.sectioned) return r && r.section ? l + '\n' + r.section : l;
       if (!(this.grouped && r && typeof r === 'object' && r.status)) return l;
       const p = progressOf(r);
       return l + '\nCategory: ' + r.status + (p ? ' - ' + (p === 'done' ? 'Finished' : 'In progress') : '');
@@ -528,7 +542,7 @@ export default {
 /* the section headers of a project / warehouse list */
 .ac-group-head { --gc: #2563eb; display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--gc); background: #fff; cursor: default; }
 .ac-group-head:not(:first-child) { border-top: 1px solid #eef2f7; margin-top: 2px; }
-.ac-group-emerald { --gc: #059669; } .ac-group-slate { --gc: #64748b; }
+.ac-group-emerald { --gc: #059669; } .ac-group-slate { --gc: #64748b; } .ac-group-amber { --gc: #d97706; } .ac-group-teal { --gc: #0d9488; }
 .ac-group-ico { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 7px; background: #fff; color: var(--gc); box-shadow: inset 0 0 0 1.5px var(--gc), 0 4px 7px -4px var(--gc); }
 .ac-group-name { flex: 1; min-width: 0; }
 .ac-group-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--gc) 12%, transparent); color: var(--gc); text-align: center; line-height: 1.6; }

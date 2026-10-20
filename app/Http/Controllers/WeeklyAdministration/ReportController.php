@@ -15,7 +15,7 @@ use Rap2hpoutre\FastExcel\FastExcel;
 /** Administration reports: the same WIMS report layout as every other report; print, PDF, Excel and CSV; every export is logged. */
 class ReportController extends Controller
 {
-    private const KEYS = ['search', 'status', 'from', 'to', 'item_id', 'user_id', 'beneficiary', 'section', 'charity', 'amount_min', 'amount_max', 'pay', 'pstatus', 'category', 'staff_id', 'hq'];
+    private const KEYS = ['search', 'status', 'from', 'to', 'item_id', 'user_id', 'beneficiary', 'section', 'charity', 'amount_min', 'amount_max', 'pay', 'pstatus', 'category', 'staff_id', 'contact_id', 'person', 'hq'];
 
     public function __construct()
     {
@@ -26,9 +26,9 @@ class ReportController extends Controller
     {
         $me = $request->user();
         abort_unless($me->can('read-weekly-administration'), 403);
-        $type = (string) $request->query('type', 'register');
+        $type = $this->qs($request, 'type', 'register');
         $type = AdminReports::exists($type) ? $type : 'register';
-        $filters = $request->only(self::KEYS);
+        $filters = array_map(fn ($v) => is_array($v) ? '' : $v, array_map(fn ($v) => is_array($v) ? '' : $v, $request->only(self::KEYS)));
         if ($request->boolean('preview')) {
             return response()->json(collect(AdminReports::build($me, $type, $filters, 300))->except('raw')->all());
         }
@@ -38,9 +38,17 @@ class ReportController extends Controller
             'statuses' => collect(array_merge(AdminDocument::STATUSES))->map(fn ($s) => ['value' => $s, 'label' => __($s)])->push(['value' => 'open', 'label' => __('Waiting (requested or approved)')])->values(),
             'items' => AdminItem::query()->orderBy('name')->get(['id', 'name'])->map(fn ($i) => ['value' => $i->id, 'label' => $i->name])->values(),
             'hqs' => \App\Models\AdminDocument::hqs(), 'payStatuses' => collect(['Unpaid', 'Partially Paid', 'Paid'])->map(fn ($x) => ['value' => $x, 'label' => __($x)])->values(), 'paymentStatuses' => collect(\App\Models\AdminDocumentPayment::STATUSES)->map(fn ($x) => ['value' => $x, 'label' => __($x)])->values(),
-            'categories' => \App\Services\Administration\AdminCategories::list(), 'staffOptions' => \App\Models\Staff::query()->orderBy('name')->get(['id', 'name'])->map(fn ($x) => ['value' => $x->id, 'label' => $x->name])->values(),
+            'categories' => \App\Services\Administration\AdminCategories::list(), 'people' => \App\Services\Administration\AdminCategories::peopleOptions(true),
             'users' => User::query()->orderBy('name')->get(['id', 'name'])->map(fn ($u) => ['value' => $u->id, 'label' => $u->name])->values(), 'can' => ['print' => $me->can('print-weekly-administration')],
         ]);
+    }
+
+    /** A query value as plain text: an array (?type[]=x) or anything else odd becomes the default instead of an error. */
+    private function qs(Request $r, string $k, string $default = ''): string
+    {
+        $v = $r->query($k, $default);
+
+        return is_string($v) ? trim($v) : $default;
     }
 
     public function print(Request $request)
@@ -65,17 +73,17 @@ class ReportController extends Controller
 
     private function name(Request $request): string
     {
-        return 'administration-' . preg_replace('/[^a-z_]/', '', (string) $request->query('type', 'register')) . '-' . now()->format('Ymd-His') . '.pdf';
+        return 'administration-' . preg_replace('/[^a-z_]/', '', $this->qs($request, 'type', 'register')) . '-' . now()->format('Ymd-His') . '.pdf';
     }
 
     private function exportable(Request $request, string $format): array
     {
-        $type = (string) $request->query('type', 'register');
+        $type = $this->qs($request, 'type', 'register');
         abort_unless(AdminReports::exists($type), 404);
         abort_unless($request->user()->can('read-weekly-administration') && $request->user()->can('print-weekly-administration'), 403);
-        $r = AdminReports::build($request->user(), $type, $request->only(self::KEYS), in_array($format, ['pdf', 'print'], true) ? 5000 : 50000);
+        $r = AdminReports::build($request->user(), $type, array_map(fn ($v) => is_array($v) ? '' : $v, $request->only(self::KEYS)), in_array($format, ['pdf', 'print'], true) ? 5000 : 50000);
         // the QR code reopens this same report (with its filters) for someone who is signed in and allowed to see it
-        $r['qr'] = \App\Support\PrintQrCode::dataUri(route('weekly-administration.reports.index', array_filter(['type' => $type] + $request->only(self::KEYS), fn ($v) => $v !== null && $v !== '')));
+        $r['qr'] = \App\Support\PrintQrCode::dataUri(route('weekly-administration.reports.index', array_filter(['type' => $type] + array_map(fn ($v) => is_array($v) ? '' : $v, $request->only(self::KEYS)), fn ($v) => $v !== null && $v !== '')));
         log_activity('Administration report exported', ['type' => $type, 'format' => $format, 'rows' => $r['total_rows'], 'reference' => $r['reference'], 'filters' => $r['filters']], null, 'Administration');
 
         return $r;

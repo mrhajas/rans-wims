@@ -919,6 +919,10 @@ class PaymentVoucherController extends Controller
             abort_unless(in_array($voucher->status, [PaymentVoucher::STATUS_DRAFT, PaymentVoucher::STATUS_REJECTED], true), 422, 'This payment voucher must be Draft or Rejected to submit.');
             $this->guardSubcontractVoucher($voucher);
 
+            // A voucher of the Administration or Travels module that was rejected holds its lines again here, or it is refused.
+            \App\Services\Administration\AdminPaymentService::resubmit($voucher);
+            \App\Services\Travels\TravelVoucherService::resubmit($voucher);
+
             // A rejected voucher let its trips go; they are taken again here, or the voucher is not sent if another voucher has them.
             $this->relinkTrips($voucher);
 

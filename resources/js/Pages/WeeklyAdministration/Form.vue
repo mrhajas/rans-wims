@@ -64,12 +64,12 @@
               <div class="wa-lmeta" style="grid-column: 1 / -1">
                 <template v-if="!l._edit">
                   <span class="lg-chip lg-chip-indigo" style="text-transform: none"><icons name="collection" class="w-3 h-3" /> {{ l.category || $t('No category') }}</span>
-                  <span v-if="l.staff_id" class="lg-chip lg-chip-green" style="text-transform: none"><icons name="user" class="w-3 h-3" /> {{ staffName(l.staff_id) }}</span>
-                  <button type="button" class="wa-link" @click="l._edit = true">{{ $t('Category / staff member') }}</button>
+                  <span v-if="l.person" class="lg-chip" :class="l.person.charAt(0) === 'c' ? 'lg-chip-amber' : 'lg-chip-green'" style="text-transform: none"><icons :name="l.person.charAt(0) === 'c' ? 'group' : 'user'" class="w-3 h-3" /> {{ personName(l.person) }}</span>
+                  <button type="button" class="wa-link" @click="l._edit = true">{{ $t('Category / staff / contact') }}</button>
                 </template>
                 <template v-else>
                   <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="l.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning...')" /></div>
-                  <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="l.staff_id" :options="staffOptions" :placeholder="$t('Not linked')" clearable @change="staffPicked(l, $event)" /></div>
+                  <div class="ac-f"><label>{{ $t('Staff / Contact') }}</label><acct-select v-model="l.person" :options="people" :placeholder="$t('Not linked')" clearable @change="staffPicked(l, $event)" /></div>
                   <button type="button" class="wa-link" @click="l._edit = false">{{ $t('Done') }}</button>
                 </template>
               </div>
@@ -95,6 +95,7 @@
               <button type="button" class="lg-btn t-slate" @click="addCharity"><icons name="plus" class="w-4 h-4" />{{ $t('Add a charity line') }}</button>
               <Link v-if="can.charity" :href="route('weekly-administration.charity.index')" class="lg-btn lg-btn-soft"><icons name="users" class="w-4 h-4" />{{ $t('Open the Charity list') }}</Link>
             </div>
+            <p v-if="already" class="wa-note" style="color: #b45309; font-weight: 700"><icons name="exclamation" class="w-4 h-4" />{{ $t('The charity of this month is already in :r for this headquarters. Check you are not paying it twice.', { r: already }) }}</p>
             <p v-if="pulled" class="wa-note"><icons name="info" class="w-4 h-4" />{{ $t('Pulled for :m.', { m: pulled }) }} {{ $t('The wording and the amounts can be edited here without changing the Charity list.') }}</p>
             <p v-if="!charityPeople && !form.charity.length" class="wa-note"><icons name="exclamation" class="w-4 h-4" />{{ $t('The Charity list has no active people yet. Add them on the Charity page, or type the lines here.') }}</p>
             <div v-if="form.charity.length" class="wa-head-row is-charity" style="margin-top: 10px"><span>{{ $t('No') }}</span><span>{{ $t('Charity') }}</span><span class="r">{{ $t('Monthly') }}</span><span class="r">{{ $t('Amount') }} ({{ currency }})</span><span></span></div>
@@ -135,15 +136,17 @@ import DatePicker from '@/Shared/DatePicker.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 
 let key = 0;
-const withKey = x => ({ ...x, _k: ++key });
+// a line's staff member or contact is one value: "s:ID" (staff) or "c:ID" (contact), as in the Staff / Contact dropdown
+const personOf = x => (x.person !== undefined ? x.person : x.staff_id ? 's:' + x.staff_id : x.contact_id ? 'c:' + x.contact_id : '');
+const withKey = x => { const { staff_id, contact_id, ...r } = x; return { ...r, person: personOf(x), _k: ++key }; };
 
 export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect },
-  props: { doc: Object, hqs: { type: Array, default: () => [] }, mode: String, template: { type: Array, default: () => [] }, users: Array, me: Object, today: String, itemNames: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, charityPeople: Number, department: String, currency: String, can: Object },
+  props: { doc: Object, hqs: { type: Array, default: () => [] }, mode: String, template: { type: Array, default: () => [] }, users: Array, me: Object, today: String, itemNames: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, people: { type: Array, default: () => [] }, charityPeople: Number, department: String, currency: String, can: Object },
   data() {
     const d = this.doc;
     return {
-      started: d ? 'edit' : this.mode || '', busy: false, pulling: false, pulled: '', pickItem: '',
+      already: '', started: d ? 'edit' : this.mode || '', busy: false, pulling: false, pulled: '', pickItem: '',
       form: {
         hq: d ? d.hq : (this.hqs.length === 1 ? this.hqs[0] : ''), doc_date: d ? d.doc_date : this.today, beneficiary_user_id: d ? d.beneficiary_user_id : this.me.id, notes: d ? d.notes || '' : '', include_charity: d ? d.include_charity : false, source: this.mode || 'blank',
         lines: d ? d.lines.map(withKey) : [], charity: d ? d.charity.map(withKey) : [],
@@ -165,38 +168,40 @@ export default {
     move(list, i, d) { const j = i + d; if (j < 0 || j >= list.length) return; const x = list.splice(i, 1)[0]; list.splice(j, 0, x); },
     start(mode) {
       this.started = mode; this.form.source = mode;
-      if (mode === 'template') this.form.lines = this.template.map(t => withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, amount: t.amount }));
+      if (mode === 'template') this.form.lines = this.template.map(t => withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, contact_id: t.contact_id || null, amount: t.amount }));
       if (mode === 'blank' && !this.form.lines.length) this.addLine();
     },
-    addLine(extra = {}) { this.form.lines.push(withKey({ admin_item_id: null, description: '', beneficiary: '', beneficiary_user_id: null, category: '', staff_id: null, amount: '', ...extra })); },
-    // choosing a staff member for a line fills the beneficiary with their name, unless somebody typed another name
+    addLine(extra = {}) { this.form.lines.push(withKey({ admin_item_id: null, description: '', beneficiary: '', beneficiary_user_id: null, category: '', person: '', amount: '', ...extra })); },
+    // choosing a staff member or contact for a line fills the beneficiary with their name, unless somebody typed another name
     staffPicked(l, id) {
-      const name = id ? this.staffName(id) : '';
+      const name = id ? this.personName(id) : '';
       const cur = (l.beneficiary || '').trim();
       if (name && (!cur || cur === (l._autoWho || ''))) { l.beneficiary = name; l._autoWho = name; }
     },
-    staffName(id) { const s = this.staffOptions.find(x => x.value === id); return s ? s.label : ''; },
-    addKnown(id) { if (!id) return; const i = this.itemNames.find(x => x.id === id); if (i) this.addLine({ admin_item_id: i.id, description: i.name, beneficiary: i.beneficiary || '', category: i.category || '', staff_id: i.staff_id || null, amount: Number(i.amount) ? i.amount : '' }); this.$nextTick(() => (this.pickItem = '')); },
-    addTemplate() { const have = new Set(this.form.lines.map(l => (l.description || '').trim().toLowerCase())); this.template.forEach(t => { if (!have.has(t.description.trim().toLowerCase())) this.form.lines.push(withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, amount: t.amount })); }); },
+    personName(id) { const s = this.people.find(x => x.value === id); return s ? s.label : ''; },
+    addKnown(id) { if (!id) return; const i = this.itemNames.find(x => x.id === id); if (i) this.addLine({ admin_item_id: i.id, description: i.name, beneficiary: i.beneficiary || '', category: i.category || '', person: personOf(i), amount: Number(i.amount) ? i.amount : '' }); this.$nextTick(() => (this.pickItem = '')); },
+    addTemplate() { const have = new Set(this.form.lines.map(l => (l.description || '').trim().toLowerCase())); this.template.forEach(t => { if (!have.has(t.description.trim().toLowerCase())) this.form.lines.push(withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, contact_id: t.contact_id || null, amount: t.amount })); }); },
     // typing a name of a known item brings its usual beneficiary and amount when the line is still empty
-    fillFromItem(l) { const k = (l.description || '').trim().toLowerCase(); const i = this.itemNames.find(x => x.name.toLowerCase() === k); if (!i) { l.admin_item_id = null; return; } l.admin_item_id = i.id; if (!l.category && i.category) l.category = i.category; if (!l.staff_id && i.staff_id) l.staff_id = i.staff_id; if (!l.beneficiary && i.beneficiary) l.beneficiary = i.beneficiary; if (!Number(l.amount) && Number(i.amount)) l.amount = i.amount; },
+    fillFromItem(l) { const k = (l.description || '').trim().toLowerCase(); const i = this.itemNames.find(x => x.name.toLowerCase() === k); if (!i) { l.admin_item_id = null; return; } l.admin_item_id = i.id; if (!l.category && i.category) l.category = i.category; if (!l.person && personOf(i)) l.person = personOf(i); if (!l.beneficiary && i.beneficiary) l.beneficiary = i.beneficiary; if (!Number(l.amount) && Number(i.amount)) l.amount = i.amount; },
     addCharity() { this.form.charity.push(withKey({ admin_charity_person_id: null, name: '', description: '', amount: '', monthly_amount: 0 })); },
     onCharityToggle() { if (this.form.include_charity && !this.form.charity.length && this.can.charity && this.charityPeople) this.pull(true); },
     async pull(quiet) {
       this.pulling = true;
       try {
-        const r = await window.axios.get(route('weekly-administration.charity-pull'), { params: { date: this.form.doc_date, hq: this.form.hq } });
+        const r = await window.axios.get(route('weekly-administration.charity.pull'), { params: { date: this.form.doc_date, hq: this.form.hq, except: this.doc ? this.doc.id : undefined } });
         const have = new Set(this.form.charity.map(c => c.admin_charity_person_id).filter(Boolean));
         let added = 0;
         r.data.rows.forEach(x => { if (!have.has(x.admin_charity_person_id)) { this.form.charity.push(withKey(x)); added++; } });
         this.pulled = r.data.month;
+        this.already = (r.data.already || []).map(x => x.reference).join(', ');
         if (!quiet && !added) this.pulled = r.data.month + ' (' + this.$t('nothing new to add') + ')';
       } catch (e) { this.pulled = ''; } finally { this.pulling = false; }
     },
     save() {
       this.busy = true;
       const clean = a => a.map(({ _k, _edit, _autoWho, ...r }) => r);
-      const body = { hq: this.form.hq, doc_date: this.form.doc_date, beneficiary_user_id: this.form.beneficiary_user_id, notes: this.form.notes, include_charity: this.form.include_charity ? 1 : 0, source: this.form.source === 'template' ? 'template' : 'blank', lines: clean(this.form.lines), charity: this.form.include_charity ? clean(this.form.charity) : [] };
+      const cleanLines = a => a.map(({ _k, _edit, _autoWho, person, ...r }) => ({ ...r, staff_id: person && person.charAt(0) === 's' ? person.slice(2) : null, contact_id: person && person.charAt(0) === 'c' ? person.slice(2) : null }));
+      const body = { hq: this.form.hq, doc_date: this.form.doc_date, beneficiary_user_id: this.form.beneficiary_user_id, notes: this.form.notes, include_charity: this.form.include_charity ? 1 : 0, source: this.form.source === 'template' ? 'template' : 'blank', lines: cleanLines(this.form.lines), charity: this.form.include_charity ? clean(this.form.charity) : [] };
       const o = { preserveScroll: true, onFinish: () => (this.busy = false) };
       if (this.doc) this.$inertia.put(route('weekly-administration.update', this.doc.id), body, o); else this.$inertia.post(route('weekly-administration.store'), body, o);
     },
