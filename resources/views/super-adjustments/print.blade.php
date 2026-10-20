@@ -50,6 +50,12 @@
                 <td class="label"></td>
                 <td class="value"></td>
             </tr>
+            @if(! empty($session))
+                <tr>
+                    <td class="label">Adjustment Session</td>
+                    <td class="value" colspan="3"><strong>{{ $session['reference'] }}</strong>@if($session['name']) ({{ $session['name'] }})@endif{{ $session['is_clearing'] ? ' - the count that cleared the items not counted' : '' }}<br>Started by {{ $session['started_by'] ?: '-' }} on {{ $session['started_at'] ? \Illuminate\Support\Carbon::parse($session['started_at'])->format('d/m/Y H:i') : '-' }}@if($session['ended_at']), ended {{ \Illuminate\Support\Carbon::parse($session['ended_at'])->format('d/m/Y H:i') }}@if($session['ended_by']) by {{ $session['ended_by'] }}@endif @else, still open @endif</td>
+                </tr>
+            @endif
             @if($superAdjustment->additionAdjustment || $superAdjustment->subtractionAdjustment)
                 <tr>
                     <td class="label">Addition Adjustment</td>

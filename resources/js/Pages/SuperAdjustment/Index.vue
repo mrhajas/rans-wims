@@ -71,7 +71,7 @@
           </thead>
           <tbody>
             <tr v-for="sa in superAdjustments.data" :key="sa.id" class="is-click" @click="$inertia.visit(route('super-adjustments.show', sa.id))">
-              <td :data-label="$t('Reference')"><span class="lg-main lg-mono">{{ sa.reference }}</span><Link v-if="sa.session && canSessions" :href="route('adjustment-sessions.show', sa.session.id)" class="sa-sesschip" :title="$t('Adjustment Session')" @click.stop><icons name="clock" class="w-3 h-3" />{{ sa.session.reference }}</Link></td>
+              <td :data-label="$t('Reference')"><span class="lg-main lg-mono">{{ sa.reference }}</span><Link v-if="sa.session && canSessions" :href="route('adjustment-sessions.show', sa.session.id)" class="sa-sesschip" :title="$t('Adjustment Session') + ' ' + sa.session.reference + ' (' + $t(sa.session.status) + ')'" @click.stop><icons name="clock" class="w-3 h-3" />{{ sa.session.reference }}</Link></td>
               <td :data-label="$t('Status')" class="sa-status">
                 <approval-track :status="sa.status" :phases="sa.phases || []" :approver="sa.approver" :approver-role="sa.approved_by_role || ''" :rejecter="sa.rejecter" />
               </td>

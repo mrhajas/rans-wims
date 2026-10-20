@@ -3,7 +3,7 @@
     <div class="lg-page px-4 md:px-0">
       <page-header icon="adjustments" :title="superAdjustment.reference" :subtitle="$t('Super Adjustments')">
         <span class="lg-chip" :class="statusTone"><icons v-if="superAdjustment.status === 'Approved'" name="tick" class="w-3.5 h-3.5 inline-flex" />{{ statusText }}</span>
-        <Link v-if="session && $can('read-adjustment-sessions')" :href="session.url" class="lg-chip lg-chip-orange" style="text-transform: none; text-decoration: none"><icons name="clock" class="w-3.5 h-3.5 inline-flex" />{{ $t('Session') }} {{ session.reference }}</Link>
+        <Link v-if="session && session.can_open" :href="session.url" class="lg-chip lg-chip-orange" style="text-transform: none; text-decoration: none"><icons name="clock" class="w-3.5 h-3.5 inline-flex" />{{ $t('Session') }} {{ session.reference }}</Link>
         <Link :href="route('super-adjustments.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" />{{ $t('Super Adjustments') }}</Link>
         <a v-if="superAdjustment.can_print" :href="route('super-adjustments.print', superAdjustment.id)" target="_blank" class="lg-btn lg-btn-soft">
           <icons name="printer" class="w-4 h-4" />{{ $t('Print') }}
@@ -19,6 +19,22 @@
       </page-header>
 
       <stat-tiles :items="tiles" />
+
+      <!-- the Adjustment Session this count belongs to: who started it, from when to when (click to open it) -->
+      <component :is="session.can_open ? 'a' : 'div'" v-if="session" :href="session.can_open ? session.url : undefined" :target="session.can_open ? '_blank' : undefined" rel="noopener" class="sa-sess" :class="session.status === 'Open' ? 'is-open' : 'is-ended'">
+        <span class="sa-sess__ico"><icons name="clock" class="w-6 h-6" /></span>
+        <span class="sa-sess__main">
+          <small>{{ session.is_clearing ? $t('The count that cleared the items not counted in the Adjustment Session') : $t('This count is part of the Adjustment Session') }}</small>
+          <b>{{ session.reference }}<template v-if="session.name"> · {{ session.name }}</template></b>
+          <span class="sa-sess__dates">
+            <span><icons name="user" class="w-3.5 h-3.5" /> {{ $t('Started by') }} <strong>{{ session.started_by || '-' }}</strong></span>
+            <span><icons name="calendar" class="w-3.5 h-3.5" /> {{ $t('from') }} <strong>{{ $date(session.started_at) }}</strong> {{ $t('to') }} <strong>{{ session.ended_at ? $date(session.ended_at) : $t('now (still open)') }}</strong></span>
+            <span v-if="session.warehouse"><icons name="building" class="w-3.5 h-3.5" /> {{ session.warehouse }}</span>
+          </span>
+        </span>
+        <span class="sa-sess__state">{{ session.status === 'Open' ? $t('Open') : $t('Ended') }}</span>
+        <span v-if="session.can_open" class="sa-sess__go">{{ $t('Open session') }} &rarr;</span>
+      </component>
 
       <!-- Every approval phase of this record: who, in which role, when; the phases still missing; the ones voided -->
       <section class="lg-card">
@@ -519,6 +535,15 @@ export default {
 </script>
 
 <style scoped>
+.sa-sess { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 14px; padding: 14px 16px; border-radius: 20px; color: inherit; text-decoration: none; background: var(--lg-card, #fff); box-shadow: 0 0 0 1.5px var(--sa-sess, #f97316), 0 16px 26px -20px var(--sa-sess, #f97316); }
+a.sa-sess:hover { transform: translateY(-1px); } .sa-sess { transition: transform 0.15s ease; }
+.sa-sess.is-open { --sa-sess: #f97316; background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), transparent 70%), var(--lg-card, #fff); } .sa-sess.is-ended { --sa-sess: #15803d; background: linear-gradient(135deg, rgba(21, 128, 61, 0.09), transparent 70%), var(--lg-card, #fff); }
+.sa-sess__ico { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 15px; color: #fff; background: linear-gradient(145deg, var(--sa-sess), #1e293b); }
+.sa-sess__main { display: grid; gap: 3px; flex: 1 1 300px; min-width: 0; } .sa-sess__main small { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute, #64748b); } .sa-sess__main b { font-size: 1.05rem; overflow-wrap: anywhere; }
+.sa-sess__dates { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; color: var(--lg-mute, #64748b); } .sa-sess__dates span { display: inline-flex; align-items: center; gap: 5px; } .sa-sess__dates strong { color: var(--lg-ink, #0f2540); }
+.sa-sess__state { padding: 4px 12px; border-radius: 999px; font-size: 0.72rem; font-weight: 800; color: #fff; background: var(--sa-sess); }
+.sa-sess__go { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 800; color: var(--sa-sess); }
+
 .sa-phases { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
 .sa-phase { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 16px; background: var(--lg-soft); box-shadow: inset 0 0 0 1px var(--lg-line, rgba(148, 163, 184, 0.3)); }
 .sa-phase.is-done { background: rgba(16, 185, 129, 0.1); box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.45); }

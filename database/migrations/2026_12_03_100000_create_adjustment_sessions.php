@@ -35,7 +35,7 @@ return new class extends Migration
                 // set to the warehouse id while the session is open, null once it ends: the unique index makes "one open session per warehouse" hold even under a race
                 $t->unsignedBigInteger('open_warehouse_id')->nullable()->unique();
                 $t->foreignId('started_by_user_id')->constrained('users')->restrictOnDelete();
-                $t->timestamp('started_at');
+                $t->timestamp('started_at')->nullable(); // nullable on purpose: MySQL gives the first NOT NULL timestamp column an ON UPDATE CURRENT_TIMESTAMP, which would move the start date at every save
                 $t->foreignId('ended_by_user_id')->nullable()->constrained('users')->nullOnDelete();
                 $t->timestamp('ended_at')->nullable();
                 $t->text('end_note')->nullable();

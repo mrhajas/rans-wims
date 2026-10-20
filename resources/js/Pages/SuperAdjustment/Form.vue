@@ -267,25 +267,72 @@
         </div>
       </form>
 
-      <!-- Import by Category: pick the category (its sub-categories come with it) -->
-      <div v-if="catOpen" class="sa-modal-overlay" @click.self="catOpen = false">
-        <div class="sa-modal sa-cat" role="dialog" aria-modal="true">
-          <header class="sa-cat__head"><icons name="collection" class="w-5 h-5" /><div><h3>{{ $t('Import by Category') }}</h3><p>{{ $t('Every item of the chosen category (and its sub-categories) that has a stock record in this Project / Warehouse is added to the list, with positive, negative and zero stock alike.') }}</p></div></header>
+      <!-- Import by Category: pick the category (its sub-categories come with it), see what will be added, import -->
+      <div v-if="catOpen" class="sa-modal-overlay" @click.self="catOpen = false" @keydown.esc="catOpen = false">
+        <div class="sa-cat" role="dialog" aria-modal="true" :aria-label="$t('Import by Category')">
+          <header class="sa-cat__head">
+            <span class="sa-cat__ico"><icons name="collection" class="w-6 h-6" /></span>
+            <div class="sa-cat__title">
+              <h3>{{ $t('Import by Category') }}</h3>
+              <p>{{ $t('Add every item of one category to the count: positive, negative and zero stock alike.') }}</p>
+            </div>
+            <span class="sa-cat__wh"><icons name="building" class="w-4 h-4" />{{ warehouseName }}</span>
+            <button type="button" class="sa-cat__x" :aria-label="$t('Close')" @click="catOpen = false"><icons name="cross" class="w-4 h-4" /></button>
+          </header>
+
           <div class="sa-cat__body">
-            <input v-model="catSearch" type="search" class="sa-cat__search" :placeholder="$t('Search category…')" :disabled="catLoading" />
-            <div v-if="catLoading" class="sa-cat__loading"><icons name="cog" class="w-5 h-5 animate-spin" /> {{ $t('Loading the categories…') }}</div>
-            <p v-else-if="catError" class="sa-cat__err">{{ catError }}</p>
-            <p v-else-if="!catList.length" class="sa-cat__empty">{{ $t('No item of this Project / Warehouse has a category.') }}</p>
-            <ul v-else class="sa-cat__list">
-              <li v-for="c in catShown" :key="c.id" :class="{ 'is-on': catPicked === c.id }">
-                <label><input v-model="catPicked" type="radio" :value="c.id" /><span class="sa-cat__name"><b>{{ c.label }}</b><small v-if="c.has_sub">{{ $t('includes its sub-categories') }}</small></span><span class="sa-cat__n">{{ c.items }} {{ $t('item(s)') }}</span></label>
+            <div class="sa-cat__tools">
+              <label class="sa-cat__search"><icons name="search" class="w-4 h-4" /><input v-model="catSearch" type="search" :placeholder="$t('Search category…')" :disabled="catLoading" /></label>
+              <span v-if="!catLoading && catList.length" class="sa-cat__count">{{ catShown.length }} {{ $t('of') }} {{ catList.length }} {{ $t('categories') }}</span>
+            </div>
+
+            <div v-if="catLoading" class="sa-cat__skeleton" role="status"><div v-for="n in 5" :key="n"><i></i><i></i></div></div>
+            <p v-else-if="catError" class="sa-cat__err"><icons name="exclamation" class="w-4 h-4" />{{ catError }}</p>
+            <p v-else-if="!catList.length" class="sa-cat__empty"><icons name="info" class="w-5 h-5" />{{ $t('No item of this Project / Warehouse has a category.') }}</p>
+
+            <ul v-else class="sa-cat__list" role="listbox">
+              <li v-for="c in catShown" :key="c.id" role="option" :aria-selected="catPicked === c.id" :class="{ 'is-on': catPicked === c.id, 'is-sub': c.depth > 0 }" :style="{ '--d': Math.min(c.depth, 3) }" @click="pickCategory(c)">
+                <span class="sa-cat__badge" :class="c.has_sub ? 'is-parent' : 'is-leaf'"><icons :name="catPicked === c.id ? 'tick' : (c.has_sub ? 'folder' : 'collection')" class="w-4 h-4" /></span>
+                <span class="sa-cat__name">
+                  <b>{{ c.name }}</b>
+                  <small v-if="c.depth > 0">{{ c.label }}</small>
+                  <small v-else-if="c.has_sub">{{ $t('includes its sub-categories') }}</small>
+                </span>
+                <span class="sa-cat__pills">
+                  <em v-if="c.positive" class="p-green" :title="$t('with stock')">{{ c.positive }} {{ $t('with stock') }}</em>
+                  <em v-if="c.zero" class="p-slate" :title="$t('zero stock')">{{ c.zero }} {{ $t('zero') }}</em>
+                  <em v-if="c.negative" class="p-red" :title="$t('negative stock')">{{ c.negative }} {{ $t('negative') }}</em>
+                </span>
+                <span class="sa-cat__total"><b>{{ c.items }}</b><small>{{ $t('items') }}</small></span>
               </li>
-              <li v-if="!catShown.length" class="sa-cat__empty">{{ $t('No category matches.') }}</li>
+              <li v-if="!catShown.length" class="sa-cat__none">{{ $t('No category matches.') }}</li>
             </ul>
           </div>
+
+          <!-- what will happen with the chosen category -->
+          <section class="sa-cat__sum" :class="{ 'is-empty': !catPicked }" aria-live="polite">
+            <template v-if="!catPicked"><icons name="info" class="w-5 h-5" /><span>{{ $t('Choose a category to see what will be added.') }}</span></template>
+            <template v-else-if="catPreview.loading"><icons name="cog" class="w-5 h-5 animate-spin" /><span>{{ $t('Checking the items of this category…') }}</span></template>
+            <template v-else-if="catPreview.error"><icons name="exclamation" class="w-5 h-5" /><span>{{ catPreview.error }}</span></template>
+            <template v-else>
+              <span class="sa-cat__sumico"><icons name="download" class="w-5 h-5" /></span>
+              <div class="sa-cat__sumtxt">
+                <b>{{ $t(':n item(s) will be added', { n: catPreview.add }) }}</b>
+                <small>
+                  <span v-if="catPreview.zero" class="p-slate">{{ catPreview.zero }} {{ $t('zero stock') }}</span>
+                  <span v-if="catPreview.negative" class="p-red">{{ catPreview.negative }} {{ $t('negative stock (counted from 0)') }}</span>
+                  <span v-if="catPreview.already" class="p-amber">{{ catPreview.already }} {{ $t('already in the list, skipped') }}</span>
+                </small>
+                <div v-if="catPreview.names.length" class="sa-cat__names"><span v-for="(n, i) in catPreview.names" :key="i">{{ n }}</span><span v-if="catPreview.add > catPreview.names.length" class="is-more">+{{ catPreview.add - catPreview.names.length }}</span></div>
+              </div>
+            </template>
+          </section>
+
           <footer class="sa-cat__foot">
             <button type="button" class="lg-btn lg-btn-soft" @click="catOpen = false">{{ $t('Cancel') }}</button>
-            <button type="button" class="lg-btn lg-btn-primary" :disabled="!catPicked || catLoading" @click="importCategory"><icons name="download" class="w-4 h-4" />{{ $t('Import') }}</button>
+            <button type="button" class="lg-btn lg-btn-primary sa-cat__go" :disabled="!catPicked || catLoading || catPreview.loading || !!catPreview.error || !catPreview.data.length" @click="importCategory">
+              <icons name="download" class="w-4 h-4" />{{ catPicked && !catPreview.loading && catPreview.data.length ? $t('Import :n item(s)', { n: catPreview.add }) : $t('Import') }}
+            </button>
           </footer>
         </div>
       </div>
@@ -412,6 +459,7 @@ export default {
       catList: [],
       catSearch: '',
       catPicked: null,
+      catPreview: { loading: false, error: '', data: [], add: 0, already: 0, zero: 0, negative: 0, names: [] },
       catError: '',
       importNote: '',
       importErr: false,
@@ -434,6 +482,7 @@ export default {
   },
 
   computed: {
+    warehouseName() { const w = (this.warehouses || []).find(x => Number(x.value ?? x.id) === Number(this.form.warehouse_id)); return w ? (w.label || w.name) : ''; },
     catShown() { const q = this.catSearch.trim().toLowerCase(); return q ? this.catList.filter(c => c.label.toLowerCase().includes(q)) : this.catList; },
     // the open Adjustment Session of the chosen Project / Warehouse, if there is one
     openSession() { return this.form.warehouse_id ? (this.openSessions || {})[this.form.warehouse_id] || null : null; },
@@ -561,10 +610,10 @@ export default {
     // (positive, negative and zero stock alike), the ones already in the list are skipped, so categories can be imported one after another.
     async openCategoryImport() {
       if (!this.form.warehouse_id || this.importing) return;
-      this.catOpen = true; this.catLoading = true; this.catError = ''; this.catList = []; this.catSearch = ''; this.catPicked = null;
+      this.catOpen = true; this.catLoading = true; this.catError = ''; this.catList = []; this.catSearch = ''; this.catPicked = null; this.resetPreview();
       const warehouseId = this.form.warehouse_id;
       try {
-        const { data } = await axios.get(this.route('super-adjustments.warehouse-categories'), { params: { warehouse_id: warehouseId } });
+        const [{ data }] = await Promise.all([axios.get(this.route('super-adjustments.warehouse-categories'), { params: { warehouse_id: warehouseId } }), new Promise(r => setTimeout(r, 350))]);
         if (warehouseId === this.form.warehouse_id) this.catList = data;
       } catch (e) {
         this.catError = (e.response && e.response.data && e.response.data.message) || this.$t('Could not load the categories. Please try again.');
@@ -572,14 +621,34 @@ export default {
         this.catLoading = false;
       }
     },
+    resetPreview() { this.catPreview = { loading: false, error: '', data: [], add: 0, already: 0, zero: 0, negative: 0, names: [] }; },
+    // choosing a category loads its items at once, so the person sees exactly what will be added before importing
+    async pickCategory(c) {
+      if (this.catPicked === c.id && !this.catPreview.error) return;
+      this.catPicked = c.id; this.resetPreview(); this.catPreview.loading = true;
+      const warehouseId = this.form.warehouse_id;
+      try {
+        const { data } = await axios.get(this.route('super-adjustments.category-stock'), { params: { warehouse_id: warehouseId, category_id: c.id } });
+        if (this.catPicked !== c.id || warehouseId !== this.form.warehouse_id) return; // another category was chosen meanwhile
+        const have = new Set(this.form.items.map(i => i.item_id));
+        const fresh = data.filter(u => !have.has(u.item_id));
+        this.catPreview = {
+          loading: false, error: '', data, add: fresh.length, already: data.length - fresh.length,
+          zero: fresh.filter(u => u.system_quantity === 0).length, negative: fresh.filter(u => u.system_quantity < 0).length, names: fresh.slice(0, 6).map(u => u.name),
+        };
+      } catch (e) {
+        if (this.catPicked === c.id) this.catPreview = { ...this.catPreview, loading: false, error: (e.response && e.response.data && e.response.data.message) || this.$t('Could not load this category. Please try again.') };
+      }
+    },
     async importCategory() {
-      if (!this.catPicked || !this.form.warehouse_id || this.importing) return;
+      if (!this.catPicked || !this.form.warehouse_id || this.importing || this.catPreview.loading || this.catPreview.error) return;
       const cat = this.catList.find(c => c.id === this.catPicked);
       const warehouseId = this.form.warehouse_id;
+      const data = this.catPreview.data;
       this.catOpen = false;
       this.importing = 'category'; this.importLabel = cat ? cat.label : ''; this.importNote = ''; this.importErr = false;
       try {
-        const [{ data }] = await Promise.all([axios.get(this.route('super-adjustments.category-stock'), { params: { warehouse_id: warehouseId, category_id: this.catPicked } }), new Promise(r => setTimeout(r, 600))]);
+        await new Promise(r => setTimeout(r, 700)); // the animation is seen even though the items are already loaded
         if (warehouseId !== this.form.warehouse_id) return;
         const have = new Set(this.form.items.map(i => i.item_id));
         let added = 0, already = 0, zero = 0, negative = 0;
@@ -597,9 +666,6 @@ export default {
         this.importNote = data.length
           ? this.$t(':n item(s) added from :c.', { n: added, c: this.importLabel }) + (parts.length ? ' (' + parts.join(', ') + ')' : '') + ' ' + this.$t('Change a count, or tick Clear From Stock for items to remove.')
           : this.$t('There are no items of :c in this Project / Warehouse.', { c: this.importLabel });
-      } catch (e) {
-        this.importErr = true;
-        this.importNote = (e.response && e.response.data && e.response.data.message) || this.$t('Could not import the category. Please try again.');
       } finally {
         this.importing = false;
       }
@@ -796,18 +862,44 @@ html.dark .sa-loading { background: rgba(15, 23, 42, 0.55); }
 .sa-loading__row i { display: block; height: 16px; border-radius: 8px; background: linear-gradient(90deg, rgba(148, 163, 184, 0.18) 25%, rgba(148, 163, 184, 0.38) 50%, rgba(148, 163, 184, 0.18) 75%); background-size: 200% 100%; animation: sa-shimmer 1.2s linear infinite; }
 @keyframes sa-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .sa-loading__bar span, .sa-loading__row i { animation: none; } }
-.sa-cat { width: min(560px, 94vw); padding: 0; overflow: hidden; --lg-card: #ffffff; --lg-line: #e6ebf3; --lg-soft: #f6f8fc; --lg-ink: #0f172a; --lg-mute: #64748b; color: var(--lg-ink); background: var(--lg-card); }
+/* Import by Category popup */
+.sa-cat { width: min(680px, 96vw); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; --lg-card: #ffffff; --lg-line: #e3e9f2; --lg-soft: #f4f7fb; --lg-ink: #0f172a; --lg-mute: #64748b; color: var(--lg-ink); background: var(--lg-card); box-shadow: 0 40px 80px -20px rgba(15, 23, 42, 0.55); animation: sa-cat-in 0.22s ease-out; }
 html.dark .sa-cat { --lg-card: #1e293b; --lg-line: rgba(255, 255, 255, 0.1); --lg-soft: rgba(255, 255, 255, 0.05); --lg-ink: #f1f5f9; --lg-mute: #94a3b8; }
-.sa-cat__head { display: flex; align-items: flex-start; gap: 0.8rem; padding: 0.9rem 1.1rem; color: #fff; background: linear-gradient(135deg, #0ea5e9, #075985); } .sa-cat__head h3 { margin: 0; font-size: 1rem; font-weight: 800; } .sa-cat__head p { margin: 0.15rem 0 0; font-size: 0.8rem; opacity: 0.95; line-height: 1.4; }
-.sa-cat__body { display: flex; flex-direction: column; gap: 0.7rem; padding: 1rem 1.1rem; max-height: 60vh; overflow-y: auto; }
-.sa-cat__search { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--lg-line); background: transparent; color: inherit; }
-.sa-cat__loading, .sa-cat__empty { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--lg-mute); } .sa-cat__err { margin: 0; color: #b91c1c; font-weight: 700; font-size: 0.85rem; }
-.sa-cat__list { list-style: none; margin: 0; padding: 4px; display: grid; gap: 3px; max-height: 340px; overflow-y: auto; border: 1px solid var(--lg-line); border-radius: 12px; }
-.sa-cat__list li { border-radius: 8px; } .sa-cat__list li:nth-child(odd) { background: var(--lg-soft); } .sa-cat__list li.is-on { box-shadow: inset 0 0 0 2px #0ea5e9; background: rgba(14, 165, 233, 0.1); }
-.sa-cat__list label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
-.sa-cat__name { display: grid; min-width: 0; line-height: 1.25; overflow-wrap: anywhere; } .sa-cat__name small { color: var(--lg-mute); font-size: 0.72rem; } .sa-cat__n { font-size: 0.78rem; font-weight: 700; color: var(--lg-mute); white-space: nowrap; }
-.sa-cat__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; padding: 0.8rem 1.1rem 1rem; border-top: 1px solid var(--lg-line); }
-@media (max-width: 480px) { .sa-cat__foot .lg-btn { flex: 1 1 100%; justify-content: center; } }
+@keyframes sa-cat-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sa-cat { animation: none; } }
+.sa-cat__head { display: flex; align-items: center; gap: 0.9rem; padding: 1rem 1.2rem; color: #fff; background: radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.22), transparent 55%), linear-gradient(135deg, #0ea5e9, #4f46e5); }
+.sa-cat__ico { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 15px; background: rgba(255, 255, 255, 0.2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+.sa-cat__title { min-width: 0; flex: 1; } .sa-cat__title h3 { margin: 0; font-size: 1.1rem; font-weight: 800; } .sa-cat__title p { margin: 0.15rem 0 0; font-size: 0.8rem; opacity: 0.95; line-height: 1.35; }
+.sa-cat__wh { display: inline-flex; align-items: center; gap: 6px; max-width: 200px; padding: 5px 11px; border-radius: 999px; font-size: 0.74rem; font-weight: 800; background: rgba(255, 255, 255, 0.2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sa-cat__x { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, 0.2); cursor: pointer; } .sa-cat__x:hover { background: rgba(255, 255, 255, 0.32); }
+.sa-cat__body { display: flex; flex-direction: column; gap: 0.7rem; padding: 0.9rem 1.2rem 0.4rem; min-height: 0; overflow-y: auto; }
+.sa-cat__tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sa-cat__search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 14px; border: 1.5px solid var(--lg-line); background: var(--lg-soft); color: var(--lg-mute); } .sa-cat__search:focus-within { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15); }
+.sa-cat__search input { flex: 1; min-width: 0; padding: 10px 0; border: 0; outline: 0; background: transparent; color: var(--lg-ink); font-size: 0.9rem; }
+.sa-cat__count { font-size: 0.76rem; font-weight: 700; color: var(--lg-mute); }
+.sa-cat__skeleton { display: grid; gap: 8px; } .sa-cat__skeleton div { display: grid; grid-template-columns: 3fr 1fr; gap: 12px; padding: 12px; border-radius: 14px; background: var(--lg-soft); }
+.sa-cat__skeleton i { display: block; height: 14px; border-radius: 7px; background: linear-gradient(90deg, rgba(148, 163, 184, 0.18) 25%, rgba(148, 163, 184, 0.4) 50%, rgba(148, 163, 184, 0.18) 75%); background-size: 200% 100%; animation: sa-shimmer 1.2s linear infinite; }
+.sa-cat__err, .sa-cat__empty { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 14px; font-size: 0.86rem; font-weight: 600; } .sa-cat__err { color: #b91c1c; background: rgba(244, 63, 94, 0.1); } .sa-cat__empty { color: var(--lg-mute); background: var(--lg-soft); }
+.sa-cat__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 330px; overflow-y: auto; padding-right: 3px; }
+.sa-cat__list li:not(.sa-cat__none) { --d: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 9px 12px 9px calc(12px + var(--d) * 18px); border-radius: 16px; border: 1.5px solid var(--lg-line); background: var(--lg-card); cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+.sa-cat__list li:not(.sa-cat__none):hover { border-color: #7dd3fc; transform: translateY(-1px); box-shadow: 0 10px 18px -14px rgba(14, 165, 233, 0.7); }
+.sa-cat__list li.is-on { border-color: #0ea5e9; background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(79, 70, 229, 0.07)); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16); }
+.sa-cat__list li.is-sub { border-style: dashed; }
+.sa-cat__none { padding: 14px; text-align: center; color: var(--lg-mute); font-size: 0.86rem; }
+.sa-cat__badge { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #fff; } .sa-cat__badge.is-parent { background: linear-gradient(145deg, #f59e0b, #b45309); } .sa-cat__badge.is-leaf { background: linear-gradient(145deg, #14b8a6, #0f766e); } .is-on .sa-cat__badge { background: linear-gradient(145deg, #0ea5e9, #4f46e5); }
+.sa-cat__name { display: grid; min-width: 0; line-height: 1.25; overflow-wrap: anywhere; } .sa-cat__name b { font-size: 0.92rem; } .sa-cat__name small { color: var(--lg-mute); font-size: 0.72rem; }
+.sa-cat__pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; } .sa-cat__pills em, .sa-cat__sumtxt small span { font-style: normal; padding: 2px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; white-space: nowrap; }
+.p-green { color: #166534; background: rgba(34, 197, 94, 0.16); } .p-slate { color: #475569; background: rgba(100, 116, 139, 0.16); } .p-red { color: #9f1239; background: rgba(244, 63, 94, 0.14); } .p-amber { color: #92400e; background: rgba(245, 158, 11, 0.2); }
+html.dark .p-green { color: #86efac; } html.dark .p-slate { color: #cbd5e1; } html.dark .p-red { color: #fda4af; } html.dark .p-amber { color: #fcd34d; }
+.sa-cat__total { display: grid; justify-items: center; min-width: 46px; padding: 3px 8px; border-radius: 12px; background: var(--lg-soft); } .sa-cat__total b { font-size: 1.05rem; line-height: 1.1; font-variant-numeric: tabular-nums; } .sa-cat__total small { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute); }
+.sa-cat__sum { display: flex; align-items: flex-start; gap: 12px; margin: 0.6rem 1.2rem 0; padding: 12px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(34, 197, 94, 0.1)); border: 1.5px solid rgba(14, 165, 233, 0.3); font-size: 0.86rem; }
+.sa-cat__sum.is-empty { background: var(--lg-soft); border: 1.5px dashed var(--lg-line); color: var(--lg-mute); align-items: center; }
+.sa-cat__sumico { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 12px; color: #fff; background: linear-gradient(145deg, #22c55e, #15803d); }
+.sa-cat__sumtxt { display: grid; gap: 5px; min-width: 0; } .sa-cat__sumtxt b { font-size: 0.98rem; } .sa-cat__sumtxt small { display: flex; flex-wrap: wrap; gap: 5px; }
+.sa-cat__names { display: flex; flex-wrap: wrap; gap: 5px; } .sa-cat__names span { max-width: 190px; padding: 2px 9px; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: var(--lg-card); border: 1px solid var(--lg-line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .sa-cat__names .is-more { font-weight: 800; color: #0369a1; }
+.sa-cat__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; padding: 0.9rem 1.2rem 1.1rem; }
+.sa-cat__go { min-width: 160px; justify-content: center; }
+@media (max-width: 560px) { .sa-cat__head { flex-wrap: wrap; } .sa-cat__wh { order: 3; max-width: 100%; } .sa-cat__list li:not(.sa-cat__none) { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'b n t' '. p p'; } .sa-cat__badge { grid-area: b; } .sa-cat__name { grid-area: n; } .sa-cat__total { grid-area: t; } .sa-cat__pills { grid-area: p; justify-content: flex-start; } .sa-cat__foot .lg-btn { flex: 1 1 100%; justify-content: center; } }
 .sa-import { white-space: nowrap; }
 .sa-import-note { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 0.6rem; padding: 0.55rem 0.8rem; border-radius: 0.8rem; background: rgba(5, 150, 105, 0.1); color: #047857; font-size: 0.8rem; font-weight: 600; }
 .sa-import-note.is-err { background: rgba(190, 18, 60, 0.1); color: #be123c; }

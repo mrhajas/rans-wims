@@ -13,3 +13,8 @@ Built 2026-10-21. For a physical count of one Project / Warehouse (godown) that 
 - Code: `AdjustmentSessionController`, `App\Services\Adjustments\AdjustmentSessionService`, model `AdjustmentSession`, print `resources/views/adjustment-sessions/print.blade.php` (print + PDF, logged by the print/download logger).
 - Registered: permissions (`read/start/end/print-adjustment-sessions`, Super Admin by default, migration `2026_12_03_100000`), Feature Control `adjustment_sessions` (depends on `super_adjustments`), menu (Adjustments), launcher search, QR kind `adjustment_session`, Smart Brief record link, Adjustments Alerts events `session_started` / `session_ended`.
 - Tests: `ver/adj_session_test.php` (57 checks).
+
+## Samples and checks (2026-10-21)
+- `php artisan adjustments:session-samples` adds two review samples to the LOCAL database (an OPEN session with an approved and a waiting count, and an ENDED session with two approved counts and the clearing count waiting for approval); every one says SAMPLE; counts equal the stock, so no stock moves and nothing is sent. `--remove` takes them away.
+- A Super Adjustment page and print show the session it belongs to: reference, name, who started it, from which date to which date (or "now, still open"), a click opens the session (needs `read-adjustment-sessions`).
+- Bug found and fixed on the way: MySQL gave `started_at` (the first NOT NULL timestamp) an automatic ON UPDATE CURRENT_TIMESTAMP, so ending a session would have moved its start date to "now". The column is now a nullable plain timestamp (migrations `2026_12_03_100000` and `2026_12_03_100100`); `adj_session_test` checks it.

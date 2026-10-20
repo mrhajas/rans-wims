@@ -300,9 +300,25 @@ class SuperAdjustmentController extends Controller
             'items' => $items,
             'attachments' => $attachments,
             'approval' => $this->approvalPanel($super_adjustment),
-            'session' => $super_adjustment->adjustment_session_id && ($as = \App\Models\AdjustmentSession::find($super_adjustment->adjustment_session_id))
-                ? ['id' => $as->id, 'reference' => $as->reference, 'status' => $as->status, 'url' => route('adjustment-sessions.show', $as->id)] : null,
+            'session' => $this->sessionInfo($super_adjustment),
         ]);
+    }
+
+    /** The Adjustment Session a count belongs to, with who started it and from when to when (for the page, the list and the print). */
+    private function sessionInfo(SuperAdjustment $sa): ?array
+    {
+        if (! $sa->adjustment_session_id || ! ($as = \App\Models\AdjustmentSession::with(['startedBy:id,name', 'endedBy:id,name', 'warehouse:id,name'])->find($sa->adjustment_session_id))) {
+            return null;
+        }
+
+        return [
+            'id' => $as->id, 'reference' => $as->reference, 'name' => $as->name, 'status' => $as->status, 'warehouse' => optional($as->warehouse)->name,
+            'started_by' => optional($as->startedBy)->name, 'started_at' => optional($as->started_at)->toIso8601String(),
+            'ended_by' => optional($as->endedBy)->name, 'ended_at' => optional($as->ended_at)->toIso8601String(),
+            'is_clearing' => (int) $as->clearing_super_adjustment_id === (int) $sa->id,
+            'url' => route('adjustment-sessions.show', $as->id),
+            'can_open' => (bool) optional(auth()->user())->can('read-adjustment-sessions'),
+        ];
     }
 
     /** Every approval phase of the record for the page and the print: who gave it, in which role, when; the ones still missing; the ones that were voided. */
@@ -385,6 +401,7 @@ class SuperAdjustmentController extends Controller
             'isPdf' => $isPdf,
             'approval' => $this->approvalPanel($super_adjustment),
             'signatures' => app(\App\Services\Signatories\SignatureResolver::class)->resolve('super_adjustment', $super_adjustment),
+            'session' => $this->sessionInfo($super_adjustment),
         ];
     }
 
@@ -1006,10 +1023,26 @@ class SuperAdjustmentController extends Controller
             return implode(' > ', $parts);
         };
 
-        return $cats->map(function ($c) use ($collect, $label, $childrenOf, $byCat) {
-            $all = $collect((int) $c->id);
+        $qty = Stock::main()->ofWarehouse($data['warehouse_id'])->pluck('quantity', 'item_id');
+        $depth = function (int $id) use ($cats): int {
+            $d = 0;
+            for ($c = $cats[$id] ?? null; $c && $c->parent_id && $d < 8; $c = $cats[$c->parent_id] ?? null) {
+                $d++;
+            }
 
-            return ['id' => (int) $c->id, 'label' => $label((int) $c->id), 'items' => count($all), 'own' => count($byCat[$c->id] ?? []), 'has_sub' => $childrenOf->has($c->id)];
+            return $d;
+        };
+
+        return $cats->map(function ($c) use ($collect, $label, $childrenOf, $byCat, $qty, $depth) {
+            $all = $collect((int) $c->id);
+            $pos = $zero = $neg = 0;
+            foreach ($all as $iid) {
+                $q = (float) ($qty[$iid] ?? 0);
+                $q > 0 ? $pos++ : ($q < 0 ? $neg++ : $zero++);
+            }
+
+            return ['id' => (int) $c->id, 'label' => $label((int) $c->id), 'name' => $c->name, 'depth' => $depth((int) $c->id), 'items' => count($all), 'own' => count($byCat[$c->id] ?? []),
+                'positive' => $pos, 'zero' => $zero, 'negative' => $neg, 'has_sub' => $childrenOf->has($c->id)];
         })->filter(fn ($r) => $r['items'] > 0)->sortBy(fn ($r) => mb_strtolower($r['label']))->values();
     }
 
