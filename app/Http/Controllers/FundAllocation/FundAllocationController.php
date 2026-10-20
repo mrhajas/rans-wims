@@ -1056,7 +1056,7 @@ class FundAllocationController extends Controller
             'staffs' => Staff::where('status', 'Active')->orderBy('name')->get(['id', 'name', 'staff_number']),
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'username']),
             'projects' => Warehouse::ofAccount()->active()->orderBy('name')->get(['id', 'name', 'status']),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'defaults' => ['allocation_date' => now()->toDateString()],
         ];
     }

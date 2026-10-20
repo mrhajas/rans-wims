@@ -68,7 +68,7 @@ trait SubcontractHelpers
         $ids = accessible_warehouse_ids();
 
         return Warehouse::ofAccount()->active()->visible()->when($ids !== null, fn ($q) => $q->whereIn('id', $ids ?: [0]))->orderBy('name')->get(['id', 'name', 'status'])
-            ->map(fn ($w) => ['value' => $w->id, 'label' => $w->name]);
+            ->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status]);
     }
 
     protected function filesOf($model)

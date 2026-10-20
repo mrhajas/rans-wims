@@ -46,7 +46,7 @@ class DailySiteReportController extends Controller
             'filters' => $filters,
             'statuses' => DailySiteReport::statuses(),
             'reportTypes' => DailySiteReport::reportTypes(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']),
             'siteEngineers' => User::whereHas('roles', fn ($q) => $q->whereIn('name', User::SITE_ENGINEER_ROLES))->orderBy('name')->get(['id', 'name']),
             'dailySiteReports' => DailySiteReportResource::collection($reports),
             'stats' => $this->buildStats($baseQuery),
@@ -61,8 +61,8 @@ class DailySiteReportController extends Controller
         $isSiteEngineer = $user->hasRole(User::SITE_ENGINEER_ROLES) && ! $user->hasRole(['Super Admin', 'Admin']);
 
         $warehouses = $isSiteEngineer
-            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at'])
-            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at'])
+            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
 
         return Inertia::render('DailySiteReport/Form', [
             'edit' => null,
@@ -157,10 +157,10 @@ class DailySiteReportController extends Controller
         $daily_site_report->load('attachments');
         $user = $request->user();
 
-        $warehouses = $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at']);
+        $warehouses = $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at']);
 
         if ($daily_site_report->warehouse_id && ! $warehouses->contains('id', $daily_site_report->warehouse_id)) {
-            $selectedWarehouse = Warehouse::ofAccount()->whereKey($daily_site_report->warehouse_id)->get(['id', 'name', 'completed_at']);
+            $selectedWarehouse = Warehouse::ofAccount()->whereKey($daily_site_report->warehouse_id)->get(['id', 'name', 'status', 'completed_at']);
             $warehouses = $warehouses->concat($selectedWarehouse)->unique('id')->sortBy('name')->values();
         }
 

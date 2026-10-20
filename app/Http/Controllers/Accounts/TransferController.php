@@ -206,7 +206,7 @@ class TransferController extends AcctController
         return ['t' => $t ? $t->only(['id', 'reference', 'from_account_id', 'to_account_id', 'rate_id', 'reason', 'notes', 'external_ref', 'department', 'warehouse_id']) + ['from_amount' => rtrim(rtrim((string) $t->from_amount, '0'), '.'), 'to_amount' => rtrim(rtrim((string) $t->to_amount, '0'), '.'), 'fee_amount' => rtrim(rtrim((string) $t->fee_amount, '0'), '.'), 'transfer_date' => $t->transfer_date->toDateString()] : null,
             'accounts' => $this->accountOptions(), 'rates' => $rates->map(fn ($r) => ['id' => $r->id, 'base' => $r->base_currency, 'quote' => $r->quote_currency, 'rate' => rtrim(rtrim((string) $r->rate, '0'), '.'), 'type' => $r->rate_type, 'from' => $r->effective_from->toDateString(), 'to' => optional($r->effective_to)->toDateString()]),
             'allowInverse' => (bool) AcctSettings::get()['allow_inverse_rates'], 'tolerance' => AcctSettings::get()['rate_tolerance_pct'], 'idem' => (string) \Illuminate\Support\Str::uuid(), 'can' => ['post' => $this->me()->can('post-acct-transfers')],
-            'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name])];
+            'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status])];
     }
 
     private function validated(Request $request): array

@@ -1581,8 +1581,8 @@ class PaymentVoucherController extends Controller
 
     private function warehouseOptions(): array
     {
-        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name'])
-            ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name])->values()->all();
+        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status'])
+            ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'status' => $w->status])->values()->all();
     }
 
     private function assetOptions(): array

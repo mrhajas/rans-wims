@@ -70,7 +70,7 @@ abstract class SiteMeetingBaseController extends Controller
         }
 
         return $q->orderBy('name')->get(['id', 'name', 'code', 'status'])
-            ->map(fn ($w) => ['label' => $w->name.($w->code ? ' ('.$w->code.')' : ''), 'value' => $w->id, 'name' => $w->name, 'code' => $w->code])->values();
+            ->map(fn ($w) => ['label' => $w->name.($w->code ? ' ('.$w->code.')' : ''), 'value' => $w->id, 'name' => $w->name, 'code' => $w->code, 'status' => $w->status])->values();
     }
 
     /** People who can be invited / chair / write the minutes: active users of the account. */

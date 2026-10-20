@@ -687,7 +687,7 @@ class CaseTrackingController extends Controller
 
     protected function projectWarehouses()
     {
-        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']);
+        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']);
     }
 
     protected function nextCaseNumber(): string

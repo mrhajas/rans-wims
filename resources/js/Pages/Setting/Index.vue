@@ -165,6 +165,19 @@
                   />
                   </div>
                 </transition>
+                <div>
+                  <auto-complete
+                    id="grouped_warehouse_lists"
+                    :searchable="false"
+                    :label="$t('Project / Warehouse lists in sections')"
+                    v-model="form.grouped_warehouse_lists"
+                    :error="$page.props.errors.grouped_warehouse_lists"
+                    :suggestions="[
+                      { value: '1', label: $t('On: Main Warehouses, Projects, Others') },
+                      { value: '0', label: $t('Off: one plain list') },
+                    ]"
+                  />
+                </div>
               </div>
             </section>
 
@@ -469,6 +482,7 @@ export default {
         language: this.current.language,
         fraction: +this.current.fraction,
         per_page: +this.current.per_page,
+        grouped_warehouse_lists: this.current.grouped_warehouse_lists === '0' ? '0' : '1',
         weight_unit: this.current.weight_unit,
         currency_code: this.current.currency_code,
         sidebar_style: this.current.sidebar_style,

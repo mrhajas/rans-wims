@@ -64,7 +64,7 @@ class WorkPackageController extends Controller
             ],
             'filters' => $filters,
             'workPackages' => new WorkPackageCollection($query->paginate(20)->withQueryString()),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'status', 'completed_at']),
             'statuses' => WorkPackage::statuses(),
             'priorities' => WorkPackage::priorities(),
             'canCreate' => $user->can('create', WorkPackage::class),
@@ -305,7 +305,7 @@ class WorkPackageController extends Controller
     protected function formProps(): array
     {
         return [
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'status', 'completed_at']),
             'engineers' => User::whereHas('roles', fn ($q) => $q->whereIn('name', User::SITE_ENGINEER_ROLES))
                 ->orderBy('name')->get(['id', 'name']),
             'foremen' => Contact::where('category', 'Foreman')->orderBy('name')->get(['id', 'name']),

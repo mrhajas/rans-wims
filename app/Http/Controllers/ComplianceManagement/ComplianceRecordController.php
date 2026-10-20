@@ -501,7 +501,7 @@ class ComplianceRecordController extends Controller
 
     private function warehouseOptions(): array
     {
-        return Warehouse::active()->visible()->orderBy('name')->get(['id', 'name'])->values()->all();
+        return Warehouse::active()->visible()->orderBy('name')->get(['id', 'name', 'status'])->values()->all();
     }
 
     private function supplierOptions(): array

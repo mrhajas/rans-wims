@@ -105,7 +105,7 @@ class SuperAdjustmentController extends Controller
         abort_unless($request->user()->can('create-super-adjustments'), 403);
 
         return Inertia::render('SuperAdjustment/Form', [
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'status']),
             'today' => now()->format('Y-m-d'),
             'responsibleUser' => $request->user()->only(['id', 'name']),
         ]);
@@ -157,7 +157,7 @@ class SuperAdjustmentController extends Controller
 
         return Inertia::render('SuperAdjustment/Form', [
             'edit' => new SuperAdjustmentResource($super_adjustment),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'status']),
             'today' => $super_adjustment->date,
             'responsibleUser' => $super_adjustment->user()->first()?->only(['id', 'name']),
             'existingItems' => $super_adjustment->items->load('item:id,name,code,unit_id', 'unit:id,name,code')->map(fn ($i) => [

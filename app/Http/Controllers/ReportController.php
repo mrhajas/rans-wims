@@ -320,7 +320,7 @@ class ReportController extends Controller
             ->get();
 
         $itemIds = $topItems->pluck('item_id')->values();
-        $warehouses = Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']);
+        $warehouses = Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']);
 
         $siteUsage = collect();
         if ($itemIds->isNotEmpty()) {
@@ -1937,11 +1937,11 @@ class ReportController extends Controller
 
         // Super Admin and Admin can see all warehouses
         if ($user->hasRole(['Super Admin', 'Admin'])) {
-            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
         }
 
         // Other roles: return assigned warehouses only
-        $assigned = $user->warehouses()->where('warehouses.active', 1)->visible()->orderBy('warehouses.name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at']);
+        $assigned = $user->warehouses()->where('warehouses.active', 1)->visible()->orderBy('warehouses.name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at']);
 
         if ($assigned->isNotEmpty()) {
             return $assigned->values();
@@ -1949,7 +1949,7 @@ class ReportController extends Controller
 
         // Fallback to primary warehouse
         if ($user->warehouse_id) {
-            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->whereKey($user->warehouse_id)->orderBy('name')->get(['id', 'name', 'completed_at']);
+            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->whereKey($user->warehouse_id)->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
         }
 
         return collect();
@@ -2159,7 +2159,7 @@ class ReportController extends Controller
         return Inertia::render('Report/MaterialReallocationSummary', [
             'filters' => $filters,
             'statuses' => MaterialReallocation::statuses(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'users' => User::ofAccount()->orderBy('name')->get(['id', 'name']),
             // See materialMovement()'s comment above the same wrap — a raw
             // paginator serialises flat (no .meta/.links), which crashes
@@ -2297,7 +2297,7 @@ class ReportController extends Controller
             'filters' => $filters,
             'hasFilters' => $hasFilters,
             'items' => Item::ofAccount()->orderBy('name')->get(['id', 'name', 'code']),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'movements' => $movements,
         ]);
     }
@@ -2455,7 +2455,7 @@ class ReportController extends Controller
 
         return Inertia::render('Report/WarehouseReceiving', [
             'filters' => $filters,
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'users' => User::ofAccount()->orderBy('name')->get(['id', 'name']),
             'receipts' => \Illuminate\Http\Resources\Json\JsonResource::collection(
                 $query->paginate()->withQueryString()->through(fn ($i) => [
@@ -2560,7 +2560,7 @@ class ReportController extends Controller
 
         return Inertia::render('Report/Discrepancy', [
             'filters' => $filters,
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'discrepancies' => \Illuminate\Http\Resources\Json\JsonResource::collection(
                 $query->paginate()->withQueryString()->through(function ($i) use ($deltaRow) {
                     [$item, $delta, $percent] = $deltaRow($i);

@@ -27,7 +27,7 @@ class ArchiveDashboardController extends Controller
                 'categories' => ArchiveRecord::CATEGORIES,
                 'sources' => ArchiveRecord::SOURCES,
                 'fileTypes' => ArchiveFile::TYPES,
-                'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['label' => $w->name, 'value' => $w->id])->all(),
+                'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['label' => $w->name, 'value' => $w->id, 'status' => $w->status])->all(),
             ],
             'can' => [
                 'create' => $request->user()->can('create-archive'),

@@ -60,6 +60,12 @@
               <template :key="ri" v-for="(r, ri) in result">
                 <!-- v-if="disable && !disabledOptions.includes(cValue(r))" -->
                 <template v-if="!(disable && disable == cValue())">
+                  <!-- a full project / warehouse list is shown in sections: Main Warehouses, Projects, Others (the same as the top bar) -->
+                  <li v-if="grouped && (ri === 0 || groupKey(r) !== groupKey(result[ri - 1]))" class="ac-group-head" :class="'ac-group-' + groupInfo(r).tone" role="presentation" @mousedown.prevent>
+                    <span class="ac-group-ico"><icons :name="groupInfo(r).icon" class-name="w-3 h-3" /></span>
+                    <span class="ac-group-name">{{ groupInfo(r).label }}</span>
+                    <span class="ac-group-count">{{ groupCount(r) }}</span>
+                  </li>
                   <li>
                     <button
                       type="button"
@@ -70,12 +76,12 @@
                       <span v-if="statusDotClass(r)" class="ac-status-dot flex-none" :class="statusDotClass(r)"></span>
                       <span
                         class="ml-3 block font-normal truncate"
-                        @mouseenter="showOptionTooltip($event, cLabel(r))"
+                        @mouseenter="showOptionTooltip($event, optionTipText(r))"
                         @mouseleave="hideOptionTooltip"
                       >
                         {{ cLabel(r) }}
                       </span>
-                      <span v-if="statusDotClass(r) === 'ac-dot-red'" class="ml-2 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                      <span v-if="statusDotClass(r) === 'ac-dot-green'" class="ml-2 text-[10px] font-semibold uppercase tracking-wide opacity-80">
                         {{ $t('Completed') }}
                       </span>
                     </button>
@@ -127,6 +133,7 @@ import { v4 as uuidv4 } from 'uuid';
 import throttle from 'lodash/throttle';
 import TecLabel from '@/Jetstream/Label.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
+import { isFullWarehouseList, orderWarehouses, groupKeyOf, groupMeta, progressOf } from '@/Core/warehouseGroups';
 
 export default {
   emits: ['update:modelValue'],
@@ -169,6 +176,8 @@ export default {
     keepFocus: { type: Boolean, default: false },
     resetSearch: { type: Boolean, default: false },
     absoluteDropdown: { type: Boolean, default: true },
+    // set to false to keep a project / warehouse list flat even when it holds every category
+    group: { type: Boolean, default: true },
   },
 
   watch: {
@@ -200,7 +209,7 @@ export default {
       if (this.searchable) {
         this.open = true;
         if (Array.isArray(this.suggestions)) {
-          this.result = search ? this.suggestions.filter(r => this.cLabel(r, search)) : this.suggestions;
+          this.result = this.ordered(search ? this.suggestions.filter(r => this.cLabel(r, search)) : this.suggestions);
         } else {
           this.loading = true;
           this.getSuggestions(search);
@@ -211,13 +220,21 @@ export default {
       deep: true,
       handler() {
         if (Array.isArray(this.suggestions)) {
-          this.result = this.search ? this.suggestions.filter(r => this.cLabel(r, this.search)) : this.suggestions;
+          this.result = this.ordered(this.search ? this.suggestions.filter(r => this.cLabel(r, this.search)) : this.suggestions);
         }
       },
     },
   },
 
   computed: {
+    // sections apply only to a full project / warehouse list (Main Warehouses and Projects together) and can be switched off in Settings
+    grouped() {
+      if (!this.group || !Array.isArray(this.suggestions)) return false;
+      const page = this.$page && this.$page.props;
+      if (page && page.groupedWarehouseLists === false) return false;
+
+      return isFullWarehouseList(this.suggestions);
+    },
     currentLabel() {
       return this.cLabel(this.selected);
     },
@@ -237,7 +254,7 @@ export default {
 
   created() {
     if (Array.isArray(this.suggestions)) {
-      this.result = this.suggestions;
+      this.result = this.ordered(this.suggestions);
     }
   },
 
@@ -464,10 +481,29 @@ export default {
     // field (items, contacts, categories, etc.) render nothing — this
     // stays a no-op for every other AutoComplete usage in the app.
     statusDotClass(r) {
-      if (r === null || typeof r !== 'object' || !('completed_at' in r)) {
-        return null;
-      }
-      return r.completed_at ? 'ac-dot-red' : 'ac-dot-green';
+      const p = progressOf(r);
+      return p === null ? null : p === 'done' ? 'ac-dot-green' : 'ac-dot-orange';
+    },
+    // section order for a full project / warehouse list, otherwise the list exactly as it came
+    ordered(list) {
+      return this.grouped && Array.isArray(list) ? orderWarehouses(list) : list;
+    },
+    groupKey(r) {
+      return groupKeyOf(r);
+    },
+    groupInfo(r) {
+      return groupMeta(groupKeyOf(r));
+    },
+    groupCount(r) {
+      const k = groupKeyOf(r);
+      return this.result.filter(x => groupKeyOf(x) === k).length;
+    },
+    // the hover text of an option: its full name and, in a sectioned list, its category (the same tooltip idea as the top bar)
+    optionTipText(r) {
+      const l = this.cLabel(r);
+      if (!(this.grouped && r && typeof r === 'object' && r.status)) return l;
+      const p = progressOf(r);
+      return l + '\nCategory: ' + r.status + (p ? ' - ' + (p === 'done' ? 'Finished' : 'In progress') : '');
     },
   },
 };
@@ -484,10 +520,18 @@ export default {
   background: #10b981;
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
 }
-.ac-dot-red {
-  background: #ef4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+/* a project's progress: green = finished, orange = still running */
+.ac-dot-orange {
+  background: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25);
 }
+/* the section headers of a project / warehouse list */
+.ac-group-head { --gc: #2563eb; display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--gc); background: #fff; cursor: default; }
+.ac-group-head:not(:first-child) { border-top: 1px solid #eef2f7; margin-top: 2px; }
+.ac-group-emerald { --gc: #059669; } .ac-group-slate { --gc: #64748b; }
+.ac-group-ico { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 7px; background: #fff; color: var(--gc); box-shadow: inset 0 0 0 1.5px var(--gc), 0 4px 7px -4px var(--gc); }
+.ac-group-name { flex: 1; min-width: 0; }
+.ac-group-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--gc) 12%, transparent); color: var(--gc); text-align: center; line-height: 1.6; }
 
 .ac-option-tooltip {
   position: fixed;
@@ -496,7 +540,7 @@ export default {
   padding: 0.4rem 0.7rem;
   border-radius: 0.5rem;
   max-width: 320px;
-  white-space: normal;
+  white-space: pre-line;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.3;

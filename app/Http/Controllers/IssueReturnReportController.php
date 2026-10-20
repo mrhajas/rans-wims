@@ -71,7 +71,7 @@ class IssueReturnReportController extends Controller
         return Inertia::render('IssueReturn/Reports', [
             'filters' => $filters,
             'report' => $rows,
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']),
             'contacts' => Contact::ofAccount()->orderBy('name')->get(['id', 'name']),
             'items' => Item::ofAccount()
                 ->when($filters['warehouse_id'], function ($q, $warehouseId) {

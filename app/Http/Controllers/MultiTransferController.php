@@ -52,7 +52,7 @@ class MultiTransferController extends Controller
     public function create()
     {
         return Inertia::render('MultiTransfer/Form', [
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(['id', 'name', 'code']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(['id', 'name', 'code', 'status']),
         ]);
     }
 

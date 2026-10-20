@@ -53,7 +53,7 @@ class ExecutiveReportController extends Controller
             'contentConfig' => $cfg->toArray(),
             'catalogue' => collect(ExecutiveReportConfig::GROUPS)->map(fn ($items, $group) => ['group' => $group, 'items' => collect($items)->map(fn ($v, $k) => ['key' => $k, 'label' => $v[0], 'hint' => $v[1]])->values()])->values(),
             'transactionTypes' => collect(ExecutiveReportConfig::TRANSACTIONS)->map(fn ($l, $k) => ['key' => $k, 'label' => $l])->values(),
-            'projectOptions' => Warehouse::query()->where('account_id', $request->user()->account_id)->where('active', 1)->visible()->orderBy('name')->get(['id', 'name']),
+            'projectOptions' => Warehouse::query()->where('account_id', $request->user()->account_id)->where('active', 1)->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'selectedItems' => $cfg->itemIds() ? Item::query()->whereIn('id', $cfg->itemIds())->get(['id', 'name', 'code']) : [],
             'userOptions' => User::query()->where('is_active', true)->whereNotNull('email')->where('email', '<>', '')->orderBy('name')->get(['id', 'name', 'email'])->map(fn ($u) => ['id' => $u->id, 'label' => $u->name.' ('.$u->email.')', 'name' => $u->name, 'email' => $u->email, 'subscribed' => in_array($u->id, $already, true)]),
             'subscribers' => $subscribers,

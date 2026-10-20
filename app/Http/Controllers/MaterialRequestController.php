@@ -130,7 +130,7 @@ class MaterialRequestController extends Controller
             ],
             'filters' => $filters,
             'statuses' => MaterialRequest::filterStatuses(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']),
             // Everyone who has ever actually submitted a request in this
             // account — not hardcoded to a role, since the Create step's
             // role assignment is configurable and would drift from this list.
@@ -155,8 +155,8 @@ class MaterialRequestController extends Controller
         $isSiteEngineer = $user->hasRole(User::SITE_ENGINEER_ROLES);
 
         $warehouses = $isSiteEngineer
-            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at'])
-            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at'])
+            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
 
         return Inertia::render('MaterialRequest/Form', [
             'edit' => null,
@@ -311,7 +311,7 @@ class MaterialRequestController extends Controller
                 ? Warehouse::ofAccount()->active()->whereIn(DB::raw('LOWER(TRIM(status))'), ['main warehouse', 'main warehouses'])->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name])->values()
                 : [],
             'siteOptions' => $canSetProcedures
-                ? Warehouse::ofAccount()->active()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name])->values()
+                ? Warehouse::ofAccount()->active()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status])->values()
                 : [],
         ]);
     }

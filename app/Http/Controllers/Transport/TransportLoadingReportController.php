@@ -34,7 +34,7 @@ class TransportLoadingReportController extends Controller
 
         return Inertia::render('TransportManagement/Loading/Report', LoadingReport::build($filters) + [
             'workers' => Contact::query()->whereIn('id', LoadingLedger::workerIds() ?: [0])->orderBy('name')->get(['id', 'name']),
-            'projects' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'projects' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'places' => \App\Models\TransportLoadingPlace::names(),
             'can' => [
                 'print' => $user->can('print-transport-loading-reports'),

@@ -35,7 +35,7 @@ class ReportController extends Controller
         return Inertia::render('ExternalStock/Reports', [
             'catalog' => ExternalStockReports::catalog(), 'type' => ExternalStockReports::exists($type) ? $type : 'balances', 'filters' => $filters,
             'people' => Contact::query()->where('category', Contact::EXTERNAL_CATEGORY)->orderBy('name')->get(['id', 'name'])->map(fn ($c) => ['value' => $c->id, 'label' => $c->name]),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->when($ids !== null, fn ($q) => $q->whereIn('id', $ids ?: [0]))->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name]),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->when($ids !== null, fn ($q) => $q->whereIn('id', $ids ?: [0]))->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status]),
             'kinds' => collect(ExternalStockMovement::KINDS)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(), 'statuses' => collect(ExternalStockMovement::STATUSES)->map(fn ($s) => ['value' => $s, 'label' => __($s)])->values(),
             'can' => ['print' => $request->user()->can('print-external-stock')],
         ]);

@@ -35,6 +35,7 @@ class SettingController extends Controller
             'daily_site_report_auto_archive_days' => 'required|integer|min:1|max:365',
             'app_name'       => 'nullable|string|max:190',
             'footer_credit'  => 'nullable|string|max:190',
+            'grouped_warehouse_lists' => 'nullable|in:0,1',
         ]);
         collect($settings)->each(function ($value, $key) {
             Setting::updateOrCreate(['tec_key' => $key, 'account_id' => auth()->user()->account_id], ['tec_value' => $value]);

@@ -286,7 +286,7 @@ class AccountController extends AcctController
         return $this->shared() + [
             'account' => $d, 'kind' => $kind, 'kinds' => collect(AcctAccount::KINDS)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(),
             'users' => User::query()->where('is_active', 1)->orderBy('name')->get(['id', 'name'])->map(fn ($u) => ['value' => $u->id, 'label' => $u->name])->values(),
-            'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name])->values(),
+            'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status])->values(),
             'locked' => $a ? AcctTransaction::query()->where('account_id', $a->id)->exists() : false, 'can' => ['sensitive' => $this->me()->can('view-acct-sensitive')],
         ];
     }

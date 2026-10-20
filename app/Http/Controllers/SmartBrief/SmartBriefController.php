@@ -79,7 +79,7 @@ class SmartBriefController extends Controller
             ])->values()->all() : [],
             'filters' => $mode === 'management' ? [
                 'roles' => \App\Models\Role::ofAccount()->orderBy('name')->pluck('name'),
-                'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name']),
+                'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status']),
                 'modules' => collect(Modules::visibleKeys($user))->map(fn ($k) => ['key' => $k, 'label' => Modules::label($k)])->sortBy('label')->values(),
                 'kinds' => collect(['created', 'updated', 'submitted', 'approved', 'rejected', 'deleted', 'report', 'comment'])->map(fn ($k) => ['key' => $k, 'label' => ucfirst($k === 'report' ? 'reports and downloads' : $k)]),
             ] : null,

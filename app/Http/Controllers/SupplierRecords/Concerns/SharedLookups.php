@@ -39,8 +39,8 @@ trait SharedLookups
 
     protected function warehouseOptions(): array
     {
-        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at'])
-            ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'completed_at' => $w->completed_at])->values()->all();
+        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at'])
+            ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'completed_at' => $w->completed_at, 'status' => $w->status])->values()->all();
     }
 
     protected function itemOptions(): array

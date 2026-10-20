@@ -54,7 +54,7 @@ class IssueMaterialController extends Controller
 
         return Inertia::render('IssueReturn/IssueIndex', [
             'filters' => $filters,
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']),
             'items' => Item::ofAccount()->orderBy('name')->get(['id', 'name', 'code']),
             'users' => User::ofAccount()->orderBy('name')->get(['id', 'name']),
             'issues' => new IssueMaterialCollection(
@@ -555,7 +555,7 @@ class IssueMaterialController extends Controller
                 ->get(['id', 'name', 'completed_at']);
         }
 
-        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
     }
 
     private function canRead(): bool

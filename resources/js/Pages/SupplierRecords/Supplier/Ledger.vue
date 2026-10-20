@@ -50,7 +50,7 @@
             <text-input type="number" step="0.01" :label="$t('Amount (positive = owed to supplier)')" v-model="openingForm.amount" :error="$page.props.errors.amount" required />
             <select-input :label="$t('Project / Warehouse')" v-model="openingForm.warehouse_id" :error="$page.props.errors.warehouse_id">
               <option :value="null">{{ $t('Company-wide / Legacy') }}</option>
-              <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+              <warehouse-options :items="warehouses" />
             </select-input>
             <text-input :label="$t('Source (e.g. legacy system, handover)')" v-model="openingForm.source" :error="$page.props.errors.source" />
             <div>
@@ -140,7 +140,7 @@
             <text-input type="number" step="0.01" :label="$t('Amount')" v-model="manualForm.amount" :error="$page.props.errors.amount" required />
             <select-input :label="$t('Project / Warehouse')" v-model="manualForm.warehouse_id" :error="$page.props.errors.warehouse_id">
               <option :value="null">{{ $t('Company-wide / Legacy') }}</option>
-              <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+              <warehouse-options :items="warehouses" />
             </select-input>
             <text-input :label="$t('Reference')" v-model="manualForm.reference" :error="$page.props.errors.reference" required />
             <div v-if="isTaxType" class="lg-span-all">
@@ -175,7 +175,7 @@
           </div>
           <div>
             <label class="sp-label">{{ $t('Project') }}</label>
-            <select v-model="filters.warehouse_id" class="sp-select"><option :value="null">{{ $t('All Projects') }}</option><option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option></select>
+            <select v-model="filters.warehouse_id" class="sp-select"><option :value="null">{{ $t('All Projects') }}</option><warehouse-options :items="warehouses" /></select>
           </div>
           <div>
             <label class="sp-label">{{ $t('Date From') }}</label>
@@ -280,6 +280,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 import SelectInput from '@/Shared/SelectInput.vue';
+import WarehouseOptions from '@/Shared/WarehouseOptions.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import AttachmentPicker from '@/Shared/AttachmentPicker.vue';
 import RecordAttachmentsModal from '@/Shared/RecordAttachmentsModal.vue';
@@ -288,7 +289,7 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 
 export default {
-  components: { AdminLayout, TextInput, TextareaInput, SelectInput, LoadingButton, AttachmentPicker, RecordAttachmentsModal, SprConfirmPassword, PageHeader, StatTiles },
+  components: { WarehouseOptions, AdminLayout, TextInput, TextareaInput, SelectInput, LoadingButton, AttachmentPicker, RecordAttachmentsModal, SprConfirmPassword, PageHeader, StatTiles },
 
   props: {
     supplier: Object,

@@ -178,11 +178,11 @@ class ItemCategoryReportController extends Controller
     private function reportWarehousesForUser(User $user, bool $canViewAllWarehouses)
     {
         if ($canViewAllWarehouses) {
-            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
         }
 
         // Get assigned warehouses - use fully qualified column names to avoid ambiguity
-        $assigned = $user->warehouses()->where('warehouses.active', 1)->visible()->orderBy('warehouses.name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at']);
+        $assigned = $user->warehouses()->where('warehouses.active', 1)->visible()->orderBy('warehouses.name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at']);
 
         if ($assigned->isNotEmpty()) {
             return $assigned->values();
@@ -190,7 +190,7 @@ class ItemCategoryReportController extends Controller
 
         // Fallback to user's primary warehouse
         if ($user->warehouse_id) {
-            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->whereKey($user->warehouse_id)->orderBy('name')->get(['id', 'name', 'completed_at']);
+            return Warehouse::where('account_id', $user->account_id)->where('active', 1)->visible()->whereKey($user->warehouse_id)->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
         }
 
         return collect();

@@ -90,7 +90,8 @@
                     <span class="wh-sec-count">{{ sec.items.length }}</span>
                   </div>
                   <tec-dropdown-link as="button" v-for="w in sec.items" :key="w.id" @click="selectWarehouse(w.id)">
-                    <span class="wh-picker-item wh-has-cat" :class="{ 'wh-picker-item-active': currentWarehouse && currentWarehouse.id === w.id }" :data-cat="w.category || null">
+                    <span class="wh-picker-item wh-has-cat" :class="{ 'wh-picker-item-active': currentWarehouse && currentWarehouse.id === w.id }" :data-cat="catText(w)">
+                      <span v-if="progressOf(w)" class="wh-dot flex-none" :class="'wh-dot-' + progressOf(w)"></span>
                       <span class="truncate">{{ w.name }}</span>
                       <icons v-if="currentWarehouse && currentWarehouse.id === w.id" name="tick" class="wh-picker-check" />
                     </span>
@@ -395,7 +396,7 @@
 </template>
 
 <script>
-import { groupWarehouses } from '@/Core/warehouseGroups';
+import { groupWarehouses, progressOf } from '@/Core/warehouseGroups';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
 import { LANGUAGES } from '@/Core/i18n.js';
@@ -843,6 +844,12 @@ export default {
       this.$inertia.post(route('logout'));
     },
 
+    progressOf,
+    // the hover text of a row: its category and, for a project, whether it is finished or still running
+    catText(w) {
+      const p = progressOf(w);
+      return (w.category || '') + (p ? (w.category ? ' - ' : '') + (p === 'done' ? 'Finished' : 'In progress') : '') || null;
+    },
     selectWarehouse(warehouseId) {
       this.warehouseSearch = '';
       if (this.currentWarehouse && this.currentWarehouse.id === warehouseId) return;
@@ -998,6 +1005,7 @@ export default {
 .wh-sec .wh-picker-item { padding-left: 8px; }
 /* the category (Main Warehouse, Government, Private, Directors...) shows as a small tooltip on hover or keyboard focus, inside the row so the scroll area never clips it */
 .wh-has-cat { position: relative; }
+.wh-dot { width: 8px; height: 8px; border-radius: 50%; } .wh-dot-done { background: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); } .wh-dot-running { background: #f97316; box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25); }
 .wh-has-cat[data-cat]::after { content: 'Category: ' attr(data-cat); position: absolute; right: 22px; top: 50%; transform: translateY(-50%) scale(0.96); z-index: 20; padding: 3px 9px; border-radius: 8px; background: #0f2540; color: #fff; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.4; white-space: nowrap; box-shadow: 0 8px 16px -6px rgba(15, 37, 64, 0.55); opacity: 0; pointer-events: none; transition: opacity 0.12s ease, transform 0.12s ease; }
 .wh-has-cat[data-cat]:hover::after, button:focus-visible .wh-has-cat[data-cat]::after { opacity: 1; transform: translateY(-50%) scale(1); }
 

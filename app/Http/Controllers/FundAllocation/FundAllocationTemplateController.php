@@ -61,7 +61,7 @@ class FundAllocationTemplateController extends Controller
             'contacts' => Contact::query()->orderBy('name')->get(['id', 'name', 'category']),
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'username']),
             'projects' => Warehouse::ofAccount()->active()->orderBy('name')->get(['id', 'name', 'status']),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'can' => [
                 'update' => $this->may($request, 'update-fund-allocation-templates'),
                 'generate' => $this->may($request, 'generate-fund-allocation-templates'),

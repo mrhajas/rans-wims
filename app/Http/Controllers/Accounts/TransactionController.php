@@ -46,7 +46,7 @@ class TransactionController extends AcctController
             'rows' => $rows, 'filters' => $f + ['sort' => $sort, 'dir' => $dir], 'sums' => $sum, 'byStatus' => $byStatus, 'accounts' => $this->accountOptions(null, false),
             'categories' => AcctCategory::query()->orderBy('sort_order')->get(['id', 'name', 'direction'])->map(fn ($c) => ['value' => $c->id, 'label' => $c->name]),
             'statuses' => collect(AcctTransaction::STATUS)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(), 'methods' => $this->methods(),
-            'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name]),
+            'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status]),
             'users' => User::query()->where('is_active', 1)->orderBy('name')->get(['id', 'name'])->map(fn ($u) => ['value' => $u->id, 'label' => $u->name]),
             'can' => ['create' => $this->me()->can('create-acct-inflows') || $this->me()->can('create-acct-outflows'), 'inflow' => $this->me()->can('create-acct-inflows'), 'outflow' => $this->me()->can('create-acct-outflows'), 'export' => $this->me()->can('export-acct-transactions') && $this->me()->can('read-acct-reports')],
         ]);
@@ -344,7 +344,7 @@ class TransactionController extends AcctController
         return $this->shared() + [
             't' => $t ? $this->detail($t, collect()) + ['account_id' => $t->account_id, 'category_id' => $t->category_id, 'txn_date' => $t->txn_date->toDateString(), 'txn_time' => $t->txn_time, 'method_details' => $t->method_details ?? [], 'warehouse_id' => $t->warehouse_id, 'amount' => rtrim(rtrim((string) $t->amount, '0'), '.')] : null,
             'direction' => $dir, 'kind' => $kind, 'accounts' => $this->accountOptions(), 'categories' => AcctCategory::query()->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'direction'])->map(fn ($c) => ['value' => $c->id, 'label' => $c->name, 'direction' => $c->direction]),
-            'methods' => $this->methods(), 'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name]),
+            'methods' => $this->methods(), 'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status]),
             'doc_types' => collect(self::DOC_TYPES)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(), 'preset' => ['account_id' => (int) $request->query('account_id') ?: null, 'fund_allocation_id' => (int) $request->query('fund_allocation_id') ?: null],
             'idem' => (string) \Illuminate\Support\Str::uuid(),
             'can' => ['inflow' => $me->can('create-acct-inflows'), 'outflow' => $me->can('create-acct-outflows'), 'adjust' => $me->can('create-acct-adjustments'), 'submit' => true],

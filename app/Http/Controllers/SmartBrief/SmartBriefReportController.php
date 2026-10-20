@@ -68,7 +68,7 @@ class SmartBriefReportController extends Controller
                     'value' => $u->id, 'label' => $u->name . ($u->roles->isNotEmpty() ? ' (' . $u->roles->pluck('name')->implode(', ') . ')' : ''), 'name' => $u->name, 'username' => $u->username,
                 ])->values()->all(),
                 'roles' => \App\Models\Role::ofAccount()->orderBy('name')->pluck('name'),
-                'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name']),
+                'projects' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'status']),
             ] : ['people' => [], 'roles' => [], 'projects' => []],
             'can' => [
                 'management' => $management,

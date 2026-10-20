@@ -29,7 +29,7 @@ class ProjectMappingController extends Controller
     /** The Project(s) / Warehouse(s) a name can be matched to: the account's active warehouses. */
     private function projectOptions()
     {
-        return Warehouse::ofAccount()->active()->orderBy('name')->get(['id', 'name'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name])->values();
+        return Warehouse::ofAccount()->active()->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status])->values();
     }
 
     /** The ids of the account's warehouses among these (the ones a person may choose). */

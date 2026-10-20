@@ -49,7 +49,7 @@ class TransportReportController extends Controller
             'canLoadingReport' => $request->user()->can('read-transport-loading-reports'),
             'vehicles' => \App\Models\Asset::vehicles()->orderBy('name')->get(['id', 'name', 'registration_number']),
             'drivers' => Contact::where('category', 'Drivers')->orderBy('name')->get(['id', 'name']),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'destinationTypes' => TransportRecord::DESTINATION_TYPES,
             'paymentStatuses' => TransportRecord::PAYMENT_STATUSES,
         ]);

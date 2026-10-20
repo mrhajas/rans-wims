@@ -107,7 +107,7 @@ class MaterialReallocationController extends Controller
         return Inertia::render('MaterialReallocation/Index', [
             'filters' => $filters,
             'statuses' => MaterialReallocation::statuses(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']),
             'canCreate' => $user->can('create', MaterialReallocation::class),
             'canViewReports' => $this->canViewReports($user),
             'materialReallocations' => new MaterialReallocationCollection($materialReallocations),
@@ -356,8 +356,8 @@ class MaterialReallocationController extends Controller
         $isSiteEngineer = $user->hasRole(User::SITE_ENGINEER_ROLES) && ! $user->hasRole(['Super Admin', 'Admin']);
 
         $warehouses = $isSiteEngineer
-            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at'])
-            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at'])
+            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
 
         return Inertia::render('MaterialReallocation/Form', [
             'edit' => null,

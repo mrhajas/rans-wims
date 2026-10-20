@@ -28,6 +28,8 @@ class HandleInertiaRequests extends Middleware
             'ctx'              => fn () => ! $request->user() && ! \App\Support\Simulation\Environment::isSimulation() && \App\Support\Simulation\Environment::available() ? config('simulation.trigger') : null,
             'settings'         => get_settings(),
             'languages'        => $langFiles->available,
+            // the project / warehouse dropdowns show Main Warehouses, Projects and Others in sections unless this is switched off in Settings
+            'groupedWarehouseLists' => fn () => get_settings('grouped_warehouse_lists') !== '0',
             'myWarehouses'     => fn () => $this->managedWarehouses($request),
             'currentWarehouse' => fn () => $this->currentWarehouse($request),
             'enabledFeatures'  => fn () => FeatureManager::enabledMap(),

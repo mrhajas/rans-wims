@@ -128,7 +128,7 @@ class LabourController extends Controller
             'filters' => array_merge($filters, ['sort' => $sort, 'direction' => $direction]),
             'statuses' => LabourList::statuses(),
             'priorities' => LabourListItem::priorities(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'canCreate' => $user->can('create', LabourList::class),
             'stats' => [
                 'awaiting_pm' => (clone $statsQuery)->where('status', LabourList::STATUS_SUBMITTED)->count(),
@@ -147,8 +147,8 @@ class LabourController extends Controller
         $isSiteEngineer = $user->hasRole(User::SITE_ENGINEER_ROLES) && ! $user->hasRole(['Super Admin', 'Admin', 'Project Manager', 'Project Managers']);
 
         $warehouses = $isSiteEngineer
-            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name'])
-            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']);
+            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status'])
+            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']);
 
         return Inertia::render('Labour/Form', [
             'edit' => null,
@@ -251,11 +251,11 @@ class LabourController extends Controller
         $isSiteEngineer = $user->hasRole(User::SITE_ENGINEER_ROLES) && ! $user->hasRole(['Super Admin', 'Admin', 'Project Manager', 'Project Managers']);
 
         $warehouses = $isSiteEngineer
-            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name'])
-            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']);
+            ? $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status'])
+            : Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']);
 
         if ($labour->warehouse_id && ! $warehouses->contains('id', $labour->warehouse_id)) {
-            $warehouses = $warehouses->concat(Warehouse::whereKey($labour->warehouse_id)->get(['id', 'name']))->unique('id')->sortBy('name')->values();
+            $warehouses = $warehouses->concat(Warehouse::whereKey($labour->warehouse_id)->get(['id', 'name', 'status']))->unique('id')->sortBy('name')->values();
         }
 
         return Inertia::render('Labour/Form', [

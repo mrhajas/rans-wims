@@ -41,7 +41,7 @@ class LowStockAlertController extends Controller
             'config' => $cfg,
             'users' => User::query()->where('account_id', $account)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'email']),
             'roles' => Role::query()->orderBy('name')->pluck('name'),
-            'projects' => Warehouse::query()->where('account_id', $account)->where('active', 1)->orderBy('name')->get(['id', 'name']),
+            'projects' => Warehouse::query()->where('account_id', $account)->where('active', 1)->orderBy('name')->get(['id', 'name', 'status']),
             'pickedItems' => $itemIds->isNotEmpty() ? Item::query()->whereIn('id', $itemIds)->get(['id', 'name', 'code']) : [],
             'now' => ['totals' => $digest['totals'], 'top' => collect($digest['projects'])->filter(fn ($p) => $p['out'] + $p['low'] > 0)->take(5)->map(fn ($p) => ['name' => $p['name'], 'items' => $p['out'] + $p['low'], 'out' => $p['out']])->values()],
             'channels' => ['sms' => FeatureManager::isEnabled('wims_connect') && FeatureManager::isEnabled('wims_connect_sms'), 'email' => config('mail.default') !== 'log'],

@@ -48,7 +48,7 @@ class TransportLoadingController extends Controller
             'tab' => $tab,
             'filters' => ['date' => $date, 'date_from' => $from, 'date_to' => $to, 'warehouse_id' => $warehouseId],
             'rate' => LoadingLedger::rate(),
-            'projects' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name']),
+            'projects' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status']),
             'places' => TransportLoadingPlace::names(),
             // Where the day's saved marks were worked, so the two pickers open already filled in.
             'dayWhere' => [

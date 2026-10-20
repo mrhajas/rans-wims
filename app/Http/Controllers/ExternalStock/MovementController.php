@@ -447,7 +447,7 @@ class MovementController extends Controller
     {
         $ids = accessible_warehouse_ids();
 
-        return Warehouse::ofAccount()->active()->visible()->when($ids !== null, fn ($q) => $q->whereIn('id', $ids ?: [0]))->orderBy('name')->get(['id', 'name', 'code'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name]);
+        return Warehouse::ofAccount()->active()->visible()->when($ids !== null, fn ($q) => $q->whereIn('id', $ids ?: [0]))->orderBy('name')->get(['id', 'name', 'code', 'status'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name, 'status' => $w->status]);
     }
 
     private function driverLabel(ExternalStockMovement $m): ?string
