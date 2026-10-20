@@ -187,3 +187,20 @@
 
 /* a small heart after the reference of a document that has the Charity section */
 .wa-ui .wa-heart { display: inline-flex; align-items: center; vertical-align: -2px; margin-left: 6px; color: #d9670c; } .wa-ui .wa-heart svg { width: 14px; height: 14px; }
+
+/* the payment buttons float at the bottom of the screen while the Payment section is in view */
+.wa-ui .wa-payacts.is-float { position: fixed; left: 50%; bottom: 14px; z-index: 40; transform: translateX(-50%); width: max-content; max-width: min(1100px, calc(100vw - 24px)); margin: 0; padding: 10px 14px; justify-content: center; border-radius: 22px; background: color-mix(in srgb, var(--sc-card, #fff) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 0 0 1px var(--sc-line, #e3e9f2), 0 22px 40px -14px rgba(15, 37, 64, 0.55); animation: wa-rise 0.22s ease-out; }
+@keyframes wa-rise { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.wa-ui .wa-payacts.is-float .grow { display: none; }
+@media (max-width: 767.98px) { .wa-ui .wa-payacts.is-float { bottom: 10px; left: 12px; right: 12px; transform: none; width: auto; max-width: none; max-height: 46vh; overflow-y: auto; padding: 10px; gap: 6px; border-radius: 18px; animation-name: wa-rise-m; } .wa-ui .wa-payacts.is-float .lg-btn { flex: 1 1 calc(50% - 6px); justify-content: center; } .wa-ui .wa-payacts.is-float .wa-seltxt { flex: 1 1 100%; text-align: center; } }
+@keyframes wa-rise-m { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wa-ui .wa-payacts.is-float { animation: none; } }
+
+/* desktop: all the payment buttons (and the short count text) stay in one line */
+@media (min-width: 1100px) {
+  .wa-ui .wa-payacts { flex-wrap: nowrap; }
+  .wa-ui .wa-payacts .lg-btn { flex: none; white-space: nowrap; }
+  .wa-ui .wa-payacts .wa-seltxt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wa-ui .wa-payacts.is-float { max-width: calc(100vw - 150px); gap: 8px; }
+  .wa-ui .wa-payacts.is-float .wa-seltxt { max-width: 240px; }
+}

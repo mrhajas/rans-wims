@@ -78,7 +78,7 @@
       <div class="wa-grand" style="margin-bottom: 12px"><span>{{ d.include_charity ? $t('Total of the document with the charity') : $t('Total of the document') }}</span><b>{{ d.currency }} {{ money(d.total_amount) }}</b></div>
 
       <!-- payment -->
-      <section v-if="pay" class="lg-card">
+      <section v-if="pay" ref="payBox" class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="cash" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Payment') }} <span class="lg-chip" :class="payChip(d.payment_status)" style="text-transform: none; margin-left: 6px">{{ $t(d.payment_status || 'Unpaid') }}</span></h2><p class="lg-card-sub">{{ $t('Mark the document paid to a user or staff member, all at once, line by line or part of a line, or make a Payment Voucher for it.') }}</p></div></header>
         <div class="wa-prog">
           <div class="wa-bar-track"><span class="wa-bar-held" :style="{ width: pct(Number(d.paid_total) + Number(d.reserved_total)) + '%' }"></span><span class="wa-bar-paid" :style="{ width: pct(d.paid_total) + '%' }"></span></div>
@@ -103,7 +103,8 @@
             </template>
           </tbody>
         </table></div>
-        <div v-if="canPay" class="wa-payacts">
+        <div v-if="canPay && floatPay" class="wa-payacts-gap" :style="{ height: barH + 'px' }" aria-hidden="true"></div>
+        <div v-if="canPay" ref="payBar" class="wa-payacts" :class="{ 'is-float': floatPay }">
           <span class="wa-seltxt">{{ selectedRows.length ? $t(':n line(s) chosen: :a', { n: selectedRows.length, a: d.currency + ' ' + money(selectedTotal) }) : $t('Tick the lines to pay, or pay everything left.') }}</span>
           <span class="grow"></span>
           <button v-if="can.pay" type="button" class="lg-btn lg-btn-green" :disabled="!selectedRows.length" @click="open(false, 'lines')"><icons name="tick" class="w-4 h-4" />{{ $t('Mark chosen paid') }}</button>
@@ -162,7 +163,9 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 export default {
   components: { SendDialog, DuplicateDialog, PayDialog, BulkVoucherDialog, TravelModal, AdminLayout, PageHeader, Link },
   props: { d: Object, sends: Array, activity: Array, can: Object, users: Array, pay: Object },
-  data() { return { asking: '', reason: '', busy: false, sendOpen: false, dupOpen: false, chosen: {}, amounts: {}, payOpen: false, bulkOpen: false, bulkMode: 'all', payVoucher: false, payMode: 'all', reversing: null, why: '', today: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) }; },
+  mounted() { this.onScroll = () => { if (this.tick) return; this.tick = requestAnimationFrame(() => { this.tick = 0; this.placePayBar(); }); }; document.addEventListener('scroll', this.onScroll, true); window.addEventListener('resize', this.onScroll); this.$nextTick(this.placePayBar); },
+  beforeUnmount() { document.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('resize', this.onScroll); if (this.tick) cancelAnimationFrame(this.tick); },
+  data() { return { asking: '', reason: '', busy: false, sendOpen: false, dupOpen: false, chosen: {}, amounts: {}, payOpen: false, bulkOpen: false, bulkMode: 'all', payVoucher: false, payMode: 'all', floatPay: false, barH: 0, reversing: null, why: '', today: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) }; },
   computed: {
     canPay() { return !!(this.can.pay || this.can.voucher); },
     openRows() { return this.pay ? this.pay.lines.filter(r => Number(r.balance) > 0) : []; },
@@ -192,6 +195,15 @@ export default {
     chooseAll(on) { const c = {}; const a = { ...this.amounts }; this.openRows.forEach(r => { c[r.key] = on; if (on && !a[r.key]) a[r.key] = r.balance; }); this.chosen = c; this.amounts = a; },
     payOne(r) { this.chosen = { [r.key]: true }; this.amounts = { ...this.amounts, [r.key]: this.amounts[r.key] || r.balance }; this.open(false, 'lines'); },
     openBulk(mode) { this.bulkMode = mode; this.bulkOpen = true; },
+    // the payment buttons float at the bottom of the screen from the moment the Payment section is reached while scrolling down, until it is scrolled back above (or past)
+    placePayBar() {
+      const box = this.$refs.payBox; const bar = this.$refs.payBar;
+      if (!box || !bar) { this.floatPay = false; return; }
+      const r = box.getBoundingClientRect(); const vh = window.innerHeight || document.documentElement.clientHeight;
+      const on = r.top < vh - 90 && r.bottom > 140;
+      if (on && !this.floatPay) this.barH = bar.offsetHeight + 12;
+      this.floatPay = on;
+    },
     open(voucher, mode) { this.payVoucher = voucher; this.payMode = mode; this.payOpen = true; },
     reverse() { this.busy = true; this.$inertia.post(route('weekly-administration.payments.reverse', this.reversing.id), { reason: this.why }, { preserveScroll: true, onSuccess: () => { this.reversing = null; }, onFinish: () => (this.busy = false) }); },
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },

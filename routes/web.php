@@ -1033,6 +1033,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('payment-vouchers/search-for-fund', [Controllers\PaymentVoucherController::class, 'searchForFund'])->name('payment-vouchers.search-for-fund');
     Route::get('payment-vouchers/export', [Controllers\PaymentVoucherController::class, 'export'])->name('payment-vouchers.export');
     Route::post('payment-vouchers/bulk-approve', [Controllers\PaymentVoucherController::class, 'bulkApprove'])->name('payment-vouchers.bulk-approve');
+    Route::post('payment-vouchers/bulk-mark-paid', [Controllers\PaymentVoucherController::class, 'bulkMarkPaid'])->name('payment-vouchers.bulk-mark-paid');
     Route::post('payment-vouchers/bulk-approve-authorise', [Controllers\PaymentVoucherController::class, 'bulkApproveAndAuthorise'])->name('payment-vouchers.bulk-approve-authorise');
     Route::get('payment-vouchers/batches', [Controllers\PaymentVoucherBatchController::class, 'index'])->name('payment-vouchers.batches.index');
     Route::get('payment-vouchers/batches/create', [Controllers\PaymentVoucherBatchController::class, 'create'])->name('payment-vouchers.batches.create');

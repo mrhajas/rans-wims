@@ -1224,6 +1224,50 @@ class PaymentVoucherController extends Controller
             'payment_method' => 'nullable|string|max:100',
         ]);
 
+        $this->payOne($request, $id, $data);
+
+        return back()->with('message', __('Payment Voucher marked as paid.'));
+    }
+
+    /**
+     * Marks several Authorised vouchers as paid in one go (the checked rows of the list), with one shared method / reference. Each voucher is paid on its own,
+     * exactly like the single "Mark as paid": one that is not Authorised, is already paid, or is held back (a required "paid" signature is missing) is left
+     * unchanged and named in the answer; the others are still paid.
+     */
+    public function bulkMarkPaid(Request $request)
+    {
+        $this->authorize('record-payment-payment-vouchers');
+
+        $data = $request->validate(['ids' => 'required|array|min:1|max:200', 'ids.*' => 'integer', 'payment_reference' => 'nullable|string|max:190', 'payment_method' => 'nullable|string|max:100']);
+        $ids = collect($data['ids'])->map(fn ($i) => (int) $i)->unique()->values();
+        $candidates = PaymentVoucher::whereIn('id', $ids)->where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNull('paid_at')->orderBy('id')->pluck('id');
+
+        $processed = 0;
+        $blocked = [];
+        foreach ($candidates as $id) {
+            try {
+                $this->payOne($request, $id, $data);
+                $processed++;
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                $blocked[] = (PaymentVoucher::find($id)->pv_number ?? ('#' . $id)) . ': ' . ($e->getMessage() ?: __('could not be paid'));
+            } catch (\Throwable $e) {
+                report($e);
+                $blocked[] = (PaymentVoucher::find($id)->pv_number ?? ('#' . $id)) . ': ' . __('could not be paid (see the system log)');
+            }
+        }
+
+        $skipped = $ids->count() - $candidates->count();
+        $message = $this->bulkSummary($processed, $skipped, 'marked as paid');
+        if ($blocked) {
+            $message .= ' ' . count($blocked) . ' left unchanged: ' . implode(' | ', $blocked);
+        }
+
+        return back()->with($processed > 0 ? 'message' : 'error', $message);
+    }
+
+    /** Pays one Authorised voucher (the stamp and everything that follows from it) and sends its notices. Throws an HTTP 422 when it cannot be paid. */
+    private function payOne(Request $request, $id, array $data): PaymentVoucher
+    {
         // lockForUpdate() + re-checking paid_at inside the transaction is
         // what actually makes "only settable once" hold under concurrency —
         // without it, two near-simultaneous requests (double-click, two open
@@ -1311,7 +1355,7 @@ class PaymentVoucherController extends Controller
         }
         PaymentVoucherNotifier::fire('paid', $voucher, $request->user(), 'Payment Voucher Paid', 'Payment Voucher ' . $voucher->pv_number . ' has been paid.', ['values' => ['actor' => $request->user()->name]]);
 
-        return back()->with('message', __('Payment Voucher marked as paid.'));
+        return $voucher;
     }
 
     /**

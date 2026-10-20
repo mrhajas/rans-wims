@@ -19,14 +19,18 @@
       <stat-tiles :items="statTiles" @select="pickTile" />
 
       <div v-if="selectedIds.length" class="pv-bulk-bar mb-4 flex items-center justify-between gap-3 flex-wrap">
-        <span class="text-sm font-bold pv-bulk-count">{{ selectedIds.length }} {{ $t('selected') }}</span>
+        <span class="text-sm font-bold pv-bulk-count">{{ selectedIds.length }} {{ $t('selected') }}<small v-if="bulk.pay.length || bulk.approve.length || bulk.authorise.length" class="pv-bulk-hint"> · <template v-if="bulk.approve.length">{{ bulk.approve.length }} {{ $t('to approve') }}</template><template v-if="bulk.authorise.length"><template v-if="bulk.approve.length">, </template>{{ bulk.authorise.length }} {{ $t('to authorise') }}</template><template v-if="bulk.pay.length"><template v-if="bulk.approve.length || bulk.authorise.length">, </template>{{ bulk.pay.length }} {{ $t('to pay') }}</template></small></span>
         <div class="flex items-center gap-2 flex-wrap">
           <button type="button" class="lg-btn lg-btn-soft" @click="selectedIds = []">{{ $t('Clear Selection') }}</button>
-          <button v-if="$can('approve-payment-vouchers')" type="button" class="lg-btn lg-btn-dark" @click="bulkApprove">
-            <icons name="tick" class="w-4 h-4" />{{ $t('Approve Selected') }}
+          <!-- what can be done depends on what is checked: approving only when some checked voucher is not approved yet, paying only when some is Authorised and unpaid -->
+          <button v-if="$can('approve-payment-vouchers') && bulk.approve.length" type="button" class="lg-btn lg-btn-dark" @click="bulkApprove">
+            <icons name="tick" class="w-4 h-4" />{{ $t('Approve Selected') }} ({{ bulk.approve.length }})
           </button>
-          <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers')" type="button" class="lg-btn lg-btn-primary" @click="bulkApproveAndAuthorise">
-            <icons name="lock-closed" class="w-4 h-4" />{{ $t('Approve & Authorise Selected') }}
+          <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers') && (bulk.approve.length || bulk.authorise.length)" type="button" class="lg-btn lg-btn-primary" @click="bulkApproveAndAuthorise">
+            <icons name="lock-closed" class="w-4 h-4" />{{ $t('Approve & Authorise Selected') }} ({{ bulk.approve.length + bulk.authorise.length }})
+          </button>
+          <button v-if="$can('record-payment-payment-vouchers') && bulk.pay.length" type="button" class="lg-btn lg-btn-green" @click="openPay">
+            <icons name="cash" class="w-4 h-4" />{{ $t('Mark Paid') }} ({{ bulk.pay.length }})
           </button>
         </div>
       </div>
@@ -148,6 +152,24 @@
         </div>
       </div>
     </Teleport>
+  
+    <modal :show="payOpen" max-width="lg" @close="payOpen = false">
+      <div class="pv-paydlg">
+        <header class="pv-paydlg__head"><icons name="cash" class="w-5 h-5" /><div><h3>{{ $t('Mark the checked vouchers as paid') }}</h3><p>{{ bulk.pay.length }} {{ $t('Authorised voucher(s)') }} · {{ $t('Total') }} {{ $money(bulkPayTotal) }}</p></div></header>
+        <div class="pv-paydlg__body">
+          <p class="pv-paydlg__note">{{ $t('All of them are marked paid together, with the same method and reference. Vouchers that cannot be paid (already paid, or a required signature is missing) are left as they are and named in the answer.') }}</p>
+          <div class="lg-fields">
+            <text-input :label="$t('Payment Reference (optional)')" v-model="payForm.payment_reference" />
+            <text-input :label="$t('Payment Method (optional)')" v-model="payForm.payment_method" />
+          </div>
+          <ul class="pv-paydlg__list"><li v-for="v in bulk.pay" :key="v.id"><b>{{ v.pv_number }}</b><span>{{ v.payee_name || '-' }}</span><em>{{ $money(v.total_amount) }}</em></li></ul>
+        </div>
+        <footer class="pv-paydlg__foot">
+          <button type="button" class="lg-btn lg-btn-soft" :disabled="paying" @click="payOpen = false">{{ $t('Cancel') }}</button>
+          <button type="button" class="lg-btn lg-btn-green" :disabled="paying" @click="submitPay"><icons name="tick" class="w-4 h-4" />{{ paying ? $t('Saving...') : $t('Mark') + ' ' + bulk.pay.length + ' ' + $t('as Paid') }}</button>
+        </footer>
+      </div>
+    </modal>
   </admin-layout>
 </template>
 
@@ -161,6 +183,7 @@ import StatTiles from '@/Shared/Page/StatTiles.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import Pagination from '@/Shared/Pagination.vue';
+import Modal from '@/Jetstream/Modal.vue';
 import { h } from 'vue';
 
 const SortIcon = {
@@ -179,7 +202,7 @@ const SortIcon = {
 };
 
 export default {
-  components: { AdminLayout, PageHeader, StatTiles, AutoComplete, TextInput, Pagination, SortIcon },
+  components: { AdminLayout, PageHeader, StatTiles, AutoComplete, TextInput, Pagination, SortIcon, Modal },
 
   props: {
     filters: Object,
@@ -196,6 +219,10 @@ export default {
   data() {
     return {
       selectedIds: [],
+      seen: {},
+      payOpen: false,
+      paying: false,
+      payForm: { payment_reference: '', payment_method: '' },
       pvTooltip: { visible: false, voucher: null, style: {} },
       form: {
         search: this.filters.search || '',
@@ -256,6 +283,19 @@ export default {
       const qs = new URLSearchParams(query).toString();
       return qs ? '?' + qs : '';
     },
+    // what the checked vouchers (also those on other pages) are waiting for
+    bulk() {
+      const out = { approve: [], authorise: [], pay: [] };
+      this.selectedIds.forEach(id => {
+        const v = this.seen[id];
+        if (!v) return;
+        if (v.status === 'Submitted') out.approve.push(v);
+        else if (v.status === 'Approved') out.authorise.push(v);
+        else if (v.status === 'Authorised' && !v.paid_at) out.pay.push(v);
+      });
+      return out;
+    },
+    bulkPayTotal() { return this.bulk.pay.reduce((sum, v) => sum + (parseFloat(v.total_amount) || 0), 0); },
     selectedTotal() {
       return this.paymentVouchers.data
         .filter(v => this.selectedIds.includes(v.id))
@@ -267,6 +307,11 @@ export default {
   },
 
   watch: {
+    // remember the status of every voucher that was shown, so a checked voucher on another page still counts for the buttons
+    paymentVouchers: {
+      handler(list) { ((list && list.data) || []).forEach(r => { this.seen[r.id] = { id: r.id, pv_number: r.pv_number, payee_name: r.payee_name, total_amount: r.total_amount, status: r.status, paid_at: r.paid_at }; }); },
+      immediate: true,
+    },
     form: {
       handler: throttle(function () {
         const query = pickBy(this.form);
@@ -346,19 +391,35 @@ export default {
         this.selectedIds = [...new Set([...this.selectedIds, ...visibleIds])];
       }
     },
+    openPay() {
+      this.payForm = { payment_reference: '', payment_method: '' };
+      this.payOpen = true;
+    },
+    submitPay() {
+      const ids = this.bulk.pay.map(v => v.id);
+      if (!ids.length || this.paying) return;
+      this.paying = true;
+      this.$inertia.post(route('payment-vouchers.bulk-mark-paid'), { ids, ...this.payForm }, {
+        preserveScroll: true,
+        onSuccess: () => { this.selectedIds = []; this.payOpen = false; },
+        onFinish: () => { this.paying = false; },
+      });
+    },
     async bulkApprove() {
-      if (!await this.$confirm(this.$t('Approve') + ' ' + this.selectedIds.length + ' ' + this.$t('selected payment voucher(s)?'))) {
+      const ids = this.bulk.approve.map(v => v.id);
+      if (!ids.length || !await this.$confirm(this.$t('Approve') + ' ' + ids.length + ' ' + this.$t('selected payment voucher(s)?'))) {
         return;
       }
-      this.$inertia.post(route('payment-vouchers.bulk-approve'), { ids: this.selectedIds }, {
+      this.$inertia.post(route('payment-vouchers.bulk-approve'), { ids }, {
         onSuccess: () => { this.selectedIds = []; },
       });
     },
     async bulkApproveAndAuthorise() {
-      if (!await this.$confirm(this.$t('Approve and authorise') + ' ' + this.selectedIds.length + ' ' + this.$t('selected payment voucher(s)?'))) {
+      const ids = [...this.bulk.approve, ...this.bulk.authorise].map(v => v.id);
+      if (!ids.length || !await this.$confirm(this.$t('Approve and authorise') + ' ' + ids.length + ' ' + this.$t('selected payment voucher(s)?'))) {
         return;
       }
-      this.$inertia.post(route('payment-vouchers.bulk-approve-authorise'), { ids: this.selectedIds }, {
+      this.$inertia.post(route('payment-vouchers.bulk-approve-authorise'), { ids }, {
         onSuccess: () => { this.selectedIds = []; },
       });
     },
@@ -396,7 +457,16 @@ export default {
 .pv-bulk-bar {
   background: rgba(190, 24, 93, 0.06); border: 1px solid rgba(190, 24, 93, 0.2); border-radius: 1rem; padding: 0.7rem 1rem;
 }
-.pv-bulk-count { color: var(--lg-ink); }
+.pv-bulk-count { color: var(--lg-ink); } .pv-bulk-hint { font-weight: 600; color: var(--lg-mute, #64748b); }
+/* the dialog is teleported out of the page, so it carries its own colours */
+.pv-paydlg { --lg-card: #ffffff; --lg-line: #e6ebf3; --lg-soft: #f6f8fc; --lg-ink: #0f172a; --lg-mute: #64748b; background: var(--lg-card); color: var(--lg-ink); border-radius: 0.5rem; overflow: hidden; }
+html.dark .pv-paydlg { --lg-card: #1e293b; --lg-line: rgba(255, 255, 255, 0.1); --lg-soft: rgba(255, 255, 255, 0.05); --lg-ink: #f1f5f9; --lg-mute: #94a3b8; }
+.pv-paydlg__head { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem 1.1rem; color: #fff; background: linear-gradient(135deg, #16a34a, #166534); } .pv-paydlg__head h3 { margin: 0; font-size: 1rem; font-weight: 800; } .pv-paydlg__head p { margin: 0.1rem 0 0; font-size: 0.8rem; opacity: 0.92; }
+.pv-paydlg__body { display: grid; gap: 0.8rem; padding: 1rem 1.1rem; max-height: 65vh; overflow-y: auto; } .pv-paydlg__note { margin: 0; font-size: 0.82rem; color: var(--lg-mute); line-height: 1.45; }
+.pv-paydlg__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 190px; overflow-y: auto; border: 1px solid var(--lg-line); border-radius: 10px; padding: 6px; }
+.pv-paydlg__list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 0.8rem; padding: 3px 6px; border-radius: 6px; } .pv-paydlg__list li:nth-child(odd) { background: var(--lg-soft); } .pv-paydlg__list li span { overflow-wrap: anywhere; color: var(--lg-mute); } .pv-paydlg__list li em { font-style: normal; font-weight: 700; }
+.pv-paydlg__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; padding: 0.8rem 1.1rem 1rem; border-top: 1px solid var(--lg-line); }
+@media (max-width: 480px) { .pv-paydlg__foot .lg-btn { flex: 1 1 100%; justify-content: center; } .pv-paydlg__list li { grid-template-columns: minmax(0, 1fr) auto; } .pv-paydlg__list li span { grid-column: 1 / -1; order: 3; } }
 .pv-checkbox { width: 1rem; height: 1rem; border-radius: 0.3rem; border: 1px solid #cbd5e1; accent-color: #be185d; cursor: pointer; }
 .pv-sort-icon { display: inline-flex; color: #cbd5e1; transition: color 0.15s ease; }
 .pv-sort-icon-active { color: #be185d; }
