@@ -15,15 +15,15 @@
         <div v-for="b in balances" :key="b.currency" class="ag-card">
           <span class="ag-cur">{{ b.currency }}</span>
           <div class="ag-big"><small>{{ $t('Balance owed to the agent') }}</small><b class="tr-o" :class="{ 'tr-neg': Number(b.balance) < 0 }">{{ money(b.balance) }}</b><em v-if="Number(b.balance) < 0">{{ $t('paid in advance') }}</em></div>
-          <div class="ag-grid">
-            <div><small>{{ $t('Opening balance') }}</small><b class="tr-m">{{ money(b.opening) }}</b><span>{{ b.opening_date ? $t('as of :d', { d: dt(b.opening_date) }) : '' }}</span></div>
-            <div><small>{{ $t('Tickets') }}</small><b class="tr-m">{{ money(b.ticket) }}</b><span>{{ b.travels }} {{ $t('travel(s)') }}</span></div>
-            <div><small>{{ $t('Visas') }}</small><b class="tr-m">{{ money(b.visa) }}</b><span></span></div>
-            <div><small>{{ $t('Other costs') }}</small><b class="tr-m">{{ money(b.other) }}</b><span></span></div>
-            <div><small>{{ $t('Paid') }}</small><b class="tr-g">{{ money(b.paid) }}</b><span>{{ b.payments }} {{ $t('payment(s)') }}</span></div>
-            <div><small>{{ $t('In waiting vouchers') }}</small><b class="tr-o">{{ money(b.reserved) }}</b><span></span></div>
-            <div><small>{{ $t('Pending approval') }}</small><b class="tr-o">{{ money(b.pending) }}</b><span></span></div>
-            <div><small>{{ $t('Available to pay') }}</small><b class="tr-o">{{ money(b.available) }}</b><span></span></div>
+          <div class="ag-stats">
+            <div class="ag-stat is-maroon" style="--i: 0"><span class="ag-ico"><icons name="doc-text" class="w-5 h-5" /></span><div><small>{{ $t('Opening balance') }}</small><b class="tr-m">{{ money(b.opening) }}</b><em>{{ b.opening_date ? $t('as of :d', { d: dt(b.opening_date) }) : $t('before Travels') }}</em></div></div>
+            <div class="ag-stat is-maroon" style="--i: 1"><span class="ag-ico"><icons name="plane" class="w-5 h-5" /></span><div><small>{{ $t('Tickets') }}</small><b class="tr-m">{{ money(b.ticket) }}</b><em>{{ b.travels }} {{ $t('travel(s)') }}</em></div></div>
+            <div class="ag-stat is-maroon" style="--i: 2"><span class="ag-ico"><icons name="globe" class="w-5 h-5" /></span><div><small>{{ $t('Visas') }}</small><b class="tr-m">{{ money(b.visa) }}</b><em>{{ $t('issued') }}</em></div></div>
+            <div class="ag-stat is-maroon" style="--i: 3"><span class="ag-ico"><icons name="building" class="w-5 h-5" /></span><div><small>{{ $t('Other costs') }}</small><b class="tr-m">{{ money(b.other) }}</b><em>{{ $t('hotels, cars, more') }}</em></div></div>
+            <div class="ag-stat is-green" style="--i: 4"><span class="ag-ico"><icons name="tick" class="w-5 h-5" /></span><div><small>{{ $t('Paid') }}</small><b class="tr-g">{{ money(b.paid) }}</b><em>{{ b.payments }} {{ $t('payment(s)') }}</em></div></div>
+            <div class="ag-stat is-orange" style="--i: 5"><span class="ag-ico"><icons name="clock" class="w-5 h-5" /></span><div><small>{{ $t('In waiting vouchers') }}</small><b class="tr-o">{{ money(b.reserved) }}</b><em>{{ $t('not paid yet') }}</em></div></div>
+            <div class="ag-stat is-orange" style="--i: 6"><span class="ag-ico"><icons name="refresh" class="w-5 h-5" /></span><div><small>{{ $t('Pending approval') }}</small><b class="tr-o">{{ money(b.pending) }}</b><em>{{ $t('travels waiting') }}</em></div></div>
+            <div class="ag-stat is-orange" style="--i: 7"><span class="ag-ico"><icons name="cash" class="w-5 h-5" /></span><div><small>{{ $t('Available to pay') }}</small><b class="tr-o">{{ money(b.available) }}</b><em>{{ $t('can be asked for') }}</em></div></div>
           </div>
           <button v-if="can.pay && Number(b.available) > 0" type="button" class="ag-pay" @click="openPay(b.currency)"><icons name="cash" class="w-4 h-4" />{{ $t('Pay up to :a', { a: b.currency + ' ' + money(b.available) }) }}</button>
         </div>
