@@ -39,19 +39,38 @@ class Travel extends Model
 
     protected $fillable = [
         'account_id', 'reference', 'hash', 'status', 'trip_type', 'travel_type', 'purpose', 'from_place', 'from_country', 'to_place', 'to_country', 'scope', 'depart_date', 'return_date', 'booking_date',
-        'airline', 'flight_number', 'return_airline', 'return_flight_number', 'booking_reference', 'ticket_agent_contact_id', 'currency', 'ticket_amount',
+        'airline', 'flight_number', 'return_airline', 'return_flight_number', 'booking_reference', 'ticket_agent_contact_id', 'currency', 'exchange_rate', 'ticket_amount',
         'has_visa', 'visa_type', 'visa_country', 'visa_reference', 'visa_agent_contact_id', 'visa_amount', 'total_amount', 'notes', 'user_id',
         'decided_by_user_id', 'decided_at', 'decision_remarks', 'cancelled_by_user_id', 'cancelled_at', 'cancel_reason', 'deleted_by', 'extra_attributes',
     ];
 
     public $casts = [
         'depart_date' => 'date', 'return_date' => 'date', 'booking_date' => 'date', 'decided_at' => 'datetime', 'cancelled_at' => 'datetime', 'has_visa' => 'boolean',
-        'ticket_amount' => 'decimal:2', 'visa_amount' => 'decimal:2', 'total_amount' => 'decimal:2', 'extra_attributes' => 'array',
+        'exchange_rate' => 'decimal:6', 'ticket_amount' => 'decimal:2', 'visa_amount' => 'decimal:2', 'total_amount' => 'decimal:2', 'extra_attributes' => 'array',
     ];
 
     public function travellers()
     {
         return $this->hasMany(TravelTraveller::class, 'travel_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(TravelItem::class, 'travel_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** Ticket and visa in TZS (their rate is the travel's rate). */
+    public function travelTotalTzs(): float
+    {
+        return round(((float) $this->total_amount) * ((float) ($this->exchange_rate ?: 1)), 2);
+    }
+
+    /** The other costs in TZS. */
+    public function itemsTotalTzs(): float
+    {
+        $i = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        return round((float) $i->sum(fn ($x) => (float) $x->amount_tzs), 2);
     }
 
     public function ticketAgent()

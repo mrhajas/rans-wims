@@ -94,6 +94,28 @@
         </tbody>
     </table>
 
+    @if($t->currency !== 'TZS')
+        <div class="note-box"><b>Exchange rate:</b> 1 {{ $t->currency }} = TZS {{ rtrim(rtrim(number_format((float) $t->exchange_rate, 6, '.', ','), '0'), '.') }} &nbsp; (ticket and visa in TZS: {{ $money($t->travelTotalTzs()) }})</div>
+    @endif
+    @if($t->items->count())
+        <div class="sec-title">Other costs</div>
+        <table class="items">
+            <thead><tr><th style="width:26px;">#</th><th>Type of cost</th><th>Description</th><th>Owed to</th><th>Cur.</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">In TZS</th></tr></thead>
+            <tbody>
+                @foreach($t->items as $i => $it)
+                    <tr>
+                        <td>{{ $i + 1 }}</td><td>{{ $it->category }}</td><td>{{ $it->description ?: '-' }}</td><td>{{ optional($it->contact)->name ?: 'Company expense' }}</td>
+                        <td>{{ $it->currency }}</td><td class="num">{{ $it->currency === 'TZS' ? '-' : rtrim(rtrim(number_format((float) $it->exchange_rate, 6, '.', ','), '0'), '.') }}</td>
+                        <td class="num">{{ $money($it->amount) }}</td><td class="num">{{ $money($it->amount_tzs) }}</td>
+                    </tr>
+                @endforeach
+                <tr><td colspan="7" style="text-align:right;">Other costs (TZS)</td><td class="num">{{ $money($t->itemsTotalTzs()) }}</td></tr>
+                <tr><td colspan="7" style="text-align:right;">Ticket and visa (TZS)</td><td class="num">{{ $money($t->travelTotalTzs()) }}</td></tr>
+                <tr><td colspan="7" style="text-align:right;font-weight:bold;">All costs of the travel (TZS)</td><td class="num" style="font-weight:bold;">{{ $money($t->travelTotalTzs() + $t->itemsTotalTzs()) }}</td></tr>
+            </tbody>
+        </table>
+    @endif
+
     @if($showAgentBalance && $t->status === 'Approved')
         @php($owed = $t->ticketAgent ? \App\Services\Travels\TravelLedger::owed((int) $t->ticketAgent->id) : [])
         @if(isset($owed[$t->currency]))

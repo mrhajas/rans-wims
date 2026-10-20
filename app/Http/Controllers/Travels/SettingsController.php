@@ -22,16 +22,16 @@ class SettingsController extends Controller
 
         return Inertia::render('Travels/Settings', [
             'values' => ['currencies' => implode(', ', array_map('strtoupper', array_values(array_filter(array_map('trim', explode(',', (string) (get_settings('travel_currencies') ?: Travel::DEFAULT_CURRENCIES))))))),
-                'types' => implode(', ', Travel::travelTypes()), 'remind_days' => implode(', ', Travel::remindDays()), 'home_country' => Travel::homeCountry()],
-            'defaults' => ['currencies' => Travel::DEFAULT_CURRENCIES, 'types' => Travel::DEFAULT_TYPES, 'remind_days' => '7, 1', 'home_country' => 'Tanzania'],
+                'types' => implode(', ', Travel::travelTypes()), 'item_categories' => implode(', ', \App\Models\TravelItem::categoriesSet()), 'remind_days' => implode(', ', Travel::remindDays()), 'home_country' => Travel::homeCountry()],
+            'defaults' => ['currencies' => Travel::DEFAULT_CURRENCIES, 'types' => Travel::DEFAULT_TYPES, 'item_categories' => \App\Models\TravelItem::DEFAULT_CATEGORIES, 'remind_days' => '7, 1', 'home_country' => 'Tanzania'],
         ]);
     }
 
     public function update(Request $request)
     {
         abort_unless($request->user()->can('manage-travel-settings'), 403);
-        $d = $request->validate(['currencies' => 'required|string|max:200', 'types' => 'required|string|max:1000', 'remind_days' => 'nullable|string|max:100', 'home_country' => 'required|string|max:100'], [
-            'currencies.required' => __('List at least one currency, for example TZS, USD.'), 'types.required' => __('List at least one kind of travel.'), 'home_country.required' => __('Type the country the company is in, for example Tanzania.'),
+        $d = $request->validate(['currencies' => 'required|string|max:200', 'types' => 'required|string|max:1000', 'item_categories' => 'required|string|max:1500', 'remind_days' => 'nullable|string|max:100', 'home_country' => 'required|string|max:100'], [
+            'currencies.required' => __('List at least one currency, for example TZS, USD.'), 'types.required' => __('List at least one kind of travel.'), 'item_categories.required' => __('List at least one type of cost, for example Accommodation, Transportation.'), 'home_country.required' => __('Type the country the company is in, for example Tanzania.'),
         ]);
         $list = fn (string $v) => array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;\n]+/', $v) ?: []), fn ($x) => $x !== '')));
         $cur = array_values(array_unique(array_map('strtoupper', $list($d['currencies']))));
@@ -46,7 +46,7 @@ class SettingsController extends Controller
                 return back()->withErrors(['remind_days' => __('Reminder days are whole numbers from 0 to 365, like 7, 1.')]);
             }
         }
-        $values = ['travel_currencies' => implode(', ', $cur), 'travel_types' => implode(', ', $list($d['types'])), 'travel_remind_days' => implode(', ', $days), 'travel_home_country' => trim($d['home_country'])];
+        $values = ['travel_currencies' => implode(', ', $cur), 'travel_types' => implode(', ', $list($d['types'])), 'travel_item_categories' => implode(', ', array_map(fn ($c) => mb_substr($c, 0, 60), $list($d['item_categories']))), 'travel_remind_days' => implode(', ', $days), 'travel_home_country' => trim($d['home_country'])];
         foreach ($values as $k => $v) {
             Setting::updateOrCreate(['tec_key' => $k, 'account_id' => $request->user()->account_id], ['tec_value' => $v]);
         }

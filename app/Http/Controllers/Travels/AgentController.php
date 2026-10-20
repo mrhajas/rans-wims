@@ -57,7 +57,7 @@ class AgentController extends Controller
         if (! $f['currency'] && $f['owing'] !== '1') {
             foreach ($contacts as $c) {
                 if (! $with->contains($c->id)) {
-                    $rows->push(['contact_id' => $c->id, 'agent' => $c->name, 'phone' => $c->phone, 'category' => $c->category, 'currency' => null, 'opening' => '0.00', 'opening_date' => null, 'ticket' => '0.00', 'visa' => '0.00', 'billed' => '0.00', 'travels' => 0,
+                    $rows->push(['contact_id' => $c->id, 'agent' => $c->name, 'phone' => $c->phone, 'category' => $c->category, 'currency' => null, 'opening' => '0.00', 'opening_date' => null, 'ticket' => '0.00', 'visa' => '0.00', 'other' => '0.00', 'billed' => '0.00', 'travels' => 0,
                         'paid' => '0.00', 'payments' => 0, 'balance' => '0.00', 'reserved' => '0.00', 'available' => '0.00', 'pending' => '0.00', 'last_payment' => null, 'last_travel' => null]);
                 }
             }
@@ -87,10 +87,11 @@ class AgentController extends Controller
         $from = $request->query('from') && strtotime((string) $request->query('from')) ? date('Y-m-d', strtotime((string) $request->query('from'))) : null;
         $to = $request->query('to') && strtotime((string) $request->query('to')) ? date('Y-m-d', strtotime((string) $request->query('to'))) : null;
         $balances = TravelLedger::balances(['contact_id' => $contact->id]);
-        $travels = Travel::query()->visibleTo($me)->with(['travellers:id,travel_id,name', 'ticketAgent:id,name', 'visaAgent:id,name'])
-            ->where(fn ($q) => $q->where('ticket_agent_contact_id', $contact->id)->orWhere('visa_agent_contact_id', $contact->id))->orderByDesc('depart_date')->orderByDesc('id')->limit(300)->get()
-            ->map(fn ($t) => ['id' => $t->id, 'reference' => $t->reference, 'status' => $t->status, 'status_label' => __($t->status), 'depart_date' => $t->depart_date->toDateString(), 'to_place' => $t->to_place, 'to_country' => $t->to_country, 'travellers' => $t->travellerNames(), 'currency' => $t->currency,
-                'ticket' => (int) $t->ticket_agent_contact_id === (int) $contact->id ? (string) $t->ticket_amount : '0.00', 'visa' => $t->has_visa && (int) $t->visa_agent_contact_id === (int) $contact->id ? (string) $t->visa_amount : '0.00'])->values();
+        $travels = Travel::query()->visibleTo($me)->with(['travellers:id,travel_id,name', 'ticketAgent:id,name', 'visaAgent:id,name', 'items'])
+            ->where(fn ($q) => $q->where('ticket_agent_contact_id', $contact->id)->orWhere('visa_agent_contact_id', $contact->id)->orWhereHas('items', fn ($i) => $i->where('contact_id', $contact->id)))->orderByDesc('depart_date')->orderByDesc('id')->limit(300)->get()
+            ->map(fn ($t) => ['id' => $t->id, 'reference' => $t->reference, 'status' => $t->status, 'status_label' => __($t->status), 'depart_date' => $t->depart_date->toDateString(), 'to_place' => $t->to_place, 'to_country' => $t->to_country, 'travellers' => $t->travellerNames(), 'currency' => $t->currency, 'rate' => (string) $t->exchange_rate,
+                'ticket' => (int) $t->ticket_agent_contact_id === (int) $contact->id ? (string) $t->ticket_amount : '0.00', 'visa' => $t->has_visa && (int) $t->visa_agent_contact_id === (int) $contact->id ? (string) $t->visa_amount : '0.00',
+                'other' => $t->items->where('contact_id', $contact->id)->map(fn ($i) => ['label' => $i->category, 'currency' => $i->currency, 'amount' => (string) $i->amount])->values()->all()])->values();
         $statement = TravelLedger::statement($contact->id, $currency, $from, $to);
         $payments = TravelAgentPayment::query()->with(['user:id,name', 'paidBy:id,name', 'travel:id,reference', 'voucher:id,pv_number,status,paid_at'])->where('contact_id', $contact->id)->orderByDesc('id')->limit(300)->get();
         $after = collect($statement)->whereNotNull('payment_id')->mapWithKeys(fn ($l) => [$l['payment_id'] => $l['balance']])->all();
@@ -100,7 +101,7 @@ class AgentController extends Controller
         return Inertia::render('Travels/Agents/Show', [
             'agent' => ['id' => $contact->id, 'name' => $contact->name, 'phone' => $contact->phone, 'email' => $contact->email, 'category' => $contact->category, 'location' => $contact->location, 'contact_url' => $me->can('update-contacts') ? route('contacts.edit', $contact->id) : null],
             'balances' => $balances, 'statement' => $statement, 'travels' => $travels, 'payments' => $payments, 'openings' => $openings,
-            'filters' => ['currency' => $currency, 'from' => $from, 'to' => $to], 'currencies' => Travel::currencies(), 'today' => now()->toDateString(),
+            'filters' => ['currency' => $currency, 'from' => $from, 'to' => $to], 'currencies' => Travel::currencies(), 'today' => now()->toDateString(), 'rates' => $this->rateHints($contact->id),
             'can' => ['pay' => $me->can('create-payment-voucher-from-travels'), 'manage' => $me->can('manage-travel-agents'), 'print' => $me->can('print-travels'), 'vouchers' => $me->can('read-payment-vouchers')],
         ]);
     }
@@ -144,7 +145,7 @@ class AgentController extends Controller
             'currency' => 'required|string|size:3', 'amount' => 'required|numeric|gt:0|max:99999999999', 'exchange_rate' => 'nullable|numeric|gt:0|max:99999999', 'notes' => 'nullable|string|max:1000', 'travel_id' => 'nullable|integer',
         ]);
         $travelId = ! empty($d['travel_id']) ? (int) $d['travel_id'] : null;
-        if ($travelId && ! Travel::query()->whereKey($travelId)->where(fn ($q) => $q->where('ticket_agent_contact_id', $contact->id)->orWhere('visa_agent_contact_id', $contact->id))->exists()) {
+        if ($travelId && ! Travel::query()->whereKey($travelId)->where(fn ($q) => $q->where('ticket_agent_contact_id', $contact->id)->orWhere('visa_agent_contact_id', $contact->id)->orWhereHas('items', fn ($i) => $i->where('contact_id', $contact->id)))->exists()) {
             throw ValidationException::withMessages(['travel_id' => __('That travel was not issued by this agent.')]);
         }
         $cur = strtoupper($d['currency']);
@@ -240,12 +241,36 @@ class AgentController extends Controller
         return $download ? $pdf->download($name) : $pdf->stream($name);
     }
 
+    /**
+     * The exchange rate offered when a payment is made in a foreign currency: the rate of the agent's latest approved travel (or other cost) in that currency, and
+     * failing that the rate of the latest payment. The person may leave it or change it; the rate they confirm is the one on the Payment Voucher.
+     *
+     * @return array<string,string> currency => TZS per one unit
+     */
+    private function rateHints(int $contactId): array
+    {
+        $out = [];
+        $travels = Travel::query()->where(fn ($q) => $q->where('ticket_agent_contact_id', $contactId)->orWhere('visa_agent_contact_id', $contactId))->where('currency', '!=', 'TZS')->orderBy('booking_date')->orderBy('id')->get(['currency', 'exchange_rate']);
+        foreach ($travels as $t) {
+            $out[strtoupper($t->currency)] = (string) $t->exchange_rate;
+        }
+        $items = DB::table('travel_items')->whereNull('deleted_at')->where('contact_id', $contactId)->where('currency', '!=', 'TZS')->orderBy('id')->get(['currency', 'exchange_rate']);
+        foreach ($items as $i) {
+            $out[strtoupper($i->currency)] = (string) $i->exchange_rate;
+        }
+        foreach (TravelAgentPayment::query()->where('contact_id', $contactId)->where('currency', '!=', 'TZS')->orderBy('id')->get(['currency', 'exchange_rate']) as $p) {
+            $out[strtoupper($p->currency)] ??= (string) $p->exchange_rate;
+        }
+
+        return array_map(fn ($v) => rtrim(rtrim(number_format((float) $v, 6, '.', ''), '0'), '.'), $out);
+    }
+
     private function paymentRow(TravelAgentPayment $p): array
     {
         $v = $p->relationLoaded('voucher') ? $p->voucher : null;
 
         return ['id' => $p->id, 'reference' => $p->reference, 'agent' => optional($p->contact)->name, 'requested_on' => $p->requested_on->toDateString(), 'paid_on' => $p->paid_on ? $p->paid_on->toDateString() : null, 'amount' => (string) $p->amount, 'currency' => $p->currency,
-            'method' => $p->method, 'payment_reference' => $p->payment_reference, 'status' => $p->status, 'status_label' => __($p->status), 'travel' => optional($p->travel)->reference, 'by' => optional($p->user)->name, 'paid_by' => optional($p->paidBy)->name,
+            'method' => $p->method, 'rate' => $p->currency === 'TZS' ? '' : rtrim(rtrim(number_format((float) $p->exchange_rate, 6, '.', ''), '0'), '.'), 'payment_reference' => $p->payment_reference, 'status' => $p->status, 'status_label' => __($p->status), 'travel' => optional($p->travel)->reference, 'by' => optional($p->user)->name, 'paid_by' => optional($p->paidBy)->name,
             'voucher_id' => $p->payment_voucher_id, 'pv_number' => $v ? $v->pv_number : null, 'voucher_status' => $v ? ($v->paid_at ? 'Paid' : $v->status) : null];
     }
 }

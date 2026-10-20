@@ -16,7 +16,7 @@ use Rap2hpoutre\FastExcel\FastExcel;
 /** Travel reports: the same WIMS report layout as every other report; print, PDF, Excel and CSV; every export is logged. The agent reports need the agents permission. */
 class ReportController extends Controller
 {
-    private const KEYS = ['search', 'contact_id', 'currency', 'status', 'status_payment', 'scope', 'country', 'from', 'to', 'as_of', 'only_owing'];
+    private const KEYS = ['search', 'contact_id', 'currency', 'status', 'status_payment', 'scope', 'country', 'when', 'category', 'section', 'from', 'to', 'as_of', 'only_owing'];
 
     private const AGENT_TYPES = ['agent_balances', 'agent_statement', 'payments'];
 
@@ -48,7 +48,7 @@ class ReportController extends Controller
         }
 
         return Inertia::render('Travels/Reports', [
-            'catalog' => $catalog, 'type' => $type, 'filters' => $filters, 'currencies' => Travel::currencies(), 'paymentStatuses' => collect(TravelAgentPayment::STATUSES)->map(fn ($s) => ['value' => $s, 'label' => __($s)])->values(),
+            'catalog' => $catalog, 'type' => $type, 'filters' => $filters, 'currencies' => Travel::currencies(), 'categories' => array_merge([__('Ticket'), __('Visa')], \App\Models\TravelItem::categories()), 'paymentStatuses' => collect(TravelAgentPayment::STATUSES)->map(fn ($s) => ['value' => $s, 'label' => __($s)])->values(),
             'scopes' => collect(Travel::SCOPES)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(), 'countries' => Travel::query()->visibleTo($me)->whereNotNull('to_country')->distinct()->orderBy('to_country')->pluck('to_country'), 'homeCountry' => Travel::homeCountry(),
             'agents' => Contact::query()->whereIn('id', TravelLedger::agentIds() ?: [0])->orderBy('name')->get(['id', 'name'])->map(fn ($c) => ['value' => $c->id, 'label' => $c->name]),
             'statuses' => collect(Travel::STATUSES)->map(fn ($s) => ['value' => $s, 'label' => __($s)])->values(), 'can' => ['print' => $me->can('print-travels')],

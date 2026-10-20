@@ -1,6 +1,6 @@
 <template>
   <admin-layout :title="t.reference">
-    <div class="lg-page ac sc-ui px-4 md:px-0">
+    <div class="lg-page ac sc-ui tr-ui px-4 md:px-0">
       <page-header icon="plane" :title="t.reference" :subtitle="t.to_place + (t.to_country ? ', ' + t.to_country : '') + ' - ' + names">
         <Link :href="route('travels.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" /><span>{{ $t('Back') }}</span></Link>
         <a v-if="can.print" :href="route('travels.print', t.id)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print') }}</span></a>
@@ -14,7 +14,8 @@
             <span class="lg-chip" :class="statusChip(t.status)">{{ t.status_label }}</span>
             <span class="lg-chip" :class="t.scope === 'international' ? 'lg-chip-violet' : 'lg-chip-slate'" style="text-transform: none">{{ t.scope_label }}</span>
             <span v-if="t.has_visa" class="lg-chip lg-chip-amber" style="text-transform: none">{{ $t('Visa included') }}</span>
-            <div class="ac-cur-total" style="margin-top: 6px">{{ t.currency }} {{ money(t.total_amount) }} <small class="lg-subtext">{{ $t('for :n traveller(s)', { n: t.travellers.length }) }}</small></div>
+            <div class="ac-cur-total tr-m" style="margin-top: 6px">{{ t.currency }} {{ money(t.total_amount) }} <small class="lg-subtext">{{ $t('for :n traveller(s)', { n: t.travellers.length }) }}</small></div>
+            <div v-if="t.currency !== 'TZS' || t.items.length" class="tr-eqline"><span v-if="t.currency !== 'TZS'">{{ $t('Exchange rate agreed') }}: <b class="tr-o">1 {{ t.currency }} = TZS {{ rate(t.exchange_rate) }}</b></span><span v-if="t.items.length">{{ $t('All costs') }}: <b class="tr-o">TZS {{ money(t.grand_total_tzs) }}</b></span></div>
           </div>
           <div class="ac-actions" style="justify-content: flex-end; margin: 0">
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" :disabled="busy" @click="approve"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
@@ -59,9 +60,9 @@
           <thead><tr><th>{{ $t('Traveller') }}</th><th>{{ $t('Ticket number') }}</th><th class="ac-num">{{ $t('Ticket') }}</th><th v-if="t.has_visa" class="ac-num">{{ $t('Visa') }}</th><th class="ac-num">{{ $t('Total') }}</th></tr></thead>
           <tbody>
             <tr v-for="p in t.travellers" :key="p.id"><td :data-label="$t('Traveller')" class="lg-main">{{ p.name }}<div class="lg-subtext">{{ { staff: $t('Staff'), user: $t('User'), other: $t('Other') }[p.type] }}<template v-if="p.staff_number"> · {{ p.staff_number }}</template><template v-if="p.phone"> · {{ p.phone }}</template></div></td>
-              <td :data-label="$t('Ticket number')">{{ p.ticket_number || '-' }}</td><td :data-label="$t('Ticket')" class="ac-num">{{ money(p.ticket_amount) }}</td><td v-if="t.has_visa" :data-label="$t('Visa')" class="ac-num">{{ money(p.visa_amount) }}</td><td :data-label="$t('Total')" class="ac-num"><b>{{ money(Number(p.ticket_amount) + Number(p.visa_amount)) }}</b></td></tr>
+              <td :data-label="$t('Ticket number')">{{ p.ticket_number || '-' }}</td><td :data-label="$t('Ticket')" class="ac-num tr-m">{{ money(p.ticket_amount) }}</td><td v-if="t.has_visa" :data-label="$t('Visa')" class="ac-num tr-m">{{ money(p.visa_amount) }}</td><td :data-label="$t('Total')" class="ac-num"><b class="tr-m">{{ money(Number(p.ticket_amount) + Number(p.visa_amount)) }}</b></td></tr>
           </tbody>
-          <tfoot><tr><td colspan="2" class="ac-num"><b>{{ $t('Total') }} {{ t.currency }}</b></td><td class="ac-num"><b>{{ money(t.ticket_amount) }}</b></td><td v-if="t.has_visa" class="ac-num"><b>{{ money(t.visa_amount) }}</b></td><td class="ac-num"><b>{{ money(t.total_amount) }}</b></td></tr></tfoot>
+          <tfoot><tr><td colspan="2" class="ac-num"><b>{{ $t('Total') }} {{ t.currency }}</b></td><td class="ac-num"><b class="tr-m">{{ money(t.ticket_amount) }}</b></td><td v-if="t.has_visa" class="ac-num"><b class="tr-m">{{ money(t.visa_amount) }}</b></td><td class="ac-num"><b class="tr-m">{{ money(t.total_amount) }}</b></td></tr></tfoot>
         </table></div>
         <div class="tr-agents">
           <div class="tr-agent"><small>{{ $t('Ticket issued by') }}</small><b>{{ t.ticket_agent || '-' }}</b><span v-if="t.ticket_agent_phone">{{ t.ticket_agent_phone }}</span>
@@ -70,6 +71,24 @@
             <Link v-if="can.agents && t.visa_agent_id && t.visa_agent_id !== t.ticket_agent_id" :href="route('travels.agents.show', t.visa_agent_id)" class="tr-owed"><icons name="cash" class="w-4 h-4" />{{ $t('Their account') }}<template v-if="t.visa_agent_owed && t.visa_agent_owed[t.currency] !== undefined">: {{ $t('owed') }} {{ t.currency }} {{ money(t.visa_agent_owed[t.currency]) }}</template></Link></div>
         </div>
         <p v-if="t.status === 'Approved'" class="lg-sub" style="margin-top: 8px">{{ $t('This travel is part of what the agent is owed. Payments to the agent are made from their account, through a Payment Voucher.') }}</p>
+      </section>
+
+      <!-- other costs -->
+      <section v-if="t.items.length" class="lg-card">
+        <header class="lg-card-head"><span class="lg-card-ico lg-ico-teal"><icons name="building" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Other Costs') }}</h2><p class="lg-card-sub">{{ $t('Accommodation, transport, hotels, food, leisure and other expenses. Those with an agent are owed to that agent; the others are the company\'s own expense.') }}</p></div></header>
+        <div class="lg-table-wrap"><table class="lg-table lg-responsive tr-table">
+          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Type of cost') }}</th><th>{{ $t('Description') }}</th><th>{{ $t('Owed to') }}</th><th>{{ $t('Cur.') }}</th><th class="tr-num">{{ $t('Exchange rate agreed') }}</th><th class="tr-num">{{ $t('Amount') }}</th><th class="tr-num">{{ $t('In TZS') }}</th></tr></thead>
+          <tbody>
+            <tr v-for="(i, n) in t.items" :key="i.id"><td :data-label="$t('No')" class="tr-no">{{ n + 1 }}</td><td :data-label="$t('Type of cost')" class="lg-main">{{ i.category }}</td><td :data-label="$t('Description')">{{ i.description || '-' }}</td>
+              <td :data-label="$t('Owed to')"><Link v-if="i.contact_id && can.agents" :href="route('travels.agents.show', i.contact_id)">{{ i.contact }}</Link><template v-else-if="i.contact_id">{{ i.contact }}</template><span v-else class="lg-chip lg-chip-slate" style="text-transform: none">{{ $t('Company expense') }}</span></td>
+              <td :data-label="$t('Cur.')">{{ i.currency }}</td><td :data-label="$t('Exchange rate agreed')" class="tr-num"><span v-if="i.currency !== 'TZS'" class="tr-o">{{ rate(i.exchange_rate) }}</span><span v-else>-</span></td><td :data-label="$t('Amount')" class="tr-num tr-m">{{ money(i.amount) }}</td><td :data-label="$t('In TZS')" class="tr-num"><b class="tr-o">{{ money(i.amount_tzs) }}</b></td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td colspan="7" class="tr-num">{{ $t('Other costs') }}</td><td class="tr-num"><b class="tr-o">{{ money(t.items_total_tzs) }}</b></td></tr>
+            <tr><td colspan="7" class="tr-num">{{ $t('Travel total (ticket and visa) in TZS') }}</td><td class="tr-num"><b class="tr-o">{{ money(t.travel_total_tzs) }}</b></td></tr>
+            <tr><td colspan="7" class="tr-num"><b>{{ $t('All costs of the travel (TZS)') }}</b></td><td class="tr-num"><b class="tr-m">{{ money(t.grand_total_tzs) }}</b></td></tr>
+          </tfoot>
+        </table></div>
       </section>
 
       <section v-if="can.agents && payments.length" class="lg-card">
@@ -104,6 +123,7 @@ export default {
   data() { return { asking: '', reason: '', busy: false, up: this.$inertia.form({ attachments: [] }) }; },
   computed: { names() { return this.t.travellers.map(p => p.name).join(', '); } },
   methods: {
+    rate(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 6 }); },
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     statusChip(s) { return { 'Pending Approval': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     payChip(s) { return { Paid: 'lg-chip-green', 'Pending Voucher': 'lg-chip-amber', Released: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },

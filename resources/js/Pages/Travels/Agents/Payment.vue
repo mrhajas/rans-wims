@@ -1,6 +1,6 @@
 <template>
   <admin-layout :title="p.reference">
-    <div class="lg-page ac sc-ui px-4 md:px-0">
+    <div class="lg-page ac sc-ui tr-ui px-4 md:px-0">
       <page-header icon="cash" :title="p.reference" :subtitle="$t('Payment to :a', { a: p.agent })">
         <Link :href="route('travels.agents.show', p.agent_id)" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" /><span>{{ $t('Agent account') }}</span></Link>
         <a v-if="voucher && voucher.url" :href="voucher.url" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="doc-text" class="w-4 h-4" /><span>{{ $t('Open the Payment Voucher') }}</span></a>
@@ -10,7 +10,7 @@
 
       <section class="lg-card">
         <span class="lg-chip" :class="payChip(p.status)">{{ p.status_label }}</span>
-        <div class="ac-cur-total" style="margin-top: 6px">{{ p.currency }} {{ money(p.amount) }} <small v-if="p.currency !== 'TZS'" class="lg-subtext">{{ $t('voucher TZS :a at :r', { a: money(p.voucher_amount), r: Number(p.exchange_rate).toLocaleString(undefined, { maximumFractionDigits: 6 }) }) }}</small></div>
+        <div class="ac-cur-total" :class="p.status === 'Paid' ? 'tr-g' : 'tr-o'" style="margin-top: 6px">{{ p.currency }} {{ money(p.amount) }} <small v-if="p.currency !== 'TZS'" class="lg-subtext">{{ $t('voucher TZS :a at :r', { a: money(p.voucher_amount), r: Number(p.exchange_rate).toLocaleString(undefined, { maximumFractionDigits: 6 }) }) }}</small></div>
         <div v-if="p.status === 'Pending Voucher'" class="lg-note lg-note-amber" style="margin-top: 10px"><icons name="clock" class="w-4 h-4" /><span>{{ $t('The Payment Voucher is waiting to be approved and paid. The balance of :a does not change until it is paid.', { a: p.agent }) }}</span></div>
         <div v-if="p.status === 'Released'" class="lg-note lg-note-red" style="margin-top: 10px">{{ $t('Released: the voucher was not paid') }}<template v-if="p.release_reason"> ({{ p.release_reason }})</template>. {{ $t('The amount is available again.') }}</div>
         <div v-if="p.status === 'Paid' && p.balance_after !== null" class="lg-note lg-note-green" style="margin-top: 10px"><icons name="tick" class="w-4 h-4" /><span>{{ $t('Paid. After this payment the balance owed to :a was :c :m.', { a: p.agent, c: p.currency, m: money(p.balance_after) }) }}</span></div>
@@ -32,7 +32,7 @@
           <div><dt>{{ $t('Method') }}</dt><dd>{{ p.method || '-' }}</dd></div>
           <div><dt>{{ $t('Payment reference') }}</dt><dd>{{ p.payment_reference || '-' }}</dd></div>
           <div v-if="p.travel_id"><dt>{{ $t('For travel') }}</dt><dd><Link :href="route('travels.show', p.travel_id)">{{ p.travel }}</Link></dd></div>
-          <div><dt>{{ $t('Owed to the agent now') }}</dt><dd><span v-for="(v, c) in owed" :key="c" class="tr-owed-now">{{ c }} {{ money(v) }}</span><span v-if="!Object.keys(owed).length">-</span></dd></div>
+          <div><dt>{{ $t('Owed to the agent now') }}</dt><dd><span v-for="(v, c) in owed" :key="c" class="tr-owed-now tr-o">{{ c }} {{ money(v) }}</span><span v-if="!Object.keys(owed).length">-</span></dd></div>
         </dl>
         <p v-if="p.notes" class="lg-sub" style="margin-top: 8px"><b>{{ $t('Notes') }}:</b> {{ p.notes }}</p>
       </section>

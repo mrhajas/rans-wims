@@ -18,6 +18,10 @@
           <div class="ac-f"><label>{{ $t('Kinds of travel') }} *</label><input v-model="form.types" :placeholder="defaults.types" /><span class="ac-err">{{ err('types') }}</span></div>
         </section>
         <section class="lg-card">
+          <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="list" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Other costs of a travel') }}</h2><p class="lg-card-sub">{{ $t('The types of cost that can be added to a travel besides the ticket and the visa: accommodation, transport, hotels, food, leisure and so on. Separate them with commas; add as many as you need. A type already used on a record always stays available.') }}</p></div></header>
+          <div class="ac-f"><label>{{ $t('Types of cost') }} *</label><input v-model="form.item_categories" :placeholder="defaults.item_categories" /><span class="ac-err">{{ err('item_categories') }}</span></div>
+        </section>
+        <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="clock" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Departure reminders') }}</h2><p class="lg-card-sub">{{ $t('How many days before an approved travel leaves the "Departing soon" alert goes out (who is told is set on the Alerts page). Example: 7, 1. Leave empty for no reminders.') }}</p></div></header>
           <div class="ac-f" style="max-width: 360px"><label>{{ $t('Days before departure') }}</label><input v-model="form.remind_days" :placeholder="defaults.remind_days" /><span class="ac-err">{{ err('remind_days') }}</span></div>
         </section>

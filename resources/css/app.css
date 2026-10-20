@@ -9,6 +9,7 @@
 @import './signatories.css';
 @import './responsive.css';
 @import './subcontracts.css';
+@import './travels.css';
 
 :root {
   --ui-bg: #e4ebf6;
