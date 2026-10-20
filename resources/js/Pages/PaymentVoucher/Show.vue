@@ -28,7 +28,7 @@
           <div class="flex-1 min-w-0">
             <div class="lg-card-title">{{ $t('Voucher Overview') }}</div>
           </div>
-          <span class="lg-chip" :class="statusChip(paymentVoucher.display_status || paymentVoucher.status)" style="text-transform: none">{{ $t(paymentVoucher.display_status || paymentVoucher.status) }}</span>
+          <span class="pv-status" :class="'pv-st-' + statusKey(paymentVoucher.display_status || paymentVoucher.status)" role="status"><icons :name="statusIcon(paymentVoucher.display_status || paymentVoucher.status)" class="pv-status__ico" />{{ $t(paymentVoucher.display_status || paymentVoucher.status) }}</span>
         </div>
         <dl class="pv-dl">
           <div><dt>{{ $t('PV Number') }}</dt><dd>{{ paymentVoucher.pv_number }}</dd></div>
@@ -333,7 +333,7 @@ export default {
       const v = this.paymentVoucher;
       const tiles = [
         { icon: 'cash', tone: 'pink', label: this.$t('Amount'), value: this.$money(v.total_amount) },
-        { icon: 'doc-text', tone: 'navy', label: this.$t('Status'), value: this.$t(v.display_status || v.status) },
+        { icon: this.statusIcon(v.display_status || v.status), tone: { Draft: 'slate', Submitted: 'amber', Approved: 'violet', Authorised: 'sky', Paid: 'emerald', Rejected: 'rose', Cancelled: 'slate' }[v.display_status || v.status] || 'navy', label: this.$t('Status'), value: this.$t(v.display_status || v.status) },
         { icon: 'calendar', tone: 'sky', label: this.$t('Date'), value: this.$date(v.voucher_date) },
         { icon: 'list', tone: 'indigo', label: this.$t('Particulars'), value: (v.items || []).length },
       ];
@@ -407,6 +407,9 @@ export default {
     recordPayment() {
       this.paymentForm.patch(route('payment-vouchers.record-payment', this.paymentVoucher.id));
     },
+    // the big status badge of the voucher: its own colour and icon per status
+    statusKey(status) { return String(status || 'Draft').toLowerCase(); },
+    statusIcon(status) { return { Draft: 'doc-text', Submitted: 'clock', Approved: 'tick', Authorised: 'lock-closed', Paid: 'cash', Rejected: 'x-circle', Cancelled: 'cross' }[status] || 'doc-text'; },
     statusChip(status) {
       return (
         {
@@ -437,6 +440,18 @@ export default {
 </script>
 
 <style scoped>
+/* voucher status: big, with an icon, one colour per status (Paid dark green, Submitted orange, Approved purple, Rejected maroon ...) */
+.pv-status { display: inline-flex; align-items: center; gap: 0.55rem; flex: none; padding: 0.5rem 1.1rem 0.5rem 0.8rem; border-radius: 999px; color: #fff; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.2; background: #64748b; box-shadow: 0 12px 20px -12px var(--pv-glow, rgba(100, 116, 139, 0.7)); }
+.pv-status__ico { width: 1.35rem; height: 1.35rem; flex: none; padding: 0.2rem; box-sizing: content-box; border-radius: 50%; background: rgba(255, 255, 255, 0.22); }
+.pv-st-draft { background: linear-gradient(135deg, #64748b, #475569); --pv-glow: rgba(71, 85, 105, 0.7); }
+.pv-st-submitted { background: linear-gradient(135deg, #f97316, #c2410c); --pv-glow: rgba(234, 88, 12, 0.7); }
+.pv-st-approved { background: linear-gradient(135deg, #8b5cf6, #5b21b6); --pv-glow: rgba(109, 40, 217, 0.7); }
+.pv-st-authorised { background: linear-gradient(135deg, #0ea5e9, #075985); --pv-glow: rgba(3, 105, 161, 0.7); }
+.pv-st-paid { background: linear-gradient(135deg, #15803d, #14532d); --pv-glow: rgba(20, 83, 45, 0.75); }
+.pv-st-rejected { background: linear-gradient(135deg, #9f1239, #6b0f1a); --pv-glow: rgba(127, 29, 29, 0.75); }
+.pv-st-cancelled { background: linear-gradient(135deg, #78716c, #44403c); --pv-glow: rgba(68, 64, 60, 0.7); }
+@media (max-width: 480px) { .pv-status { font-size: 0.95rem; padding: 0.45rem 0.9rem 0.45rem 0.65rem; } }
+
 .pv-dl { display: grid; gap: 14px 24px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
 .pv-dl > div { min-width: 0; }
 .pv-dl-sep { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--lg-line); }

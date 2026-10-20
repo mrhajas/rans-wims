@@ -105,13 +105,17 @@
         </table></div>
         <div v-if="canPay && floatPay" class="wa-payacts-gap" :style="{ height: barH + 'px' }" aria-hidden="true"></div>
         <div v-if="canPay" ref="payBar" class="wa-payacts" :class="{ 'is-float': floatPay }">
-          <span class="wa-seltxt">{{ selectedRows.length ? $t(':n line(s) chosen: :a', { n: selectedRows.length, a: d.currency + ' ' + money(selectedTotal) }) : $t('Tick the lines to pay, or pay everything left.') }}</span>
-          <span class="grow"></span>
+          <!-- the total of the chosen lines, centered above the buttons (nothing chosen, no total) -->
+          <div v-if="selectedRows.length" class="wa-paytotal" role="status"><span>{{ $t(':n line(s) chosen', { n: selectedRows.length }) }}</span><b>{{ $t('Total') }} {{ d.currency }} {{ money(selectedTotal) }}</b></div>
+          <div class="wa-payline">
+          <span v-if="!selectedRows.length" class="wa-seltxt">{{ $t('Tick the lines to pay, or pay everything left.') }}</span>
+          <span v-if="!selectedRows.length" class="grow"></span>
           <button v-if="can.pay" type="button" class="lg-btn lg-btn-green" :disabled="!selectedRows.length" @click="open(false, 'lines')"><icons name="tick" class="w-4 h-4" />{{ $t('Mark chosen paid') }}</button>
           <button v-if="can.pay" type="button" class="lg-btn lg-btn-primary" :disabled="!openRows.length" @click="open(false, 'all')"><icons name="check-double" class="w-4 h-4" />{{ $t('Mark all paid') }}</button>
           <button v-if="can.voucher" type="button" class="lg-btn lg-btn-soft" :disabled="!selectedRows.length" @click="open(true, 'lines')"><icons name="doc-text" class="w-4 h-4" />{{ $t('Voucher for chosen') }}</button>
           <button v-if="can.voucher" type="button" class="lg-btn lg-btn-soft" :disabled="!openRows.length" @click="open(true, 'all')"><icons name="doc-text" class="w-4 h-4" />{{ $t('Voucher for all left') }}</button>
           <button v-if="can.voucher" type="button" class="lg-btn lg-btn-primary" :disabled="!openRows.length" @click="openBulk(selectedRows.length ? 'lines' : 'all')"><icons name="collection" class="w-4 h-4" />{{ selectedRows.length ? $t('Vouchers per beneficiary (chosen)') : $t('Vouchers per beneficiary') }}</button>
+        </div>
         </div>
         <template v-if="pay.payments.length">
           <h3 class="lg-sub" style="margin: 16px 0 8px; font-weight: 800">{{ $t('Payments') }}</h3>
