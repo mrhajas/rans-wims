@@ -1248,11 +1248,24 @@ class PaymentVoucherController extends Controller
             try {
                 $this->payOne($request, $id, $data);
                 $processed++;
-            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
-                $blocked[] = (PaymentVoucher::find($id)->pv_number ?? ('#' . $id)) . ': ' . ($e->getMessage() ?: __('could not be paid'));
             } catch (\Throwable $e) {
-                report($e);
-                $blocked[] = (PaymentVoucher::find($id)->pv_number ?? ('#' . $id)) . ': ' . __('could not be paid (see the system log)');
+                $pv = PaymentVoucher::find($id);
+                if ($pv && ! empty($pv->paid_at)) {
+                    // the payment was committed; only something after it (a notice) failed: it is paid, so it is counted as paid
+                    report($e);
+                    $processed++;
+
+                    continue;
+                }
+                if ($e instanceof \Illuminate\Validation\ValidationException) {
+                    $reason = collect($e->errors())->flatten()->first();
+                } elseif ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
+                    $reason = $e->getMessage();
+                } else {
+                    report($e);
+                    $reason = __('could not be paid (see the system log)');
+                }
+                $blocked[] = ($pv->pv_number ?? ('#' . $id)) . ': ' . ($reason ?: __('could not be paid'));
             }
         }
 

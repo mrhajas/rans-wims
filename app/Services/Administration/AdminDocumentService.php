@@ -52,13 +52,15 @@ class AdminDocumentService
             $given = trim((string) ($l['category'] ?? '')) ?: null;
             $staffId = ! empty($l['staff_id']) && \App\Models\Staff::query()->whereKey((int) $l['staff_id'])->exists() ? (int) $l['staff_id'] : null;
             $contactId = ! $staffId && ! empty($l['contact_id']) && \App\Models\Contact::query()->whereKey((int) $l['contact_id'])->exists() ? (int) $l['contact_id'] : null; // a staff member or a contact, never both
+            // a line that sends its own staff_id / contact_id (even empty) is what the person chose: clearing it must stay cleared; a line that sends neither follows its item
+            $explicit = array_key_exists('staff_id', $l) || array_key_exists('contact_id', $l);
             $item = ! empty($l['admin_item_id']) ? AdminItem::withTrashed()->find((int) $l['admin_item_id']) : null;
             if (! $item || AdminItem::keyOf($item->name) !== AdminItem::keyOf($desc)) {
                 $item = AdminItem::forName($desc, ($l['beneficiary'] ?? null) ?: null, $amount, $given ? mb_substr($given, 0, 60) : null, $staffId, $contactId);
             }
             // the line keeps the category and the staff member as they were when it was made (what the item says unless the line was given its own)
             $d->lines()->create(['admin_item_id' => $item->id, 'description' => $desc, 'beneficiary' => trim((string) ($l['beneficiary'] ?? '')) ?: $d->beneficiary_name, 'beneficiary_user_id' => $l['beneficiary_user_id'] ?? null,
-                'category' => $given ? mb_substr($given, 0, 60) : $item->category, 'staff_id' => $staffId ?: ($contactId ? null : $item->staff_id), 'contact_id' => $contactId ?: ($staffId ? null : $item->contact_id), 'amount' => $amount, 'sort_order' => ++$n]);
+                'category' => $given ? mb_substr($given, 0, 60) : $item->category, 'staff_id' => $explicit ? $staffId : ($staffId ?: ($contactId ? null : $item->staff_id)), 'contact_id' => $explicit ? $contactId : ($contactId ?: ($staffId ? null : $item->contact_id)), 'amount' => $amount, 'sort_order' => ++$n]);
         }
     }
 

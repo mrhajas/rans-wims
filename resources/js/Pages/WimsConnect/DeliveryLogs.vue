@@ -137,7 +137,7 @@
           <div class="dl-resend">
             <p v-if="resendResult" class="dl-resend__msg" :class="resendResult.ok ? 'is-ok' : 'is-bad'" role="status"><icons :name="resendResult.ok ? 'tick' : 'exclamation'" class="w-4 h-4" />{{ resendResult.message }}</p>
             <p v-if="!resendResult && detail.channel === 'email' && detail.meta && detail.meta.attachments && detail.meta.attachments.length" class="lg-subtext">{{ $t('The files of this email are not kept, so they are not attached again.') }}</p>
-            <div v-if="!(detail.meta && detail.meta.sensitive)" class="dl-resend__row">
+            <div v-if="detail.resendable !== false && !(detail.meta && detail.meta.sensitive)" class="dl-resend__row">
               <template v-if="!confirmResend">
                 <button type="button" class="lg-btn lg-btn-primary" :disabled="resending" @click="confirmResend = true"><icons name="refresh" class="w-4 h-4" />{{ resendLabel(detail.channel) }}</button>
               </template>

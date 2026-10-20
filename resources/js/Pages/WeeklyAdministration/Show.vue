@@ -169,6 +169,10 @@ export default {
   props: { d: Object, sends: Array, activity: Array, can: Object, users: Array, pay: Object },
   mounted() { this.onScroll = () => { if (this.tick) return; this.tick = requestAnimationFrame(() => { this.tick = 0; this.placePayBar(); }); }; document.addEventListener('scroll', this.onScroll, true); window.addEventListener('resize', this.onScroll); this.$nextTick(this.placePayBar); },
   beforeUnmount() { document.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('resize', this.onScroll); if (this.tick) cancelAnimationFrame(this.tick); },
+  watch: {
+    // the bar grows when the total line appears: keep the space it leaves in the page in step
+    'selectedRows.length'() { this.$nextTick(() => { if (this.floatPay && this.$refs.payBar) this.barH = this.$refs.payBar.offsetHeight + 12; }); },
+  },
   data() { return { asking: '', reason: '', busy: false, sendOpen: false, dupOpen: false, chosen: {}, amounts: {}, payOpen: false, bulkOpen: false, bulkMode: 'all', payVoucher: false, payMode: 'all', floatPay: false, barH: 0, reversing: null, why: '', today: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) }; },
   computed: {
     canPay() { return !!(this.can.pay || this.can.voucher); },

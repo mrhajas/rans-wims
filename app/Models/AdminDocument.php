@@ -159,7 +159,7 @@ class AdminDocument extends Model
     /** A fingerprint of what the document says (date, HQ, every line, the charity section, the total): an approval is only valid for the content the approver saw. */
     public function contentHash(): string
     {
-        $l = $this->lines()->get(['description', 'beneficiary', 'category', 'staff_id', 'amount'])->toArray();
+        $l = $this->lines()->get(['admin_item_id', 'description', 'beneficiary', 'category', 'staff_id', 'contact_id', 'amount'])->toArray();
         $c = $this->charityLines()->get(['description', 'name', 'amount'])->toArray();
 
         return md5(json_encode([$this->hq, $this->doc_date ? $this->doc_date->toDateString() : null, (string) $this->total_amount, (bool) $this->include_charity, $l, $c]));

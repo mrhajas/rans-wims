@@ -112,7 +112,7 @@ class WimsConnectLogController extends Controller
         return response()->json([
             'id' => $log->id, 'channel' => $log->channel, 'status' => $log->status, 'event' => $labels[$log->event_key] ?? ucfirst(str_replace(['-', '_'], ' ', (string) $log->event_key)),
             'recipient' => $log->recipient?->name, 'address' => $log->address, 'subject' => $log->subject, 'message' => $log->message, 'body_html' => $log->body_html,
-            'meta' => $log->meta, 'error' => $log->error_message, 'retries' => $log->retry_count,
+            'meta' => $log->meta, 'resendable' => ! self::resendBlocked($log), 'error' => $log->error_message, 'retries' => $log->retry_count,
             'created_at' => optional($log->created_at)->toIso8601String(), 'sent_at' => optional($log->sent_at)->toIso8601String(), 'delivered_at' => optional($log->delivered_at)->toIso8601String(),
         ]);
     }
@@ -150,7 +150,7 @@ class WimsConnectLogController extends Controller
         abort_unless($request->user()->hasRole('Super Admin'), 403);
 
         $meta = (array) $log->meta;
-        if (! empty($meta['sensitive'])) {
+        if (self::resendBlocked($log)) {
             return $this->resendAnswer(false, __('This message holds a code or a secret link, so it is never sent again.'), 422);
         }
 
@@ -172,6 +172,12 @@ class WimsConnectLogController extends Controller
         }
 
         return $this->resendAnswer(false, __('This channel cannot be sent again.'), 422);
+    }
+
+    /** Sign-in codes, password reset links and gateway test messages are never sent again (their rows carry no code, or are not real messages). */
+    public static function resendBlocked(WimsConnectLog $log): bool
+    {
+        return ! empty(((array) $log->meta)['sensitive']) || in_array($log->event_key, ['two_factor_otp', 'two-factor-otp', 'reset-password', 'test-message'], true);
     }
 
     private function resendAnswer(bool $ok, string $message, int $status = 200, array $extra = [])
@@ -255,7 +261,7 @@ class WimsConnectLogController extends Controller
         $new = WimsConnectLog::where('id', '>', $before)->where('channel', 'app')->where('recipient_user_id', $user->id)->orderByDesc('id')->first();
         log_activity('WIMS Connect Message Sent Again', ['log_id' => $log->id, 'new_log_id' => optional($new)->id, 'channel' => 'app'], $log, 'WIMS Connect');
 
-        return $this->resendAnswer(true, __('Alert sent again to :n.', ['n' => $user->name]), 200, ['new_id' => optional($new)->id, 'status' => 'SENT']);
+        return $this->resendAnswer(true, $new ? __('Alert sent again to :n.', ['n' => $user->name]) : __('Alert sent to :n (it is delivered in a moment and then shows in this log).', ['n' => $user->name]), 200, ['new_id' => optional($new)->id, 'status' => 'SENT']);
     }
 
     public function retryAll(Request $request)

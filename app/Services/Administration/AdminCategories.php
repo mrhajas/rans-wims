@@ -70,7 +70,9 @@ class AdminCategories
         // filters and reports list every staff member (also those who left, their old lines are still there); forms only those on the payroll
         $staff = \App\Models\Staff::query()->when(! $everyone, fn ($q) => $q->whereIn('status', \App\Models\Staff::PAYROLL_STATUSES))->orderBy('name')->get(['id', 'name'])
             ->map(fn ($x) => ['value' => 's:' . $x->id, 'label' => $x->name, 'section' => __('Staff'), 'section_icon' => 'users', 'section_tone' => 'emerald']);
-        $contacts = \App\Models\Contact::query()->orderBy('name')->get(['id', 'name'])
+        // the contact names are only listed to people who may read Contacts
+        $canContacts = ! auth()->check() || auth()->user()->can('read-contacts');
+        $contacts = ($canContacts ? \App\Models\Contact::query()->orderBy('name')->get(['id', 'name']) : collect())
             ->map(fn ($x) => ['value' => 'c:' . $x->id, 'label' => $x->name, 'section' => __('Contacts'), 'section_icon' => 'group', 'section_tone' => 'amber']);
 
         return $staff->concat($contacts)->values()->all();
