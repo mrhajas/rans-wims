@@ -42,15 +42,14 @@
 
       <div class="lg-table-wrap">
         <table class="lg-table lg-responsive tr-table tr-wide">
-          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Document') }}</th><th>{{ $t('Requested by') }}</th><th>{{ $t('The three stages') }}</th><th class="tr-num">{{ $t('Administration lines') }}</th><th class="tr-num">{{ $t('Charity') }}</th><th class="tr-num">{{ $t('Total') }}</th><th class="lg-sticky-end"></th></tr></thead>
+          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Document') }}</th><th>{{ $t('Requested by') }}</th><th>{{ $t('The three stages') }}</th><th class="tr-num">{{ $t('Charity') }} ({{ currency }})</th><th class="tr-num">{{ $t('Total') }}</th><th class="lg-sticky-end"></th></tr></thead>
           <tbody>
             <tr v-for="(r, n) in rows.data" :key="r.id" class="is-click" @click="$inertia.visit(route('weekly-administration.show', r.id))">
               <td :data-label="$t('No')" class="tr-no">{{ (rows.from || 1) + n }}</td>
-              <td :data-label="$t('Document')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="wa-hqchip"><icons name="building" class="w-3 h-3" />{{ r.hq }}</span><span class="lg-chip" :class="chip(r.status)" style="text-transform: none">{{ r.status_label }}</span><span v-if="r.payment_status" class="lg-chip" :class="payChip(r.payment_status)" style="text-transform: none">{{ $t(r.payment_status) }}</span></div><small>{{ $date(r.doc_date) }}<template v-if="r.source === 'duplicate'"> · {{ $t('duplicate') }}</template></small></div></td>
+              <td :data-label="$t('Document')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.reference }}<span v-if="r.include_charity" class="wa-heart lg-tip" :data-tip="$t('Includes Charity')" role="img" :aria-label="$t('Includes Charity')"><icons name="heart" class="w-3.5 h-3.5" /></span></b><div class="tr-line"><span class="wa-hqchip"><icons name="building" class="w-3 h-3" />{{ r.hq }}</span><span class="lg-chip" :class="chip(r.status)" style="text-transform: none">{{ r.status_label }}</span><span v-if="r.payment_status" class="lg-chip" :class="payChip(r.payment_status)" style="text-transform: none">{{ $t(r.payment_status) }}</span></div><small>{{ $date(r.doc_date) }}<template v-if="r.source === 'duplicate'"> · {{ $t('duplicate') }}</template></small></div></td>
               <td :data-label="$t('Requested by')" class="tr-wrap"><div class="tr-cell"><b>{{ r.beneficiary || '-' }}</b><small>{{ $t('prepared by') }} {{ r.by || '-' }}</small></div></td>
               <td :data-label="$t('The three stages')" class="tr-wrap"><div class="tr-cell"><span><small>{{ $t('Approved') }}</small> {{ r.approved_by || '-' }}</span><span><small>{{ $t('Authorized') }}</small> {{ r.authorized_by || '-' }}</span></div></td>
-              <td :data-label="$t('Administration lines')" class="tr-num">{{ r.lines_count }}</td>
-              <td :data-label="$t('Charity')" class="tr-num"><span v-if="r.include_charity" class="tr-o">{{ money(r.charity_total) }} <small>({{ r.charity_count }})</small></span><span v-else>-</span></td>
+              <td :data-label="$t('Charity') + ' (' + currency + ')'" class="tr-num wa-charity-td"><div v-if="r.include_charity" class="wa-charity"><span class="tr-o" :class="{ 'lg-tip wa-tipl': r.charity_people.length }" :data-tip="charityTip(r)" :tabindex="r.charity_people.length ? 0 : undefined">{{ money(r.charity_total) }}</span><ul v-if="r.charity_people.length" class="wa-charity-list"><li v-for="(c, i) in r.charity_people" :key="i"><span>{{ c.name }}</span><b>{{ money(c.amount) }}</b></li></ul></div><span v-else>-</span></td>
               <td :data-label="$t('Total')" class="tr-num"><div class="tr-money"><b class="tr-tm">{{ r.currency }} {{ money(r.total_amount) }}</b><small v-if="r.payment_status" class="tr-g">{{ $t('paid') }} {{ money(r.paid_total) }}</small><small v-if="r.payment_status && Number(r.balance)" class="tr-m">{{ $t('balance') }} {{ money(r.balance) }}</small></div></td>
               <td class="lg-sticky-end tr-acts-cell" @click.stop><span class="tr-acts">
                 <a v-if="can.print" :href="route('weekly-administration.print', r.id)" target="_blank" rel="noopener" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
@@ -60,7 +59,7 @@
                 <button v-if="can.duplicate && can.create" type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Duplicate')" :aria-label="$t('Duplicate')" @click="dupDoc = r"><icons name="duplicate" class="w-4 h-4" /></button>
               </span></td>
             </tr>
-            <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="8">{{ hasFilters ? $t('No document matches these filters.') : $t('There is no data to display.') }}</td></tr>
+            <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ hasFilters ? $t('No document matches these filters.') : $t('There is no data to display.') }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -89,6 +88,7 @@ export default {
   data() { return { f: { ...this.filters }, busy: false, timer: null, sendDoc: null, dupDoc: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {
+    currency() { return (this.totals && this.totals.currency) || 'TZS'; },
     tabs() {
       const s = this.stats;
       return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.total }, { key: 'Requested', label: this.$t('Requested'), icon: 'clock', tone: 'amber', count: s.requested }, { key: 'Approved', label: this.$t('Approved'), icon: 'tick', tone: 'sky', count: s.approved },
@@ -98,6 +98,8 @@ export default {
     hasFilters() { return Object.keys(this.f).some(k => this.f[k]); },
   },
   methods: {
+    // the hover text of the Charity amount: who is in it and how much each (one per line)
+    charityTip(r) { return (r.charity_people || []).map(c => c.name + '  -  ' + this.money(c.amount)).join('\n') + ((r.charity_count || 0) > (r.charity_people || []).length ? '\n...' : ''); },
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     payChip(s) { return { Paid: 'lg-chip-green', 'Partially Paid': 'lg-chip-amber', Unpaid: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     chip(s) { return { Requested: 'lg-chip-amber', Approved: 'lg-chip-blue', Authorized: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },

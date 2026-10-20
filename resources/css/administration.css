@@ -167,3 +167,23 @@
 /* ---- report rows that open their document ---- */
 .wa-ui tr.is-click { cursor: pointer; }
 .wa-ui .wa-reflink { font-weight: 800; color: var(--wa2); text-decoration: underline; text-decoration-color: rgba(15, 118, 110, 0.35); text-underline-offset: 3px; } .wa-ui .wa-reflink:hover { color: var(--wa); text-decoration-color: currentColor; }
+
+/* Charity column of the document list: the amount carries a hover tooltip with the people; on phones (no hover) the people are listed under the amount */
+.wa-ui .wa-charity .tr-o { cursor: help; border-bottom: 1px dotted currentColor; }
+.wa-ui .wa-charity-list { display: none; list-style: none; margin: 6px 0 0; padding: 0; }
+@media (max-width: 1239.98px) {
+  .wa-ui .wa-charity { display: grid; justify-items: start; gap: 0; min-width: 0; max-width: 100%; }
+  .wa-ui .wa-charity .tr-o { cursor: default; border-bottom: 0; }
+  .wa-ui .wa-charity-list { display: grid; gap: 3px; width: 100%; max-width: 100%; }
+  .wa-ui .wa-charity-list li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.72rem; color: var(--sc-mute, #64748b); text-align: left; }
+  .wa-ui .wa-charity-list li span { min-width: 0; overflow-wrap: anywhere; } .wa-ui .wa-charity-list li b { flex: none; font-weight: 700; color: var(--sc-ink, #0f2540); }
+}
+@media (max-width: 767.98px) { .wa-ui .wa-charity { justify-items: end; } .wa-ui .wa-charity-list { max-width: 260px; } }
+
+/* Payment Voucher references under the status of a line (open in a new tab) */
+.wa-ui .wa-vrefs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.wa-ui .wa-vref { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; color: var(--wa2, #0f766e); background: rgba(20, 184, 166, 0.12); text-decoration: none; overflow-wrap: anywhere; }
+.wa-ui .wa-vref:hover { background: rgba(20, 184, 166, 0.22); text-decoration: underline; } .wa-ui .wa-vref:focus-visible { outline: 2px solid var(--wa, #0f766e); outline-offset: 2px; }
+
+/* a small heart after the reference of a document that has the Charity section */
+.wa-ui .wa-heart { display: inline-flex; align-items: center; vertical-align: -2px; margin-left: 6px; color: #d9670c; } .wa-ui .wa-heart svg { width: 14px; height: 14px; }

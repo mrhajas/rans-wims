@@ -96,7 +96,7 @@
                 <td class="num hide-sm">{{ money(r.amount) }}</td>
                 <td class="num hide-sm tr-g">{{ Number(r.paid) ? money(r.paid) : '-' }}</td>
                 <td class="num tr-m">{{ money(r.balance) }}<div v-if="Number(r.reserved)" class="lg-subtext tr-o">{{ $t('held') }} {{ money(r.reserved) }}</div></td>
-                <td><span class="lg-chip" :class="payChip(r.status)" style="text-transform: none">{{ $t(r.status) }}</span></td>
+                <td><span class="lg-chip" :class="payChip(r.status)" style="text-transform: none">{{ $t(r.status) }}</span><div v-if="r.vouchers && r.vouchers.length" class="wa-vrefs"><a v-for="v in r.vouchers" :key="v.id" :href="route('payment-vouchers.show', v.id)" target="_blank" rel="noopener" class="wa-vref" :title="$t('Open this voucher in a new tab') + ' (' + v.status + ')'"><icons name="doc-text" class="w-3 h-3" />{{ v.pv_number }}</a></div></td>
                 <td v-if="canPay" class="num"><input v-if="chosen[r.key]" v-model="amounts[r.key]" class="wa-pin" type="number" min="0" step="0.01" :max="r.balance" inputmode="decimal" :aria-label="$t('Amount to pay now')" /></td>
                 <td v-if="canPay" class="num"><button v-if="Number(r.balance) > 0" type="button" class="lg-btn t-slate sc-sm" @click="payOne(r)">{{ $t('Pay') }}</button></td>
               </tr>
@@ -118,7 +118,7 @@
             <div v-for="p in pay.payments" :key="p.id" class="wa-payrow" :class="{ 'is-off': p.status === 'Released' || p.status === 'Reversed' }">
               <div class="who"><b>{{ p.reference }} <span class="lg-chip" :class="payStatusChip(p.status)" style="text-transform: none">{{ $t(p.status) }}</span></b>
                 <small>{{ $t('to') }} <b>{{ p.to }}</b> ({{ p.to_type === 'staff' ? $t('staff') : $t('user') }}) · {{ p.paid_on ? $date(p.paid_on) : $date(p.requested_on) }} · {{ p.lines }} {{ $t('line(s)') }}<template v-if="p.method"> · {{ p.method }}</template><template v-if="p.payment_reference"> · {{ p.payment_reference }}</template> · {{ $t('by') }} {{ p.by }}</small>
-                <small v-if="p.voucher">{{ $t('Payment Voucher') }}: <a :href="route('payment-vouchers.show', p.voucher.id)">{{ p.voucher.pv_number }}</a> ({{ p.voucher.status }})<template v-if="p.batch"> · <a :href="route('payment-vouchers.batches.show', p.batch)">{{ $t('Batch') }}</a></template></small>
+                <small v-if="p.voucher">{{ $t('Payment Voucher') }}: <a :href="route('payment-vouchers.show', p.voucher.id)" target="_blank" rel="noopener">{{ p.voucher.pv_number }}</a> ({{ p.voucher.status }})<template v-if="p.batch"> · <a :href="route('payment-vouchers.batches.show', p.batch)" target="_blank" rel="noopener">{{ $t('Batch') }}</a></template></small>
                 <small v-if="p.distribute"><span class="lg-chip lg-chip-violet" style="text-transform: none">{{ $t('Gives it to the beneficiaries') }}</span></small>
                 <small v-if="p.notes">{{ p.notes }}</small><small v-if="p.release_reason">{{ $t('Released') }}: {{ p.release_reason }}</small><small v-if="p.reverse_reason">{{ $t('Reversed') }}: {{ p.reverse_reason }}</small></div>
               <div class="amt">{{ d.currency }} {{ money(p.amount) }}<div v-if="can.reverse && p.can_reverse"><button type="button" class="lg-btn t-red sc-sm" @click="reversing = p; why = ''">{{ $t('Reverse') }}</button></div></div>

@@ -54,20 +54,35 @@ class AdminPaymentService
         return $out;
     }
 
+    /** The Payment Vouchers behind each line ("item:5" => [{id, pv_number, status}]), for the payments that are paid or waiting on a voucher. */
+    public static function voucherRefs(int $documentId): array
+    {
+        $rows = DB::table('admin_document_payment_lines as l')->join('admin_document_payments as p', 'p.id', '=', 'l.admin_document_payment_id')->join('payment_vouchers as v', 'v.id', '=', 'p.payment_voucher_id')
+            ->whereNull('l.deleted_at')->whereNull('p.deleted_at')->where('p.admin_document_id', $documentId)->whereIn('p.status', [AdminDocumentPayment::PAID, AdminDocumentPayment::PENDING_VOUCHER])
+            ->orderBy('p.id')->get(['l.line_type', 'l.line_id', 'v.id as vid', 'v.pv_number', 'v.status as vstatus']);
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r->line_type . ':' . $r->line_id][$r->vid] = ['id' => (int) $r->vid, 'pv_number' => $r->pv_number, 'status' => $r->vstatus];
+        }
+
+        return array_map('array_values', $out);
+    }
+
     /** Every payable line of the document with what is paid, reserved and left. A line with nothing left is "Paid", one with something paid is "Partially Paid". */
     public static function lineTable(AdminDocument $d): array
     {
         $sums = self::sums($d->id);
+        $refs = self::voucherRefs($d->id);
         $rows = [];
         $no = 0;
-        $push = function (string $type, $l, string $desc, ?string $who) use (&$rows, &$no, $sums) {
+        $push = function (string $type, $l, string $desc, ?string $who) use (&$rows, &$no, $sums, $refs) {
             $amount = self::cents($l->amount);
             $k = $type . ':' . $l->id;
             $paid = $sums[$k]['paid'] ?? 0;
             $res = $sums[$k]['reserved'] ?? 0;
             $left = max(0, $amount - $paid - $res);
             $rows[] = ['key' => $k, 'type' => $type, 'id' => $l->id, 'no' => ++$no, 'description' => $desc, 'beneficiary' => $who, 'amount' => self::money($amount), 'paid' => self::money($paid), 'reserved' => self::money($res), 'balance' => self::money($left),
-                'status' => $amount > 0 && $paid >= $amount ? 'Paid' : ($paid > 0 ? 'Partially Paid' : ($res > 0 ? 'Pending Voucher' : 'Unpaid')), 'section' => $type === 'charity' ? 'Charity' : 'Lines'];
+                'status' => $amount > 0 && $paid >= $amount ? 'Paid' : ($paid > 0 ? 'Partially Paid' : ($res > 0 ? 'Pending Voucher' : 'Unpaid')), 'section' => $type === 'charity' ? 'Charity' : 'Lines', 'vouchers' => $refs[$k] ?? []];
         };
         foreach ($d->lines()->get() as $l) {
             $push('item', $l, $l->description, $l->beneficiary);

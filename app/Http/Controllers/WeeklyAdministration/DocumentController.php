@@ -90,7 +90,7 @@ class DocumentController extends Controller
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', $like($f['search']))->orWhere('beneficiary_name', 'like', $like($f['search']))->orWhere('notes', 'like', $like($f['search']))
                 ->orWhereHas('lines', fn ($l) => $l->where('description', 'like', $like($f['search']))->orWhere('beneficiary', 'like', $like($f['search'])))
                 ->orWhereHas('charityLines', fn ($l) => $l->where('description', 'like', $like($f['search'])))));
-        $rows = (clone $base)->with(['user:id,name', 'approvedBy:id,name', 'authorizedBy:id,name'])->withCount(['lines', 'charityLines'])->orderByDesc('doc_date')->orderByDesc('id')->paginate(20)->withQueryString();
+        $rows = (clone $base)->with(['user:id,name', 'approvedBy:id,name', 'authorizedBy:id,name', 'charityLines:id,admin_document_id,name,amount'])->withCount(['lines', 'charityLines'])->orderByDesc('doc_date')->orderByDesc('id')->paginate(20)->withQueryString();
         $rows->through(fn ($d) => $this->row($d));
         $counts = $this->visible()->selectRaw('status, COUNT(*) n')->groupBy('status')->pluck('n', 'status');
         // the money of what is listed: what is authorized is spent; what is waiting is still to be decided
@@ -586,7 +586,7 @@ class DocumentController extends Controller
     private function row(AdminDocument $d): array
     {
         return ['id' => $d->id, 'reference' => $d->reference, 'hq' => $d->hq, 'status' => $d->status, 'status_label' => __($d->status), 'doc_date' => $d->doc_date->toDateString(), 'currency' => $d->currency, 'beneficiary' => $d->beneficiary_name, 'include_charity' => (bool) $d->include_charity,
-            'items_total' => (string) $d->items_total, 'charity_total' => (string) $d->charity_total, 'total_amount' => (string) $d->total_amount, 'lines_count' => (int) ($d->lines_count ?? $d->lines()->count()), 'charity_count' => (int) ($d->charity_lines_count ?? $d->charityLines()->count()),
+            'items_total' => (string) $d->items_total, 'charity_total' => (string) $d->charity_total, 'charity_people' => $d->include_charity && $d->relationLoaded('charityLines') ? $d->charityLines->take(40)->map(fn ($c) => ['name' => $c->name, 'amount' => (string) $c->amount])->values()->all() : [], 'total_amount' => (string) $d->total_amount, 'lines_count' => (int) ($d->lines_count ?? $d->lines()->count()), 'charity_count' => (int) ($d->charity_lines_count ?? $d->charityLines()->count()),
             'payment_status' => $d->status === AdminDocument::AUTHORIZED ? $d->payment_status : null, 'paid_total' => (string) $d->paid_total, 'reserved_total' => (string) $d->reserved_total, 'balance' => number_format(max(0, (float) $d->total_amount - (float) $d->paid_total), 2, '.', ''),
             'by' => optional($d->user)->name, 'approved_by' => optional($d->approvedBy)->name, 'authorized_by' => optional($d->authorizedBy)->name, 'source' => $d->source, 'sent_count' => (int) $d->sent_count, 'last_sent_at' => optional($d->last_sent_at)->toDateTimeString()];
     }
