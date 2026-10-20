@@ -59,7 +59,7 @@
             <tr v-for="l in d.lines" :key="l.no"><td class="no">{{ l.no }}</td><td>{{ l.description }}<div v-if="l.category || l.person" class="lg-subtext"><span v-if="l.category">{{ l.category }}</span><span v-if="l.person"> · {{ l.person }}</span></div></td><td class="hide-sm">{{ l.beneficiary || '-' }}</td><td class="num tr-m">{{ money(l.amount) }}</td></tr>
             <tr v-if="!d.lines.length"><td colspan="4" class="lg-empty" style="text-align: center">{{ $t('No lines.') }}</td></tr>
           </tbody>
-          <tfoot><tr><td colspan="3" style="text-align: right">{{ $t('Total') }} {{ d.currency }}</td><td class="num tr-tm">{{ money(d.items_total) }}</td></tr></tfoot>
+          <tfoot><tr><td colspan="2" style="text-align: right">{{ $t('Total') }} {{ d.currency }}</td><td class="hide-sm"></td><td class="num tr-tm">{{ money(d.items_total) }}</td></tr></tfoot>
         </table></div>
       </section>
 
@@ -122,7 +122,7 @@
                 <small v-if="p.voucher">{{ $t('Payment Voucher') }}: <a :href="route('payment-vouchers.show', p.voucher.id)" target="_blank" rel="noopener">{{ p.voucher.pv_number }}</a> ({{ p.voucher.status }})<template v-if="p.batch"> · <a :href="route('payment-vouchers.batches.show', p.batch)" target="_blank" rel="noopener">{{ $t('Batch') }}</a></template></small>
                 <small v-if="p.distribute"><span class="lg-chip lg-chip-violet" style="text-transform: none">{{ $t('Gives it to the beneficiaries') }}</span></small>
                 <small v-if="p.notes">{{ p.notes }}</small><small v-if="p.release_reason">{{ $t('Released') }}: {{ p.release_reason }}</small><small v-if="p.reverse_reason">{{ $t('Reversed') }}: {{ p.reverse_reason }}</small></div>
-              <div class="amt">{{ d.currency }} {{ money(p.amount) }}<div v-if="can.reverse && p.can_reverse"><button type="button" class="lg-btn t-red sc-sm" @click="reversing = p; why = ''">{{ $t('Reverse') }}</button></div></div>
+              <div class="amt">{{ d.currency }} {{ money(p.amount) }}<div v-if="p.voucher"><a :href="route('payment-vouchers.show', p.voucher.id)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft sc-sm wa-pvbtn" :title="$t('Open this voucher in a new tab') + ' (' + p.voucher.status + ')'"><icons name="doc-text" class="w-4 h-4" />{{ $t('Payment Voucher') }}</a></div><div v-if="can.reverse && p.can_reverse"><button type="button" class="lg-btn t-red sc-sm" @click="reversing = p; why = ''">{{ $t('Reverse') }}</button></div></div>
             </div>
           </div>
         </template>
