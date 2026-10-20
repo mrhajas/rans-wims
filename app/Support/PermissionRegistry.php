@@ -1192,6 +1192,7 @@ class PermissionRegistry
                     'view-compliance-financials' => __('View Compliance Financial Info (Guarantee / Loan Amounts)'),
                     'export-compliance-records' => __('Export Compliance Data'),
                     'dispose-compliance-records' => __('Cancel / Suspend Compliance Records'),
+                    'manage-compliance-auto-renewal' => __('Set Up Auto Renewal (Compliance)'),
                 ],
             ],
 

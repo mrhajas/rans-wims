@@ -102,6 +102,7 @@ class ComplianceRecordController extends Controller
             'authorities' => $this->authoritiesBank(),
             'scopes' => ComplianceRecord::SCOPES,
             'guaranteeTypes' => ComplianceRecord::GUARANTEE_TYPES,
+            'autoRenewal' => $this->autoRenewalProps(),
         ]);
     }
 
@@ -109,6 +110,7 @@ class ComplianceRecordController extends Controller
     {
         $data = $this->validated($request);
         unset($data['photo']);
+        $data = $this->autoRenewalData($request, $data, null);
         $this->rememberType($data['compliance_type'] ?? '');
         $this->rememberAuthority($data['issuing_authority'] ?? '');
 
@@ -138,6 +140,9 @@ class ComplianceRecordController extends Controller
 
         $record->recalculateStatusAndPriority();
         ComplianceHistory::log($record, 'Created', __('Compliance record created.'));
+        if ($record->auto_renew) {
+            ComplianceHistory::log($record, 'Auto Renewal', $this->autoRenewalSummary($record));
+        }
         \App\Services\ComplianceNotifier::fire('created', $record, __('Compliance Record Created'), $record->title . ' (' . $record->compliance_number . ') was created.');
 
         if ($request->hasFile('attachments')) {
@@ -153,6 +158,7 @@ class ComplianceRecordController extends Controller
 
         return Inertia::render('Compliance/Show', [
             'record' => $this->presentDetail($compliance_record),
+            'autoRenewal' => $this->autoRenewalProps(),
         ]);
     }
 
@@ -173,6 +179,7 @@ class ComplianceRecordController extends Controller
             'authorities' => $this->authoritiesBank(),
             'scopes' => ComplianceRecord::SCOPES,
             'guaranteeTypes' => ComplianceRecord::GUARANTEE_TYPES,
+            'autoRenewal' => $this->autoRenewalProps(),
         ]);
     }
 
@@ -180,8 +187,10 @@ class ComplianceRecordController extends Controller
     {
         $data = $this->validated($request, $compliance_record->id);
         unset($data['photo']);
+        $data = $this->autoRenewalData($request, $data, $compliance_record);
         $this->rememberType($data['compliance_type'] ?? '');
         $this->rememberAuthority($data['issuing_authority'] ?? '');
+        $beforeAuto = [(bool) $compliance_record->auto_renew, (int) $compliance_record->auto_renew_days, $compliance_record->autoRenewNoticeDays()];
         $changes = array_filter($data, fn ($value, $key) => $compliance_record->{$key} != $value, ARRAY_FILTER_USE_BOTH);
 
         if ($request->hasFile('photo')) {
@@ -193,6 +202,11 @@ class ComplianceRecordController extends Controller
 
         $compliance_record->update($data);
         $compliance_record->recalculateStatusAndPriority();
+
+        $afterAuto = [(bool) $compliance_record->auto_renew, (int) $compliance_record->auto_renew_days, $compliance_record->autoRenewNoticeDays()];
+        if ($beforeAuto !== $afterAuto) {
+            ComplianceHistory::log($compliance_record, 'Auto Renewal', $compliance_record->auto_renew ? $this->autoRenewalSummary($compliance_record) : __('Auto renewal turned off.'));
+        }
 
         if (! empty($changes)) {
             ComplianceHistory::log($compliance_record, 'Edited', __(':count field(s) updated.', ['count' => count($changes)]));
@@ -449,6 +463,55 @@ class ComplianceRecordController extends Controller
         ]);
     }
 
+    /** What the form and the page need to draw the auto renewal box: who may change it, and the notice days offered. */
+    private function autoRenewalProps(): array
+    {
+        return ['can' => (bool) auth()->user()?->can('manage-compliance-auto-renewal'), 'choices' => ComplianceRecord::AUTO_RENEW_NOTIFY_CHOICES];
+    }
+
+    /**
+     * Auto renewal is set by people with manage-compliance-auto-renewal (a Super Admin for now). For everybody else the three fields are dropped, so a request
+     * can never turn it on or off and a saved setting is left exactly as it was.
+     */
+    private function autoRenewalData(Request $request, array $data, ?ComplianceRecord $existing): array
+    {
+        foreach (['auto_renew', 'auto_renew_days', 'auto_renew_notify_days'] as $k) {
+            unset($data[$k]);
+        }
+        if (! $request->user() || ! $request->user()->can('manage-compliance-auto-renewal')) {
+            return $data;
+        }
+        $request->validate([
+            'auto_renew' => 'nullable|boolean',
+            'auto_renew_days' => 'nullable|integer|min:1|max:3650',
+            'auto_renew_notify_days' => 'nullable|array|max:8',
+            'auto_renew_notify_days.*' => 'integer|min:0|max:365',
+        ]);
+        if (! $request->boolean('auto_renew')) {
+            return $data + ['auto_renew' => false, 'auto_renew_days' => null, 'auto_renew_notify_days' => null];
+        }
+        $days = (int) $request->input('auto_renew_days');
+        if ($days < 1) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['auto_renew_days' => __('Enter how many days each automatic renewal lasts.')]);
+        }
+        if (empty($data['expiry_date'] ?? ($existing ? $existing->expiry_date : null))) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['auto_renew' => __('Auto renewal needs an expiry date: it renews on that day.')]);
+        }
+        $notify = collect((array) $request->input('auto_renew_notify_days', []))->map(fn ($n) => (int) $n)->unique()->sort()->reverse()->values()->all();
+        $changed = ! $existing || ! $existing->auto_renew || (int) $existing->auto_renew_days !== $days || $existing->autoRenewNoticeDays() !== $notify;
+
+        return $data + ['auto_renew' => true, 'auto_renew_days' => $days, 'auto_renew_notify_days' => $notify]
+            + ($changed ? ['auto_renew_set_by' => $request->user()->id, 'auto_renew_set_at' => now()] : []);
+    }
+
+    private function autoRenewalSummary(ComplianceRecord $r): string
+    {
+        $notify = $r->autoRenewNoticeDays();
+
+        return __('Auto renewal on: it renews itself on the expiry date for :days days.', ['days' => (int) $r->auto_renew_days])
+            . ($notify ? ' ' . __('Owners are told :list day(s) before.', ['list' => implode(', ', $notify)]) : '');
+    }
+
     private function nextReference(): string
     {
         $maxSuffix = (int) DB::table('compliance_records')
@@ -536,6 +599,8 @@ class ComplianceRecordController extends Controller
             'days_remaining_label' => $record->days_remaining_label,
             'status' => $record->status,
             'priority' => $record->priority,
+            'auto_renew' => $record->autoRenewalActive(),
+            'auto_renew_days' => $record->autoRenewalActive() ? (int) $record->auto_renew_days : null,
         ];
     }
 

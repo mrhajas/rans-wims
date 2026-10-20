@@ -68,6 +68,18 @@
             <div><dt>{{ $t('Next Review Date') }}</dt><dd>{{ record.next_review_date ? $date(record.next_review_date) : '-' }}</dd></div>
           </dl>
         </section>
+        <section v-if="record.auto_renew" class="lg-card cp-auto">
+          <header class="lg-card-head">
+            <span class="lg-card-ico lg-ico-teal"><icons name="refresh" class="w-5 h-5" /></span>
+            <div class="min-w-0 flex-1"><h3 class="lg-card-title">{{ $t('Auto Renewal') }}</h3><p class="lg-card-sub">{{ $t('This record renews itself on its expiry date.') }}</p></div>
+          </header>
+          <dl class="cp-dl">
+            <div><dt>{{ $t('Each renewal lasts') }}</dt><dd>{{ record.auto_renew_days }} {{ $t('days') }}</dd></div>
+            <div><dt>{{ $t('Next renewal') }}</dt><dd>{{ record.expiry_date ? $date(record.expiry_date) : '-' }}</dd></div>
+            <div><dt>{{ $t('Owners are told') }}</dt><dd><span v-for="n in (record.auto_renew_notify_days || [])" :key="n" class="cp-auto-pill"><icons name="bell" class="w-3 h-3" />{{ n === 0 ? $t('On the day') : n + ' ' + $t('day(s) before') }}</span><span v-if="!(record.auto_renew_notify_days || []).length">-</span></dd></div>
+            <div><dt>{{ $t('Renewed automatically') }}</dt><dd>{{ record.auto_renewed_count || 0 }} {{ $t('time(s)') }}<template v-if="record.last_auto_renewed_at"> ({{ $t('last') }} {{ $date(record.last_auto_renewed_at) }})</template></dd></div>
+          </dl>
+        </section>
         <section class="lg-card" v-if="record.warehouse || record.supplier || record.asset">
           <header class="lg-card-head">
             <span class="lg-card-ico lg-ico-sky"><icons name="link" class="w-5 h-5" /></span>
@@ -439,4 +451,6 @@ html.dark .cp-modal .lg-btn-soft { --lg-card: rgba(255, 255, 255, 0.06); --lg-na
 .cp-photo-zoom-name { text-align: center; font-size: 0.75rem; font-weight: 700; color: #374151; margin-top: 0.5rem; word-break: break-word; }
 html.dark .cp-photo-zoom { background: #1e293b; box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); }
 html.dark .cp-photo-zoom-name { color: #e2e8f0; }
+.cp-auto { box-shadow: 0 0 0 1.5px rgba(13, 148, 136, 0.4), 0 16px 26px -18px rgba(13, 148, 136, 0.6); }
+.cp-auto-pill { display: inline-flex; align-items: center; gap: 4px; margin: 0 6px 4px 0; padding: 2px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 800; color: #b45309; box-shadow: inset 0 0 0 1.5px #d97706; }
 </style>

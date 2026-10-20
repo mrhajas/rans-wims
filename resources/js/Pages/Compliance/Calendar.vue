@@ -4,7 +4,7 @@
       <page-header
         icon="calendar"
         :title="$t('Compliance Calendar')"
-        :subtitle="$t('Expiry, renewal, submission, review, loan payment, and contract notice dates: six months at a glance.')"
+        :subtitle="$t('Expiry, auto renewal, renewal, submission, review, loan payment, and contract notice dates: six months at a glance.')"
       >
         <button type="button" class="lg-btn lg-btn-soft" @click="goPrev"><icons name="chevron-down" class="w-4 h-4 rotate-90" /> {{ $t('Previous 6 Months') }}</button>
         <button type="button" class="lg-btn lg-btn-soft" @click="goNext">{{ $t('Next 6 Months') }} <icons name="chevron-down" class="w-4 h-4 -rotate-90" /></button>
@@ -17,6 +17,7 @@
         <span class="cp-legend-item"><span class="cp-legend-dot cp-legend-critical"></span>{{ $t('Critical (expired / ≤7 days)') }}</span>
         <span class="cp-legend-item"><span class="cp-legend-dot cp-legend-warning"></span>{{ $t('Upcoming (≤30 days) / Contract notice') }}</span>
         <span class="cp-legend-item"><span class="cp-legend-dot cp-legend-info"></span>{{ $t('Renewal / Submission / Review / Payment') }}</span>
+        <span class="cp-legend-item"><span class="cp-legend-dot cp-legend-auto"></span>{{ $t('Auto renewal day / its notice days') }}</span>
       </div>
 
       <div class="cp-calendar-grid">
@@ -82,4 +83,5 @@ export default {
 .cp-legend-critical { background: #be123c; }
 .cp-legend-warning { background: #b45309; }
 .cp-legend-info { background: #1d4ed8; }
+.cp-legend-auto { background: #0d9488; }
 </style>

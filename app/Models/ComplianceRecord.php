@@ -46,6 +46,12 @@ class ComplianceRecord extends Model
 
     public const DEFAULT_REMINDER_INTERVALS = [90, 60, 30, 14, 7, 3, 1, 0];
 
+    /** The days before an automatic renewal on which the owners can ask to be told (a person may also type their own). */
+    public const AUTO_RENEW_NOTIFY_CHOICES = [30, 14, 7, 3, 1, 0];
+
+    /** A record in one of these statuses never renews itself. */
+    public const AUTO_RENEW_BLOCKED_STATUSES = ['Draft', 'Cancelled', 'Rejected', 'Completed', 'Suspended'];
+
     public $casts = [
         'issue_date' => 'date',
         'effective_date' => 'date',
@@ -59,6 +65,10 @@ class ComplianceRecord extends Model
         'loan_next_payment_date' => 'date',
         'priority_is_manual_override' => 'boolean',
         'is_recurring' => 'boolean',
+        'auto_renew' => 'boolean',
+        'auto_renew_notify_days' => 'array',
+        'auto_renew_set_at' => 'datetime',
+        'last_auto_renewed_at' => 'datetime',
         'reminder_intervals' => 'array',
         'additional_recipient_user_ids' => 'array',
         'extra_attributes' => 'array',
@@ -170,6 +180,45 @@ class ComplianceRecord extends Model
                         ->orWhere('issuing_authority', 'like', "%{$search}%");
                 });
             });
+    }
+
+    /** True when this record will renew itself on its expiry date. */
+    public function autoRenewalActive(): bool
+    {
+        return (bool) $this->auto_renew && (int) $this->auto_renew_days > 0 && $this->expiry_date !== null && ! in_array($this->status, self::AUTO_RENEW_BLOCKED_STATUSES, true);
+    }
+
+    /** The notice days, largest first, whole numbers only. */
+    public function autoRenewNoticeDays(): array
+    {
+        $d = collect((array) $this->auto_renew_notify_days)->map(fn ($n) => (int) $n)->filter(fn ($n) => $n >= 0 && $n <= 365)->unique()->sort()->reverse()->values()->all();
+
+        return $d;
+    }
+
+    /**
+     * The dates on which this record renews itself inside a window, with the expiry each renewal gives: the current expiry date, then one period later, and so on.
+     * For the calendar.
+     *
+     * @return array<int,array{date:\Illuminate\Support\Carbon,new_expiry:\Illuminate\Support\Carbon}>
+     */
+    public function autoRenewalDates($from, $to, int $max = 24): array
+    {
+        if (! $this->autoRenewalActive()) {
+            return [];
+        }
+        $n = (int) $this->auto_renew_days;
+        $out = [];
+        $d = $this->expiry_date->copy();
+        for ($i = 0; $i < 400 && count($out) < $max && $d->lte($to); $i++) {
+            $next = $d->copy()->addDays($n);
+            if ($d->gte($from)) {
+                $out[] = ['date' => $d->copy(), 'new_expiry' => $next->copy()];
+            }
+            $d = $next;
+        }
+
+        return $out;
     }
 
     public function getDaysRemainingAttribute(): ?int

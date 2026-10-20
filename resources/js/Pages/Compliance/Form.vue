@@ -257,6 +257,27 @@
           </div>
         </section>
 
+        <section class="lg-card ar-section" :class="{ 'is-on': form.auto_renew }">
+          <header class="lg-card-head">
+            <span class="lg-card-ico lg-ico-teal"><icons name="refresh" class="w-5 h-5" /></span>
+            <div class="min-w-0">
+              <h2 class="lg-card-title">{{ $t('Auto Renewal') }}</h2>
+              <p class="lg-card-sub">{{ $t('Renew this record by itself on its expiry date and tell the owners before it happens.') }}</p>
+            </div>
+          </header>
+          <label class="ar-toggle" :class="{ 'is-locked': !autoRenewal.can }">
+            <input type="checkbox" :checked="form.auto_renew" :disabled="!autoRenewal.can" @change="onAutoToggle($event)" />
+            <span class="ar-toggle-text"><b>{{ $t('Renew this record automatically') }}</b><small v-if="autoRenewal.can">{{ $t('You choose after how many days and when to be told.') }}</small><small v-else><icons name="lock-closed" class="w-3 h-3" /> {{ $t('Only a Super Admin, or a role given "Set Up Auto Renewal", can change this.') }}</small></span>
+          </label>
+          <div v-if="form.auto_renew" class="ar-summary">
+            <span class="ar-pill is-teal"><icons name="refresh" class="w-4 h-4" />{{ $t('Renews for :n days', { n: form.auto_renew_days }) }}</span>
+            <span v-for="n in form.auto_renew_notify_days" :key="n" class="ar-pill is-amber"><icons name="bell" class="w-4 h-4" />{{ n === 0 ? $t('Told on the day') : $t('Told :n day(s) before', { n }) }}</span>
+            <button v-if="autoRenewal.can" type="button" class="ar-edit" @click="arOpen = true"><icons name="edit" class="w-4 h-4" />{{ $t('Change') }}</button>
+            <p v-if="$page.props.errors.auto_renew || $page.props.errors.auto_renew_days" class="ar-err">{{ $page.props.errors.auto_renew || $page.props.errors.auto_renew_days }}</p>
+          </div>
+          <auto-renewal-modal :show="arOpen" :title="form.title" :days="form.auto_renew_days" :notify="form.auto_renew_notify_days" :expiry="form.expiry_date" :can-turn-off="!!form.auto_renew" @save="saveAuto" @cancel="cancelAuto" @turnoff="turnOffAuto" />
+        </section>
+
         <section class="lg-card">
           <header class="lg-card-head">
             <span class="lg-card-ico lg-ico-teal"><icons name="clip" class="w-5 h-5" /></span>
@@ -332,9 +353,10 @@ import AutoComplete from '@/Shared/AutoComplete.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 import AttachmentPicker from '@/Shared/AttachmentPicker.vue';
+import AutoRenewalModal from './AutoRenewalModal.vue';
 
 export default {
-  components: { AdminLayout, PageHeader, AutoComplete, TextInput, DatePicker, AttachmentPicker },
+  components: { AdminLayout, PageHeader, AutoComplete, TextInput, DatePicker, AttachmentPicker, AutoRenewalModal },
 
   props: {
     record: Object,
@@ -350,6 +372,7 @@ export default {
     priorities: Array,
     scopes: Array,
     guaranteeTypes: Array,
+    autoRenewal: { type: Object, default: () => ({ can: false, choices: [] }) },
   },
 
   data() {
@@ -360,6 +383,7 @@ export default {
       photoFile: null,
       photoRemoved: false,
       photoZoom: { show: false, src: null, name: '', isImage: true, x: 0, y: 0 },
+      arOpen: false,
       reminderIntervalsText: (r.reminder_intervals || []).join(', '),
       form: {
         compliance_type: r.compliance_type || this.types[0],
@@ -438,6 +462,9 @@ export default {
         recurrence_frequency: r.recurrence_frequency || null,
         recurrence_custom_days: r.recurrence_custom_days || '',
 
+        auto_renew: !!r.auto_renew,
+        auto_renew_days: r.auto_renew_days || '',
+        auto_renew_notify_days: r.auto_renew_notify_days || [],
         escalation_recipient_user_id: r.escalation_recipient_user_id || null,
         additional_recipient_user_ids: r.additional_recipient_user_ids || [],
         responsible_role: r.responsible_role || '',
@@ -508,6 +535,15 @@ export default {
     hidePhotoZoom() {
       this.photoZoom.show = false;
     },
+    onAutoToggle(e) {
+      const on = e.target.checked;
+      // the box only shows what is saved on the form: it ticks once the settings are saved in the dialog
+      e.target.checked = !!this.form.auto_renew;
+      if (on) { this.arOpen = true; } else { this.turnOffAuto(); }
+    },
+    saveAuto(v) { this.form.auto_renew = true; this.form.auto_renew_days = v.days; this.form.auto_renew_notify_days = v.notify; this.arOpen = false; },
+    cancelAuto() { this.arOpen = false; if (!this.form.auto_renew_days) this.form.auto_renew = false; },
+    turnOffAuto() { this.form.auto_renew = false; this.form.auto_renew_days = ''; this.form.auto_renew_notify_days = []; this.arOpen = false; },
     submit() {
       this.processing = true;
       const payload = { ...this.form };
@@ -619,4 +655,14 @@ html.dark .cmp-photo-picker { background: rgba(255, 255, 255, 0.04); border-colo
 html.dark .cmp-photo-placeholder { color: #a5b4fc; }
 html.dark .cmp-photo-zoom { background: #1e293b; box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); }
 html.dark .cmp-photo-zoom-name { color: #e2e8f0; }
+.ar-section.is-on { box-shadow: 0 0 0 1.5px rgba(13, 148, 136, 0.45), 0 18px 28px -18px rgba(13, 148, 136, 0.55); }
+.ar-toggle { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; cursor: pointer; background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), transparent); box-shadow: inset 0 0 0 1px rgba(13, 148, 136, 0.25); }
+.ar-toggle.is-locked { cursor: not-allowed; opacity: 0.75; }
+.ar-toggle input { width: 20px; height: 20px; accent-color: #0d9488; flex: none; }
+.ar-toggle-text { display: grid; gap: 2px; } .ar-toggle-text b { font-size: 0.92rem; } .ar-toggle-text small { font-size: 0.76rem; color: var(--lg-mute, #64748b); display: flex; align-items: center; gap: 4px; }
+.ar-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ar-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 0.76rem; font-weight: 800; background: var(--lg-card, #fff); }
+.ar-pill.is-teal { color: #0f766e; box-shadow: inset 0 0 0 1.5px #0d9488, 0 8px 12px -8px #0d9488; } .ar-pill.is-amber { color: #b45309; box-shadow: inset 0 0 0 1.5px #d97706, 0 8px 12px -8px #d97706; }
+.ar-edit { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border: 0; border-radius: 999px; cursor: pointer; font-size: 0.76rem; font-weight: 800; color: #fff; background: linear-gradient(135deg, #14b8a6, #0f766e); }
+.ar-err { flex-basis: 100%; margin: 0; color: #b91c1c; font-size: 0.78rem; font-weight: 700; }
 </style>

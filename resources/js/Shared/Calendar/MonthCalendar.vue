@@ -54,6 +54,9 @@
           <div class="mcal-tooltip-row" v-if="tooltip.ev.meta.issuing_authority"><span>{{ $t('Authority') }}</span><strong>{{ tooltip.ev.meta.issuing_authority }}</strong></div>
           <div class="mcal-tooltip-row" v-if="tooltip.ev.meta.status"><span>{{ $t('Status') }}</span><strong>{{ tooltip.ev.meta.status }}</strong></div>
           <div class="mcal-tooltip-row" v-if="tooltip.ev.meta.days_remaining_label"><span>{{ $t('Expires') }}</span><strong>{{ tooltip.ev.meta.days_remaining_label }}</strong></div>
+          <div class="mcal-tooltip-row" v-if="tooltip.ev.meta.renews_for_days"><span>{{ $t('Renews for') }}</span><strong>{{ $t(':n days', { n: tooltip.ev.meta.renews_for_days }) }}</strong></div>
+          <div class="mcal-tooltip-row" v-if="tooltip.ev.meta.new_expiry"><span>{{ $t('New expiry') }}</span><strong>{{ tooltip.ev.meta.new_expiry }}</strong></div>
+          <div class="mcal-tooltip-row" v-if="tooltip.ev.meta.notice_days_before"><span>{{ $t('Notice') }}</span><strong>{{ $t(':n day(s) before renewal', { n: tooltip.ev.meta.notice_days_before }) }}</strong></div>
         </template>
         <div class="mcal-tooltip-hint">{{ $t('Click to open') }}</div>
       </div>
@@ -113,7 +116,7 @@ export default {
     // Worst-first — a day with any critical event reads as critical overall,
     // regardless of what else landed on it.
     cellSeverity(events) {
-      const rank = { critical: 0, warning: 1, info: 2 };
+      const rank = { critical: 0, warning: 1, auto: 2, info: 3 };
       return events.reduce((worst, ev) => {
         const s = ev.severity || 'info';
         return rank[s] < rank[worst] ? s : worst;
@@ -124,7 +127,7 @@ export default {
       return events.find(ev => (ev.severity || 'info') === worst) || events[0];
     },
     severityIcon(severity) {
-      return { critical: 'exclamation', warning: 'clock', info: 'doc-text' }[severity] || 'doc-text';
+      return { critical: 'exclamation', warning: 'clock', auto: 'refresh', info: 'doc-text' }[severity] || 'doc-text';
     },
   },
 
@@ -191,6 +194,7 @@ export default {
 .mcal-event-critical { background: #ffe4e6; color: #be123c; }
 .mcal-event-warning { background: #fef3c7; color: #b45309; }
 .mcal-event-info { background: #dbeafe; color: #1d4ed8; }
+.mcal-event-auto { background: #ccfbf1; color: #0f766e; box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.35); }
 .mcal-event-more { font-size: 0.6rem; color: #94a3b8; padding: 1px 4px; }
 
 /* Compact mode — tight cells, whole-box severity coloring instead of title pills */
@@ -218,6 +222,10 @@ export default {
 .mcal-cell-has-info .mcal-cell-date { color: #3730a3; font-weight: 800; }
 .mcal-cell-has-info .mcal-cell-icon { color: #4338ca; }
 /* "Today" ring still needs to read even when the cell is also colored for an event */
+.mcal-cell-has-auto { background: linear-gradient(155deg, #ccfbf1, #99f6e4); box-shadow: inset 0 0 0 1px rgba(13, 148, 136, 0.3); }
+.mcal-cell-has-auto .mcal-cell-date { color: #115e59; font-weight: 800; }
+.mcal-cell-has-auto .mcal-cell-icon { color: #0f766e; }
+.mcal-cell-today.mcal-cell-has-auto,
 .mcal-cell-today.mcal-cell-has-critical,
 .mcal-cell-today.mcal-cell-has-warning,
 .mcal-cell-today.mcal-cell-has-info { box-shadow: inset 0 0 0 1.5px #4338ca; }
@@ -248,6 +256,10 @@ html.dark .mcal-cell-has-critical .mcal-cell-icon { color: #fda4af; }
 html.dark .mcal-cell-has-warning { background: linear-gradient(155deg, rgba(217, 119, 6, 0.35), rgba(180, 83, 9, 0.3)); }
 html.dark .mcal-cell-has-warning .mcal-cell-date { color: #fde68a; }
 html.dark .mcal-cell-has-warning .mcal-cell-icon { color: #fcd34d; }
+html.dark .mcal-cell-has-auto { background: linear-gradient(155deg, rgba(13, 148, 136, 0.35), rgba(15, 118, 110, 0.3)); }
+html.dark .mcal-cell-has-auto .mcal-cell-date { color: #99f6e4; }
+html.dark .mcal-cell-has-auto .mcal-cell-icon { color: #5eead4; }
+html.dark .mcal-event-auto { background: rgba(13, 148, 136, 0.28); color: #99f6e4; }
 html.dark .mcal-cell-has-info { background: linear-gradient(155deg, rgba(99, 102, 241, 0.32), rgba(67, 56, 202, 0.28)); }
 html.dark .mcal-cell-has-info .mcal-cell-date { color: #c7d2fe; }
 html.dark .mcal-cell-has-info .mcal-cell-icon { color: #a5b4fc; }

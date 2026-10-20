@@ -120,7 +120,11 @@ class ComplianceCalendarController extends Controller
         $events = collect();
 
         foreach ($records as $record) {
-            $this->pushEvent($events, $record, $record->expiry_date, 'Expiry', $this->severity($record->days_remaining), $start, $end);
+            if ($record->autoRenewalActive()) {
+                $this->pushAutoRenewalEvents($events, $record, $start, $end);
+            } else {
+                $this->pushEvent($events, $record, $record->expiry_date, 'Expiry', $this->severity($record->days_remaining), $start, $end);
+            }
             $this->pushEvent($events, $record, $record->renewal_date, 'Renewal', 'info', $start, $end);
             $this->pushEvent($events, $record, $record->submission_date, 'Submission', 'info', $start, $end);
             $this->pushEvent($events, $record, $record->next_review_date, 'Review', 'info', $start, $end);
@@ -135,7 +139,28 @@ class ComplianceCalendarController extends Controller
         return $events;
     }
 
-    private function pushEvent($events, ComplianceRecord $record, $date, string $type, string $severity, $start, $end): void
+    /**
+     * A record that renews itself: the day it renews (and the next ones, one period apart) and the notice days before each of them.
+     * The renewal days are teal "auto" events, not red expiry warnings, because nothing lapses.
+     */
+    private function pushAutoRenewalEvents($events, ComplianceRecord $record, $start, $end): void
+    {
+        $period = (int) $record->auto_renew_days;
+        $notice = $record->autoRenewNoticeDays();
+        // the notice dates can sit before the window: look one notice-length further back
+        $from = $start->copy()->subDays(max(array_merge([0], $notice)));
+        foreach ($record->autoRenewalDates($from, $end) as $occ) {
+            $extra = ['renews_for_days' => $period, 'new_expiry' => $occ['new_expiry']->toDateString(), 'notify_days' => $notice];
+            $this->pushEvent($events, $record, $occ['date'], 'Auto Renewal', 'auto', $start, $end, $extra);
+            foreach ($notice as $n) {
+                if ($n > 0) {
+                    $this->pushEvent($events, $record, $occ['date']->copy()->subDays($n), 'Auto Renewal Notice', 'auto', $start, $end, $extra + ['notice_days_before' => $n]);
+                }
+            }
+        }
+    }
+
+    private function pushEvent($events, ComplianceRecord $record, $date, string $type, string $severity, $start, $end, array $extra = []): void
     {
         if (! $date || $date->lt($start) || $date->gt($end)) {
             return;
@@ -154,7 +179,7 @@ class ComplianceCalendarController extends Controller
                 'issuing_authority' => $record->issuing_authority,
                 'days_remaining_label' => $record->days_remaining_label,
                 'photo_url' => $record->photo ? Storage::disk('assets')->url($record->photo) : null,
-            ],
+            ] + $extra,
         ]);
     }
 

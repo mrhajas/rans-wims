@@ -89,6 +89,7 @@
                 <td :data-label="$t('Status')">
                   <span class="lg-chip" :class="statusBadgeClass(r.status)" style="text-transform: none">{{ r.status }}</span>
                   <div class="lg-subtext">{{ r.priority }}</div>
+                  <span v-if="r.auto_renew" class="cp-auto-badge" :title="$t('Renews itself every :n days', { n: r.auto_renew_days })"><icons name="refresh" class="w-3 h-3" />{{ $t('Auto renews') }}</span>
                 </td>
               </tr>
               <tr v-if="records.data.length === 0" class="lg-empty-row">
@@ -262,4 +263,5 @@ export default {
 html.dark .cp-zoom { background: #1e293b; box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); }
 html.dark .cp-zoom-name { color: #f1f5f9; }
 html.dark .cp-zoom-row strong { color: #e2e8f0; }
+.cp-auto-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 2px 9px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; color: #0f766e; box-shadow: inset 0 0 0 1.5px #0d9488; }
 </style>

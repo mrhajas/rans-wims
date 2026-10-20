@@ -12,6 +12,8 @@ return [
     'events' => [
         'reminder' => W::ev('Renewal Reminder', 'A record reaches one of its reminder days before expiry (checked once a day at 06:00).', ['owner' => true, 'email' => true, 'icon' => 'clock']),
         'escalation' => W::ev('Expiry Escalation', 'A record is 14, 7 or 0 days from expiry, or has just expired: the escalation recipient chosen on the record is told.', ['owner' => true, 'email' => true, 'icon' => 'exclamation']),
+        'auto_renewal_notice' => W::ev('Auto Renewal Notice', 'A record with auto renewal reaches one of its notice days (for example 7, 3 or 1 days before it renews itself).', ['owner' => true, 'email' => true, 'icon' => 'refresh']),
+        'auto_renewed' => W::ev('Auto Renewed', 'A record renewed itself automatically on its expiry date and has a new expiry date.', ['owner' => true, 'email' => true, 'icon' => 'tick']),
         'created' => W::ev('Compliance Record Created', 'A new compliance record is added.', $off + ['roles' => ['Super Admin', 'Admin'], 'owner' => true, 'icon' => 'plus']),
         'cancelled' => W::ev('Compliance Record Cancelled', 'A compliance record is cancelled.', $off + ['roles' => ['Super Admin', 'Admin'], 'owner' => true, 'icon' => 'cross']),
         'renewal_submitted' => W::ev('Renewal Submitted', 'A renewal application is submitted and waits for approval.', $off + ['permission' => 'approve-compliance-renewal', 'owner' => true, 'icon' => 'clock']),

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ComplianceHistory;
 use App\Models\ComplianceRecord;
 use App\Models\ComplianceReminderLog;
+use App\Models\ComplianceRenewalHistory;
 use App\Services\ComplianceNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +32,12 @@ class ProcessComplianceExpiries extends Command
 
         foreach ($records as $record) {
             try {
+                // a record with auto renewal tells its owners before the renewal and renews itself on the expiry date
+                if ($record->autoRenewalActive()) {
+                    $remindersSent += $this->processAutoRenewal($record);
+                    $record->refresh();
+                }
+
                 if ($record->recalculateStatusAndPriority()) {
                     $recalculated++;
                 }
@@ -69,6 +76,104 @@ class ProcessComplianceExpiries extends Command
         $this->info("Recalculated {$recalculated} record(s), sent {$remindersSent} reminder(s)/escalation(s).");
 
         return 0;
+    }
+
+    /** Auto renewal: the notices on the chosen days before, then the renewal itself on (or after) the expiry date. Returns how many people were told. */
+    private function processAutoRenewal(ComplianceRecord $record): int
+    {
+        $told = 0;
+        $days = $record->days_remaining;
+        if ($days === null) {
+            return 0;
+        }
+        $newExpiryText = fn (int $n) => $record->expiry_date->copy()->addDays($n)->format('d M Y');
+
+        foreach ($record->autoRenewNoticeDays() as $n) {
+            if ($days !== $n || $this->noticeAlreadySent($record, $n)) {
+                continue;
+            }
+            $message = $n === 0
+                ? __(':title (:number) renews itself today for :days day(s), new expiry :new.', ['title' => $record->title, 'number' => $record->compliance_number, 'days' => (int) $record->auto_renew_days, 'new' => $newExpiryText((int) $record->auto_renew_days)])
+                : __(':title (:number) renews itself in :n day(s), on :date, for :days day(s), new expiry :new.', ['title' => $record->title, 'number' => $record->compliance_number, 'n' => $n, 'date' => $record->expiry_date->format('d M Y'), 'days' => (int) $record->auto_renew_days, 'new' => $newExpiryText((int) $record->auto_renew_days)]);
+            $people = ComplianceNotifier::remind('auto_renewal_notice', $record, __('Auto renewal notice - :title', ['title' => $record->title]), $message, 'an' . $n . '-' . $record->expiry_date->toDateString());
+            foreach ($people as $user) {
+                $this->logNotice($record, $n, $user->id);
+            }
+            if ($people->isEmpty()) {
+                // nobody to tell (or the event is off): still remember it, so the day is not retried all day
+                $this->logNotice($record, $n, null);
+            } else {
+                ComplianceHistory::log($record, 'Auto Renewal Notice', __(':days day(s) notice sent to :count recipient(s).', ['days' => $n, 'count' => $people->count()]));
+            }
+            $told += $people->count();
+        }
+
+        // renew on the expiry day (or at the first run after it); never while a manual renewal is under way
+        if ($days <= 0 && ! $record->activeRenewal) {
+            $told += $this->autoRenew($record);
+        }
+
+        return $told;
+    }
+
+    /** One automatic renewal: the expiry moves forward by the chosen period (enough periods to be in the future if the job missed days). */
+    private function autoRenew(ComplianceRecord $record): int
+    {
+        $period = (int) $record->auto_renew_days;
+        $prevIssue = $record->issue_date;
+        $prevExpiry = $record->expiry_date->copy();
+        $today = now()->startOfDay();
+        $periods = max(1, intdiv((int) $prevExpiry->diffInDays($today, false), $period) + 1);
+        $newIssue = $prevExpiry->copy();
+        $newExpiry = $prevExpiry->copy()->addDays($period * $periods);
+
+        ComplianceRenewalHistory::create([
+            'compliance_record_id' => $record->id,
+            'previous_issue_date' => $prevIssue,
+            'previous_expiry_date' => $prevExpiry,
+            'new_issue_date' => $newIssue,
+            'new_expiry_date' => $newExpiry,
+            'renewal_started_at' => now(),
+            'renewed_at' => now(),
+            'status' => 'Renewed',
+            'notes' => __('Automatic renewal'),
+        ]);
+        $record->update([
+            'issue_date' => $newIssue,
+            'expiry_date' => $newExpiry,
+            'status' => 'Active',
+            'auto_renewed_count' => (int) $record->auto_renewed_count + 1,
+            'last_auto_renewed_at' => now(),
+        ]);
+        $record->refresh();
+        $record->recalculateStatusAndPriority();
+        ComplianceHistory::log($record, 'Auto Renewed', __('Renewed itself automatically: new expiry :date (:days days).', ['date' => $newExpiry->format('d M Y'), 'days' => $period * $periods]));
+
+        $people = ComplianceNotifier::remind('auto_renewed', $record, __('Auto renewed - :title', ['title' => $record->title]),
+            __(':title (:number) renewed itself automatically. New expiry date: :date.', ['title' => $record->title, 'number' => $record->compliance_number, 'date' => $newExpiry->format('d M Y')]),
+            'ar-' . $newExpiry->toDateString());
+
+        return $people->count();
+    }
+
+    /** A notice is sent once per record, notice day and renewal cycle (a cycle ends with the renewal that follows it). */
+    private function noticeAlreadySent(ComplianceRecord $record, int $days): bool
+    {
+        return ComplianceReminderLog::query()->where('compliance_record_id', $record->id)->where('interval_days', 20000 + $days)
+            ->where('renewal_history_id', $record->renewalHistory()->value('id'))->exists();
+    }
+
+    private function logNotice(ComplianceRecord $record, int $days, ?int $recipientId): void
+    {
+        ComplianceReminderLog::create([
+            'compliance_record_id' => $record->id,
+            'renewal_history_id' => $record->renewalHistory()->value('id'),
+            'interval_days' => 20000 + $days,
+            'sent_at' => now(),
+            'channel' => 'auto_renewal',
+            'recipient_user_id' => $recipientId,
+            'status' => $recipientId ? 'Sent' : 'Skipped',
+        ]);
     }
 
     private function sendReminders(ComplianceRecord $record, int $intervalKey): int
