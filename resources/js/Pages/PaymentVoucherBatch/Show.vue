@@ -21,7 +21,7 @@
           <div class="flex-1 min-w-0">
             <div class="lg-card-title">{{ $t('Batch Overview') }}</div>
           </div>
-          <span class="lg-chip" :class="statusChip(batch.status)" style="text-transform: none">{{ batch.status }}</span>
+          <span class="pvb-status pvb-status--lg" :class="'pv-st-' + statusKey(batch.status)"><icons :name="statusIcon(batch.status)" class="pvb-status__ico" />{{ batch.status }}</span>
         </div>
         <dl class="pvb-dl">
           <div><dt>{{ $t('Batch Number') }}</dt><dd>{{ batch.batch_number }}</dd></div>
@@ -81,7 +81,7 @@
                 <td :data-label="$t('Payee')">{{ v.payee_name }}</td>
                 <td :data-label="$t('Amount')" class="num font-semibold">{{ $money(v.total_amount) }}</td>
                 <td :data-label="$t('Status')">
-                  <span class="lg-chip" :class="statusChip(v.status)" style="text-transform: none">{{ v.status }}</span>
+                  <span class="pvb-status" :class="'pv-st-' + statusKey(v.display_status || v.status)"><icons :name="statusIcon(v.display_status || v.status)" class="pvb-status__ico" />{{ v.display_status || v.status }}</span>
                 </td>
                 <td :data-label="$t('Printed')" class="num">{{ v.printed_count }}</td>
                 <td :data-label="$t('View')" class="lg-sticky-end">
@@ -161,7 +161,7 @@ export default {
         { icon: 'doc-text', tone: 'sky', label: this.$t('Voucher Count'), value: b.voucher_count },
         { icon: 'chart-bar', tone: 'pink', label: this.$t('Total Amount'), value: this.$money(b.total_amount) },
         { icon: 'calendar', tone: 'indigo', label: this.$t('Date'), value: this.$date(b.voucher_date) },
-        { icon: 'tick', tone: 'emerald', label: this.$t('Batch Status'), value: b.status },
+        { icon: this.statusIcon(b.status), tone: { Draft: 'slate', Submitted: 'orange', Approved: 'violet', Authorised: 'sky', Paid: 'forest', Rejected: 'maroon', Cancelled: 'slate', Mixed: 'teal' }[b.status] || 'navy', label: this.$t('Batch Status'), value: b.status },
       ];
     },
     canPrint() {
@@ -184,6 +184,9 @@ export default {
       }
       this.$inertia.post(route('payment-vouchers.bulk-approve-authorise'), { ids });
     },
+    // the same colour and icon per status as on the vouchers
+    statusKey(status) { return String(status || 'Draft').toLowerCase(); },
+    statusIcon(status) { return { Draft: 'doc-text', Submitted: 'clock', Approved: 'tick', Authorised: 'lock-closed', Paid: 'cash', Rejected: 'x-circle', Cancelled: 'cross', Mixed: 'collection' }[status] || 'doc-text'; },
     statusChip(status) {
       return (
         {

@@ -473,7 +473,7 @@ class PaymentVoucherBatchController extends Controller
                 'pv_number' => $v->pv_number,
                 'payee_name' => $v->payee_name,
                 'total_amount' => (float) $v->total_amount,
-                'status' => $v->status,
+                'status' => $v->status, 'display_status' => $v->display_status,
                 'printed_count' => $v->printed_count,
             ])->values(),
         ]);

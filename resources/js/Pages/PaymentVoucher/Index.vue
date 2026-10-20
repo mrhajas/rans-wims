@@ -115,13 +115,13 @@
               <td :data-label="$t('Amount')" class="num font-semibold" @click="goto(v.id)">{{ $money(v.total_amount) }}</td>
               <td :data-label="$t('Prepared By')" @click="goto(v.id)">{{ v.prepared_by_name || '-' }}</td>
               <td :data-label="$t('Batch')" @click.stop>
-                <Link v-if="v.batch_number" :href="route('payment-vouchers.batches.show', v.payment_voucher_batch_id)" class="lg-chip lg-chip-violet">
-                  {{ v.batch_number }}
+                <Link v-if="v.batch_number" :href="route('payment-vouchers.batches.show', v.payment_voucher_batch_id)" class="pv-batch" :title="$t('Open this batch')">
+                  <icons name="collection" class="pv-batch__ico" />{{ v.batch_number }}
                 </Link>
                 <span v-else class="lg-subtext">-</span>
               </td>
               <td :data-label="$t('Status')" @click="goto(v.id)">
-                <span class="lg-chip" :class="statusChip(v.display_status || v.status)" style="text-transform: none">{{ $t(v.display_status || v.status) }}</span>
+                <span class="pv-status" :class="'pv-st-' + statusKey(v.display_status || v.status)"><icons :name="statusIcon(v.display_status || v.status)" class="pv-status__ico" />{{ $t(v.display_status || v.status) }}</span>
               </td>
             </tr>
             <tr v-if="paymentVouchers.data.length === 0" class="lg-empty-row">
@@ -251,10 +251,10 @@ export default {
 
       return [
         { icon: 'doc-text', tone: 'slate', label: this.$t('Draft'), value: this.cards.draft, status: 'Draft', active: this.form.status === 'Draft' },
-        { icon: 'plane', tone: 'amber', label: this.$t('Submitted'), value: this.cards.submitted, status: 'Submitted', active: this.form.status === 'Submitted' },
-        { icon: 'tick', tone: 'sky', label: this.$t('Approved'), value: this.cards.approved, status: 'Approved', active: this.form.status === 'Approved' },
-        { icon: 'lock-closed', tone: 'emerald', label: this.$t('Authorised'), value: this.cards.authorised, status: 'Authorised', active: this.form.status === 'Authorised' },
-        { icon: 'cash', tone: 'indigo', label: this.$t('Paid'), value: this.cards.paid, status: 'Paid', active: this.form.status === 'Paid' },
+        { icon: 'clock', tone: 'orange', label: this.$t('Submitted'), value: this.cards.submitted, status: 'Submitted', active: this.form.status === 'Submitted' },
+        { icon: 'tick', tone: 'violet', label: this.$t('Approved'), value: this.cards.approved, status: 'Approved', active: this.form.status === 'Approved' },
+        { icon: 'lock-closed', tone: 'sky', label: this.$t('Authorised'), value: this.cards.authorised, status: 'Authorised', active: this.form.status === 'Authorised' },
+        { icon: 'cash', tone: 'forest', label: this.$t('Paid'), value: this.cards.paid, status: 'Paid', active: this.form.status === 'Paid' },
         {
           icon: 'chart-bar',
           tone: 'pink',
@@ -435,6 +435,9 @@ export default {
       };
       return map[status] || 'pv-badge-slate';
     },
+    // the same colour and icon per status as on the voucher page
+    statusKey(status) { return String(status || 'Draft').toLowerCase(); },
+    statusIcon(status) { return { Draft: 'doc-text', Submitted: 'clock', Approved: 'tick', Authorised: 'lock-closed', Paid: 'cash', Rejected: 'x-circle', Cancelled: 'cross' }[status] || 'doc-text'; },
     statusChip(status) {
       return (
         {
@@ -454,6 +457,20 @@ export default {
 
 <style scoped>
 .pv-filters { position: relative; z-index: 20; }
+/* status of a voucher in the table: one colour and icon per status (the same as on the voucher page); the batch label is teal so it never looks like a status */
+.pv-status { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.22rem 0.6rem 0.22rem 0.3rem; border-radius: 999px; color: #fff; font-size: 0.6rem; font-weight: 800; line-height: 1.2; white-space: nowrap; background: #64748b; box-shadow: 0 8px 14px -10px var(--pv-glow, rgba(100, 116, 139, 0.7)); }
+.pv-status__ico { width: 0.71rem; height: 0.71rem; flex: none; padding: 0.11rem; box-sizing: content-box; border-radius: 50%; background: rgba(255, 255, 255, 0.24); }
+.pv-st-draft { background: linear-gradient(135deg, #64748b, #475569); --pv-glow: rgba(71, 85, 105, 0.7); }
+.pv-st-submitted { background: linear-gradient(135deg, #f97316, #c2410c); --pv-glow: rgba(234, 88, 12, 0.7); }
+.pv-st-approved { background: linear-gradient(135deg, #8b5cf6, #5b21b6); --pv-glow: rgba(109, 40, 217, 0.7); }
+.pv-st-authorised { background: linear-gradient(135deg, #0ea5e9, #075985); --pv-glow: rgba(3, 105, 161, 0.7); }
+.pv-st-paid { background: linear-gradient(135deg, #15803d, #14532d); --pv-glow: rgba(20, 83, 45, 0.75); }
+.pv-st-rejected { background: linear-gradient(135deg, #9f1239, #6b0f1a); --pv-glow: rgba(127, 29, 29, 0.75); }
+.pv-st-cancelled { background: linear-gradient(135deg, #78716c, #44403c); --pv-glow: rgba(68, 64, 60, 0.7); }
+.pv-batch { display: inline-flex; align-items: center; gap: 0.26rem; padding: 0.19rem 0.52rem; border-radius: 8px; font-size: 0.57rem; font-weight: 800; color: #0f766e; background: rgba(20, 184, 166, 0.12); box-shadow: inset 0 0 0 1.1px rgba(20, 184, 166, 0.55); text-decoration: none; white-space: nowrap; }
+.pv-batch:hover { background: rgba(20, 184, 166, 0.22); } .pv-batch:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
+.pv-batch__ico { width: 0.65rem; height: 0.65rem; flex: none; }
+html.dark .pv-batch { color: #5eead4; }
 .pv-bulk-bar {
   background: rgba(190, 24, 93, 0.06); border: 1px solid rgba(190, 24, 93, 0.2); border-radius: 1rem; padding: 0.7rem 1rem;
 }

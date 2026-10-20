@@ -66,7 +66,7 @@
               <td :data-label="$t('Vouchers')" class="num">{{ b.voucher_count }}</td>
               <td :data-label="$t('Total Amount')" class="num font-semibold">{{ $money(b.total_amount) }}</td>
               <td :data-label="$t('Status')">
-                <span class="lg-chip" :class="statusChip(b.status)" style="text-transform: none">{{ b.status }}</span>
+                <span class="pvb-status" :class="'pv-st-' + statusKey(b.status)"><icons :name="statusIcon(b.status)" class="pvb-status__ico" />{{ b.status }}</span>
               </td>
             </tr>
             <tr v-if="batches.data.length === 0" class="lg-empty-row">
@@ -162,6 +162,9 @@ export default {
     goto(id) {
       this.$inertia.visit(route('payment-vouchers.batches.show', id));
     },
+    // the same colour and icon per status as on the vouchers
+    statusKey(status) { return String(status || 'Draft').toLowerCase(); },
+    statusIcon(status) { return { Draft: 'doc-text', Submitted: 'clock', Approved: 'tick', Authorised: 'lock-closed', Paid: 'cash', Rejected: 'x-circle', Cancelled: 'cross', Mixed: 'collection' }[status] || 'doc-text'; },
     statusChip(status) {
       return (
         {

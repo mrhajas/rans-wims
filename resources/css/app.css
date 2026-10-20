@@ -2499,6 +2499,9 @@ html.dark .lg-chip-indigo { color: #c7d2fe; }
 .lg-ico-teal { background: linear-gradient(145deg, #2dd4bf, #0f766e); box-shadow: 0 10px 18px -8px rgba(15, 118, 110, 0.8); }
 .lg-ico-sky { background: linear-gradient(145deg, #38bdf8, #0369a1); box-shadow: 0 10px 18px -8px rgba(3, 105, 161, 0.8); }
 .lg-ico-violet { background: linear-gradient(145deg, #a78bfa, #6d28d9); box-shadow: 0 10px 18px -8px rgba(109, 40, 217, 0.8); }
+.lg-ico-orange { background: linear-gradient(145deg, #f97316, #c2410c); box-shadow: 0 10px 18px -8px rgba(234, 88, 12, 0.8); }
+.lg-ico-forest { background: linear-gradient(145deg, #15803d, #14532d); box-shadow: 0 10px 18px -8px rgba(20, 83, 45, 0.85); }
+.lg-ico-maroon { background: linear-gradient(145deg, #9f1239, #6b0f1a); box-shadow: 0 10px 18px -8px rgba(127, 29, 29, 0.85); }
 .lg-ico-pink { background: linear-gradient(145deg, #f472b6, #be185d); box-shadow: 0 10px 18px -8px rgba(190, 24, 93, 0.8); }
 
 .lg-page .txn-bg-decor { display: none; }
@@ -3126,3 +3129,16 @@ html.dark .sdy-type-chip:not(.is-on) .sdy-type-mark { background: #b91c1c; }
 .app-canvas .lg-table td.lg-sticky-end, .app-canvas .lg-table th.lg-sticky-end, .app-canvas .lg-table tbody tr:hover td.lg-sticky-end { position: static; box-shadow: none; }
 .app-canvas .lg-table :is(th, td).text-right { text-align: right; } .app-canvas .lg-table :is(th, td).text-center { text-align: center; }
 .app-canvas .lg-table th.text-right .lg-sort { justify-content: flex-end; }
+
+/* Payment Voucher Batches: the same status colours and icons as the vouchers (Paid dark green, Submitted orange, Approved purple, Rejected maroon ...) */
+.pvb-status { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.22rem 0.6rem 0.22rem 0.3rem; border-radius: 999px; color: #fff; font-size: 0.66rem; font-weight: 800; line-height: 1.2; white-space: nowrap; background: #64748b; box-shadow: 0 8px 14px -10px var(--pv-glow, rgba(100, 116, 139, 0.7)); }
+.pvb-status--lg { gap: 0.5rem; padding: 0.45rem 1rem 0.45rem 0.7rem; font-size: 1rem; box-shadow: 0 12px 20px -12px var(--pv-glow, rgba(100, 116, 139, 0.7)); }
+.pvb-status__ico { width: 0.75rem; height: 0.75rem; flex: none; padding: 0.12rem; box-sizing: content-box; border-radius: 50%; background: rgba(255, 255, 255, 0.24); } .pvb-status--lg .pvb-status__ico { width: 1.25rem; height: 1.25rem; padding: 0.2rem; }
+.pvb-status.pv-st-draft { background: linear-gradient(135deg, #64748b, #475569); --pv-glow: rgba(71, 85, 105, 0.7); }
+.pvb-status.pv-st-submitted { background: linear-gradient(135deg, #f97316, #c2410c); --pv-glow: rgba(234, 88, 12, 0.7); }
+.pvb-status.pv-st-approved { background: linear-gradient(135deg, #8b5cf6, #5b21b6); --pv-glow: rgba(109, 40, 217, 0.7); }
+.pvb-status.pv-st-authorised { background: linear-gradient(135deg, #0ea5e9, #075985); --pv-glow: rgba(3, 105, 161, 0.7); }
+.pvb-status.pv-st-paid { background: linear-gradient(135deg, #15803d, #14532d); --pv-glow: rgba(20, 83, 45, 0.75); }
+.pvb-status.pv-st-rejected { background: linear-gradient(135deg, #9f1239, #6b0f1a); --pv-glow: rgba(127, 29, 29, 0.75); }
+.pvb-status.pv-st-cancelled { background: linear-gradient(135deg, #78716c, #44403c); --pv-glow: rgba(68, 64, 60, 0.7); }
+.pvb-status.pv-st-mixed { background: linear-gradient(135deg, #14b8a6, #0f766e); --pv-glow: rgba(15, 118, 110, 0.7); }
