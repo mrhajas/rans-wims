@@ -23,13 +23,13 @@
         <span class="lg-card-ico" :class="separation ? 'lg-ico-emerald' : 'lg-ico-amber'"><icons name="lock-closed" class="w-5 h-5" /></span>
         <div class="min-w-0 flex-1">
           <h2 class="lg-card-title">{{ separation ? $t('Separation of duties is on') : $t('Separation of duties is off') }}</h2>
-          <p class="lg-card-sub">{{ separation ? $t('The person who prepares a voucher cannot approve or authorise it, the person who approves it cannot authorise it, and the person who authorises it cannot record its payment.') : $t('One person can take several steps of the same voucher. Switch it on so that every step is done by a different person.') }}</p>
+          <p class="lg-card-sub">{{ separation ? $t('The person who prepares a voucher cannot approve or authorise it, the person who approves it cannot authorise it, and the person who authorises it cannot record its payment. Super Admins are not bound by this rule.') : $t('One person can take several steps of the same voucher. Switch it on so that every step is done by a different person.') }}</p>
         </div>
         <button v-if="canChangeRules" type="button" class="lg-btn lg-btn-soft" @click="openRules"><icons name="cog" class="w-4 h-4" />{{ $t('Change rule') }}</button>
       </section>
       <modal :show="rulesOpen" max-width="md" @close="rulesOpen = false">
         <div class="pv-paydlg">
-          <header class="pv-paydlg__head"><icons name="lock-closed" class="w-5 h-5" /><div><h3>{{ $t('Separation of duties') }}</h3><p>{{ $t('Applies to everyone, Super Admins included.') }}</p></div></header>
+          <header class="pv-paydlg__head"><icons name="lock-closed" class="w-5 h-5" /><div><h3>{{ $t('Separation of duties') }}</h3><p>{{ $t('Applies to everyone except Super Admins.') }}</p></div></header>
           <div class="pv-paydlg__body">
             <label class="pv-opt" :class="{ 'is-on': rulesForm.separation === true }"><input v-model="rulesForm.separation" type="radio" :value="true" /><span><b>{{ $t('On') }}</b><small>{{ $t('Prepared, approved, authorised and paid by different people.') }}</small></span></label>
             <label class="pv-opt" :class="{ 'is-on': rulesForm.separation === false }"><input v-model="rulesForm.separation" type="radio" :value="false" /><span><b>{{ $t('Off') }}</b><small>{{ $t('One person may take several steps of the same voucher.') }}</small></span></label>
@@ -50,7 +50,7 @@
           <button v-if="$can('approve-payment-vouchers') && bulk.approve.length" type="button" class="lg-btn lg-btn-dark" @click="bulkApprove">
             <icons name="tick" class="w-4 h-4" />{{ $t('Approve Selected') }} ({{ bulk.approve.length }})
           </button>
-          <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers') && (bulk.approve.length || bulk.authorise.length)" type="button" class="lg-btn lg-btn-primary" :title="separation && bulk.approve.length ? $t('Vouchers you approve here stay Approved: the person who approves a voucher cannot also authorise it.') : ''" @click="bulkApproveAndAuthorise">
+          <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers') && (bulk.approve.length || bulk.authorise.length)" type="button" class="lg-btn lg-btn-primary" :title="separation && !$super && bulk.approve.length ? $t('Vouchers you approve here stay Approved: the person who approves a voucher cannot also authorise it.') : ''" @click="bulkApproveAndAuthorise">
             <icons name="lock-closed" class="w-4 h-4" />{{ $t('Approve & Authorise Selected') }} ({{ bulk.approve.length + bulk.authorise.length }})
           </button>
           <button v-if="$can('record-payment-payment-vouchers') && bulk.pay.length" type="button" class="lg-btn lg-btn-green" @click="openPay">
@@ -315,13 +315,14 @@ export default {
     bulk() {
       const out = { approve: [], authorise: [], pay: [] };
       const me = this.me;
+      const bound = this.separation && !this.$super; // Super Admins are not bound by the rule
       this.selectedIds.forEach(id => {
         const v = this.seen[id];
         if (!v) return;
         // separation of duties: a person does not take two steps of the same voucher, so those are not counted for them
-        if (v.status === 'Submitted') { if (!(this.separation && (v.prepared_by_ids || []).map(Number).includes(me))) out.approve.push(v); }
-        else if (v.status === 'Approved') { if (!(this.separation && [Number(v.approved_by_user_id), ...(v.prepared_by_ids || []).map(Number)].includes(me))) out.authorise.push(v); }
-        else if (v.status === 'Authorised' && !v.paid_at) { if (!(this.separation && Number(v.authorised_by_user_id) === me)) out.pay.push(v); }
+        if (v.status === 'Submitted') { if (!(bound && (v.prepared_by_ids || []).map(Number).includes(me))) out.approve.push(v); }
+        else if (v.status === 'Approved') { if (!(bound && [Number(v.approved_by_user_id), ...(v.prepared_by_ids || []).map(Number)].includes(me))) out.authorise.push(v); }
+        else if (v.status === 'Authorised' && !v.paid_at) { if (!(bound && Number(v.authorised_by_user_id) === me)) out.pay.push(v); }
       });
       return out;
     },

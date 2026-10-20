@@ -159,8 +159,9 @@ export default {
     // only vouchers that still wait for a step can be approved / authorised; once they are approved, authorised or paid the buttons stay off
     me() { return this.$page.props.auth && this.$page.props.auth.user ? Number(this.$page.props.auth.user.id) : 0; },
     // separation of duties: a person does not approve what they prepared (the batch creator prepared all of them), nor authorise what they approved or prepared
-    toApprove() { return this.batch.vouchers.filter(v => v.status === 'Submitted' && !(this.separation && this.mine(v))); },
-    toAuthorise() { return this.batch.vouchers.filter(v => (v.status === 'Submitted' && !(this.separation && this.mine(v))) || (v.status === 'Approved' && !(this.separation && (this.mine(v) || Number(v.approved_by_user_id) === this.me)))); },
+    toApprove() { return this.batch.vouchers.filter(v => v.status === 'Submitted' && !(this.bound && this.mine(v))); },
+    bound() { return this.separation && !this.$super; },
+    toAuthorise() { return this.batch.vouchers.filter(v => (v.status === 'Submitted' && !(this.bound && this.mine(v))) || (v.status === 'Approved' && !(this.bound && (this.mine(v) || Number(v.approved_by_user_id) === this.me)))); },
     idleReason() {
       const vs = this.batch.vouchers;
       if (vs.length && vs.every(v => v.display_status === 'Paid')) return this.$t('All the vouchers of this batch are paid.');

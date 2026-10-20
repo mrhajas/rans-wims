@@ -395,9 +395,9 @@ export default {
     },
     me() { return this.$page.props.auth && this.$page.props.auth.user ? Number(this.$page.props.auth.user.id) : 0; },
     // separation of duties: nobody takes two steps of the same voucher
-    ownApprove() { return this.separation && this.paymentVoucher.status === 'Submitted' && (this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number).includes(this.me); },
-    ownAuthorise() { return this.separation && this.paymentVoucher.status === 'Approved' && [Number(this.paymentVoucher.approved_by_user_id), ...(this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number)].includes(this.me); },
-    ownPayment() { return this.separation && this.paymentVoucher.status === 'Authorised' && !this.paymentVoucher.paid_at && Number(this.paymentVoucher.authorised_by_user_id) === this.me; },
+    ownApprove() { return this.separation && !this.$super && this.paymentVoucher.status === 'Submitted' && (this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number).includes(this.me); },
+    ownAuthorise() { return this.separation && !this.$super && this.paymentVoucher.status === 'Approved' && [Number(this.paymentVoucher.approved_by_user_id), ...(this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number)].includes(this.me); },
+    ownPayment() { return this.separation && !this.$super && this.paymentVoucher.status === 'Authorised' && !this.paymentVoucher.paid_at && Number(this.paymentVoucher.authorised_by_user_id) === this.me; },
     canRecordPayment() {
       return this.paymentVoucher.status === 'Authorised' && !this.paymentVoucher.paid_at && this.$can('record-payment-payment-vouchers') && !this.ownPayment;
     },

@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Separation of duties on Payment Vouchers: nobody takes two steps of the same voucher. The person who prepared it cannot approve it, the person who approved
- * it (or prepared it) cannot authorise it, and the person who authorised it cannot record its payment. Applies to everyone, Super Admins included. A Super
- * Admin can switch it off on the Payment Vouchers page (setting `pv_separation_of_duties`, on by default).
+ * it (or prepared it) cannot authorise it, and the person who authorised it cannot record its payment. Super Admins are exempt (a Super Admin may take every
+ * step themselves). The rule can be switched off for everybody else on the Payment Vouchers page (setting `pv_separation_of_duties`, on by default).
  */
 class VoucherSeparation
 {
@@ -64,17 +64,23 @@ class VoucherSeparation
         }
     }
 
+    /** Super Admins are not bound by the rule. */
+    public static function exempt(?User $u): bool
+    {
+        return $u !== null && $u->hasRole('Super Admin');
+    }
+
     /** Why this person may not approve the voucher, or null when they may. */
     public static function approveRefusal(PaymentVoucher $v, ?User $u): ?string
     {
-        return self::enabled() && $u && in_array((int) $u->id, self::handlers($v), true)
+        return self::enabled() && $u && ! self::exempt($u) && in_array((int) $u->id, self::handlers($v), true)
             ? __('You prepared :pv, so someone else must approve it.', ['pv' => $v->pv_number]) : null;
     }
 
     /** Why this person may not authorise the voucher, or null when they may. */
     public static function authoriseRefusal(PaymentVoucher $v, ?User $u): ?string
     {
-        if (! self::enabled() || ! $u) {
+        if (! self::enabled() || ! $u || self::exempt($u)) {
             return null;
         }
         if ($v->approved_by_user_id && (int) $v->approved_by_user_id === (int) $u->id) {
@@ -90,7 +96,7 @@ class VoucherSeparation
     /** Why this person may not record the payment of the voucher, or null when they may. */
     public static function payRefusal(PaymentVoucher $v, ?User $u): ?string
     {
-        return self::enabled() && $u && $v->authorised_by_user_id && (int) $v->authorised_by_user_id === (int) $u->id
+        return self::enabled() && $u && ! self::exempt($u) && $v->authorised_by_user_id && (int) $v->authorised_by_user_id === (int) $u->id
             ? __('You authorised :pv, so someone else must record its payment.', ['pv' => $v->pv_number]) : null;
     }
 }

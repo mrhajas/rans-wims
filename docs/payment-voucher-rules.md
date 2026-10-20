@@ -9,7 +9,7 @@ A person assigned to projects (`user_warehouse`) opens and acts only on the vouc
 - Lists, cards, export, print / PDF lists, the fund picker, the transport fuel report, the batch list, the bulk approve / authorise / mark paid ids are all filtered. The project dropdowns only list the person's projects; raising a voucher or batch for another project is refused.
 
 ## Separation of duties (on by default)
-Nobody takes two steps of the same voucher, Super Admins included: the preparer cannot approve it; the approver and the preparer cannot authorise it; the authoriser cannot record its payment. `App\Support\VoucherSeparation`, setting `pv_separation_of_duties`. A Super Admin switches it on / off (with their password, logged) on the Payment Vouchers page.
+Nobody takes two steps of the same voucher, EXCEPT Super Admins, who are exempt (owner decision 2026-10-21: a Super Admin may take every step themselves): the preparer cannot approve it; the approver and the preparer cannot authorise it; the authoriser cannot record its payment. `App\Support\VoucherSeparation`, setting `pv_separation_of_duties`. A Super Admin switches it on / off for everybody else (with their password, logged) on the Payment Vouchers page.
 - Bulk Approve & Authorise: Submitted vouchers are only approved by that person (another person authorises them); Approved ones by someone else are authorised; the answer says how many were left.
 - The pages hide the buttons the server would refuse and say why.
 - Administration, Travels and subcontract vouchers follow the same rule (the person who started the voucher in their module cannot approve it).
