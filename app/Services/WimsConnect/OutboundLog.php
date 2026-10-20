@@ -13,7 +13,7 @@ use Illuminate\Notifications\Events\NotificationFailed;
 use Illuminate\Support\Str;
 
 /**
- * The centre of everything WIMS sends out (the app bell is not included): every SMS, WhatsApp and Meta message is written by the WIMS
+ * The centre of everything WIMS sends out (app bell alerts are logged from the day this was added): every SMS, WhatsApp and Meta message is written by the WIMS
  * Connect sender, and every email, whichever part of WIMS sent it, is written here when Laravel sends it. The Delivery Logs page reads
  * this one table. Codes and links that are secrets (sign-in codes, password reset links) are logged without their content.
  */
@@ -84,7 +84,7 @@ class OutboundLog
                     'subject' => (string) $msg->getSubject(),
                     'message' => $sensitive ? __('(content hidden for security)') : Str::limit($text, 3000, ''),
                     'body_html' => $sensitive ? null : $html,
-                    'meta' => ['from' => $from, 'attachments' => $attachments, 'sensitive' => $sensitive, 'cc' => collect($msg->getCc())->map(fn ($a) => $a->getAddress())->all(), 'bcc' => collect($msg->getBcc())->map(fn ($a) => $a->getAddress())->all()],
+                    'meta' => ['from' => $from, 'attachments' => $attachments, 'sensitive' => $sensitive, 'resent_from' => $headers->has('X-WIMS-Resent-From') ? (int) $headers->get('X-WIMS-Resent-From')->getBodyAsString() : null, 'cc' => collect($msg->getCc())->map(fn ($a) => $a->getAddress())->all(), 'bcc' => collect($msg->getBcc())->map(fn ($a) => $a->getAddress())->all()],
                     'status' => 'SENT', 'sent_at' => now(),
                 ]);
             }
@@ -108,6 +108,26 @@ class OutboundLog
                 'recipient_user_id' => $event->notifiable instanceof User ? $event->notifiable->id : null,
                 'subject' => (string) ($data['title'] ?? ''), 'message' => (string) ($data['message'] ?? ''), 'status' => 'FAILED',
                 'error_message' => $error ? Str::limit(strip_tags(is_string($error) ? $error : json_encode($error)), 300) : __('The email could not be sent.'),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /** An app (bell) alert that was stored for a user: written to the log so it can be seen, and sent again, like the other channels. Never throws. */
+    public static function notificationSent(\Illuminate\Notifications\Events\NotificationSent $event): void
+    {
+        try {
+            if ($event->channel !== 'database' || ! $event->notifiable instanceof User) {
+                return;
+            }
+            $data = method_exists($event->notification, 'toArray') ? (array) $event->notification->toArray($event->notifiable) : [];
+            $title = (string) ($data['title'] ?? '');
+            $body = (string) ($data['message'] ?? '');
+            self::record([
+                'event_key' => (string) (($data['type'] ?? '') ?: 'app-alert'), 'channel' => 'app', 'address' => null, 'recipient_user_id' => $event->notifiable->id,
+                'subject' => Str::limit($title, 190, ''), 'message' => Str::limit($body ?: $title, 3000, ''),
+                'status' => 'SENT', 'sent_at' => now(), 'meta' => ['payload' => $data],
             ]);
         } catch (\Throwable $e) {
             report($e);

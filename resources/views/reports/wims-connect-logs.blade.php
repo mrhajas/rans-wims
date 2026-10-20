@@ -74,7 +74,7 @@
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $log['event_label'] }}</td>
                     <td>{{ $log['recipient'] ?? '-' }} ({{ $log['address'] }})</td>
-                    <td>{{ ucfirst($log['channel']) }}</td>
+                    <td>{{ $log['channel'] === 'app' ? 'App alert' : ($log['channel'] === 'sms' ? 'SMS' : ucfirst($log['channel'])) }}</td>
                     <td class="text-center"><span class="status {{ $statusClass($log['status']) }}">{{ $log['status'] }}</span></td>
                     <td>{{ $log['sent_at'] ?? '-' }}</td>
                     <td class="text-center">{{ $log['retry_count'] }}</td>

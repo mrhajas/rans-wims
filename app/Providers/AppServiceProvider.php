@@ -28,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         // Delivery Logs: every email WIMS sends is written to the log of everything that goes out
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSent::class, fn ($e) => \App\Services\WimsConnect\OutboundLog::mailSent($e));
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSending::class, fn ($e) => \App\Services\WimsConnect\OutboundLog::mailSending($e));
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Notifications\Events\NotificationSent::class, fn ($e) => \App\Services\WimsConnect\OutboundLog::notificationSent($e));
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Notifications\Events\NotificationFailed::class, fn ($e) => \App\Services\WimsConnect\OutboundLog::notificationFailed($e));
 
         // Photo / upload links must point at the address the browser actually used (localhost, the office LAN IP, the live

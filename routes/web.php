@@ -836,6 +836,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
 
     Route::get('wims-connect/logs', [Controllers\WimsConnectLogController::class, 'index'])->name('wims-connect.logs.index');
     Route::post('wims-connect/logs/retry-all', [Controllers\WimsConnectLogController::class, 'retryAll'])->name('wims-connect.logs.retry-all');
+    Route::post('wims-connect/logs/{log}/resend', [Controllers\WimsConnectLogController::class, 'resend'])->middleware('throttle:30,1')->name('wims-connect.logs.resend')->whereNumber('log');
     Route::post('wims-connect/logs/{log}/retry', [Controllers\WimsConnectLogController::class, 'retry'])->name('wims-connect.logs.retry');
     Route::get('wims-connect/logs/{log}/message', [Controllers\WimsConnectLogController::class, 'show'])->name('wims-connect.logs.show')->whereNumber('log');
     Route::get('wims-connect/logs/print', [Controllers\WimsConnectLogController::class, 'print'])->name('wims-connect.logs.print');

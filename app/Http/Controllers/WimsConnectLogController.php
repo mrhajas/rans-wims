@@ -138,6 +138,126 @@ class WimsConnectLogController extends Controller
         return back()->with('message', __('Message re-queued for delivery.'));
     }
 
+    /**
+     * Sends the message of a log row again, by its own channel, and answers with what happened (the modal shows it):
+     *  - SMS / WhatsApp / Meta: a new row with the same text and number goes through the gateway (the old row is kept as it was);
+     *  - email: the same subject and body are mailed to the same address (the files of the first email are not kept, so they are not attached);
+     *  - app alert: the same alert is put in the user's bell again.
+     * Codes and reset links (hidden content) are never sent again.
+     */
+    public function resend(Request $request, WimsConnectLog $log)
+    {
+        abort_unless($request->user()->hasRole('Super Admin'), 403);
+
+        $meta = (array) $log->meta;
+        if (! empty($meta['sensitive'])) {
+            return $this->resendAnswer(false, __('This message holds a code or a secret link, so it is never sent again.'), 422);
+        }
+
+        try {
+            switch ($log->channel) {
+                case 'email':
+                    return $this->resendEmail($log, $meta);
+                case 'app':
+                    return $this->resendApp($log, $meta);
+                case 'sms':
+                case 'whatsapp':
+                case 'meta':
+                    return $this->resendGateway($log);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->resendAnswer(false, __('Could not send it again: :e', ['e' => \Illuminate\Support\Str::limit(strip_tags($e->getMessage()), 200)]), 500);
+        }
+
+        return $this->resendAnswer(false, __('This channel cannot be sent again.'), 422);
+    }
+
+    private function resendAnswer(bool $ok, string $message, int $status = 200, array $extra = [])
+    {
+        return response()->json(['ok' => $ok, 'message' => $message] + $extra, $ok ? 200 : $status);
+    }
+
+    private function resendGateway(WimsConnectLog $log)
+    {
+        if (trim((string) $log->message) === '' || trim((string) $log->address) === '') {
+            return $this->resendAnswer(false, __('This message has no text or no number, so it cannot be sent again.'), 422);
+        }
+        if (empty(ChannelAvailability::liveMap()[$log->channel])) {
+            return $this->resendAnswer(false, __(':c is not live (switch it on and connect its gateway in WIMS Connect first).', ['c' => strtoupper($log->channel)]), 422);
+        }
+
+        $new = WimsConnectLog::create([
+            'idempotency_key' => 'resend:' . \Illuminate\Support\Str::uuid(), 'event_key' => $log->event_key, 'source_type' => $log->source_type, 'source_id' => $log->source_id,
+            'recipient_user_id' => $log->recipient_user_id, 'address' => $log->address, 'channel' => $log->channel, 'message' => $log->message,
+            'status' => 'QUEUED', 'retry_count' => 0, 'meta' => ['resent_from' => $log->id],
+        ]);
+        SendExternalCommunicationJob::dispatch($new->id);
+        $new->refresh();
+        log_activity('WIMS Connect Message Sent Again', ['log_id' => $log->id, 'new_log_id' => $new->id, 'channel' => $log->channel], $log, 'WIMS Connect');
+
+        if (in_array($new->status, ['FAILED'], true)) {
+            return $this->resendAnswer(false, __('The gateway refused it: :e', ['e' => $new->error_message ?: __('unknown error')]), 422, ['new_id' => $new->id, 'status' => $new->status]);
+        }
+
+        return $this->resendAnswer(true, in_array($new->status, ['SENT', 'DELIVERED'], true) ? __('Sent again to :a.', ['a' => $log->address]) : __('Queued to be sent again to :a.', ['a' => $log->address]), 200, ['new_id' => $new->id, 'status' => $new->status]);
+    }
+
+    private function resendEmail(WimsConnectLog $log, array $meta)
+    {
+        $address = trim((string) $log->address);
+        if (! filter_var($address, FILTER_VALIDATE_EMAIL)) {
+            return $this->resendAnswer(false, __('This email has no valid address.'), 422);
+        }
+        $html = trim((string) $log->body_html);
+        $text = trim((string) $log->message);
+        if ($html === '' && $text === '') {
+            return $this->resendAnswer(false, __('This email has no saved content, so it cannot be sent again.'), 422);
+        }
+        $html = $html !== '' ? $html : '<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">' . e($text) . '</div>';
+        $subject = trim((string) $log->subject) ?: __('(no subject)');
+        $before = (int) WimsConnectLog::max('id');
+
+        try {
+            \Illuminate\Support\Facades\Mail::html($html, function ($m) use ($address, $subject, $log) {
+                $m->to($address)->subject($subject);
+                $h = $m->getSymfonyMessage()->getHeaders();
+                $h->addTextHeader(OutboundLog::EVENT_HEADER, (string) $log->event_key);
+                $h->addTextHeader('X-WIMS-Resent-From', (string) $log->id);
+            });
+        } catch (\Throwable $e) {
+            OutboundLog::mailFailed($e);
+
+            return $this->resendAnswer(false, __('The mail server refused it: :e', ['e' => \Illuminate\Support\Str::limit(strip_tags($e->getMessage()), 200)]), 422);
+        }
+
+        $new = WimsConnectLog::where('id', '>', $before)->where('channel', 'email')->whereRaw('LOWER(address) = ?', [strtolower($address)])->orderByDesc('id')->first();
+        log_activity('WIMS Connect Message Sent Again', ['log_id' => $log->id, 'new_log_id' => optional($new)->id, 'channel' => 'email'], $log, 'WIMS Connect');
+        $note = ! empty($meta['attachments']) ? ' ' . __('The files of the first email (:n) are not attached again.', ['n' => count((array) $meta['attachments'])]) : '';
+
+        return $this->resendAnswer(true, __('Email sent again to :a.', ['a' => $address]) . $note, 200, ['new_id' => optional($new)->id, 'status' => 'SENT']);
+    }
+
+    private function resendApp(WimsConnectLog $log, array $meta)
+    {
+        $user = $log->recipient_user_id ? User::find($log->recipient_user_id) : null;
+        if (! $user || ! $user->is_active) {
+            return $this->resendAnswer(false, __('The person this alert was for is not an active user.'), 422);
+        }
+        $payload = (array) ($meta['payload'] ?? []);
+        if (! $payload) {
+            $payload = ['title' => (string) $log->subject, 'message' => (string) $log->message, 'type' => (string) $log->event_key];
+        }
+        unset($payload['send_email'], $payload['email_only']); // only the bell: an email has its own row and its own button
+        $before = (int) WimsConnectLog::max('id');
+        $user->notify(new \App\Notifications\AppNotification($payload));
+        $new = WimsConnectLog::where('id', '>', $before)->where('channel', 'app')->where('recipient_user_id', $user->id)->orderByDesc('id')->first();
+        log_activity('WIMS Connect Message Sent Again', ['log_id' => $log->id, 'new_log_id' => optional($new)->id, 'channel' => 'app'], $log, 'WIMS Connect');
+
+        return $this->resendAnswer(true, __('Alert sent again to :n.', ['n' => $user->name]), 200, ['new_id' => optional($new)->id, 'status' => 'SENT']);
+    }
+
     public function retryAll(Request $request)
     {
         abort_unless($request->user()->hasRole('Super Admin'), 403);
