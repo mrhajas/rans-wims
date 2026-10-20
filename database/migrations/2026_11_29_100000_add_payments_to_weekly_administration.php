@@ -77,7 +77,7 @@ return new class extends Migration
             Schema::table('payment_voucher_items', fn (Blueprint $t) => $t->unsignedBigInteger('admin_document_payment_id')->nullable()->index());
         }
         if (Schema::hasTable('payment_voucher_types')) {
-            DB::table('payment_voucher_types')->updateOrInsert(['text' => 'Administration'], ['updated_at' => now(), 'created_at' => now()]);
+            DB::table('payment_voucher_types')->updateOrInsert(['text' => 'Weekly Administration'], ['updated_at' => now(), 'created_at' => now()]);
         }
 
         $names = ['mark-paid-weekly-administration', 'reverse-payments-weekly-administration', 'create-payment-voucher-from-administration'];

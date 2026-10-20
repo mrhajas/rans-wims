@@ -494,6 +494,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('{document}/cancel', [$dc, 'cancel'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.cancel')->name('cancel');
         Route::post('{document}/payments', [$pc, 'store'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.payments.store')->name('payments.store');
         Route::post('{document}/payments/voucher', [$pc, 'voucher'])->whereNumber('document')->middleware('throttle:30,1,weekly-administration.payments.voucher')->name('payments.voucher');
+        Route::post('{document}/payments/vouchers', [$pc, 'vouchers'])->whereNumber('document')->middleware('throttle:20,1,weekly-administration.payments.vouchers')->name('payments.vouchers');
         Route::post('payments/{payment}/reverse', [$pc, 'reverse'])->whereNumber('payment')->middleware('throttle:30,1,weekly-administration.payments.reverse')->name('payments.reverse');
         Route::post('{document}/duplicate', [$dc, 'duplicate'])->whereNumber('document')->middleware('throttle:10,1,weekly-administration.duplicate')->name('duplicate');
         Route::post('{document}/send', [$dc, 'send'])->whereNumber('document')->middleware('throttle:20,1,weekly-administration.send')->name('send');

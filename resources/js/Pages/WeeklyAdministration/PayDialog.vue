@@ -15,6 +15,7 @@
           <div class="ac-f tr-wide"><label>{{ $t('Reference') }}</label><input v-model="form.payment_reference" maxlength="190" :placeholder="$t('Receipt, transfer or cheque number (optional)')" /></div>
           <datalist id="wa-methods"><option v-for="m in methods" :key="m" :value="m"></option></datalist>
         </template>
+        <label v-if="mode === 'all'" class="wa-toggle tr-wide" style="grid-column: 1 / -1"><input v-model="form.distribute" type="checkbox" /><span><b>{{ $t('This person gives it to the beneficiaries') }}</b><small>{{ $t('The whole amount is paid to this one person, who distributes it offline to the beneficiaries of the document. It is recorded as paid to them.') }}</small></span></label>
         <div class="ac-f tr-wide"><label>{{ $t('Notes') }}</label><input v-model="form.notes" maxlength="1000" :placeholder="$t('Optional')" /></div>
       </div>
       <span class="ac-err">{{ err('lines') }}</span>
@@ -37,14 +38,14 @@ export default {
   components: { TravelModal, DatePicker, AcctSelect },
   props: { show: Boolean, doc: Object, voucher: Boolean, mode: String, lines: { type: Array, default: () => [] }, total: Number, count: Number, payees: { type: Array, default: () => [] }, methods: { type: Array, default: () => [] }, defaultPayee: String, today: String },
   emits: ['close'],
-  data() { return { busy: false, form: { payee: '', paid_on: '', method: '', payment_reference: '', notes: '' } }; },
-  watch: { show(v) { if (v) this.form = { payee: this.defaultPayee || '', paid_on: this.today, method: '', payment_reference: '', notes: '' }; } },
+  data() { return { busy: false, form: { payee: '', paid_on: '', method: '', payment_reference: '', notes: '', distribute: false } }; },
+  watch: { show(v) { if (v) this.form = { payee: this.defaultPayee || '', paid_on: this.today, method: '', payment_reference: '', notes: '', distribute: false }; } },
   methods: {
     err(k) { return (this.$page.props.errors || {})[k]; },
     money(v) { return Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     go() {
       this.busy = true;
-      const body = { mode: this.mode, payee: this.form.payee, notes: this.form.notes, lines: this.mode === 'lines' ? this.lines : [] };
+      const body = { mode: this.mode, payee: this.form.payee, notes: this.form.notes, lines: this.mode === 'lines' ? this.lines : [], distribute: this.mode === 'all' && this.form.distribute ? 1 : 0 };
       if (!this.voucher) Object.assign(body, { paid_on: this.form.paid_on, method: this.form.method, payment_reference: this.form.payment_reference });
       this.$inertia.post(route(this.voucher ? 'weekly-administration.payments.voucher' : 'weekly-administration.payments.store', this.doc.id), body, { preserveScroll: true, onSuccess: () => this.$emit('close'), onFinish: () => (this.busy = false) });
     },

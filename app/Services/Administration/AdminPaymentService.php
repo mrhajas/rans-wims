@@ -23,7 +23,8 @@ use Illuminate\Validation\ValidationException;
  */
 class AdminPaymentService
 {
-    public const VOUCHER_TYPE = 'Administration';
+    /** The voucher type of this module. Vouchers of this type are made only from the Administration module: the Payment Vouchers module refuses to start one. */
+    public const VOUCHER_TYPE = 'Weekly Administration';
 
     public const METHODS = ['Cash', 'Bank transfer', 'Mobile money', 'Cheque'];
 
@@ -180,52 +181,123 @@ class AdminPaymentService
     }
 
     /** A person marks lines paid: the payment is real at once. */
-    public static function record(AdminDocument $document, string $mode, array $given, string $payeeKey, array $meta, User $by): AdminDocumentPayment
+    public static function record(AdminDocument $document, string $mode, array $given, string $payeeKey, array $meta, User $by, bool $distribute = false): AdminDocumentPayment
     {
         $payee = self::resolvePayee($payeeKey);
 
-        return DB::transaction(function () use ($document, $mode, $given, $payee, $meta, $by) {
+        return DB::transaction(function () use ($document, $mode, $given, $payee, $meta, $by, $distribute) {
             $d = self::lockedAuthorized($document->id);
             $alloc = self::allocations($d, $mode, $given);
             $p = self::make($d, $alloc, $payee, ['status' => AdminDocumentPayment::PAID, 'source' => 'direct', 'paid_on' => $meta['paid_on'] ?? now()->toDateString(), 'method' => $meta['method'] ?? null,
-                'payment_reference' => $meta['payment_reference'] ?? null, 'notes' => $meta['notes'] ?? null, 'paid_by_user_id' => $by->id], $by);
+                'payment_reference' => $meta['payment_reference'] ?? null, 'notes' => $meta['notes'] ?? null, 'paid_by_user_id' => $by->id, 'extra_attributes' => $distribute ? ['distribute' => true] : null], $by);
             self::recalc($d);
-            log_activity('Administration ' . $d->reference . ' payment ' . $p->reference . ' recorded', ['amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'lines' => count($alloc), 'mode' => $mode, 'payment_status' => $d->payment_status, 'method' => $p->method], $d, 'Administration');
+            log_activity('Administration ' . $d->reference . ' payment ' . $p->reference . ' recorded', ['amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'lines' => count($alloc), 'mode' => $mode, 'payment_status' => $d->payment_status, 'method' => $p->method, 'distribute' => $distribute], $d, 'Administration');
 
             return $p->setRelation('document', $d);
         });
     }
 
     /** A Draft Payment Voucher is made for the chosen lines; the amount is reserved until the voucher is marked paid (then it becomes a real payment) or released. */
-    public static function requestVoucher(AdminDocument $document, string $mode, array $given, string $payeeKey, ?string $notes, User $by): AdminDocumentPayment
+    public static function requestVoucher(AdminDocument $document, string $mode, array $given, string $payeeKey, ?string $notes, User $by, bool $distribute = false): AdminDocumentPayment
     {
         $payee = self::resolvePayee($payeeKey);
 
-        return DB::transaction(function () use ($document, $mode, $given, $payee, $notes, $by) {
+        return PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($document, $mode, $given, $payee, $notes, $by, $distribute) {
             $d = self::lockedAuthorized($document->id);
             $alloc = self::allocations($d, $mode, $given);
-            $p = self::make($d, $alloc, $payee, ['status' => AdminDocumentPayment::PENDING_VOUCHER, 'source' => 'voucher', 'notes' => $notes], $by);
-            $total = (float) $p->total_amount;
-            $staff = $payee['payee_type'] === 'staff';
-            $voucher = PaymentVoucherNumbers::createVoucher([
-                'type' => self::VOUCHER_TYPE, 'payee_type' => $staff ? PaymentVoucher::PAYEE_TYPE_STAFF : PaymentVoucher::PAYEE_TYPE_EXTERNAL, 'payee_contact_id' => null, 'staff_id' => $staff ? $payee['paid_to_staff_id'] : null,
-                'payee_name' => $payee['paid_to_name'], 'voucher_date' => now()->toDateString(), 'total_amount' => $total, 'amount_in_words' => NumberToWords::convert($total), 'status' => PaymentVoucher::STATUS_DRAFT,
-                'prepared_by_user_id' => $by->id, 'internal_notes' => __('Administration :d, payment :r', ['d' => $d->reference, 'r' => $p->reference]),
-            ]);
-            PaymentVoucherType::firstOrCreate(['text' => self::VOUCHER_TYPE]);
-            $p->forceFill(['payment_voucher_id' => $voucher->id])->save();
-            $table = collect(self::lineTable($d))->keyBy('key');
-            foreach ($alloc as $i => $a) {
-                $r = $table->get($a['type'] . ':' . $a['id']);
-                $voucher->items()->create(['line_number' => $i + 1, 'admin_document_payment_id' => $i === 0 ? $p->id : null,
-                    'particulars' => PaymentVoucher::particularsText('Administration ' . $d->reference . ': ' . ($r['description'] ?? '') . ($notes && $i === 0 ? ' - ' . $notes : '')), 'amount' => self::money($a['cents'])]);
+            $p = self::voucherPayment($d, $alloc, $payee, $notes, $by, null, $distribute);
+            self::recalc($d);
+            log_activity('Administration ' . $d->reference . ' sent to Payment Voucher ' . $p->voucher->pv_number, ['payment' => $p->reference, 'amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'lines' => count($alloc), 'distribute' => $distribute], $d, 'Administration');
+
+            return $p->setRelation('document', $d);
+        }));
+    }
+
+    /**
+     * One voucher per beneficiary: the chosen (or all remaining) lines are grouped by the beneficiary of each line (charity lines by the person or place), every group gets its
+     * own voucher for exactly its amount (already sent for approval), and all of them go into ONE Payment Voucher Batch, so approving the batch approves them all together.
+     *
+     * @return array{0:\App\Models\PaymentVoucherBatch,1:array<int,AdminDocumentPayment>}
+     */
+    public static function requestBatch(AdminDocument $document, string $mode, array $given, ?string $notes, User $by): array
+    {
+        return PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($document, $mode, $given, $notes, $by) {
+            $d = self::lockedAuthorized($document->id);
+            $alloc = self::allocations($d, $mode, $given);
+            $groups = self::groupByBeneficiary($d, $alloc);
+            $batch = PaymentVoucherNumbers::createBatch(['type' => self::VOUCHER_TYPE, 'payee_type' => PaymentVoucher::PAYEE_TYPE_EXTERNAL, 'voucher_date' => now()->toDateString(),
+                'common_particulars' => 'Administration ' . $d->reference . ' - ' . $d->doc_date->format('d M Y'), 'reference' => $d->reference, 'common_notes' => $notes, 'created_by_user_id' => $by->id]);
+            $made = [];
+            foreach ($groups as $g) {
+                $made[] = self::voucherPayment($d, $g['alloc'], self::payeeFromName($g['name']), $notes, $by, $batch->id, false, true);
             }
             self::recalc($d);
-            log_activity(__('Payment Voucher created for an Administration document.'), ['pv_number' => $voucher->pv_number, 'document' => $d->reference, 'amount' => $total, 'payment' => $p->reference], $voucher, 'Payment Voucher');
-            log_activity('Administration ' . $d->reference . ' sent to Payment Voucher ' . $voucher->pv_number, ['payment' => $p->reference, 'amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'lines' => count($alloc)], $d, 'Administration');
+            log_activity('Administration ' . $d->reference . ' sent to Payment Voucher Batch ' . $batch->batch_number, ['vouchers' => count($made), 'amount' => number_format(array_sum(array_map(fn ($p) => (float) $p->total_amount, $made)), 2, '.', ''), 'lines' => count($alloc)], $d, 'Administration');
+            log_activity(__('Payment Voucher Batch created for an Administration document.'), ['batch_number' => $batch->batch_number, 'document' => $d->reference, 'voucher_count' => count($made)], $batch, 'Payment Voucher Batch');
+            foreach ($made as $p) {
+                $p->setRelation('document', $d);
+            }
 
-            return $p->setRelation('document', $d)->setRelation('voucher', $voucher);
-        });
+            return [$batch, $made];
+        }));
+    }
+
+    /** The allocations grouped by who each line is for: [['name' => ..., 'alloc' => [...]], ...] in the order they appear. */
+    public static function groupByBeneficiary(AdminDocument $d, array $alloc): array
+    {
+        $table = collect(self::lineTable($d))->keyBy('key');
+        $groups = [];
+        foreach ($alloc as $a) {
+            $r = $table->get($a['type'] . ':' . $a['id']);
+            $name = trim((string) ($r['beneficiary'] ?? '')) ?: (string) ($d->beneficiary_name ?: __('Not named'));
+            $k = mb_strtolower(preg_replace('/\s+/', ' ', $name));
+            $groups[$k] ??= ['name' => preg_replace('/\s+/', ' ', $name), 'alloc' => []];
+            $groups[$k]['alloc'][] = $a;
+        }
+
+        return array_values($groups);
+    }
+
+    /** The payee of a beneficiary typed on a line: the staff member or the user of that exact name, otherwise just the name. */
+    public static function payeeFromName(string $name): array
+    {
+        $n = mb_strtolower(trim($name));
+        if ($s = Staff::query()->whereIn('status', Staff::PAYROLL_STATUSES)->whereRaw('LOWER(TRIM(name)) = ?', [$n])->first()) {
+            return ['payee_type' => 'staff', 'paid_to_user_id' => null, 'paid_to_staff_id' => $s->id, 'paid_to_name' => $s->name];
+        }
+        if ($u = User::query()->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [$n])->first()) {
+            return ['payee_type' => 'user', 'paid_to_user_id' => $u->id, 'paid_to_staff_id' => null, 'paid_to_name' => $u->name];
+        }
+
+        return ['payee_type' => 'other', 'paid_to_user_id' => null, 'paid_to_staff_id' => null, 'paid_to_name' => mb_substr($name, 0, 190)];
+    }
+
+    /** One Pending Voucher payment with its Draft voucher (one voucher line per document line). Call inside the transaction with the document locked. */
+    private static function voucherPayment(AdminDocument $d, array $alloc, array $payee, ?string $notes, User $by, ?int $batchId, bool $distribute, bool $submitted = false): AdminDocumentPayment
+    {
+        $p = self::make($d, $alloc, $payee, ['status' => AdminDocumentPayment::PENDING_VOUCHER, 'source' => 'voucher', 'notes' => $notes, 'extra_attributes' => $distribute ? ['distribute' => true] : null], $by);
+        $total = (float) $p->total_amount;
+        $staff = $payee['payee_type'] === 'staff';
+        $voucher = PaymentVoucherNumbers::createVoucher([
+            'payment_voucher_batch_id' => $batchId, 'type' => self::VOUCHER_TYPE, 'payee_type' => $staff ? PaymentVoucher::PAYEE_TYPE_STAFF : PaymentVoucher::PAYEE_TYPE_EXTERNAL, 'payee_contact_id' => null, 'staff_id' => $staff ? $payee['paid_to_staff_id'] : null,
+            'payee_name' => $payee['paid_to_name'], 'voucher_date' => now()->toDateString(), 'total_amount' => $total, 'amount_in_words' => NumberToWords::convert($total), 'status' => $submitted ? PaymentVoucher::STATUS_SUBMITTED : PaymentVoucher::STATUS_DRAFT,
+            'prepared_by_user_id' => $by->id, 'internal_notes' => __('Administration :d, payment :r', ['d' => $d->reference, 'r' => $p->reference]) . ($distribute ? ' - ' . __('to be distributed to the beneficiaries') : ''),
+        ]);
+        PaymentVoucherType::firstOrCreate(['text' => self::VOUCHER_TYPE]);
+        $p->forceFill(['payment_voucher_id' => $voucher->id])->save();
+        $table = collect(self::lineTable($d))->keyBy('key');
+        foreach ($alloc as $i => $a) {
+            $r = $table->get($a['type'] . ':' . $a['id']);
+            $voucher->items()->create(['line_number' => $i + 1, 'admin_document_payment_id' => $i === 0 ? $p->id : null,
+                'particulars' => PaymentVoucher::particularsText('Administration ' . $d->reference . ': ' . ($r['description'] ?? '') . ($distribute ? ' (' . __('to be distributed') . ')' : '') . ($notes && $i === 0 ? ' - ' . $notes : '')), 'amount' => self::money($a['cents'])]);
+        }
+        log_activity(__('Payment Voucher created for an Administration document.'), ['pv_number' => $voucher->pv_number, 'document' => $d->reference, 'amount' => $total, 'payment' => $p->reference], $voucher, 'Payment Voucher');
+        if ($submitted) {
+            log_activity(__('Payment Voucher submitted for approval.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
+            DB::afterCommit(fn () => event(new \App\Events\PaymentVoucherStatusChanged($voucher->fresh())));
+        }
+
+        return $p->setRelation('voucher', $voucher);
     }
 
     /** A person reverses a payment they marked (never one made through a voucher: that is undone in the Payment Vouchers module). */

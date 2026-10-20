@@ -269,7 +269,7 @@ class PaymentVoucherController extends Controller
             'staffs' => $this->staffOptions(),
             'warehouses' => $this->warehouseOptions(),
             'particulars' => $this->particularsBank(),
-            'types' => $this->typesBank(),
+            'types' => $this->typesBank(true),
             'assets' => $this->assetOptions(),
             'companyName' => PaymentVoucher::COMPANY_NAME,
             'prefill' => $prefill,
@@ -400,6 +400,7 @@ class PaymentVoucherController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $this->guardAdministrationType((string) $data['type']);
         $fundItemId = $request->validate([
             'fund_allocation_item_id' => 'nullable|integer|exists:fund_allocation_items,id',
         ])['fund_allocation_item_id'] ?? null;
@@ -703,7 +704,7 @@ class PaymentVoucherController extends Controller
             'staffs' => $this->staffOptions(),
             'warehouses' => $this->warehouseOptions(),
             'particulars' => $this->particularsBank(),
-            'types' => $this->typesBank(),
+            'types' => $this->typesBank(true),
             'assets' => $this->assetOptions(),
             'companyName' => PaymentVoucher::COMPANY_NAME,
         ]);
@@ -716,6 +717,7 @@ class PaymentVoucherController extends Controller
         $this->guardSubcontractVoucher($voucher);
 
         $data = $this->validated($request);
+        $this->guardAdministrationType((string) $data['type'], $voucher);
 
         // a voucher of a subcontract payment keeps the payee and the total that were approved for it
         if ($voucher->subcontract_payment_id && ($sp = \App\Models\SubcontractPayment::find($voucher->subcontract_payment_id))) {
@@ -1524,9 +1526,24 @@ class PaymentVoucherController extends Controller
         }
     }
 
-    private function typesBank(): array
+    private function typesBank(bool $forForm = false): array
     {
-        return PaymentVoucherType::orderByDesc('use_count')->limit(200)->pluck('text')->values()->all();
+        // the type of the Administration module is not offered when a voucher is started here: those vouchers are made from the Administration module itself
+        return PaymentVoucherType::orderByDesc('use_count')->limit(200)->when($forForm, fn ($q) => $q->where('text', '<>', \App\Services\Administration\AdminPaymentService::VOUCHER_TYPE))->pluck('text')->values()->all();
+    }
+
+    /** A voucher of the Administration module starts in that module, never here; and such a voucher keeps its type. */
+    private function guardAdministrationType(string $type, ?PaymentVoucher $existing = null): void
+    {
+        $admin = \App\Services\Administration\AdminPaymentService::VOUCHER_TYPE;
+        $isAdmin = mb_strtolower(trim($type)) === mb_strtolower($admin);
+        $wasAdmin = $existing && $existing->type === $admin;
+        if ($isAdmin && ! $wasAdmin) {
+            throw ValidationException::withMessages(['type' => __('Payment Vouchers of type :t are made from the Administration module, from an authorized document. They cannot be started here.', ['t' => $admin])]);
+        }
+        if ($wasAdmin && ! $isAdmin) {
+            throw ValidationException::withMessages(['type' => __('This voucher belongs to the Administration module: its type cannot be changed.')]);
+        }
     }
 
     /**

@@ -47,6 +47,15 @@ class AdminDocumentPayment extends Model
         return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 
+    /** Paid to one person who gives the money to the beneficiaries offline. */
+    public function isDistribution(): bool
+    {
+        $raw = $this->getRawOriginal('extra_attributes');
+        $a = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+        return ! empty($a['distribute']);
+    }
+
     public function scopePendingVoucher($q)
     {
         return $q->where('status', self::PENDING_VOUCHER);

@@ -109,6 +109,7 @@
           <button v-if="can.pay" type="button" class="lg-btn lg-btn-primary" :disabled="!openRows.length" @click="open(false, 'all')"><icons name="check-double" class="w-4 h-4" />{{ $t('Mark all paid') }}</button>
           <button v-if="can.voucher" type="button" class="lg-btn lg-btn-soft" :disabled="!selectedRows.length" @click="open(true, 'lines')"><icons name="doc-text" class="w-4 h-4" />{{ $t('Voucher for chosen') }}</button>
           <button v-if="can.voucher" type="button" class="lg-btn lg-btn-soft" :disabled="!openRows.length" @click="open(true, 'all')"><icons name="doc-text" class="w-4 h-4" />{{ $t('Voucher for all left') }}</button>
+          <button v-if="can.voucher" type="button" class="lg-btn lg-btn-primary" :disabled="!openRows.length" @click="openBulk(selectedRows.length ? 'lines' : 'all')"><icons name="collection" class="w-4 h-4" />{{ selectedRows.length ? $t('Vouchers per beneficiary (chosen)') : $t('Vouchers per beneficiary') }}</button>
         </div>
         <template v-if="pay.payments.length">
           <h3 class="lg-sub" style="margin: 16px 0 8px; font-weight: 800">{{ $t('Payments') }}</h3>
@@ -116,12 +117,14 @@
             <div v-for="p in pay.payments" :key="p.id" class="wa-payrow" :class="{ 'is-off': p.status === 'Released' || p.status === 'Reversed' }">
               <div class="who"><b>{{ p.reference }} <span class="lg-chip" :class="payStatusChip(p.status)" style="text-transform: none">{{ $t(p.status) }}</span></b>
                 <small>{{ $t('to') }} <b>{{ p.to }}</b> ({{ p.to_type === 'staff' ? $t('staff') : $t('user') }}) · {{ p.paid_on ? $date(p.paid_on) : $date(p.requested_on) }} · {{ p.lines }} {{ $t('line(s)') }}<template v-if="p.method"> · {{ p.method }}</template><template v-if="p.payment_reference"> · {{ p.payment_reference }}</template> · {{ $t('by') }} {{ p.by }}</small>
-                <small v-if="p.voucher">{{ $t('Payment Voucher') }}: <a :href="route('payment-vouchers.show', p.voucher.id)">{{ p.voucher.pv_number }}</a> ({{ p.voucher.status }})</small>
+                <small v-if="p.voucher">{{ $t('Payment Voucher') }}: <a :href="route('payment-vouchers.show', p.voucher.id)">{{ p.voucher.pv_number }}</a> ({{ p.voucher.status }})<template v-if="p.batch"> · <a :href="route('payment-vouchers.batches.show', p.batch)">{{ $t('Batch') }}</a></template></small>
+                <small v-if="p.distribute"><span class="lg-chip lg-chip-violet" style="text-transform: none">{{ $t('Gives it to the beneficiaries') }}</span></small>
                 <small v-if="p.notes">{{ p.notes }}</small><small v-if="p.release_reason">{{ $t('Released') }}: {{ p.release_reason }}</small><small v-if="p.reverse_reason">{{ $t('Reversed') }}: {{ p.reverse_reason }}</small></div>
               <div class="amt">{{ d.currency }} {{ money(p.amount) }}<div v-if="can.reverse && p.can_reverse"><button type="button" class="lg-btn t-red sc-sm" @click="reversing = p; why = ''">{{ $t('Reverse') }}</button></div></div>
             </div>
           </div>
         </template>
+        <bulk-voucher-dialog :show="bulkOpen" :doc="d" :mode="bulkMode" :rows="openRows" :amounts="chosenAmounts" @close="bulkOpen = false; chosen = {}; amounts = {}" />
         <pay-dialog :show="payOpen" :doc="d" :voucher="payVoucher" :mode="payMode" :lines="payLines" :total="payTotal" :count="payCount" :payees="pay.payees" :methods="pay.methods" :default-payee="pay.default_payee" :today="today" @close="payOpen = false; chosen = {}; amounts = {}" />
         <travel-modal :show="!!reversing" :title="$t('Reverse this payment?')" :subtitle="reversing ? reversing.reference + ' - ' + d.currency + ' ' + money(reversing.amount) : ''" icon="refresh" tone="amber" :busy="busy" @close="reversing = null">
           <div class="ac-f"><label>{{ $t('Why is it reversed? (required)') }}</label><input v-model="why" maxlength="1000" /><span class="ac-err">{{ ($page.props.errors || {}).reason }}</span></div>
@@ -149,21 +152,23 @@
 import SendDialog from './SendDialog.vue';
 import DuplicateDialog from './DuplicateDialog.vue';
 import PayDialog from './PayDialog.vue';
+import BulkVoucherDialog from './BulkVoucherDialog.vue';
 import TravelModal from '../Travels/TravelModal.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 
 export default {
-  components: { SendDialog, DuplicateDialog, PayDialog, TravelModal, AdminLayout, PageHeader, Link },
+  components: { SendDialog, DuplicateDialog, PayDialog, BulkVoucherDialog, TravelModal, AdminLayout, PageHeader, Link },
   props: { d: Object, sends: Array, activity: Array, can: Object, users: Array, pay: Object },
-  data() { return { asking: '', reason: '', busy: false, sendOpen: false, dupOpen: false, chosen: {}, amounts: {}, payOpen: false, payVoucher: false, payMode: 'all', reversing: null, why: '', today: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) }; },
+  data() { return { asking: '', reason: '', busy: false, sendOpen: false, dupOpen: false, chosen: {}, amounts: {}, payOpen: false, bulkOpen: false, bulkMode: 'all', payVoucher: false, payMode: 'all', reversing: null, why: '', today: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) }; },
   computed: {
     canPay() { return !!(this.can.pay || this.can.voucher); },
     openRows() { return this.pay ? this.pay.lines.filter(r => Number(r.balance) > 0) : []; },
     allChosen() { return this.openRows.length > 0 && this.openRows.every(r => this.chosen[r.key]); },
     selectedRows() { return this.openRows.filter(r => this.chosen[r.key]); },
     selectedTotal() { return this.selectedRows.reduce((s, r) => s + Math.round((parseFloat(this.amounts[r.key]) || 0) * 100), 0) / 100; },
+    chosenAmounts() { const o = {}; this.selectedRows.forEach(r => { o[r.key] = this.amounts[r.key]; }); return o; },
     payLines() { return this.payMode === 'all' ? [] : this.selectedRows.map(r => ({ key: r.key, amount: this.amounts[r.key] })); },
     payCount() { return this.payMode === 'all' ? this.openRows.length : this.selectedRows.length; },
     payTotal() { return this.payMode === 'all' ? this.openRows.reduce((s, r) => s + Math.round(parseFloat(r.balance) * 100), 0) / 100 : this.selectedTotal; },
@@ -185,6 +190,7 @@ export default {
     choose(r, on) { this.chosen = { ...this.chosen, [r.key]: on }; if (on && !this.amounts[r.key]) this.amounts = { ...this.amounts, [r.key]: r.balance }; },
     chooseAll(on) { const c = {}; const a = { ...this.amounts }; this.openRows.forEach(r => { c[r.key] = on; if (on && !a[r.key]) a[r.key] = r.balance; }); this.chosen = c; this.amounts = a; },
     payOne(r) { this.chosen = { [r.key]: true }; this.amounts = { ...this.amounts, [r.key]: this.amounts[r.key] || r.balance }; this.open(false, 'lines'); },
+    openBulk(mode) { this.bulkMode = mode; this.bulkOpen = true; },
     open(voucher, mode) { this.payVoucher = voucher; this.payMode = mode; this.payOpen = true; },
     reverse() { this.busy = true; this.$inertia.post(route('weekly-administration.payments.reverse', this.reversing.id), { reason: this.why }, { preserveScroll: true, onSuccess: () => { this.reversing = null; }, onFinish: () => (this.busy = false) }); },
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },

@@ -184,10 +184,10 @@ class DocumentController extends Controller
             'users' => $this->userOptions(),
             'pay' => $document->status === AdminDocument::AUTHORIZED || $document->payments()->exists() ? [
                 'lines' => \App\Services\Administration\AdminPaymentService::lineTable($document),
-                'payments' => $document->payments()->with(['voucher:id,pv_number,status', 'user:id,name'])->get()->map(fn ($p) => ['id' => $p->id, 'reference' => $p->reference, 'status' => $p->status, 'source' => $p->source, 'paid_on' => optional($p->paid_on)->toDateString(), 'requested_on' => optional($p->requested_on)->toDateString(),
+                'payments' => $document->payments()->with(['voucher:id,pv_number,status,payment_voucher_batch_id', 'user:id,name'])->get()->map(fn ($p) => ['id' => $p->id, 'reference' => $p->reference, 'status' => $p->status, 'source' => $p->source, 'paid_on' => optional($p->paid_on)->toDateString(), 'requested_on' => optional($p->requested_on)->toDateString(),
                     'amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'to_type' => $p->payee_type, 'method' => $p->method, 'payment_reference' => $p->payment_reference, 'notes' => $p->notes, 'by' => optional($p->user)->name,
                     'voucher' => $p->voucher ? ['id' => $p->voucher->id, 'pv_number' => $p->voucher->pv_number, 'status' => $p->voucher->status] : null, 'release_reason' => $p->release_reason, 'reverse_reason' => $p->reverse_reason, 'reversed_at' => optional($p->reversed_at)->toDateTimeString(),
-                    'lines' => $p->lines()->count(), 'can_reverse' => $p->status === 'Paid' && $p->source === 'direct'])->values(),
+                    'lines' => $p->lines()->count(), 'distribute' => $p->isDistribution(), 'batch' => optional($p->voucher)->payment_voucher_batch_id, 'can_reverse' => $p->status === 'Paid' && $p->source === 'direct'])->values(),
                 'payees' => $a['pay'] || $a['voucher'] ? \App\Services\Administration\AdminPaymentService::payeeOptions() : [], 'methods' => \App\Services\Administration\AdminPaymentService::METHODS,
                 'default_payee' => $document->beneficiary_user_id ? 'u:' . $document->beneficiary_user_id : '',
             ] : null,

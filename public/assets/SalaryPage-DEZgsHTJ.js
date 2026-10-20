@@ -1,1 +1,0 @@
-import{_ as s,o,c as a,f as t}from"./app-ChuZYLO2.js";const r={},c={class:"lg-page px-4 md:px-0 sl-page"};function n(e,p,l,_,d,f){return o(),a("div",c,[t(e.$slots,"default")])}const m=s(r,[["render",n]]);export{m as S};

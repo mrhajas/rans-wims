@@ -57,7 +57,7 @@ class PaymentVoucherBatchController extends Controller
         return Inertia::render('PaymentVoucherBatch/Index', [
             'filters' => $filters,
             'warehouses' => $this->warehouseOptions(),
-            'types' => $this->typesBank(),
+            'types' => array_values(array_diff($this->typesBank(), [\App\Services\Administration\AdminPaymentService::VOUCHER_TYPE])),
             'batches' => new PaymentVoucherCollection($batches),
             'cards' => [
                 'total_batches' => $totalBatches,
@@ -139,7 +139,7 @@ class PaymentVoucherBatchController extends Controller
             'staffs' => $this->staffOptions(),
             'warehouses' => $this->warehouseOptions(),
             'particulars' => $this->particularsBank(),
-            'types' => $this->typesBank(),
+            'types' => array_values(array_diff($this->typesBank(), [\App\Services\Administration\AdminPaymentService::VOUCHER_TYPE])),
             'companyName' => PaymentVoucher::COMPANY_NAME,
         ]);
     }
@@ -169,6 +169,9 @@ class PaymentVoucherBatchController extends Controller
         ]);
 
         $data['type'] = trim($data['type']) ?: 'Administration';
+        if (mb_strtolower($data['type']) === mb_strtolower(\App\Services\Administration\AdminPaymentService::VOUCHER_TYPE)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['type' => __('Payment Vouchers of type :t are made from the Administration module. They cannot be started here.', ['t' => \App\Services\Administration\AdminPaymentService::VOUCHER_TYPE])]);
+        }
         $data['common_particulars'] = trim($data['common_particulars']);
         $isStaffBatch = $data['payee_type'] === PaymentVoucher::PAYEE_TYPE_STAFF;
 
