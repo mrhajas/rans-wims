@@ -36,7 +36,7 @@ abstract class WeatherBaseController extends Controller
 
     protected function projectOptions(User $user, bool $activeOnly = true): array
     {
-        return WeatherAccess::projects($user, $activeOnly)->whereNull('warehouses.deleted_at')->orderBy('warehouses.name')->get(['warehouses.id', 'warehouses.name', 'warehouses.code'])
-            ->map(fn ($w) => ['value' => (string) $w->id, 'label' => $w->name . ($w->code ? ' (' . $w->code . ')' : ''), 'name' => $w->name])->all();
+        return WeatherAccess::projects($user, $activeOnly)->whereNull('warehouses.deleted_at')->orderBy('warehouses.name')->get(['warehouses.id', 'warehouses.name', 'warehouses.code', 'warehouses.status', 'warehouses.completed_at'])
+            ->map(fn ($w) => ['value' => (string) $w->id, 'label' => $w->name . ($w->code ? ' (' . $w->code . ')' : ''), 'name' => $w->name, 'status' => $w->status, 'completed_at' => $w->completed_at])->all();
     }
 }

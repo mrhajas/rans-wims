@@ -457,7 +457,8 @@ class FundAllocationReportController extends Controller
             'methods' => DB::table('fund_payment_methods')->whereNull('deleted_at')->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'short_label'])->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'short_label' => $r->short_label])->all(),
             'payers' => $users('assigned_to_user_id'),
             'preparers' => $users('prepared_by_user_id'),
-            'warehouses' => $names('warehouses', 'warehouse_id', 'id'),
+            'warehouses' => DB::table('warehouses')->whereIn('id', DB::table('fund_allocation_items')->whereNull('deleted_at')->whereNotNull('warehouse_id')->select('warehouse_id'))
+                ->orderBy('name')->get(['id', 'name', 'status'])->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'status' => $r->status])->all(),
             'contacts' => $names('contacts', 'contact_id', 'id'),
             // Beneficiary picker: every contact, active user and active project, like the allocation sheet form.
             'beneficiary_contacts' => DB::table('contacts')->whereNull('deleted_at')->orderBy('name')->get(['id', 'name', 'category'])->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'category' => $r->category])->all(),

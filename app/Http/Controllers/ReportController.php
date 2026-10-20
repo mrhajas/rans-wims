@@ -1690,6 +1690,7 @@ class ReportController extends Controller
                 'name' => $warehouse->name,
                 'code' => $warehouse->code,
                 'amount' => $totalAmountInStore,
+                'status' => $warehouse->status,
                 'completed_at' => $warehouse->completed_at,
             ];
         });

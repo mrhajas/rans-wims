@@ -167,8 +167,7 @@ class SiteReportComplianceController extends Controller
             'anchor' => $anchor->format('Y-m-d'),
             'dates' => $dates,
             'rows' => $rows,
-            'warehouses' => $allPairs->pluck('warehouse_name', 'warehouse_id')
-                ->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values()->all(),
+            'warehouses' => $this->warehouseOptionsOf($allPairs),
             'siteEngineers' => $allPairs->pluck('user_name', 'user_id')
                 ->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values()->all(),
             'filters' => [
@@ -176,5 +175,14 @@ class SiteReportComplianceController extends Controller
                 'submitted_by' => $request->input('submitted_by'),
             ],
         ];
+    }
+
+    /** The projects of the matrix as dropdown options, with their category so the list can be shown in sections. */
+    protected function warehouseOptionsOf($allPairs): array
+    {
+        $names = $allPairs->pluck('warehouse_name', 'warehouse_id');
+        $status = \App\Models\Warehouse::query()->whereIn('id', $names->keys()->all() ?: [0])->pluck('status', 'id');
+
+        return $names->map(fn ($name, $id) => ['id' => $id, 'name' => $name, 'status' => $status[$id] ?? null])->values()->all();
     }
 }
