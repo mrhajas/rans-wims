@@ -54,6 +54,8 @@
             <div v-if="adhan.enabled" class="pl-player" :class="{ 'is-on': playing }">
               <div class="pl-player__who"><span class="pl-player__ico"><span class="pl-eq" :class="{ on: playing }"><i></i><i></i><i></i><i></i></span></span><span class="pl-player__txt"><small>{{ playing ? $t('Now playing') : $t('Adhan') }}</small><b>{{ reciter }}</b></span></div>
               <adhan-waves />
+              <p v-if="adhan.missing" class="pl-blocked"><icons name="exclamation" class="w-4 h-4" />{{ $t('The recording of :w is not on this server, so :r plays instead.', { w: adhan.wanted, r: reciter }) }}</p>
+              <p v-if="failed && !playing" class="pl-blocked"><icons name="exclamation" class="w-4 h-4" />{{ $t('The adhan could not be played: its file is missing or cannot be read. Press Play adhan to try again.') }}</p>
               <p v-if="blocked && !playing" class="pl-blocked"><icons name="exclamation" class="w-4 h-4" />{{ $t('Your browser blocked the sound. Press Play adhan once to allow it.') }}</p>
             </div>
             <div class="pl-actions">
@@ -96,6 +98,7 @@ export default {
     adhan() { return (prayerState.data && prayerState.data.adhan) || { enabled: false }; },
     playing() { return adhanState.playing; },
     blocked() { return adhanState.blocked; },
+    failed() { return adhanState.failed; },
     // the stored name may be written without spaces (MuftMenk): show it as words
     reciter() { const l = (this.adhan && this.adhan.label) || ''; return l ? l.replace(/([a-z])([A-Z])/g, '$1 $2') : this.$t('Adhan'); },
     topbarOn() { return !!(prayerState.data && prayerState.data.topbar); },

@@ -38,6 +38,7 @@
 .wa-ui .wa-paper td { padding: 9px 12px; border-top: 1px solid var(--sc-line, #eef2f7); font-size: 0.86rem; vertical-align: top; overflow-wrap: anywhere; }
 .wa-ui .wa-paper tbody tr:nth-child(even) td { background: rgba(15, 118, 110, 0.035); }
 .wa-ui .wa-paper .no { width: 44px; text-align: center; color: var(--sc-mute, #64748b); font-weight: 700; }
+.wa-ui .wa-paper th, .wa-ui .wa-paper th.no { color: #fff; }
 .wa-ui .wa-paper .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wa-ui .wa-paper tfoot td { font-weight: 800; background: var(--wa-soft); border-top: 2px solid var(--wa); }
 .wa-ui .wa-paper.is-charity th { background: linear-gradient(135deg, #b45309, #92400e); } .wa-ui .wa-paper.is-charity tfoot td { background: rgba(180, 83, 9, 0.09); border-top-color: #b45309; }

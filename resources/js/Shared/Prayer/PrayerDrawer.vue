@@ -43,6 +43,8 @@
                 <button v-else type="button" class="pd-btn pd-btn--play" @click="play"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.2v11.6a.8.8 0 001.2.7l9-5.8a.8.8 0 000-1.4l-9-5.8a.8.8 0 00-1.2.7z" fill="currentColor" /></svg>{{ $t('Play adhan') }}</button>
               </div>
               <label class="pd-vol"><span>{{ $t('Volume') }}</span><input type="range" min="0" max="100" :value="volume" @input="vol($event.target.value)" /><b>{{ volume }}%</b></label>
+              <p v-if="d.adhan.missing" class="pd-note">{{ $t('The recording of :w is not on this server, so :r plays instead.', { w: d.adhan.wanted, r: d.adhan.label }) }}</p>
+              <p v-if="player.failed && !player.playing" class="pd-note">{{ $t('The adhan could not be played: its file is missing or cannot be read. Press Play adhan to try again.') }}</p>
               <p v-if="player.blocked" class="pd-note">{{ $t('Your browser blocked the sound. Press Play adhan once to allow it.') }}</p>
               <p v-if="!d.adhan.enabled" class="pd-note">{{ $t('The adhan is switched off in the settings, so it will not play on its own.') }}</p>
             </section>

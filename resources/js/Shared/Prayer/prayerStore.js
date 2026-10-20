@@ -5,7 +5,7 @@ import { reactive, computed, markRaw } from 'vue';
 export const prayerState = reactive({ data: null, offset: 0, now: Date.now(), preview: null, drawer: false });
 
 // One adhan player shared by the prayer notice and the top-bar drawer, so it can be stopped from either.
-export const adhan = reactive({ playing: false, audio: null, blocked: false });
+export const adhan = reactive({ playing: false, audio: null, blocked: false, failed: false });
 
 // The waves of the prayer notice follow the real sound: the playing audio is also routed through an analyser. This is only done when the browser lets the audio
 // context run (never when it is suspended, because a suspended context would mute the adhan); otherwise the waves are drawn without the analyser.
@@ -36,16 +36,27 @@ export function playAdhan(force = false) {
     el.volume = Math.max(0, Math.min(1, (adhan.volume ?? a.volume ?? 70) / 100));
     el.addEventListener('ended', () => { adhan.playing = false; adhan.audio = null; try { if (analyserSource) analyserSource.disconnect(); } catch (e) { /* gone */ } analyser = null; analyserSource = null; });
     el.addEventListener('pause', () => { adhan.playing = false; });
-    el.addEventListener('play', () => { adhan.playing = true; adhan.blocked = false; hookAnalyser(el); });
+    el.addEventListener('play', () => { adhan.playing = true; adhan.blocked = false; adhan.failed = false; hookAnalyser(el); });
+    // the file could not be loaded or decoded (not the browser's autoplay rule): say so, and start from a fresh player next time
+    el.addEventListener('error', () => { adhan.playing = false; adhan.failed = true; adhan.blocked = false; if (adhan.audio === el) adhan.audio = null; });
     adhan.audio = el;
   }
-  return adhan.audio.play().catch(() => { adhan.playing = false; adhan.blocked = true; }); // the browser may need one click first
+  const el = adhan.audio;
+
+  return el.play().catch(err => {
+    adhan.playing = false;
+    if (err && err.name === 'AbortError') return; // stopped or restarted while it was starting: nothing is wrong
+    if (err && err.name === 'NotAllowedError') { adhan.blocked = true; adhan.failed = false; return; } // only this one is the browser asking for a click first
+    adhan.failed = true; adhan.blocked = false;
+    if (adhan.audio === el) adhan.audio = null;
+  });
 }
 
 export function stopAdhan() {
   if (adhan.audio) { adhan.audio.pause(); try { adhan.audio.currentTime = 0; } catch (e) { /* not seekable */ } }
   adhan.audio = null;
   adhan.playing = false;
+  adhan.failed = false;
   try { if (analyserSource) analyserSource.disconnect(); } catch (e) { /* already gone */ }
   analyser = null; analyserSource = null;
 }

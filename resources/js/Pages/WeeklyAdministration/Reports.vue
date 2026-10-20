@@ -72,7 +72,7 @@ export default {
     current() { return this.catalog.find(c => c.key === this.t); },
     money() { return ['by_item', 'item_monthly', 'lines', 'by_month', 'by_beneficiary', 'charity', 'charity_people', 'payments', 'by_category', 'category_monthly', 'by_staff', 'by_hq'].includes(this.t); },
     hasFilters() { return Object.keys(this.f).some(k => this.f[k]); },
-    sections() { return [{ value: 'items', label: this.$t('Lines only') }, { value: 'charity', label: this.$t('Charity only') }]; },
+    sections() { return [{ value: 'items', label: this.$t('Administration only') }, { value: 'charity', label: this.$t('Charity only') }]; },
     charityOpts() { return [{ value: '1', label: this.$t('With charity') }, { value: '0', label: this.$t('Without charity') }]; },
     quick() { return [{ k: 'month', label: this.$t('This month') }, { k: 'last', label: this.$t('Last month') }, { k: 'quarter', label: this.$t('This quarter') }, { k: 'year', label: this.$t('This year') }]; },
     tabs() {

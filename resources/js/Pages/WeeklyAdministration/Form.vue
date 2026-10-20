@@ -45,7 +45,7 @@
         </section>
 
         <section class="lg-card">
-          <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="list" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Lines') }}</h2><p class="lg-card-sub">{{ $t('Add and remove lines freely. A line you type is remembered as an item, so reports can follow it month by month.') }}</p></div></header>
+          <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="list" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Administration') }}</h2><p class="lg-card-sub">{{ $t('Add and remove lines freely. A line you type is remembered as an item, so reports can follow it month by month.') }}</p></div></header>
           <datalist id="wa-items"><option v-for="i in itemNames" :key="i.id" :value="i.name"></option></datalist>
           <datalist id="wa-cats"><option v-for="c in categories" :key="c" :value="c"></option></datalist>
           <datalist id="wa-people"><option v-for="u in users" :key="u.value" :value="u.label"></option></datalist>
@@ -83,7 +83,7 @@
             <div v-if="itemNames.length" class="ac-f"><label>{{ $t('Add a known item') }}</label><acct-select v-model="pickItem" :options="itemOptions" :placeholder="$t('Search the items...')" clearable @change="addKnown" /></div>
             <button v-if="template.length && started !== 'edit'" type="button" class="lg-btn t-slate" @click="addTemplate"><icons name="collection" class="w-4 h-4" />{{ $t('Add the template lines that are missing') }}</button>
           </div>
-          <div class="wa-sub"><span>{{ $t('Total of the lines') }}</span><b>{{ currency }} {{ money(itemsTotal) }}</b></div>
+          <div class="wa-sub"><span>{{ $t('Total of Administration') }}</span><b>{{ currency }} {{ money(itemsTotal) }}</b></div>
         </section>
 
         <section class="lg-card wa-charity">
@@ -116,7 +116,7 @@
         </section>
 
         <div class="wa-bar">
-          <div class="wa-sums"><span>{{ $t('Lines') }} <b>{{ money(itemsTotal) }}</b></span><span v-if="form.include_charity">{{ $t('Charity') }} <b>{{ money(charityTotal) }}</b></span><span class="g">{{ $t('Total') }} <b>{{ currency }} {{ money(grandTotal) }}</b></span></div>
+          <div class="wa-sums"><span>{{ $t('Administration') }} <b>{{ money(itemsTotal) }}</b></span><span v-if="form.include_charity">{{ $t('Charity') }} <b>{{ money(charityTotal) }}</b></span><span class="g">{{ $t('Total') }} <b>{{ currency }} {{ money(grandTotal) }}</b></span></div>
           <div class="wa-btns">
             <Link :href="doc ? route('weekly-administration.show', doc.id) : route('weekly-administration.index')" class="lg-btn t-slate">{{ $t('Cancel') }}</Link>
             <button type="submit" class="lg-btn lg-btn-primary" :disabled="busy"><icons name="tick" class="w-4 h-4" />{{ busy ? $t('Saving...') : (doc ? $t('Save changes') : $t('Save and send for approval')) }}</button>

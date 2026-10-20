@@ -41,7 +41,7 @@ class PrayerSettingsController extends Controller
         return Inertia::render('Prayer/Settings', [
             'config' => $c,
             'methods' => collect(PrayerTimes::METHODS)->map(fn ($m, $k) => ['value' => $k, 'label' => $m['label'].' (Fajr '.$m['fajr'].'°, Isha '.(is_string($m['isha']) ? $m['isha'] : $m['isha'].'°').')'])->values(),
-            'adhans' => collect(PrayerService::adhans())->map(fn ($a, $k) => ['value' => $k, 'label' => $a['label'], 'url' => $a['file'], 'note' => $a['note'], 'custom' => $a['custom'], 'id' => $a['id'] ?? null])->values(),
+            'adhans' => collect(PrayerService::adhans())->map(fn ($a, $k) => ['value' => $k, 'label' => $a['label'], 'missing' => PrayerService::playable($a)['missing'], 'url' => $a['file'], 'note' => $a['note'], 'custom' => $a['custom'], 'id' => $a['id'] ?? null])->values(),
             'today' => collect(PrayerService::timesFor($now->startOfDay()))->map(fn ($t, $k) => ['key' => $k, 'label' => $k === 'sunrise' ? 'Sunrise' : PrayerService::PRAYERS[$k], 'time' => $t->format('h:i A')])->values(),
             'phase' => collect(PrayerService::phase($now))->only(['phase', 'label'])->all(),
             'users' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'username'])->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'username' => $u->username]),

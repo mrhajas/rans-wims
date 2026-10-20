@@ -52,7 +52,7 @@
       </section>
 
       <section class="lg-card">
-        <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="list" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Lines') }}</h2></div></header>
+        <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="list" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Administration') }}</h2></div></header>
         <div class="wa-paper"><table>
           <thead><tr><th class="no">{{ $t('No') }}</th><th>{{ $t('Description') }}</th><th class="hide-sm">{{ $t('Beneficiary') }}</th><th class="num">{{ $t('Amount') }} ({{ d.currency }})</th></tr></thead>
           <tbody>
@@ -88,7 +88,7 @@
           <thead><tr><th v-if="canPay" class="chk"><input type="checkbox" :checked="allChosen" :disabled="!openRows.length" :aria-label="$t('Choose all')" @change="chooseAll($event.target.checked)" /></th><th class="no">{{ $t('No') }}</th><th>{{ $t('Description') }}</th><th class="num hide-sm">{{ $t('Amount') }}</th><th class="num hide-sm">{{ $t('Paid') }}</th><th class="num">{{ $t('Balance') }}</th><th>{{ $t('Status') }}</th><th v-if="canPay" class="num">{{ $t('Pay now') }}</th><th v-if="canPay"></th></tr></thead>
           <tbody>
             <template v-for="(r, i) in pay.lines" :key="r.key">
-              <tr v-if="i === 0 || pay.lines[i - 1].section !== r.section" class="sec"><td :colspan="canPay ? 9 : 6">{{ r.section === 'Charity' ? $t('Charity') : $t('Lines') }}</td></tr>
+              <tr v-if="i === 0 || pay.lines[i - 1].section !== r.section" class="sec"><td :colspan="canPay ? 9 : 6">{{ r.section === 'Charity' ? $t('Charity') : $t('Administration') }}</td></tr>
               <tr :class="{ 'is-sel': chosen[r.key], 'is-done': Number(r.balance) <= 0 }">
                 <td v-if="canPay" class="chk"><input type="checkbox" :checked="!!chosen[r.key]" :disabled="Number(r.balance) <= 0" :aria-label="$t('Choose this line')" @change="choose(r, $event.target.checked)" /></td>
                 <td class="no">{{ r.no }}</td>

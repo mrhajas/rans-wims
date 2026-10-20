@@ -70,7 +70,7 @@
           <div class="ps-adhans" :class="{ off: !form.adhan_enabled }">
             <label v-for="a in adhans" :key="a.value" class="ps-adhan" :class="{ on: form.adhan === a.value }">
               <input v-model="form.adhan" type="radio" :value="a.value" />
-              <b>{{ a.label }}</b><small>{{ a.note }}</small>
+              <b>{{ a.label }}</b><small>{{ a.note }}</small><small v-if="a.missing" style="color: #b91c1c; font-weight: 700">{{ $t('The file of this recording is not on this server. The built-in adhan plays instead until it is uploaded again.') }}</small>
               <span class="ps-adhan__row">
                 <button type="button" class="ps-btn ps-btn--soft ps-btn--sm" @click.prevent="toggleSample(a)"><icons :name="sample === a.value ? 'pause' : 'play'" class="w-4 h-4" />{{ sample === a.value ? $t('Stop') : $t('Listen') }}</button>
                 <button v-if="a.custom" type="button" class="ps-btn ps-btn--danger ps-btn--sm" @click.prevent="delAdhan(a)"><icons name="trash" class="w-4 h-4" />{{ $t('Delete') }}</button>

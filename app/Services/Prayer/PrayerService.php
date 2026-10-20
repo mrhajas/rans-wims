@@ -82,6 +82,22 @@ class PrayerService
         return $all;
     }
 
+    /**
+     * What the browser is given to play. An uploaded recording whose file is not on this server (a database copied without its audio files, or a file removed by hand)
+     * would only answer "not found" and the player would blame the browser, so the built-in adhan plays instead and the page says why.
+     *
+     * @return array{url:string,label:string,missing:bool,wanted:?string}
+     */
+    public static function playable(array $a): array
+    {
+        if (is_file(public_path(ltrim((string) $a['file'], '/')))) {
+            return ['url' => $a['file'], 'label' => $a['label'], 'missing' => false, 'wanted' => null];
+        }
+        $fb = self::ADHANS[self::FALLBACK_ADHAN];
+
+        return ['url' => $fb['file'], 'label' => $fb['label'], 'missing' => true, 'wanted' => $a['label']];
+    }
+
     /** The chosen adhan, or the built-in default when the key is unknown (for example after it was deleted). */
     public static function adhan(?string $key): array
     {
@@ -297,7 +313,7 @@ class PrayerService
             }
         }
 
-        $adhan = self::adhan($c['adhan']);
+        $adhan = self::playable(self::adhan($c['adhan']));
 
         return [
             'server_now' => $now->toIso8601String(),
@@ -307,7 +323,7 @@ class PrayerService
             'exempt' => self::exempt($user),
             'times' => $times, 'upcoming' => $upcoming,
             'alert_before_min' => (int) $c['alert_before_min'], 'notice_before_min' => (int) $c['notice_before_min'], 'lock_start_after_min' => (int) $c['lock_start_after_min'], 'lock_minutes' => (int) $c['lock_minutes'],
-            'adhan' => ['enabled' => (bool) $c['adhan_enabled'], 'url' => $adhan['file'], 'volume' => (int) $c['adhan_volume'], 'label' => $adhan['label']],
+            'adhan' => ['enabled' => (bool) $c['adhan_enabled'], 'url' => $adhan['url'], 'volume' => (int) $c['adhan_volume'], 'label' => $adhan['label'], 'missing' => $adhan['missing'], 'wanted' => $adhan['wanted']],
             'topbar' => (bool) $c['show_in_topbar'], 'dashboard' => (bool) $c['show_on_dashboard'],
         ];
     }
@@ -331,12 +347,12 @@ class PrayerService
             return null;
         }
         $c = self::config();
-        $adhan = self::adhan($c['adhan']);
+        $adhan = self::playable(self::adhan($c['adhan']));
 
         return [
             'prayer' => $p['label'], 'unlock_at' => $p['unlock_at']->toIso8601String(), 'unlock_label' => $p['unlock_at']->format('h:i A'),
             'server_now' => self::now()->toIso8601String(), 'message' => self::messageFor($p['key'], $p['at']->startOfDay()),
-            'adhan' => ['enabled' => (bool) $c['adhan_enabled'], 'url' => $adhan['file'], 'volume' => (int) $c['adhan_volume']],
+            'adhan' => ['enabled' => (bool) $c['adhan_enabled'], 'url' => $adhan['url'], 'volume' => (int) $c['adhan_volume']],
         ];
     }
 }
