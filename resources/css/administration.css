@@ -51,7 +51,9 @@
 .wa-ui .wa-pick { display: grid; justify-items: start; gap: 8px; padding: 20px; border: 0; border-radius: 20px; cursor: pointer; text-align: left; background: var(--sc-card, #fff); color: var(--sc-ink, #0f2540); box-shadow: 0 0 0 1px var(--sc-line, #e3e9f2), 0 16px 26px -18px rgba(31, 70, 130, 0.6); transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .wa-ui .wa-pick:hover { transform: translateY(-3px); box-shadow: 0 0 0 2px var(--wa), 0 20px 30px -18px rgba(15, 118, 110, 0.7); }
 .wa-ui .wa-pick-ico { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, #14b8a6, var(--wa2)); } .wa-ui .wa-pick.is-zero .wa-pick-ico { background: linear-gradient(135deg, #f59e0b, #b45309); }
-.wa-ui .wa-pick b { font-size: 1.05rem; } .wa-ui .wa-pick span { font-size: 0.82rem; color: var(--sc-mute, #64748b); }
+.wa-ui .wa-pick b { font-size: 1.1rem; } .wa-ui .wa-pick > span:not(.wa-pick-ico) { font-size: 0.88rem; color: var(--sc-mute, #64748b); }
+.wa-ui .wa-pick .wa-pick-ico, .wa-ui .wa-pick .wa-pick-ico svg { color: #fff !important; fill: currentColor; }
+.wa-ui .wa-pick-ico { width: 56px; height: 56px; }
 
 /* ---- the line editor ---- */
 .wa-ui .wa-lines { display: grid; gap: 8px; }
@@ -147,7 +149,7 @@
 .wa-ui .wa-hq:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--wa), 0 14px 22px -14px rgba(15, 118, 110, 0.6); }
 .wa-ui .wa-hq.on { background: linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(15, 118, 110, 0.05)); box-shadow: inset 0 0 0 2px var(--wa), 0 16px 24px -14px rgba(15, 118, 110, 0.75); }
 .wa-ui .wa-hq-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 14px; color: var(--wa); background: var(--wa-soft); box-shadow: inset 0 0 0 1.5px var(--wa); }
-.wa-ui .wa-hq.on .wa-hq-ico { color: #fff; background: linear-gradient(135deg, #14b8a6, var(--wa2)); box-shadow: none; }
+.wa-ui .wa-hq.on .wa-hq-ico, .wa-ui .wa-hq.on .wa-hq-ico svg { color: #fff; fill: currentColor; background: linear-gradient(135deg, #14b8a6, var(--wa2)); box-shadow: none; }
 .wa-ui .wa-hq b { display: block; font-size: 1rem; } .wa-ui .wa-hq small { color: var(--sc-mute, #64748b); font-size: 0.74rem; }
 .wa-ui .wa-hq .wa-tick { position: absolute; top: 10px; right: 12px; display: none; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #fff; background: var(--wa); } .wa-ui .wa-hq.on .wa-tick { display: grid; }
 .wa-ui .wa-hqchip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 800; line-height: 1.2; white-space: nowrap; color: var(--wa2); background: var(--wa-soft); box-shadow: inset 0 0 0 1.5px var(--wa); }
