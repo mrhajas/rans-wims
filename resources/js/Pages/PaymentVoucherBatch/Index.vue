@@ -48,6 +48,7 @@
         <table class="lg-table lg-responsive">
           <thead>
             <tr>
+              <th class="pvb-no">{{ $t('No') }}</th>
               <th>{{ $t('Batch Number') }}</th>
               <th>{{ $t('Type') }}</th>
               <th>{{ $t('Project') }}</th>
@@ -58,8 +59,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="b in batches.data" :key="b.id" class="is-click" @click="goto(b.id)">
-              <td :data-label="$t('Batch Number')" class="lg-main">{{ b.batch_number }}</td>
+            <tr v-for="(b, i) in batches.data" :key="b.id" class="is-click" @click="goto(b.id)">
+              <td :data-label="$t('No')" class="pvb-no">{{ ((batches.meta && batches.meta.from) || 1) + i }}</td>
+              <td :data-label="$t('Batch Number')" class="lg-main"><span class="pvb-numcell">{{ b.batch_number }}<span v-if="b.all_paid" class="pvb-allpaid" :title="$t('Every voucher of this batch is paid')"><icons name="check-double" class="pvb-allpaid__ico" />{{ $t('All Paid') }}</span></span></td>
               <td :data-label="$t('Type')">{{ b.type }}</td>
               <td :data-label="$t('Project')">{{ b.warehouse_name }}</td>
               <td :data-label="$t('Date')">{{ $date(b.voucher_date) }}</td>
@@ -70,7 +72,7 @@
               </td>
             </tr>
             <tr v-if="batches.data.length === 0" class="lg-empty-row">
-              <td class="lg-empty" colspan="7">{{ $t('There is no data to display.') }}</td>
+              <td class="lg-empty" colspan="8">{{ $t('There is no data to display.') }}</td>
             </tr>
           </tbody>
         </table>
@@ -195,5 +197,10 @@ export default {
 </script>
 
 <style scoped>
+.pvb-no { width: 1%; white-space: nowrap; color: var(--lg-mute, #64748b); font-weight: 700; }
+.pvb-numcell { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+/* all the vouchers of the batch are paid */
+.pvb-allpaid { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.18rem 0.55rem 0.18rem 0.3rem; border-radius: 999px; color: #fff; font-size: 0.62rem; font-weight: 800; line-height: 1.2; white-space: nowrap; background: linear-gradient(135deg, #15803d, #14532d); box-shadow: 0 8px 14px -10px rgba(20, 83, 45, 0.8); }
+.pvb-allpaid__ico { width: 0.72rem; height: 0.72rem; flex: none; padding: 0.11rem; box-sizing: content-box; border-radius: 50%; background: rgba(255, 255, 255, 0.24); }
 .pvb-filters { position: relative; z-index: 20; }
 </style>

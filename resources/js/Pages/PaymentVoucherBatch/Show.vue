@@ -55,11 +55,11 @@
             <div class="lg-card-title">{{ $t('Vouchers in this Batch') }}</div>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <button v-if="$can('approve-payment-vouchers')" type="button" class="lg-btn lg-btn-dark" @click="bulkApprove">
-              <icons name="tick" class="w-4 h-4" />{{ $t('Approve All Eligible') }}
+            <button v-if="$can('approve-payment-vouchers')" type="button" class="lg-btn lg-btn-dark" :disabled="!toApprove.length" :title="toApprove.length ? '' : idleReason" @click="bulkApprove">
+              <icons name="tick" class="w-4 h-4" />{{ $t('Approve All Eligible') }}<template v-if="toApprove.length"> ({{ toApprove.length }})</template>
             </button>
-            <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers')" type="button" class="lg-btn lg-btn-primary" @click="bulkApproveAndAuthorise">
-              <icons name="lock-closed" class="w-4 h-4" />{{ $t('Approve & Authorise All Eligible') }}
+            <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers')" type="button" class="lg-btn lg-btn-primary" :disabled="!toAuthorise.length" :title="toAuthorise.length ? '' : idleReason" @click="bulkApproveAndAuthorise">
+              <icons name="lock-closed" class="w-4 h-4" />{{ $t('Approve & Authorise All Eligible') }}<template v-if="toAuthorise.length"> ({{ toAuthorise.length }})</template>
             </button>
           </div>
         </div>
@@ -155,6 +155,14 @@ export default {
   },
 
   computed: {
+    // only vouchers that still wait for a step can be approved / authorised; once they are approved, authorised or paid the buttons stay off
+    toApprove() { return this.batch.vouchers.filter(v => v.status === 'Submitted'); },
+    toAuthorise() { return this.batch.vouchers.filter(v => v.status === 'Submitted' || v.status === 'Approved'); },
+    idleReason() {
+      const vs = this.batch.vouchers;
+      if (vs.length && vs.every(v => v.display_status === 'Paid')) return this.$t('All the vouchers of this batch are paid.');
+      return this.$t('No voucher of this batch is waiting for this step.');
+    },
     statTiles() {
       const b = this.batch;
       return [
@@ -171,14 +179,16 @@ export default {
 
   methods: {
     async bulkApprove() {
-      const ids = this.batch.vouchers.map(v => v.id);
+      const ids = this.toApprove.map(v => v.id);
+      if (!ids.length) return;
       if (!await this.$confirm(this.$t('Approve') + ' ' + ids.length + ' ' + this.$t('voucher(s) in this batch (eligible ones only)?'))) {
         return;
       }
       this.$inertia.post(route('payment-vouchers.bulk-approve'), { ids });
     },
     async bulkApproveAndAuthorise() {
-      const ids = this.batch.vouchers.map(v => v.id);
+      const ids = this.toAuthorise.map(v => v.id);
+      if (!ids.length) return;
       if (!await this.$confirm(this.$t('Approve and authorise') + ' ' + ids.length + ' ' + this.$t('voucher(s) in this batch (eligible ones only)?'))) {
         return;
       }

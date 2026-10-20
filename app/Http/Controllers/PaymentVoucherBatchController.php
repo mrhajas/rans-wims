@@ -36,7 +36,7 @@ class PaymentVoucherBatchController extends Controller
         $filters = $this->filtersFromRequest($request);
 
         $batches = PaymentVoucherBatch::query()
-            ->with(['vouchers:id,payment_voucher_batch_id,status,total_amount', 'warehouse:id,name'])
+            ->with(['vouchers:id,payment_voucher_batch_id,status,total_amount,paid_at', 'warehouse:id,name'])
             ->when($filters['type'], fn ($q, $type) => $q->where('type', $type))
             ->when($filters['warehouse_id'], fn ($q, $id) => $q->where('warehouse_id', $id))
             ->when($filters['date_from'], fn ($q, $d) => $q->whereDate('voucher_date', '>=', $d))
@@ -105,7 +105,7 @@ class PaymentVoucherBatchController extends Controller
         $filters = $this->filtersFromRequest($request);
 
         $batches = PaymentVoucherBatch::query()
-            ->with(['vouchers:id,payment_voucher_batch_id,status,total_amount', 'warehouse:id,name'])
+            ->with(['vouchers:id,payment_voucher_batch_id,status,total_amount,paid_at', 'warehouse:id,name'])
             ->when($filters['type'], fn ($q, $type) => $q->where('type', $type))
             ->when($filters['warehouse_id'], fn ($q, $id) => $q->where('warehouse_id', $id))
             ->when($filters['date_from'], fn ($q, $d) => $q->whereDate('voucher_date', '>=', $d))
@@ -450,6 +450,8 @@ class PaymentVoucherBatchController extends Controller
             'warehouse_name' => $batch->warehouse_id ? $batch->warehouse?->name : PaymentVoucher::COMPANY_NAME,
             'voucher_date' => optional($batch->voucher_date)->format('Y-m-d'),
             'voucher_count' => $vouchers->count(),
+            // every voucher of the batch is Authorised and has been paid
+            'all_paid' => $vouchers->count() > 0 && $vouchers->every(fn ($v) => $v->status === PaymentVoucher::STATUS_AUTHORISED && ! empty($v->paid_at)),
             // like the cards: a Rejected or Cancelled voucher is no money to pay, so it is not in the batch total
             'total_amount' => (float) $vouchers->reject(fn ($v) => in_array($v->status, [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED], true))->sum('total_amount'),
             'status' => $this->batchStatus($vouchers),
