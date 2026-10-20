@@ -8,19 +8,21 @@
 
       <div class="wa-totals">
         <div class="wa-tot"><small>{{ $t('Every month, active people') }}</small><b class="tr-tm">{{ currency }} {{ money(monthly_total) }}</b></div>
+        <div v-for="h in hq_totals" :key="h.hq" class="wa-tot"><small>{{ h.hq }} · {{ h.people }} {{ $t('people') }}</small><b class="tr-tm">{{ currency }} {{ money(h.monthly) }}</b></div>
         <div class="wa-tot"><small>{{ $t('Active') }}</small><b>{{ stats.active }}</b></div>
         <div class="wa-tot"><small>{{ $t('Not active') }}</small><b>{{ stats.inactive }}</b></div>
       </div>
       <sc-tabs :tabs="tabs" :model-value="f.view || ''" @update:model-value="setView" />
-      <section class="lg-card"><div class="tr-fbar"><div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Name, phone or notes')" autocomplete="off" /></div></div></section>
+      <section class="lg-card"><div class="tr-fbar"><div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Name, phone or notes')" autocomplete="off" /></div><div class="ac-f"><label>{{ $t('Headquarters') }}</label><acct-select v-model="f.hq" :options="hqs.map(h => ({ value: h, label: h }))" :placeholder="$t('Any')" clearable /></div></div></section>
 
       <div class="lg-table-wrap">
         <table class="lg-table lg-responsive tr-table tr-wide">
-          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Person / place') }}</th><th>{{ $t('Phone') }}</th><th class="tr-num">{{ $t('Monthly amount') }}</th><th>{{ $t('Status') }}</th><th class="tr-num">{{ $t('Paid so far') }}</th><th class="lg-sticky-end"></th></tr></thead>
+          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Person / place') }}</th><th>{{ $t('Headquarters') }}</th><th>{{ $t('Phone') }}</th><th class="tr-num">{{ $t('Monthly amount') }}</th><th>{{ $t('Status') }}</th><th class="tr-num">{{ $t('Paid so far') }}</th><th class="lg-sticky-end"></th></tr></thead>
           <tbody>
             <tr v-for="(r, n) in rows.data" :key="r.id">
               <td :data-label="$t('No')" class="tr-no">{{ (rows.from || 1) + n }}</td>
               <td :data-label="$t('Person / place')" class="tr-wrap"><div class="tr-cell"><b>{{ r.name }}</b><small v-if="r.notes">{{ r.notes }}</small></div></td>
+              <td :data-label="$t('Headquarters')"><span v-if="r.hq" class="wa-hqchip">{{ r.hq }}</span><span v-else class="lg-subtext">{{ $t('Every headquarters') }}</span></td>
               <td :data-label="$t('Phone')">{{ r.phone || '-' }}</td>
               <td :data-label="$t('Monthly amount')" class="tr-num"><span class="tr-m">{{ money(r.monthly_amount) }}</span></td>
               <td :data-label="$t('Status')"><span class="wa-sw" :class="r.is_active ? 'is-on' : 'is-off'">{{ r.is_active ? $t('Active') : $t('Not active') }}</span></td>
@@ -30,21 +32,24 @@
                 <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="del = r"><icons name="trash" class="w-4 h-4" /></button>
               </span></td>
             </tr>
-            <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ $t('There is no data to display.') }}</td></tr>
+            <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="8">{{ $t('There is no data to display.') }}</td></tr>
           </tbody>
         </table>
       </div>
       <pager :rows="rows" />
 
-      <travel-modal :show="editing" :title="form.id ? $t('Edit') : $t('Add a Person or Place')" icon="heart" tone="amber" :busy="busy" @close="editing = false">
-        <form id="wa-ch" @submit.prevent="save">
-          <div class="ac-f"><label>{{ $t('Person / place') }} *</label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example SHEIKH ALI ISSA or MASJID KOMBENI')" /><span class="ac-err">{{ err('name') }}</span></div>
-          <div class="tr-fbar" style="margin-top: 10px">
-            <div class="ac-f"><label>{{ $t('Monthly amount') }} ({{ currency }}) *</label><input v-model="form.monthly_amount" type="number" min="0" step="0.01" inputmode="decimal" required /><span class="ac-err">{{ err('monthly_amount') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Phone') }}</label><input v-model="form.phone" maxlength="60" /></div>
-          </div>
-          <div class="ac-f" style="margin-top: 10px"><label>{{ $t('Notes') }}</label><input v-model="form.notes" maxlength="1000" /></div>
-          <label class="wa-toggle" style="margin-top: 12px"><input v-model="form.is_active" type="checkbox" /><span><b>{{ $t('Active') }}</b><small>{{ $t('Only active people are pulled into a document.') }}</small></span></label>
+      <travel-modal :show="editing" :title="form.id ? $t('Edit') : $t('Add a Person or Place')" :subtitle="$t('Pulled into the Charity section of a weekly document')" icon="heart" tone="amber" max-width="xl" :busy="busy" @close="editing = false">
+        <form id="wa-ch" class="wa-ui wa-fields" @submit.prevent="save">
+          <div class="ac-f full"><label>{{ $t('Person / place') }} *</label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example SHEIKH ALI ISSA or MASJID KOMBENI')" /><span class="ac-err">{{ err('name') }}</span></div>
+
+          <div class="wa-group">{{ $t('What is paid') }}</div>
+          <div class="ac-f"><label>{{ $t('Monthly amount') }} ({{ currency }}) *</label><input v-model="form.monthly_amount" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00" /><span class="ac-err">{{ err('monthly_amount') }}</span></div>
+          <div class="ac-f"><label>{{ $t('Headquarters') }}</label><acct-select v-model="form.hq" :options="hqs.map(h => ({ value: h, label: h }))" :placeholder="$t('Every headquarters')" clearable /><p class="wa-hint">{{ $t('A document of a headquarters pulls the people of that headquarters and the ones for every headquarters.') }}</p><span class="ac-err">{{ err('hq') }}</span></div>
+
+          <div class="wa-group">{{ $t('Details') }}</div>
+          <div class="ac-f"><label>{{ $t('Phone') }}</label><input v-model="form.phone" maxlength="60" :placeholder="$t('Optional')" /></div>
+          <div class="ac-f"><label>{{ $t('Notes') }}</label><input v-model="form.notes" maxlength="1000" :placeholder="$t('Optional')" /></div>
+          <label class="wa-switch" :class="{ 'is-on': form.is_active }"><input v-model="form.is_active" type="checkbox" /><span class="wa-track"></span><span><b>{{ $t('Active') }}</b><small>{{ $t('Only active people are pulled into a document.') }}</small></span></label>
         </form>
         <template #footer>
           <button type="button" class="lg-btn t-slate" :disabled="busy" @click="editing = false">{{ $t('Cancel') }}</button>
@@ -69,24 +74,25 @@ import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import Pager from '@/Pages/Accounts/Pager.vue';
+import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 
-const blank = () => ({ id: null, name: '', phone: '', notes: '', monthly_amount: '', is_active: true });
+const blank = () => ({ id: null, name: '', hq: '', phone: '', notes: '', monthly_amount: '', is_active: true });
 
 export default {
-  components: { TravelModal, ScTabs, AdminLayout, PageHeader, Link, Pager },
-  props: { rows: Object, filters: Object, stats: Object, monthly_total: String, currency: String, can: Object },
+  components: { TravelModal, ScTabs, AdminLayout, PageHeader, Link, Pager, AcctSelect },
+  props: { rows: Object, filters: Object, stats: Object, monthly_total: String, hqs: { type: Array, default: () => [] }, hq_totals: { type: Array, default: () => [] }, currency: String, can: Object },
   data() { return { f: { ...this.filters }, timer: null, editing: false, del: null, busy: false, form: blank() }; },
-  watch: { 'f.search'() { this.queue(); } },
+  watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: { tabs() { const s = this.stats; return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.all }, { key: 'active', label: this.$t('Active'), icon: 'tick', tone: 'emerald', count: s.active }, { key: 'inactive', label: this.$t('Not active'), icon: 'eye-off', tone: 'slate', count: s.inactive }]; } },
   methods: {
     err(k) { return (this.$page.props.errors || {})[k]; },
     money(v) { return Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     queue() { clearTimeout(this.timer); this.timer = setTimeout(this.go, 380); },
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('weekly-administration.charity.index'), q, { preserveState: true, preserveScroll: true, replace: true }); },
-    setView(v) { this.f.view = this.f.view === v ? '' : v; this.go(); },
-    open(r) { this.form = r ? { id: r.id, name: r.name, phone: r.phone, notes: r.notes, monthly_amount: r.monthly_amount, is_active: r.is_active } : blank(); this.editing = true; },
+    setView(v) { this.f.view = this.f.view === v ? '' : v; },
+    open(r) { this.form = r ? { id: r.id, name: r.name, hq: r.hq || '', phone: r.phone, notes: r.notes, monthly_amount: r.monthly_amount, is_active: r.is_active } : blank(); this.editing = true; },
     save() {
-      this.busy = true; const f = this.form; const body = { name: f.name, phone: f.phone, notes: f.notes, monthly_amount: f.monthly_amount || 0, is_active: f.is_active ? 1 : 0 };
+      this.busy = true; const f = this.form; const body = { name: f.name, hq: f.hq || '', phone: f.phone, notes: f.notes, monthly_amount: f.monthly_amount || 0, is_active: f.is_active ? 1 : 0 };
       const o = { preserveScroll: true, onSuccess: () => { this.editing = false; }, onFinish: () => (this.busy = false) };
       if (f.id) this.$inertia.put(route('weekly-administration.charity.update', f.id), body, o); else this.$inertia.post(route('weekly-administration.charity.store'), body, o);
     },

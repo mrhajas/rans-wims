@@ -43,20 +43,22 @@
       </div>
       <pager :rows="rows" />
 
-      <travel-modal :show="editing" :title="form.id ? $t('Edit Item') : $t('Add an Item')" icon="collection" :busy="busy" @close="editing = false">
-        <form id="wa-item" @submit.prevent="save">
-          <div class="ac-f"><label>{{ $t('Item') }} *</label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example WEEKLY FUEL - MR NASSOR')" /><span class="ac-err">{{ err('name') }}</span></div>
-          <div class="tr-fbar" style="margin-top: 10px">
-            <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="form.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning... (chosen for you when empty)')" /><datalist id="wa-cats"><option v-for="c in categories" :key="c" :value="c"></option></datalist><span class="ac-err">{{ err('category') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="form.staff_id" :options="staffOptions" :placeholder="$t('Not linked to a staff member')" clearable /><span class="ac-err">{{ err('staff_id') }}</span></div>
-          </div>
-          <div class="tr-fbar" style="margin-top: 10px">
-            <div class="ac-f"><label>{{ $t('Usual beneficiary') }}</label><input v-model="form.default_beneficiary" list="wa-people" maxlength="190" /></div>
-            <div class="ac-f"><label>{{ $t('Usual amount') }} ({{ currency }})</label><input v-model="form.default_amount" type="number" min="0" step="0.01" inputmode="decimal" /><span class="ac-err">{{ err('default_amount') }}</span></div>
-          </div>
+      <travel-modal :show="editing" :title="form.id ? $t('Edit Item') : $t('Add an Item')" :subtitle="$t('A line of the weekly document that can be used again')" icon="collection" max-width="xl" :busy="busy" @close="editing = false">
+        <form id="wa-item" class="wa-ui wa-fields" @submit.prevent="save">
+          <div class="ac-f full"><label>{{ $t('Item') }} *</label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example WEEKLY FUEL - MR NASSOR')" /><span class="ac-err">{{ err('name') }}</span></div>
+
+          <div class="wa-group">{{ $t('Where it belongs') }}</div>
+          <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="form.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning...')" /><datalist id="wa-cats"><option v-for="c in categories" :key="c" :value="c"></option></datalist><p class="wa-hint">{{ $t('Chosen for you from the name when left empty.') }}</p><span class="ac-err">{{ err('category') }}</span></div>
+          <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="form.staff_id" :options="staffOptions" :placeholder="$t('Not linked to a staff member')" clearable /><p class="wa-hint">{{ $t('Lets reports follow what is paid for one person.') }}</p><span class="ac-err">{{ err('staff_id') }}</span></div>
+
+          <div class="wa-group">{{ $t('Usual values') }}</div>
+          <div class="ac-f"><label>{{ $t('Usual beneficiary') }}</label><input v-model="form.default_beneficiary" list="wa-people" maxlength="190" :placeholder="$t('Who the line is for')" @input="benTouched = true" /><p class="wa-hint">{{ form.staff_id ? $t('Follows the staff member you choose. You can type another name.') : $t('Optional.') }}</p></div>
+          <div class="ac-f"><label>{{ $t('Usual amount') }} ({{ currency }})</label><input v-model="form.default_amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ err('default_amount') }}</span></div>
           <datalist id="wa-people"><option v-for="u in users" :key="u.value" :value="u.label"></option></datalist>
-          <label class="wa-toggle" style="margin-top: 12px"><input v-model="form.in_template" type="checkbox" /><span><b>{{ $t('In the template') }}</b><small>{{ $t('Filled in for you when a document starts from the template.') }}</small></span></label>
-          <label class="wa-toggle" style="margin-top: 8px"><input v-model="form.is_active" type="checkbox" /><span><b>{{ $t('Offered when typing a line') }}</b><small>{{ $t('Turn off for an item that is no longer used. Old documents keep it.') }}</small></span></label>
+
+          <div class="wa-group">{{ $t('How it is used') }}</div>
+          <label class="wa-switch" :class="{ 'is-on': form.in_template }"><input v-model="form.in_template" type="checkbox" /><span class="wa-track"></span><span><b>{{ $t('In the template') }}</b><small>{{ $t('Filled in for you when a document starts from the template.') }}</small></span></label>
+          <label class="wa-switch" :class="{ 'is-on': form.is_active }"><input v-model="form.is_active" type="checkbox" /><span class="wa-track"></span><span><b>{{ $t('Offered when typing a line') }}</b><small>{{ $t('Turn off for an item that is no longer used. Old documents keep it.') }}</small></span></label>
         </form>
         <template #footer>
           <button type="button" class="lg-btn t-slate" :disabled="busy" @click="editing = false">{{ $t('Cancel') }}</button>
@@ -88,8 +90,17 @@ const blank = () => ({ id: null, name: '', category: '', staff_id: '', default_b
 export default {
   components: { TravelModal, ScTabs, AdminLayout, PageHeader, Link, Pager, AcctSelect },
   props: { rows: Object, filters: Object, stats: Object, users: Array, currency: String, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, can: Object },
-  data() { return { f: { ...this.filters }, timer: null, editing: false, del: null, busy: false, form: blank() }; },
-  watch: { f: { deep: true, handler() { this.queue(); } } },
+  data() { return { f: { ...this.filters }, timer: null, editing: false, del: null, busy: false, form: blank(), benTouched: false, lastStaffName: '' }; },
+  watch: {
+    f: { deep: true, handler() { this.queue(); } },
+    // choosing a staff member fills the usual beneficiary with their name; a name the person typed is left alone
+    'form.staff_id'(id) {
+      const s = this.staffOptions.find(x => x.value === id);
+      const cur = (this.form.default_beneficiary || '').trim();
+      if (s && (!cur || !this.benTouched || cur === this.lastStaffName)) { this.form.default_beneficiary = s.label; this.benTouched = false; }
+      this.lastStaffName = s ? s.label : '';
+    },
+  },
   computed: {
     tabs() { const s = this.stats; return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.all }, { key: 'template', label: this.$t('Template'), icon: 'list', tone: 'teal', count: s.template }, { key: 'other', label: this.$t('Other items'), icon: 'doc', tone: 'sky', count: s.other }, { key: 'inactive', label: this.$t('Not offered'), icon: 'eye-off', tone: 'slate', count: s.inactive }]; },
     tpl() { return this.rows.data.filter(r => r.in_template); },
@@ -100,7 +111,7 @@ export default {
     queue() { clearTimeout(this.timer); this.timer = setTimeout(this.go, 380); },
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('weekly-administration.items.index'), q, { preserveState: true, preserveScroll: true, replace: true }); },
     setView(v) { this.f.view = this.f.view === v ? '' : v; },
-    open(r) { this.form = r ? { id: r.id, name: r.name, category: r.category || '', staff_id: r.staff_id || '', default_beneficiary: r.default_beneficiary, default_amount: Number(r.default_amount) ? r.default_amount : '', in_template: r.in_template, is_active: r.is_active } : blank(); this.editing = true; },
+    open(r) { this.benTouched = !!(r && r.default_beneficiary && (!r.staff || r.default_beneficiary !== r.staff)); this.lastStaffName = r && r.staff ? r.staff : ''; this.form = r ? { id: r.id, name: r.name, category: r.category || '', staff_id: r.staff_id || '', default_beneficiary: r.default_beneficiary, default_amount: Number(r.default_amount) ? r.default_amount : '', in_template: r.in_template, is_active: r.is_active } : blank(); this.editing = true; },
     save() {
       this.busy = true; const f = this.form; const body = { name: f.name, category: f.category, staff_id: f.staff_id || '', default_beneficiary: f.default_beneficiary, default_amount: f.default_amount || 0, in_template: f.in_template ? 1 : 0, is_active: f.is_active ? 1 : 0 };
       const o = { preserveScroll: true, onSuccess: () => { this.editing = false; }, onFinish: () => (this.busy = false) };

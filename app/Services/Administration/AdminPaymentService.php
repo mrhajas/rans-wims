@@ -226,7 +226,7 @@ class AdminPaymentService
             $alloc = self::allocations($d, $mode, $given);
             $groups = self::groupByBeneficiary($d, $alloc);
             $batch = PaymentVoucherNumbers::createBatch(['type' => self::VOUCHER_TYPE, 'payee_type' => PaymentVoucher::PAYEE_TYPE_EXTERNAL, 'voucher_date' => now()->toDateString(),
-                'common_particulars' => 'Administration ' . $d->reference . ' - ' . $d->doc_date->format('d M Y'), 'reference' => $d->reference, 'common_notes' => $notes, 'created_by_user_id' => $by->id]);
+                'common_particulars' => 'Administration ' . $d->reference . ' (' . $d->hq . ') - ' . $d->doc_date->format('d M Y'), 'reference' => $d->reference, 'common_notes' => $notes, 'created_by_user_id' => $by->id]);
             $made = [];
             foreach ($groups as $g) {
                 $made[] = self::voucherPayment($d, $g['alloc'], self::payeeFromName($g['name']), $notes, $by, $batch->id, false, true);
@@ -281,7 +281,7 @@ class AdminPaymentService
         $voucher = PaymentVoucherNumbers::createVoucher([
             'payment_voucher_batch_id' => $batchId, 'type' => self::VOUCHER_TYPE, 'payee_type' => $staff ? PaymentVoucher::PAYEE_TYPE_STAFF : PaymentVoucher::PAYEE_TYPE_EXTERNAL, 'payee_contact_id' => null, 'staff_id' => $staff ? $payee['paid_to_staff_id'] : null,
             'payee_name' => $payee['paid_to_name'], 'voucher_date' => now()->toDateString(), 'total_amount' => $total, 'amount_in_words' => NumberToWords::convert($total), 'status' => $submitted ? PaymentVoucher::STATUS_SUBMITTED : PaymentVoucher::STATUS_DRAFT,
-            'prepared_by_user_id' => $by->id, 'internal_notes' => __('Administration :d, payment :r', ['d' => $d->reference, 'r' => $p->reference]) . ($distribute ? ' - ' . __('to be distributed to the beneficiaries') : ''),
+            'prepared_by_user_id' => $by->id, 'internal_notes' => __('Administration :d (:hq), payment :r', ['d' => $d->reference, 'hq' => $d->hq, 'r' => $p->reference]) . ($distribute ? ' - ' . __('to be distributed to the beneficiaries') : ''),
         ]);
         PaymentVoucherType::firstOrCreate(['text' => self::VOUCHER_TYPE]);
         $p->forceFill(['payment_voucher_id' => $voucher->id])->save();
@@ -289,7 +289,7 @@ class AdminPaymentService
         foreach ($alloc as $i => $a) {
             $r = $table->get($a['type'] . ':' . $a['id']);
             $voucher->items()->create(['line_number' => $i + 1, 'admin_document_payment_id' => $i === 0 ? $p->id : null,
-                'particulars' => PaymentVoucher::particularsText('Administration ' . $d->reference . ': ' . ($r['description'] ?? '') . ($distribute ? ' (' . __('to be distributed') . ')' : '') . ($notes && $i === 0 ? ' - ' . $notes : '')), 'amount' => self::money($a['cents'])]);
+                'particulars' => PaymentVoucher::particularsText('Administration ' . $d->reference . ' (' . $d->hq . '): ' . ($r['description'] ?? '') . ($distribute ? ' (' . __('to be distributed') . ')' : '') . ($notes && $i === 0 ? ' - ' . $notes : '')), 'amount' => self::money($a['cents'])]);
         }
         log_activity(__('Payment Voucher created for an Administration document.'), ['pv_number' => $voucher->pv_number, 'document' => $d->reference, 'amount' => $total, 'payment' => $p->reference], $voucher, 'Payment Voucher');
         if ($submitted) {

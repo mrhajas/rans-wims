@@ -54,6 +54,7 @@
             <div v-if="adhan.enabled" class="pl-player" :class="{ 'is-on': playing }">
               <div class="pl-player__who"><span class="pl-player__ico"><span class="pl-eq" :class="{ on: playing }"><i></i><i></i><i></i><i></i></span></span><span class="pl-player__txt"><small>{{ playing ? $t('Now playing') : $t('Adhan') }}</small><b>{{ reciter }}</b></span></div>
               <adhan-waves />
+              <p v-if="blocked && !playing" class="pl-blocked"><icons name="exclamation" class="w-4 h-4" />{{ $t('Your browser blocked the sound. Press Play adhan once to allow it.') }}</p>
             </div>
             <div class="pl-actions">
               <button v-if="adhan.enabled" type="button" class="pl-ghost" :class="{ 'is-playing': playing }" :disabled="playing" :aria-disabled="playing" @click="startAdhanAgain">
@@ -94,6 +95,7 @@ export default {
     lockCount() { return this.ph.e ? countdown(this.ph.e.lockT) : ''; },
     adhan() { return (prayerState.data && prayerState.data.adhan) || { enabled: false }; },
     playing() { return adhanState.playing; },
+    blocked() { return adhanState.blocked; },
     // the stored name may be written without spaces (MuftMenk): show it as words
     reciter() { const l = (this.adhan && this.adhan.label) || ''; return l ? l.replace(/([a-z])([A-Z])/g, '$1 $2') : this.$t('Adhan'); },
     topbarOn() { return !!(prayerState.data && prayerState.data.topbar); },
@@ -102,8 +104,8 @@ export default {
   },
   // The layout remounts on every page visit. Read what this person already acknowledged BEFORE the first paint,
   // otherwise the alert dialogue would flash for a moment on every page and then disappear.
-  mounted() { window.addEventListener('keydown', this.onKey); },
-  beforeUnmount() { window.removeEventListener('keydown', this.onKey); },
+  mounted() { window.addEventListener('keydown', this.onKey); window.addEventListener('pointerdown', this.retryBlocked, true); },
+  beforeUnmount() { window.removeEventListener('keydown', this.onKey); window.removeEventListener('pointerdown', this.retryBlocked, true); },
   created() {
     const p = this.ph;
     this.lastKey = this.keyOf(p);
@@ -141,6 +143,8 @@ export default {
     startAdhan() { if (this.adhan.enabled) playAdhan(); },
     // only offered when the adhan is not playing (it ended or was stopped): starts it again from the beginning
     startAdhanAgain() { if (!adhanState.playing) playAdhan(true); },
+    // the browser only lets sound start after the person has touched the page: the first touch anywhere while the notice is open starts the adhan
+    retryBlocked() { if (this.modal === 'prayer' && adhanState.blocked && !adhanState.playing && this.adhan.enabled) playAdhan(true); },
     onKey(e) { if (e.key !== 'Escape' || !this.show) return; if (this.modal === 'alert') { e.preventDefault(); this.ackAlert(); } else if (this.modal === 'prayer') { e.preventDefault(); this.closePrayer(); } },
     stopAdhan() { stopAdhan(); },
   },
@@ -261,4 +265,8 @@ html.dark .pl-bar { color: #fff7ed; background: linear-gradient(90deg, #7c2d12, 
   .pl-verse__ar { font-size: 1.1rem; line-height: 1.6; } .pl-verse blockquote { font-size: 0.78rem; } .pl-text { font-size: 0.82rem; margin: 0.2rem 0; }
   .pl-player .aw { height: 42px; } .pl-btn, .pl-ghost { padding: 0.5rem 1rem; }
 }
+
+.pl-blocked { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.5rem 0.75rem; border-radius: 12px; font-size: 0.78rem; font-weight: 700; line-height: 1.35; color: #9a3412; background: rgba(255, 237, 213, 0.95); box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.3); }
+.pl-blocked svg { flex: none; }
+html.dark .pl-blocked { color: #fed7aa; background: rgba(124, 45, 18, 0.5); }
 </style>

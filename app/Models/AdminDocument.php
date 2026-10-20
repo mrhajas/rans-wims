@@ -34,7 +34,7 @@ class AdminDocument extends Model
     protected $setUser = true;
 
     protected $fillable = [
-        'account_id', 'reference', 'hash', 'status', 'doc_date', 'department', 'currency', 'beneficiary_user_id', 'beneficiary_name', 'include_charity', 'items_total', 'charity_total', 'total_amount', 'paid_total', 'reserved_total', 'payment_status', 'last_paid_at', 'notes',
+        'account_id', 'reference', 'hq', 'hash', 'status', 'doc_date', 'department', 'currency', 'beneficiary_user_id', 'beneficiary_name', 'include_charity', 'items_total', 'charity_total', 'total_amount', 'paid_total', 'reserved_total', 'payment_status', 'last_paid_at', 'notes',
         'source', 'duplicated_from_id', 'user_id', 'approved_by_user_id', 'approved_at', 'approval_remarks', 'authorized_by_user_id', 'authorized_at', 'authorization_remarks',
         'rejected_by_user_id', 'rejected_at', 'rejection_reason', 'cancelled_by_user_id', 'cancelled_at', 'cancel_reason', 'sent_count', 'last_sent_at', 'deleted_by', 'extra_attributes',
     ];
@@ -109,6 +109,22 @@ class AdminDocument extends Model
     public static function charityWording(): string
     {
         return trim((string) (get_settings('admin_charity_wording') ?: 'CHARITY - :name FOR :month')) ?: 'CHARITY - :name FOR :month';
+    }
+
+    public const DEFAULT_HQS = 'Unguja HQ, Pemba HQ';
+
+    /** The headquarters a document can belong to (Administration settings); any HQ already used on a document or a charity person is still known. */
+    public static function hqs(): array
+    {
+        $set = collect(preg_split('/[,;\n]+/', (string) (get_settings('admin_hqs') ?: self::DEFAULT_HQS)) ?: [])->map(fn ($x) => mb_substr(trim($x), 0, 60))->filter()->unique()->values()->all();
+        $used = collect(DB::table('admin_documents')->whereNotNull('hq')->distinct()->pluck('hq'))->merge(DB::table('admin_charity_people')->whereNotNull('hq')->distinct()->pluck('hq'))->all();
+        foreach ($used as $u) {
+            if (! in_array(mb_strtolower($u), array_map('mb_strtolower', $set), true)) {
+                $set[] = $u;
+            }
+        }
+
+        return $set;
     }
 
     public static function nextReference(): string

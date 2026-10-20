@@ -1,7 +1,7 @@
 <template>
   <admin-layout :title="d.reference">
     <div class="lg-page ac sc-ui tr-ui wa-ui px-4 md:px-0">
-      <page-header icon="doc-text" :title="d.reference" :subtitle="d.department + ' - ' + $date(d.doc_date) + ' - ' + (d.beneficiary || '')">
+      <page-header icon="doc-text" :title="d.reference" :subtitle="d.department + ' - ' + d.hq + ' - ' + $date(d.doc_date) + ' - ' + (d.beneficiary || '')">
         <Link :href="route('weekly-administration.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" /><span>{{ $t('Back') }}</span></Link>
         <a v-if="can.print" :href="route('weekly-administration.print', d.id)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print') }}</span></a>
         <a v-if="can.print" :href="route('weekly-administration.pdf', d.id)" class="lg-btn lg-btn-soft"><icons name="download" class="w-4 h-4" /><span>{{ $t('Download') }}</span></a>
@@ -40,6 +40,7 @@
 
       <section class="lg-card">
         <div class="wa-meta">
+          <div><small>{{ $t('Headquarters') }}</small><b>{{ d.hq }}</b></div>
           <div><small>{{ $t('Department') }}</small><b>{{ d.department }}</b></div>
           <div><small>{{ $t('Date') }}</small><b>{{ $date(d.doc_date) }}</b></div>
           <div><small>{{ $t('Requested by') }}</small><b>{{ d.beneficiary || '-' }}</b></div>

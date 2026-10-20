@@ -27,6 +27,7 @@
       <section class="lg-card">
         <div class="tr-fbar">
           <div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Reference, requested by, description or beneficiary of a line')" autocomplete="off" /></div>
+          <div class="ac-f"><label>{{ $t('Headquarters') }}</label><acct-select v-model="f.hq" :options="hqs.map(h => ({ value: h, label: h }))" :placeholder="$t('Every headquarters')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Requested by') }}</label><acct-select v-model="f.beneficiary_id" :options="users" :placeholder="$t('Anyone')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Item') }}</label><acct-select v-model="f.item_id" :options="items" :placeholder="$t('Any')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Category') }}</label><acct-select v-model="f.category" :options="categories.map(c => ({ value: c, label: c }))" :placeholder="$t('Any')" clearable /></div>
@@ -45,7 +46,7 @@
           <tbody>
             <tr v-for="(r, n) in rows.data" :key="r.id" class="is-click" @click="$inertia.visit(route('weekly-administration.show', r.id))">
               <td :data-label="$t('No')" class="tr-no">{{ (rows.from || 1) + n }}</td>
-              <td :data-label="$t('Document')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="lg-chip" :class="chip(r.status)" style="text-transform: none">{{ r.status_label }}</span><span v-if="r.payment_status" class="lg-chip" :class="payChip(r.payment_status)" style="text-transform: none">{{ $t(r.payment_status) }}</span></div><small>{{ $date(r.doc_date) }}<template v-if="r.source === 'duplicate'"> · {{ $t('duplicate') }}</template></small></div></td>
+              <td :data-label="$t('Document')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="wa-hqchip"><icons name="building" class="w-3 h-3" />{{ r.hq }}</span><span class="lg-chip" :class="chip(r.status)" style="text-transform: none">{{ r.status_label }}</span><span v-if="r.payment_status" class="lg-chip" :class="payChip(r.payment_status)" style="text-transform: none">{{ $t(r.payment_status) }}</span></div><small>{{ $date(r.doc_date) }}<template v-if="r.source === 'duplicate'"> · {{ $t('duplicate') }}</template></small></div></td>
               <td :data-label="$t('Requested by')" class="tr-wrap"><div class="tr-cell"><b>{{ r.beneficiary || '-' }}</b><small>{{ $t('prepared by') }} {{ r.by || '-' }}</small></div></td>
               <td :data-label="$t('The three stages')" class="tr-wrap"><div class="tr-cell"><span><small>{{ $t('Approved') }}</small> {{ r.approved_by || '-' }}</span><span><small>{{ $t('Authorized') }}</small> {{ r.authorized_by || '-' }}</span></div></td>
               <td :data-label="$t('Lines')" class="tr-num">{{ r.lines_count }}</td>
@@ -55,6 +56,7 @@
                 <a v-if="can.print" :href="route('weekly-administration.print', r.id)" target="_blank" rel="noopener" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
                 <a v-if="can.print" :href="route('weekly-administration.pdf', r.id)" class="lg-icon-btn lg-tip" :data-tip="$t('Download')" :aria-label="$t('Download')"><icons name="download" class="w-4 h-4" /></a>
                 <button v-if="can.send && r.status !== 'Cancelled'" type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Send by email')" :aria-label="$t('Send by email')" @click="sendDoc = r"><icons name="send" class="w-4 h-4" /></button>
+                <qr-record-button :record="{ type: 'admin_document', id: r.id, label: r.reference, print: can.print }" compact />
                 <button v-if="can.duplicate && can.create" type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Duplicate')" :aria-label="$t('Duplicate')" @click="dupDoc = r"><icons name="duplicate" class="w-4 h-4" /></button>
               </span></td>
             </tr>
@@ -71,6 +73,7 @@
 
 <script>
 import SendDialog from './SendDialog.vue';
+import QrRecordButton from '@/Shared/Qr/QrRecordButton.vue';
 import DuplicateDialog from './DuplicateDialog.vue';
 import ScTabs from '../Subcontracts/ScTabs.vue';
 import { Link } from '@inertiajs/vue3';
@@ -81,8 +84,8 @@ import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import Pager from '@/Pages/Accounts/Pager.vue';
 
 export default {
-  components: { SendDialog, DuplicateDialog, ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect, Pager },
-  props: { rows: Object, filters: Object, statuses: Array, users: Array, items: Array, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, stats: Object, payStats: Object, totals: Object, can: Object },
+  components: { QrRecordButton, SendDialog, DuplicateDialog, ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect, Pager },
+  props: { rows: Object, filters: Object, statuses: Array, users: Array, hqs: { type: Array, default: () => [] }, items: Array, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, stats: Object, payStats: Object, totals: Object, can: Object },
   data() { return { f: { ...this.filters }, busy: false, timer: null, sendDoc: null, dupDoc: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {

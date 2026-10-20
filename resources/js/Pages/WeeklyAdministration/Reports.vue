@@ -8,6 +8,7 @@
       <section v-if="current" class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-teal"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ current.title }}</h2><p class="lg-card-sub">{{ current.about }}</p></div></header>
         <div class="tr-fbar">
+          <div v-if="uses('hq')" class="ac-f"><label>{{ $t('Headquarters') }}</label><acct-select v-model="f.hq" :options="hqs.map(h => ({ value: h, label: h }))" :placeholder="$t('All headquarters')" clearable /></div>
           <div v-if="uses('search')" class="ac-f"><label>{{ $t('Search') }}</label><input v-model="f.search" :placeholder="$t('Description, beneficiary, reference')" /></div>
           <div v-if="uses('item_id')" class="ac-f"><label>{{ $t('Item') }}</label><acct-select v-model="f.item_id" :options="items" :placeholder="$t('All items')" clearable /></div>
           <div v-if="uses('category')" class="ac-f"><label>{{ $t('Category') }}</label><acct-select v-model="f.category" :options="categories.map(c => ({ value: c, label: c }))" :placeholder="$t('All categories')" clearable /></div>
@@ -64,18 +65,18 @@ const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOStri
 
 export default {
   components: { ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect },
-  props: { catalog: Array, type: String, filters: Object, statuses: Array, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, payStatuses: Array, paymentStatuses: Array, items: Array, users: Array, can: Object },
+  props: { catalog: Array, type: String, filters: Object, statuses: Array, hqs: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, payStatuses: Array, paymentStatuses: Array, items: Array, users: Array, can: Object },
   data() { return { t: this.type, report: null, loading: false, f: { ...this.filters }, timer: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {
     current() { return this.catalog.find(c => c.key === this.t); },
-    money() { return ['by_item', 'item_monthly', 'lines', 'by_month', 'by_beneficiary', 'charity', 'charity_people', 'payments', 'by_category', 'category_monthly', 'by_staff'].includes(this.t); },
+    money() { return ['by_item', 'item_monthly', 'lines', 'by_month', 'by_beneficiary', 'charity', 'charity_people', 'payments', 'by_category', 'category_monthly', 'by_staff', 'by_hq'].includes(this.t); },
     hasFilters() { return Object.keys(this.f).some(k => this.f[k]); },
     sections() { return [{ value: 'items', label: this.$t('Lines only') }, { value: 'charity', label: this.$t('Charity only') }]; },
     charityOpts() { return [{ value: '1', label: this.$t('With charity') }, { value: '0', label: this.$t('Without charity') }]; },
     quick() { return [{ k: 'month', label: this.$t('This month') }, { k: 'last', label: this.$t('Last month') }, { k: 'quarter', label: this.$t('This quarter') }, { k: 'year', label: this.$t('This year') }]; },
     tabs() {
-      const look = { register: ['list', 'sky'], payments: ['cash', 'emerald'], by_category: ['collection', 'indigo'], category_monthly: ['calendar', 'violet'], by_staff: ['user', 'teal'], by_item: ['collection', 'teal'], item_monthly: ['calendar', 'emerald'], lines: ['table', 'indigo'], by_month: ['chart-bar', 'violet'], by_beneficiary: ['users', 'amber'], charity: ['heart', 'rose'], charity_people: ['group', 'rose'] };
+      const look = { register: ['list', 'sky'], by_hq: ['building', 'sky'], payments: ['cash', 'emerald'], by_category: ['collection', 'indigo'], category_monthly: ['calendar', 'violet'], by_staff: ['user', 'teal'], by_item: ['collection', 'teal'], item_monthly: ['calendar', 'emerald'], lines: ['table', 'indigo'], by_month: ['chart-bar', 'violet'], by_beneficiary: ['users', 'amber'], charity: ['heart', 'rose'], charity_people: ['group', 'rose'] };
       return this.catalog.map(c => ({ key: c.key, label: c.title, icon: (look[c.key] || ['doc', 'navy'])[0], tone: (look[c.key] || ['doc', 'navy'])[1] }));
     },
   },

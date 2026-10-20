@@ -5,21 +5,33 @@
         <Link :href="doc ? route('weekly-administration.show', doc.id) : route('weekly-administration.index')" class="lg-btn lg-btn-soft"><icons name="arrow-left" class="w-4 h-4" /><span>{{ $t('Back') }}</span></Link>
       </page-header>
 
+      <!-- step 1: the headquarters this document is for (a must) -->
+      <section class="lg-card wa-hq-card" :class="{ 'has-error': err('hq') }">
+        <header class="lg-card-head"><span class="lg-card-ico lg-ico-teal"><icons name="building" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ doc ? $t('Headquarters') : $t('First, choose the headquarters') }} <b class="wa-req">*</b></h2><p class="lg-card-sub">{{ $t('Every document is for one headquarters. It cannot be left blank.') }}</p></div></header>
+        <div class="wa-hqs">
+          <button v-for="h in hqs" :key="h" type="button" class="wa-hq" :class="{ on: form.hq === h }" :aria-pressed="form.hq === h" @click="form.hq = h">
+            <span class="wa-hq-ico"><icons name="building" class="w-5 h-5" /></span><span><b>{{ h }}</b><small>{{ form.hq === h ? $t('Chosen') : $t('Choose') }}</small></span><i class="wa-tick"><icons name="tick" class="w-3 h-3" /></i>
+          </button>
+        </div>
+        <span class="ac-err">{{ err('hq') }}</span>
+      </section>
+
       <!-- where does it start? -->
-      <section v-if="!started" class="lg-card">
+      <section v-if="!started" class="lg-card" :class="{ 'wa-locked': !form.hq }">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-teal"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('How do you want to start?') }}</h2><p class="lg-card-sub">{{ $t('Both can be changed line by line afterwards.') }}</p></div></header>
         <div class="wa-choice">
-          <button type="button" class="wa-pick" @click="start('template')"><span class="wa-pick-ico"><icons name="collection" class="w-7 h-7" /></span><b>{{ $t('Generate Weekly Administration from Template') }}</b><span>{{ template.length ? $t(':n standing lines are filled in for you, with their beneficiary and amount.', { n: template.length }) : $t('The template is empty. You can still start and add the lines yourself.') }}</span></button>
-          <button type="button" class="wa-pick is-zero" @click="start('blank')"><span class="wa-pick-ico"><icons name="plus" class="w-7 h-7" /></span><b>{{ $t('Start from Zero') }}</b><span>{{ $t('An empty document: add only the lines you need this week.') }}</span></button>
+          <button type="button" class="wa-pick" :disabled="!form.hq" @click="start('template')"><span class="wa-pick-ico"><icons name="collection" class="w-7 h-7" /></span><b>{{ $t('Generate Weekly Administration from Template') }}</b><span>{{ template.length ? $t(':n standing lines are filled in for you, with their beneficiary and amount.', { n: template.length }) : $t('The template is empty. You can still start and add the lines yourself.') }}</span></button>
+          <button type="button" class="wa-pick is-zero" :disabled="!form.hq" @click="start('blank')"><span class="wa-pick-ico"><icons name="plus" class="w-7 h-7" /></span><b>{{ $t('Start from Zero') }}</b><span>{{ $t('An empty document: add only the lines you need this week.') }}</span></button>
         </div>
       </section>
 
-      <form v-else @submit.prevent="save">
+      <form v-else @submit.prevent="save" :class="{ 'wa-locked': !form.hq }">
         <div v-if="doc && doc.status === 'Rejected'" class="lg-note lg-note-red" style="margin-bottom: 12px">{{ $t('Rejected') }}: {{ doc.rejection_reason }}. {{ $t('Correct it and save: it goes back for approval.') }}</div>
 
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-sky"><icons name="calendar" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('The Document') }}</h2></div></header>
           <div class="wa-meta">
+            <div><small>{{ $t('Headquarters') }}</small><b>{{ form.hq || '-' }}</b></div>
             <div><small>{{ $t('Department') }}</small><b>{{ department }}</b></div>
             <div><small>{{ $t('Reference') }}</small><b>{{ doc ? doc.reference : $t('given when it is saved') }}</b></div>
             <div><small>{{ $t('Currency') }}</small><b>{{ currency }}</b></div>
@@ -57,7 +69,7 @@
                 </template>
                 <template v-else>
                   <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="l.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning...')" /></div>
-                  <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="l.staff_id" :options="staffOptions" :placeholder="$t('Not linked')" clearable /></div>
+                  <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="l.staff_id" :options="staffOptions" :placeholder="$t('Not linked')" clearable @change="staffPicked(l, $event)" /></div>
                   <button type="button" class="wa-link" @click="l._edit = false">{{ $t('Done') }}</button>
                 </template>
               </div>
@@ -127,13 +139,13 @@ const withKey = x => ({ ...x, _k: ++key });
 
 export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect },
-  props: { doc: Object, mode: String, template: { type: Array, default: () => [] }, users: Array, me: Object, today: String, itemNames: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, charityPeople: Number, department: String, currency: String, can: Object },
+  props: { doc: Object, hqs: { type: Array, default: () => [] }, mode: String, template: { type: Array, default: () => [] }, users: Array, me: Object, today: String, itemNames: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, charityPeople: Number, department: String, currency: String, can: Object },
   data() {
     const d = this.doc;
     return {
       started: d ? 'edit' : this.mode || '', busy: false, pulling: false, pulled: '', pickItem: '',
       form: {
-        doc_date: d ? d.doc_date : this.today, beneficiary_user_id: d ? d.beneficiary_user_id : this.me.id, notes: d ? d.notes || '' : '', include_charity: d ? d.include_charity : false, source: this.mode || 'blank',
+        hq: d ? d.hq : (this.hqs.length === 1 ? this.hqs[0] : ''), doc_date: d ? d.doc_date : this.today, beneficiary_user_id: d ? d.beneficiary_user_id : this.me.id, notes: d ? d.notes || '' : '', include_charity: d ? d.include_charity : false, source: this.mode || 'blank',
         lines: d ? d.lines.map(withKey) : [], charity: d ? d.charity.map(withKey) : [],
       },
     };
@@ -157,6 +169,12 @@ export default {
       if (mode === 'blank' && !this.form.lines.length) this.addLine();
     },
     addLine(extra = {}) { this.form.lines.push(withKey({ admin_item_id: null, description: '', beneficiary: '', beneficiary_user_id: null, category: '', staff_id: null, amount: '', ...extra })); },
+    // choosing a staff member for a line fills the beneficiary with their name, unless somebody typed another name
+    staffPicked(l, id) {
+      const name = id ? this.staffName(id) : '';
+      const cur = (l.beneficiary || '').trim();
+      if (name && (!cur || cur === (l._autoWho || ''))) { l.beneficiary = name; l._autoWho = name; }
+    },
     staffName(id) { const s = this.staffOptions.find(x => x.value === id); return s ? s.label : ''; },
     addKnown(id) { if (!id) return; const i = this.itemNames.find(x => x.id === id); if (i) this.addLine({ admin_item_id: i.id, description: i.name, beneficiary: i.beneficiary || '', category: i.category || '', staff_id: i.staff_id || null, amount: Number(i.amount) ? i.amount : '' }); this.$nextTick(() => (this.pickItem = '')); },
     addTemplate() { const have = new Set(this.form.lines.map(l => (l.description || '').trim().toLowerCase())); this.template.forEach(t => { if (!have.has(t.description.trim().toLowerCase())) this.form.lines.push(withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, amount: t.amount })); }); },
@@ -167,7 +185,7 @@ export default {
     async pull(quiet) {
       this.pulling = true;
       try {
-        const r = await window.axios.get(route('weekly-administration.charity-pull'), { params: { date: this.form.doc_date } });
+        const r = await window.axios.get(route('weekly-administration.charity-pull'), { params: { date: this.form.doc_date, hq: this.form.hq } });
         const have = new Set(this.form.charity.map(c => c.admin_charity_person_id).filter(Boolean));
         let added = 0;
         r.data.rows.forEach(x => { if (!have.has(x.admin_charity_person_id)) { this.form.charity.push(withKey(x)); added++; } });
@@ -177,8 +195,8 @@ export default {
     },
     save() {
       this.busy = true;
-      const clean = a => a.map(({ _k, _edit, ...r }) => r);
-      const body = { doc_date: this.form.doc_date, beneficiary_user_id: this.form.beneficiary_user_id, notes: this.form.notes, include_charity: this.form.include_charity ? 1 : 0, source: this.form.source === 'template' ? 'template' : 'blank', lines: clean(this.form.lines), charity: this.form.include_charity ? clean(this.form.charity) : [] };
+      const clean = a => a.map(({ _k, _edit, _autoWho, ...r }) => r);
+      const body = { hq: this.form.hq, doc_date: this.form.doc_date, beneficiary_user_id: this.form.beneficiary_user_id, notes: this.form.notes, include_charity: this.form.include_charity ? 1 : 0, source: this.form.source === 'template' ? 'template' : 'blank', lines: clean(this.form.lines), charity: this.form.include_charity ? clean(this.form.charity) : [] };
       const o = { preserveScroll: true, onFinish: () => (this.busy = false) };
       if (this.doc) this.$inertia.put(route('weekly-administration.update', this.doc.id), body, o); else this.$inertia.post(route('weekly-administration.store'), body, o);
     },

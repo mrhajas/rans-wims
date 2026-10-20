@@ -22,11 +22,11 @@ class AdminNotifier
             $owners = array_values(array_unique(array_filter([(int) $d->user_id, (int) $d->beneficiary_user_id])));
             WorkflowMessenger::dispatch('administration', $event, $d, $actor, [
                 'account_id' => $d->account_id ?? $actor?->account_id ?? 1,
-                'title' => __('Administration :r', ['r' => $d->reference]), 'message' => $message ?: __(':a for :d', ['a' => $amount, 'd' => $d->doc_date->format('d M Y')]),
+                'title' => __('Administration :r - :hq', ['r' => $d->reference, 'hq' => $d->hq]), 'message' => $message ?: __(':hq: :a for :d', ['hq' => $d->hq, 'a' => $amount, 'd' => $d->doc_date->format('d M Y')]),
                 'url' => route('weekly-administration.show', $d->id), 'owner_user_id' => (int) $d->user_id, 'owner_users' => collect($owners)->map(fn ($id) => (object) ['id' => $id])->all(),
                 'dedupe' => 'admin-' . $d->id . '-' . $event . '-' . now()->format('YmdHi'),
-                'values' => ['reference' => $d->reference, 'date' => $d->doc_date->format('d M Y'), 'amount' => $amount, 'beneficiary' => (string) ($d->beneficiary_name ?: optional($d->beneficiary)->name), 'status' => $d->status, 'lines' => (string) $d->lines()->count(), 'message' => $message],
-                'details' => array_filter([__('Reference') => $d->reference, __('Date') => $d->doc_date->format('d M Y'), __('Requested by') => $d->beneficiary_name, __('Total') => $amount, __('Status') => $d->status]),
+                'values' => ['reference' => $d->reference, 'hq' => (string) $d->hq, 'date' => $d->doc_date->format('d M Y'), 'amount' => $amount, 'beneficiary' => (string) ($d->beneficiary_name ?: optional($d->beneficiary)->name), 'status' => $d->status, 'lines' => (string) $d->lines()->count(), 'message' => $message],
+                'details' => array_filter([__('Reference') => $d->reference, __('Headquarters') => $d->hq, __('Date') => $d->doc_date->format('d M Y'), __('Requested by') => $d->beneficiary_name, __('Total') => $amount, __('Status') => $d->status]),
             ]);
         } catch (\Throwable $e) {
             \Log::warning('Administration alert failed', ['document' => $d->id, 'event' => $event, 'error' => $e->getMessage()]);
@@ -44,13 +44,13 @@ class AdminNotifier
             $owners = array_values(array_unique(array_filter([(int) $d->user_id, (int) $d->beneficiary_user_id, (int) $p->paid_to_user_id])));
             WorkflowMessenger::dispatch('administration', $event, $d, $actor, [
                 'account_id' => $d->account_id ?? $actor?->account_id ?? 1,
-                'title' => __('Administration :r payment', ['r' => $d->reference]), 'message' => $message ?: __(':a to :n', ['a' => $amount, 'n' => $p->paid_to_name]),
+                'title' => __('Administration :r payment - :hq', ['r' => $d->reference, 'hq' => $d->hq]), 'message' => $message ?: __(':a to :n', ['a' => $amount, 'n' => $p->paid_to_name]),
                 'url' => route('weekly-administration.show', $d->id), 'owner_user_id' => (int) $d->user_id, 'owner_users' => collect($owners)->map(fn ($id) => (object) ['id' => $id])->all(),
                 'dedupe' => 'admin-pay-' . $p->id . '-' . $event . '-' . ($p->updated_at ? $p->updated_at->format('YmdHis') : ''),
-                'values' => ['reference' => $d->reference, 'date' => $d->doc_date->format('d M Y'), 'amount' => $d->currency . ' ' . self::fmt($d->total_amount), 'beneficiary' => (string) $d->beneficiary_name, 'status' => $d->status, 'lines' => (string) $d->lines()->count(),
+                'values' => ['reference' => $d->reference, 'hq' => (string) $d->hq, 'date' => $d->doc_date->format('d M Y'), 'amount' => $d->currency . ' ' . self::fmt($d->total_amount), 'beneficiary' => (string) $d->beneficiary_name, 'status' => $d->status, 'lines' => (string) $d->lines()->count(),
                     'paid_amount' => $amount, 'paid_total' => $d->currency . ' ' . self::fmt($d->paid_total), 'balance' => $balance, 'paid_to' => (string) $p->paid_to_name, 'payment' => $p->reference, 'voucher' => (string) optional($p->voucher)->pv_number,
                     'payment_status' => $d->payment_status, 'method' => (string) $p->method, 'message' => $message],
-                'details' => array_filter([__('Reference') => $d->reference, __('Payment') => $p->reference, __('Paid to') => $p->paid_to_name, __('Amount') => $amount, __('Paid so far') => $d->currency . ' ' . self::fmt($d->paid_total), __('Balance') => $balance,
+                'details' => array_filter([__('Reference') => $d->reference, __('Headquarters') => $d->hq, __('Payment') => $p->reference, __('Paid to') => $p->paid_to_name, __('Amount') => $amount, __('Paid so far') => $d->currency . ' ' . self::fmt($d->paid_total), __('Balance') => $balance,
                     __('Payment Voucher') => optional($p->voucher)->pv_number, __('Method') => $p->method]),
             ]);
         } catch (\Throwable $e) {

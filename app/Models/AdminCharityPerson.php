@@ -11,7 +11,7 @@ class AdminCharityPerson extends Model
 
     protected $setUser = true;
 
-    protected $fillable = ['account_id', 'name', 'phone', 'notes', 'monthly_amount', 'is_active', 'sort_order', 'user_id', 'deleted_by', 'extra_attributes'];
+    protected $fillable = ['account_id', 'name', 'hq', 'phone', 'notes', 'monthly_amount', 'is_active', 'sort_order', 'user_id', 'deleted_by', 'extra_attributes'];
 
     public $casts = ['monthly_amount' => 'decimal:2', 'is_active' => 'boolean', 'extra_attributes' => 'array'];
 }

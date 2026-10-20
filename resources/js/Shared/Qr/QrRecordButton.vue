@@ -1,6 +1,7 @@
 <template>
   <div class="qrb">
-    <button type="button" class="qrb-btn" :aria-label="$t('Show the QR code of this record')" @click="openIt">
+    <button v-if="compact" type="button" class="lg-icon-btn lg-tip" :data-tip="$t('QR code')" :aria-label="$t('Show the QR code of this record')" @click="openIt"><icons name="qr-code" class="w-4 h-4" /></button>
+    <button v-else type="button" class="qrb-btn" :aria-label="$t('Show the QR code of this record')" @click="openIt">
       <span class="qrb-ico"><icons name="qr-code" class="w-4 h-4" /></span>{{ $t('QR code') }}
     </button>
 
@@ -51,12 +52,14 @@ import { confirmDialog } from '@/Core/dialogs';
 // The QR button on a record's page. The page data only says WHICH record this is; the code itself is asked for when the button is opened.
 export default {
   components: { Modal },
+  // `record` lets a list row open the code of its own record ({ type, id, label, print }); `compact` shows only the icon
+  props: { record: { type: Object, default: null }, compact: Boolean },
   data() {
     return { open: false, loading: false, error: null, data: null, copied: false, mm: 40, copies: 1 };
   },
   computed: {
     rec() {
-      return this.$page.props.qrRecord || {};
+      return this.record || this.$page.props.qrRecord || {};
     },
   },
   watch: {
@@ -110,6 +113,7 @@ export default {
 
 <style scoped>
 .qrb { display: flex; justify-content: flex-end; margin: 0 0 0.7rem; }
+.qrb:has(> .lg-icon-btn) { display: inline-flex; margin: 0; }
 .qrb-btn { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px 5px 6px; border-radius: 9999px; font-size: 0.8rem; font-weight: 800; white-space: nowrap; color: var(--lg-ink); background: var(--lg-card); box-shadow: 0 10px 18px -12px rgba(15, 37, 64, 0.6), 0 0 0 1px var(--lg-line); transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .qrb-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 22px -12px rgba(15, 37, 64, 0.65), 0 0 0 1px #818cf8; }
 .qrb-ico { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9999px; color: #fff; background: linear-gradient(145deg, #6366f1, #0ea5e9); }

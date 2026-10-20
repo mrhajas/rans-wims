@@ -118,3 +118,39 @@
 .wa-ui .wa-lmeta .ac-f input { height: 34px; }
 .wa-ui .wa-link { border: 0; background: transparent; cursor: pointer; padding: 2px 6px; font-size: 0.72rem; font-weight: 800; color: var(--wa); text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 760px) { .wa-ui .wa-lmeta { padding-left: 0; } }
+
+/* ---- dialogs and forms: roomy fields on a two column grid, grouped, with switch cards ---- */
+.wa-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 22px; }
+.wa-fields > .full { grid-column: 1 / -1; }
+.wa-fields .ac-f { display: grid; gap: 8px; align-content: start; margin: 0; min-width: 0; }
+.wa-fields .ac-f > label { margin: 0; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-mute, #64748b); }
+.wa-fields .ac-f > input, .wa-fields .ac-f > textarea { width: 100%; box-sizing: border-box; height: 52px; padding: 0 18px; border-radius: 14px; font-size: 0.98rem; }
+.wa-fields .ac-sel input { height: 52px; box-sizing: border-box; font-size: 0.98rem; }
+.wa-ui .wa-hint { margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--sc-mute, #64748b); }
+.wa-ui .wa-group { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin: 8px 0 -2px; padding-top: 2px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--wa2); }
+.wa-ui .wa-group::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(15, 118, 110, 0.35), transparent); }
+.wa-ui .wa-group:first-child { margin-top: 0; }
+.wa-ui .wa-switch { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 18px; cursor: pointer; background: var(--sc-card, #fff); box-shadow: inset 0 0 0 1px var(--sc-line, #e3e9f2); transition: box-shadow 0.15s ease, background 0.15s ease; }
+.wa-ui .wa-switch:hover { box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.5); }
+.wa-ui .wa-switch.is-on { background: linear-gradient(135deg, rgba(15, 118, 110, 0.09), transparent); box-shadow: inset 0 0 0 1.5px rgba(15, 118, 110, 0.55); }
+.wa-ui .wa-switch > span:not(.wa-track) { display: grid; gap: 3px; min-width: 0; flex: 1; } .wa-ui .wa-switch b { font-size: 1rem; line-height: 1.25; } .wa-ui .wa-switch small { font-size: 0.82rem; line-height: 1.4; color: var(--sc-mute, #64748b); }
+.wa-ui .wa-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.wa-ui .wa-track { position: relative; flex: none; width: 46px; height: 26px; border-radius: 999px; background: #cbd5e1; transition: background 0.2s ease; }
+.wa-ui .wa-track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 3px 6px -2px rgba(15, 37, 64, 0.5); transition: transform 0.2s ease; }
+.wa-ui .wa-switch input:checked + .wa-track { background: linear-gradient(135deg, #14b8a6, var(--wa2)); } .wa-ui .wa-switch input:checked + .wa-track::after { transform: translateX(20px); }
+.wa-ui .wa-switch input:focus-visible + .wa-track { outline: 2px solid var(--wa); outline-offset: 2px; }
+@media (max-width: 560px) { .wa-fields { grid-template-columns: 1fr; } }
+
+/* ---- the headquarters: the first thing chosen on a document ---- */
+.wa-ui .wa-hqs { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.wa-ui .wa-hq { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 0; border-radius: 18px; cursor: pointer; text-align: left; background: var(--sc-card, #fff); color: var(--sc-ink, #0f2540); box-shadow: inset 0 0 0 1.5px var(--sc-line, #cfd8e6), 0 10px 18px -16px rgba(31, 70, 130, 0.6); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.wa-ui .wa-hq:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--wa), 0 14px 22px -14px rgba(15, 118, 110, 0.6); }
+.wa-ui .wa-hq.on { background: linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(15, 118, 110, 0.05)); box-shadow: inset 0 0 0 2px var(--wa), 0 16px 24px -14px rgba(15, 118, 110, 0.75); }
+.wa-ui .wa-hq-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 14px; color: var(--wa); background: var(--wa-soft); box-shadow: inset 0 0 0 1.5px var(--wa); }
+.wa-ui .wa-hq.on .wa-hq-ico { color: #fff; background: linear-gradient(135deg, #14b8a6, var(--wa2)); box-shadow: none; }
+.wa-ui .wa-hq b { display: block; font-size: 1rem; } .wa-ui .wa-hq small { color: var(--sc-mute, #64748b); font-size: 0.74rem; }
+.wa-ui .wa-hq .wa-tick { position: absolute; top: 10px; right: 12px; display: none; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #fff; background: var(--wa); } .wa-ui .wa-hq.on .wa-tick { display: grid; }
+.wa-ui .wa-hqchip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 800; line-height: 1.2; white-space: nowrap; color: var(--wa2); background: var(--wa-soft); box-shadow: inset 0 0 0 1.5px var(--wa); }
+.wa-ui .wa-hqlist { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.wa-ui .wa-hqlist .wa-hqchip { padding: 10px 18px; font-size: 0.92rem; }
+.wa-ui .wa-locked { opacity: 0.45; pointer-events: none; filter: grayscale(0.6); }

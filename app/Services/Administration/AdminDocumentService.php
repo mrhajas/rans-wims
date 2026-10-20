@@ -31,9 +31,10 @@ class AdminDocumentService
     }
 
     /** The Charity section as it would be pulled today: every active person of the Charity list with their monthly amount. */
-    public static function charityRows(Carbon $month): array
+    public static function charityRows(Carbon $month, ?string $hq = null): array
     {
-        return AdminCharityPerson::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()
+        // a document of one HQ pulls the people of that HQ and the people who belong to every HQ (no HQ set)
+        return AdminCharityPerson::query()->where('is_active', true)->when($hq, fn ($q) => $q->where(fn ($w) => $w->where('hq', $hq)->orWhereNull('hq')->orWhere('hq', '')))->orderBy('sort_order')->orderBy('name')->get()
             ->map(fn ($p) => ['admin_charity_person_id' => $p->id, 'name' => $p->name, 'description' => self::charityDescription($p->name, $month), 'amount' => (string) $p->monthly_amount, 'monthly_amount' => (string) $p->monthly_amount])->values()->all();
     }
 
@@ -84,7 +85,7 @@ class AdminDocumentService
                 $date = now()->startOfDay();
             }
             $d = AdminDocument::create([
-                'reference' => AdminDocument::nextReference(), 'status' => AdminDocument::REQUESTED, 'doc_date' => $date->toDateString(), 'department' => $src->department, 'currency' => $src->currency,
+                'reference' => AdminDocument::nextReference(), 'hq' => $src->hq, 'status' => AdminDocument::REQUESTED, 'doc_date' => $date->toDateString(), 'department' => $src->department, 'currency' => $src->currency,
                 'beneficiary_user_id' => $by->id, 'beneficiary_name' => $by->name, 'include_charity' => $src->include_charity, 'notes' => $src->notes, 'source' => 'duplicate', 'duplicated_from_id' => $src->id, 'user_id' => $by->id,
             ]);
             foreach ($src->lines()->get() as $l) {

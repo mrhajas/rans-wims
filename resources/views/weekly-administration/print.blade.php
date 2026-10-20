@@ -24,7 +24,7 @@
     @php($statusClass = $d->status === 'Authorized' ? 'active' : (in_array($d->status, ['Requested', 'Approved']) ? 'warn' : 'inactive'))
     @php($money = fn ($v) => number_format((float) $v, 2, '.', ','))
     <div class="title-card">
-        <div class="doc-title">{{ strtoupper($d->department ?: 'ADMINISTRATION') }}</div>
+        <div class="doc-title">{{ strtoupper($d->department ?: 'ADMINISTRATION') }} - {{ strtoupper($d->hq) }}</div>
         <div class="doc-ref">Reference<br><strong>{{ $d->reference }}</strong></div>
     </div>
 
@@ -36,7 +36,11 @@
             </tr>
             <tr>
                 <td class="label">Requested By</td><td class="value"><strong>{{ strtoupper($d->beneficiary_name ?: optional($d->user)->name) }}</strong></td>
+                <td class="label">Headquarters</td><td class="value"><strong>{{ $d->hq }}</strong></td>
+            </tr>
+            <tr>
                 <td class="label">Status</td><td class="value"><span class="status-pill status-{{ $statusClass }}">{{ $d->status }}</span></td>
+                <td class="label"></td><td class="value"></td>
             </tr>
         </table>
     </div>
@@ -100,7 +104,7 @@
     <table class="footer-row">
         <tr>
             <td class="qr-cell"><img src="{{ $qr }}" style="width:64px;height:64px;" alt="QR" /><div class="qr-caption">Scan to verify</div></td>
-            <td class="foot-cell">{{ $companyName }} / Administration {{ $d->reference }}, Printed by {{ $printedBy }}, Generated {{ now()->format('Y-m-d H:i') }}</td>
+            <td class="foot-cell">{{ $companyName }} / Administration {{ $d->reference }} ({{ $d->hq }}), Printed by {{ $printedBy }}, Generated {{ now()->format('Y-m-d H:i') }}</td>
             <td class="qr-cell"></td>
         </tr>
     </table>
