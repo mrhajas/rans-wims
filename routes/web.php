@@ -1790,6 +1790,10 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         ->name('super-adjustments.item-stock');
     Route::get('super-adjustments/warehouse-stock', [Controllers\SuperAdjustmentController::class, 'warehouseStock'])
         ->name('super-adjustments.warehouse-stock');
+    Route::get('super-adjustments/warehouse-categories', [Controllers\SuperAdjustmentController::class, 'warehouseCategories'])
+        ->name('super-adjustments.warehouse-categories');
+    Route::get('super-adjustments/category-stock', [Controllers\SuperAdjustmentController::class, 'categoryStock'])
+        ->name('super-adjustments.category-stock');
     Route::post('super-adjustments/uncounted-items', [Controllers\SuperAdjustmentController::class, 'uncountedItems'])
         ->name('super-adjustments.uncounted-items');
     Route::resource('super-adjustments', Controllers\SuperAdjustmentController::class)

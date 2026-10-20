@@ -93,10 +93,16 @@
                   <icons name="search" class="w-4 h-4" />
                   <span>{{ $t('Search items to count and add them to the list') }}</span>
                 </div>
-                <button type="button" class="lg-btn lg-btn-soft sa-import" :disabled="importing" @click="importFromWarehouse">
-                  <icons :name="importing ? 'cog' : 'download'" class="w-4 h-4" :class="{ 'animate-spin': importing }" />
-                  <span>{{ importing ? $t('Importing…') : $t('Import from Warehouse') }}</span>
-                </button>
+                <div class="sa-import-btns">
+                  <button type="button" class="lg-btn lg-btn-soft sa-import" :disabled="importing" @click="importFromWarehouse">
+                    <icons :name="importing === 'all' ? 'cog' : 'download'" class="w-4 h-4" :class="{ 'animate-spin': importing === 'all' }" />
+                    <span>{{ importing === 'all' ? $t('Importing…') : $t('Import from Warehouse') }}</span>
+                  </button>
+                  <button type="button" class="lg-btn lg-btn-soft sa-import" :disabled="importing" @click="openCategoryImport">
+                    <icons :name="importing === 'category' ? 'cog' : 'collection'" class="w-4 h-4" :class="{ 'animate-spin': importing === 'category' }" />
+                    <span>{{ importing === 'category' ? $t('Importing…') : $t('Import by Category') }}</span>
+                  </button>
+                </div>
               </div>
               <div v-if="importNote" class="sa-import-note" :class="{ 'is-err': importErr }" role="status"><icons :name="importErr ? 'exclamation' : 'tick'" class="w-4 h-4" /><span>{{ importNote }}</span></div>
               <div class="lg-scan">
@@ -114,7 +120,13 @@
 
             <stat-tiles v-if="form.items.length" :items="statItems" class="sa-tiles" />
 
-            <div class="lg-table-wrap">
+            <div class="lg-table-wrap sa-wrap" :class="{ 'is-importing': importing }" :aria-busy="!!importing">
+              <!-- shown while the stock is being imported: a moving bar and a few shimmering rows -->
+              <div v-if="importing" class="sa-loading" role="status">
+                <div class="sa-loading__bar"><span></span></div>
+                <div class="sa-loading__msg"><icons name="cog" class="w-5 h-5 animate-spin" /><b>{{ importing === 'all' ? $t('Importing the whole stock of this Project / Warehouse…') : $t('Importing the items of :c…', { c: importLabel }) }}</b></div>
+                <div v-for="n in 4" :key="n" class="sa-loading__row"><i></i><i></i><i></i></div>
+              </div>
               <table class="lg-table lg-responsive">
                 <thead>
                   <tr>
@@ -255,6 +267,29 @@
         </div>
       </form>
 
+      <!-- Import by Category: pick the category (its sub-categories come with it) -->
+      <div v-if="catOpen" class="sa-modal-overlay" @click.self="catOpen = false">
+        <div class="sa-modal sa-cat" role="dialog" aria-modal="true">
+          <header class="sa-cat__head"><icons name="collection" class="w-5 h-5" /><div><h3>{{ $t('Import by Category') }}</h3><p>{{ $t('Every item of the chosen category (and its sub-categories) that has a stock record in this Project / Warehouse is added to the list, with positive, negative and zero stock alike.') }}</p></div></header>
+          <div class="sa-cat__body">
+            <input v-model="catSearch" type="search" class="sa-cat__search" :placeholder="$t('Search category…')" :disabled="catLoading" />
+            <div v-if="catLoading" class="sa-cat__loading"><icons name="cog" class="w-5 h-5 animate-spin" /> {{ $t('Loading the categories…') }}</div>
+            <p v-else-if="catError" class="sa-cat__err">{{ catError }}</p>
+            <p v-else-if="!catList.length" class="sa-cat__empty">{{ $t('No item of this Project / Warehouse has a category.') }}</p>
+            <ul v-else class="sa-cat__list">
+              <li v-for="c in catShown" :key="c.id" :class="{ 'is-on': catPicked === c.id }">
+                <label><input v-model="catPicked" type="radio" :value="c.id" /><span class="sa-cat__name"><b>{{ c.label }}</b><small v-if="c.has_sub">{{ $t('includes its sub-categories') }}</small></span><span class="sa-cat__n">{{ c.items }} {{ $t('item(s)') }}</span></label>
+              </li>
+              <li v-if="!catShown.length" class="sa-cat__empty">{{ $t('No category matches.') }}</li>
+            </ul>
+          </div>
+          <footer class="sa-cat__foot">
+            <button type="button" class="lg-btn lg-btn-soft" @click="catOpen = false">{{ $t('Cancel') }}</button>
+            <button type="button" class="lg-btn lg-btn-primary" :disabled="!catPicked || catLoading" @click="importCategory"><icons name="download" class="w-4 h-4" />{{ $t('Import') }}</button>
+          </footer>
+        </div>
+      </div>
+
       <!-- Uncounted-items check: items still stocked in this warehouse that
            weren't added to the physical count. Surfaced only when the check
            (fired right before submit) finds any — see checkUncountedThenSubmit(). -->
@@ -370,7 +405,14 @@ export default {
         })),
         attachments: [],
       }),
-      importing: false,
+      importing: false, // '' | 'all' | 'category': what is being imported now
+      importLabel: '',
+      catOpen: false,
+      catLoading: false,
+      catList: [],
+      catSearch: '',
+      catPicked: null,
+      catError: '',
       importNote: '',
       importErr: false,
       checkingUncounted: false,
@@ -392,6 +434,7 @@ export default {
   },
 
   computed: {
+    catShown() { const q = this.catSearch.trim().toLowerCase(); return q ? this.catList.filter(c => c.label.toLowerCase().includes(q)) : this.catList; },
     // the open Adjustment Session of the chosen Project / Warehouse, if there is one
     openSession() { return this.form.warehouse_id ? (this.openSessions || {})[this.form.warehouse_id] || null : null; },
     allCleared() {
@@ -485,11 +528,11 @@ export default {
         if (!ok) return;
       }
       const warehouseId = this.form.warehouse_id;
-      this.importing = true;
+      this.importing = 'all';
       this.importNote = '';
       this.importErr = false;
       try {
-        const { data } = await axios.get(this.route('super-adjustments.warehouse-stock'), { params: { warehouse_id: warehouseId } });
+        const [{ data }] = await Promise.all([axios.get(this.route('super-adjustments.warehouse-stock'), { params: { warehouse_id: warehouseId } }), new Promise(r => setTimeout(r, 600))]); // the animation is seen even when the answer is quick
         if (warehouseId !== this.form.warehouse_id) return; // the warehouse was changed while loading: ignore this answer
         const seen = new Set();
         const rows = [];
@@ -510,6 +553,53 @@ export default {
       } catch (e) {
         this.importErr = true;
         this.importNote = (e.response && e.response.data && e.response.data.message) || this.$t('Could not import the stock. Please try again.');
+      } finally {
+        this.importing = false;
+      }
+    },
+    // Import by Category: choose a category (and its sub-categories) of the chosen Project / Warehouse; every item of it that has a stock record there is ADDED to the list
+    // (positive, negative and zero stock alike), the ones already in the list are skipped, so categories can be imported one after another.
+    async openCategoryImport() {
+      if (!this.form.warehouse_id || this.importing) return;
+      this.catOpen = true; this.catLoading = true; this.catError = ''; this.catList = []; this.catSearch = ''; this.catPicked = null;
+      const warehouseId = this.form.warehouse_id;
+      try {
+        const { data } = await axios.get(this.route('super-adjustments.warehouse-categories'), { params: { warehouse_id: warehouseId } });
+        if (warehouseId === this.form.warehouse_id) this.catList = data;
+      } catch (e) {
+        this.catError = (e.response && e.response.data && e.response.data.message) || this.$t('Could not load the categories. Please try again.');
+      } finally {
+        this.catLoading = false;
+      }
+    },
+    async importCategory() {
+      if (!this.catPicked || !this.form.warehouse_id || this.importing) return;
+      const cat = this.catList.find(c => c.id === this.catPicked);
+      const warehouseId = this.form.warehouse_id;
+      this.catOpen = false;
+      this.importing = 'category'; this.importLabel = cat ? cat.label : ''; this.importNote = ''; this.importErr = false;
+      try {
+        const [{ data }] = await Promise.all([axios.get(this.route('super-adjustments.category-stock'), { params: { warehouse_id: warehouseId, category_id: this.catPicked } }), new Promise(r => setTimeout(r, 600))]);
+        if (warehouseId !== this.form.warehouse_id) return;
+        const have = new Set(this.form.items.map(i => i.item_id));
+        let added = 0, already = 0, zero = 0, negative = 0;
+        data.forEach(u => {
+          if (have.has(u.item_id)) { already++; return; }
+          have.add(u.item_id); added++;
+          if (u.system_quantity === 0) zero++;
+          if (u.system_quantity < 0) negative++;
+          this.form.items.push({ item_id: u.item_id, name: u.name, code: u.code, unit_id: u.unit_id, unit_name: u.unit_name, system_quantity: u.system_quantity, physical_quantity: Math.max(0, u.system_quantity), loadingStock: false, auto_cleared: false });
+        });
+        const parts = [];
+        if (zero) parts.push(this.$t(':n had zero stock', { n: zero }));
+        if (negative) parts.push(this.$t(':n had negative stock (counted from 0)', { n: negative }));
+        if (already) parts.push(this.$t(':n were already in the list', { n: already }));
+        this.importNote = data.length
+          ? this.$t(':n item(s) added from :c.', { n: added, c: this.importLabel }) + (parts.length ? ' (' + parts.join(', ') + ')' : '') + ' ' + this.$t('Change a count, or tick Clear From Stock for items to remove.')
+          : this.$t('There are no items of :c in this Project / Warehouse.', { c: this.importLabel });
+      } catch (e) {
+        this.importErr = true;
+        this.importNote = (e.response && e.response.data && e.response.data.message) || this.$t('Could not import the category. Please try again.');
       } finally {
         this.importing = false;
       }
@@ -691,6 +781,33 @@ export default {
 }
 .sa-scan-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 0.6rem; }
 .sa-scan-top .sa-scan-hint { margin-bottom: 0; }
+/* import buttons and the animation while the stock is being imported */
+.sa-import-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 560px) { .sa-import-btns { width: 100%; } .sa-import-btns .sa-import { flex: 1 1 100%; justify-content: center; } }
+.sa-wrap { position: relative; }
+.sa-wrap.is-importing > table { opacity: 0.25; filter: blur(1px); transition: opacity 0.2s ease; pointer-events: none; }
+.sa-loading { position: absolute; inset: 0; z-index: 5; display: grid; align-content: start; gap: 12px; padding: 14px 16px; background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(2px); border-radius: inherit; }
+html.dark .sa-loading { background: rgba(15, 23, 42, 0.55); }
+.sa-loading__bar { height: 5px; border-radius: 999px; background: rgba(148, 163, 184, 0.3); overflow: hidden; }
+.sa-loading__bar span { display: block; width: 38%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #22c55e, #0ea5e9); animation: sa-slide 1.1s ease-in-out infinite; }
+@keyframes sa-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(290%); } }
+.sa-loading__msg { display: flex; align-items: center; gap: 10px; font-size: 0.92rem; color: var(--lg-ink, #0f2540); }
+.sa-loading__row { display: grid; grid-template-columns: 3fr 1fr 1fr; gap: 12px; }
+.sa-loading__row i { display: block; height: 16px; border-radius: 8px; background: linear-gradient(90deg, rgba(148, 163, 184, 0.18) 25%, rgba(148, 163, 184, 0.38) 50%, rgba(148, 163, 184, 0.18) 75%); background-size: 200% 100%; animation: sa-shimmer 1.2s linear infinite; }
+@keyframes sa-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sa-loading__bar span, .sa-loading__row i { animation: none; } }
+.sa-cat { width: min(560px, 94vw); padding: 0; overflow: hidden; --lg-card: #ffffff; --lg-line: #e6ebf3; --lg-soft: #f6f8fc; --lg-ink: #0f172a; --lg-mute: #64748b; color: var(--lg-ink); background: var(--lg-card); }
+html.dark .sa-cat { --lg-card: #1e293b; --lg-line: rgba(255, 255, 255, 0.1); --lg-soft: rgba(255, 255, 255, 0.05); --lg-ink: #f1f5f9; --lg-mute: #94a3b8; }
+.sa-cat__head { display: flex; align-items: flex-start; gap: 0.8rem; padding: 0.9rem 1.1rem; color: #fff; background: linear-gradient(135deg, #0ea5e9, #075985); } .sa-cat__head h3 { margin: 0; font-size: 1rem; font-weight: 800; } .sa-cat__head p { margin: 0.15rem 0 0; font-size: 0.8rem; opacity: 0.95; line-height: 1.4; }
+.sa-cat__body { display: flex; flex-direction: column; gap: 0.7rem; padding: 1rem 1.1rem; max-height: 60vh; overflow-y: auto; }
+.sa-cat__search { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--lg-line); background: transparent; color: inherit; }
+.sa-cat__loading, .sa-cat__empty { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--lg-mute); } .sa-cat__err { margin: 0; color: #b91c1c; font-weight: 700; font-size: 0.85rem; }
+.sa-cat__list { list-style: none; margin: 0; padding: 4px; display: grid; gap: 3px; max-height: 340px; overflow-y: auto; border: 1px solid var(--lg-line); border-radius: 12px; }
+.sa-cat__list li { border-radius: 8px; } .sa-cat__list li:nth-child(odd) { background: var(--lg-soft); } .sa-cat__list li.is-on { box-shadow: inset 0 0 0 2px #0ea5e9; background: rgba(14, 165, 233, 0.1); }
+.sa-cat__list label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
+.sa-cat__name { display: grid; min-width: 0; line-height: 1.25; overflow-wrap: anywhere; } .sa-cat__name small { color: var(--lg-mute); font-size: 0.72rem; } .sa-cat__n { font-size: 0.78rem; font-weight: 700; color: var(--lg-mute); white-space: nowrap; }
+.sa-cat__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; padding: 0.8rem 1.1rem 1rem; border-top: 1px solid var(--lg-line); }
+@media (max-width: 480px) { .sa-cat__foot .lg-btn { flex: 1 1 100%; justify-content: center; } }
 .sa-import { white-space: nowrap; }
 .sa-import-note { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 0.6rem; padding: 0.55rem 0.8rem; border-radius: 0.8rem; background: rgba(5, 150, 105, 0.1); color: #047857; font-size: 0.8rem; font-weight: 600; }
 .sa-import-note.is-err { background: rgba(190, 18, 60, 0.1); color: #be123c; }

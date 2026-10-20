@@ -953,6 +953,93 @@ class SuperAdjustmentController extends Controller
             ->values();
     }
 
+    /** The ids of a category and of every sub-category below it, at any depth. */
+    private function categoryWithDescendants(int $categoryId): array
+    {
+        $children = \App\Models\Category::query()->whereNotNull('parent_id')->pluck('parent_id', 'id'); // id => parent_id
+        $ids = [$categoryId];
+        $queue = [$categoryId];
+        while ($queue) {
+            $parent = array_shift($queue);
+            foreach ($children as $id => $pid) {
+                if ((int) $pid === $parent && ! in_array((int) $id, $ids, true)) {
+                    $ids[] = (int) $id;
+                    $queue[] = (int) $id;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * For "Import by Category": the categories that have at least one item with a stock record in this Project / Warehouse (any quantity, zero and negative
+     * included), with how many items each one would bring in. A parent counts the items of its sub-categories too ("Parent > Child" labels).
+     */
+    public function warehouseCategories(Request $request)
+    {
+        abort_unless($request->user()->can('create-super-adjustments'), 403);
+        $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id']);
+        abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($data['warehouse_id'])->exists(), 403, __('You cannot use this Project / Warehouse.'));
+
+        $itemIds = Stock::main()->ofWarehouse($data['warehouse_id'])->pluck('item_id')->unique()->values();
+        $cats = \App\Models\Category::query()->get(['id', 'name', 'parent_id'])->keyBy('id');
+        // item ids per category (an item can be in several categories), only the items of this warehouse
+        $byCat = \Illuminate\Support\Facades\DB::table('categorizables')->where('categorizable_type', \App\Models\Item::class)->whereIn('categorizable_id', $itemIds)->get(['category_id', 'categorizable_id'])
+            ->groupBy('category_id')->map(fn ($g) => $g->pluck('categorizable_id')->unique()->all());
+        $childrenOf = $cats->groupBy('parent_id');
+        $collect = function (int $id) use (&$collect, $byCat, $childrenOf): array {
+            $own = $byCat[$id] ?? [];
+            foreach ($childrenOf[$id] ?? [] as $child) {
+                $own = array_merge($own, $collect((int) $child->id));
+            }
+
+            return array_values(array_unique($own));
+        };
+        $label = function (int $id) use ($cats): string {
+            $parts = [];
+            $guard = 0;
+            for ($c = $cats[$id] ?? null; $c && $guard++ < 8; $c = $c->parent_id ? ($cats[$c->parent_id] ?? null) : null) {
+                array_unshift($parts, $c->name);
+            }
+
+            return implode(' > ', $parts);
+        };
+
+        return $cats->map(function ($c) use ($collect, $label, $childrenOf, $byCat) {
+            $all = $collect((int) $c->id);
+
+            return ['id' => (int) $c->id, 'label' => $label((int) $c->id), 'items' => count($all), 'own' => count($byCat[$c->id] ?? []), 'has_sub' => $childrenOf->has($c->id)];
+        })->filter(fn ($r) => $r['items'] > 0)->sortBy(fn ($r) => mb_strtolower($r['label']))->values();
+    }
+
+    /** "Import by Category": every item of the category (and its sub-categories) that has a stock record in the warehouse, whatever its quantity (positive, negative or zero). */
+    public function categoryStock(Request $request)
+    {
+        abort_unless($request->user()->can('create-super-adjustments'), 403);
+        $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id', 'category_id' => 'required|integer|exists:categories,id']);
+        abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($data['warehouse_id'])->exists(), 403, __('You cannot use this Project / Warehouse.'));
+
+        $catIds = $this->categoryWithDescendants((int) $data['category_id']);
+        $itemIds = \Illuminate\Support\Facades\DB::table('categorizables')->where('categorizable_type', Item::class)->whereIn('category_id', $catIds)->pluck('categorizable_id')->unique();
+
+        return Stock::main()->ofWarehouse($data['warehouse_id'])->whereIn('item_id', $itemIds)
+            ->with(['item:id,name,code,unit_id', 'item.unit:id,name,code'])
+            ->get()
+            ->filter(fn ($stock) => $stock->item)
+            ->unique('item_id')
+            ->sortBy(fn ($stock) => mb_strtolower($stock->item->name))
+            ->map(fn ($stock) => [
+                'item_id' => $stock->item_id,
+                'name' => $stock->item->name,
+                'code' => $stock->item->code,
+                'unit_id' => $stock->item->unit_id,
+                'unit_name' => optional($stock->item->unit)->name,
+                'system_quantity' => (float) $stock->quantity,
+            ])
+            ->values();
+    }
+
     public function downloadAttachment(Request $request, SuperAdjustment $super_adjustment, Attachment $attachment)
     {
         abort_unless($request->user()->can('read-super-adjustments'), 403);
