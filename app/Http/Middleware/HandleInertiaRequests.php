@@ -110,10 +110,10 @@ class HandleInertiaRequests extends Middleware
             return $request->attributes->get('_managed_warehouses');
         }
 
-        $assigned = $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.completed_at']);
+        $assigned = $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at']);
 
         if ($assigned->isEmpty() && $user->hasRole(['Super Admin', 'Admin'])) {
-            $assigned = Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'completed_at']);
+            $assigned = Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);
         }
 
         $request->attributes->set('_managed_warehouses', $assigned->values());

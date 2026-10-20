@@ -46,7 +46,7 @@
           </template>
         </tec-dropdown>
 
-        <tec-dropdown align="left" width="72" :center-on-mobile="true" v-if="myWarehouses && myWarehouses.length">
+        <tec-dropdown align="left" width="80" :center-on-mobile="true" v-if="myWarehouses && myWarehouses.length">
           <template #trigger>
             <button class="wh-picker-trigger lg-tip flex items-center gap-1.5 sm:gap-2.5 pl-2 sm:pl-2.5 pr-2 sm:pr-3 py-1.5 mr-2 rounded-xl focus:outline-none shrink-0" :data-tip="$t('Switch the project or warehouse you are managing')" :aria-label="$t('Switch the project or warehouse you are managing')">
               <span class="wh-picker-icon"><icons name="map-pin" class="w-4 h-4"></icons></span>
@@ -83,14 +83,21 @@
                     <icons v-if="!currentWarehouse" name="tick" class="wh-picker-check" />
                   </span>
                 </tec-dropdown-link>
-                <tec-dropdown-link as="button" v-for="w in filteredWarehouses" :key="w.id" @click="selectWarehouse(w.id)">
-                  <span class="wh-picker-item" :class="{ 'wh-picker-item-active': currentWarehouse && currentWarehouse.id === w.id }">
-                    <icons name="building" class="w-4 h-4 shrink-0" />
-                    <span class="truncate">{{ w.name }}</span>
-                    <icons v-if="currentWarehouse && currentWarehouse.id === w.id" name="tick" class="wh-picker-check" />
-                  </span>
-                </tec-dropdown-link>
-                <div v-if="filteredWarehouses.length === 0" class="px-4 py-3 text-sm text-gray-400">
+                <div v-for="sec in warehouseSections" :key="sec.key" class="wh-sec">
+                  <div class="wh-sec-head" :class="'wh-sec-' + sec.tone">
+                    <span class="wh-sec-ico"><icons :name="sec.icon" class="w-3 h-3" /></span>
+                    <span class="wh-sec-name">{{ sec.label }}</span>
+                    <span class="wh-sec-count">{{ sec.items.length }}</span>
+                  </div>
+                  <tec-dropdown-link as="button" v-for="w in sec.items" :key="w.id" @click="selectWarehouse(w.id)">
+                    <span class="wh-picker-item" :class="{ 'wh-picker-item-active': currentWarehouse && currentWarehouse.id === w.id }">
+                      <span class="truncate">{{ w.name }}</span>
+                      <span v-if="w.tag" class="wh-tag" :class="'wh-tag-' + w.tag.toLowerCase()">{{ $t(w.tag) }}</span>
+                      <icons v-if="currentWarehouse && currentWarehouse.id === w.id" name="tick" class="wh-picker-check" />
+                    </span>
+                  </tec-dropdown-link>
+                </div>
+                <div v-if="warehouseSections.length === 0" class="px-4 py-3 text-sm text-gray-400">
                   {{ $t('No warehouse found.') }}
                 </div>
               </div>
@@ -389,6 +396,7 @@
 </template>
 
 <script>
+import { groupWarehouses } from '@/Core/warehouseGroups';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
 import { LANGUAGES } from '@/Core/i18n.js';
@@ -508,6 +516,10 @@ export default {
       const words = first.split(/\s+/).filter(Boolean);
       if (!words.length) return 'U';
       return words.length === 1 ? words[0].slice(0, 2).toUpperCase() : (words[0][0] + words[1][0]).toUpperCase();
+    },
+    // the list in sections: Main Warehouses, Projects (Government and Private), Others
+    warehouseSections() {
+      return groupWarehouses(this.myWarehouses, this.warehouseSearch);
     },
     filteredWarehouses() {
       const q = this.warehouseSearch.trim().toLowerCase();
@@ -975,6 +987,21 @@ export default {
   color: #2563eb;
   flex-shrink: 0;
 }
+
+/* the sections of the project / warehouse list: Main Warehouses, Projects (Government and Private), Others */
+.wh-sec { padding-bottom: 4px; }
+.wh-sec + .wh-sec { border-top: 1px solid #eef2f7; margin-top: 2px; }
+.wh-sec-head { --sc: #2563eb; display: flex; align-items: center; gap: 8px; padding: 9px 16px 4px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--sc); }
+.wh-sec-blue { --sc: #2563eb; } .wh-sec-emerald { --sc: #059669; } .wh-sec-slate { --sc: #64748b; }
+.wh-sec-ico { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 7px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--sc), 0 4px 7px -4px var(--sc); }
+.wh-sec-name { flex: 1; min-width: 0; }
+.wh-sec-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--sc) 12%, transparent); color: var(--sc); text-align: center; font-size: 0.62rem; line-height: 1.6; }
+.wh-sec .wh-picker-item { padding-left: 8px; }
+.wh-tag { flex: none; padding: 0 6px; border-radius: 999px; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.7; }
+.wh-tag-government { color: #1d4ed8; background: rgba(37, 99, 235, 0.1); box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.3); }
+.wh-tag-private { color: #6d28d9; background: rgba(124, 58, 237, 0.1); box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.3); }
+.wh-picker-item-active .wh-tag { margin-left: auto; margin-right: 4px; } .wh-tag + .wh-picker-check { margin-left: 0; }
+.wh-picker-item .wh-tag { margin-left: auto; }
 
 .nb-new-btn {
   display: inline-flex;

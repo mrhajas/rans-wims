@@ -177,7 +177,7 @@ html.dark .tm-foot { border-top-color: rgba(255, 255, 255, 0.1); background: rgb
 .tr-ui .ag-ico { grid-row: 1; }
 .tr-ui .ag-stat b { grid-column: 1 / -1; grid-row: 2; white-space: nowrap; }
 .tr-ui .ag-stat em { grid-column: 1 / -1; grid-row: 3; }
-.tr-ui .ag-stat small { display: flex; align-items: flex-end; min-height: 2.5em; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--sc-mute, #64748b); line-height: 1.25; }
+.tr-ui .ag-stat small { display: flex; align-items: flex-end; min-height: 2.5em; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.01em; text-transform: capitalize; color: var(--sc-mute, #64748b); line-height: 1.25; }
 .tr-ui .ag-stat b { font-size: 1.05rem; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .tr-ui .ag-stat em { font-style: normal; font-size: 0.7rem; color: var(--sc-mute, #64748b); }
 @keyframes ag-rise { to { opacity: 1; transform: none; } }
