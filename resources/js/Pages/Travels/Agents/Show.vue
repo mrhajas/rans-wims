@@ -163,7 +163,7 @@
       <p class="lg-note lg-note-amber"><icons name="info" class="w-4 h-4" /><span>{{ $t('What the agent was owed before Travels started. Travels booked before the date below are already inside it.') }}</span></p>
       <div class="tm-grid">
         <div class="ac-f"><label>{{ $t('Currency') }} *</label><acct-select v-model="opening.currency" :options="currencyOptions" /></div>
-        <div class="ac-f"><label>{{ $t('Amount owed to the agent') }} *</label><input v-model="opening.amount" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ perr('amount') }}</span></div>
+        <div class="ac-f"><label>{{ $t('Amount Owed') }} *</label><input v-model="opening.amount" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ perr('amount') }}</span></div>
         <div class="ac-f tm-full"><label>{{ $t('As of') }} *</label><date-picker v-model="opening.as_of_date" :clearable="false" /><span class="ac-err">{{ perr('as_of_date') }}</span></div>
         <div class="ac-f tm-full"><label>{{ $t('Notes') }}</label><input v-model="opening.notes" :placeholder="$t('Where the figure comes from')" /></div>
       </div>

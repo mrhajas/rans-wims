@@ -97,8 +97,8 @@
                     </div>
                   </div>
                 </td>
-                <td :data-label="$t('Warehouse / Site')" class="mr-td-wh"><div class="mr-w"><span class="mr-ic tc-teal"><icons name="building" class="w-4 h-4" /></span><span class="mr-wt">{{ materialRequest.warehouse?.name }}</span></div></td>
-                <td :data-label="$t('Requested By')" class="mr-td-by"><div class="mr-u"><span class="mr-ic tc-indigo"><icons name="user" class="w-4 h-4" /></span><span class="mr-ut">{{ materialRequest.user?.name }}</span></div></td>
+                <td :data-label="$t('Warehouse / Site')" class="mr-td-wh"><div class="mr-w"><span class="mr-wt">{{ materialRequest.warehouse?.name }}</span></div></td>
+                <td :data-label="$t('Requested By')" class="mr-td-by"><div class="mr-u"><span class="mr-ut">{{ materialRequest.user?.name }}</span></div></td>
                 <td :data-label="$t('Status')" class="mr-status-cell">
                   <div class="mr-chips">
                     <span
@@ -116,7 +116,8 @@
                     <li v-for="h in materialRequest.history" :key="h.status" :class="'mr-trail-' + trailTone(h.status)">
                       <span class="mr-trail-dot"></span>
                       <span class="mr-trail-text">
-                        <b>{{ trailLabel(h.status) }}</b> {{ h.by || '-' }}
+                        <b class="mr-tl-cap">{{ trailLabel(h.status) }}</b>
+                        <span class="mr-tl-who">{{ h.by || '-' }}</span>
                         <em>{{ $datetime(h.at) }}</em>
                       </span>
                     </li>
@@ -423,15 +424,23 @@ export default {
 .mr-ref .lg-main, .mr-ref { color: var(--lg-navy, #1c3f66); }
 .mr-date { display: inline-flex; align-items: center; gap: 4px; margin-top: 1px; }
 html.dark .mr-wt { color: #5eead4; } html.dark .mr-ut { color: #a5b4fc; }
-/* status: the chips on one line, the approval trail in three columns, so a request needs one short row */
-.mr-table .mr-status-cell { min-width: 430px; }
+/* status: the chips on one line, then the approval trail as a vertical timeline, one step per line (the same reading as Super Adjustments) */
+.mr-table .mr-status-cell { min-width: 400px; }
 .mr-table .mr-chip { min-width: 7.6rem; padding-top: 2px; padding-bottom: 2px; }
-.mr-table .mr-trail { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 6px; gap: 5px 14px; }
-.mr-table .mr-trail li { font-size: 0.72rem; line-height: 1.25; }
-.mr-table .mr-trail-dot { width: 7px; height: 7px; margin-top: 4px; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
+.mr-table .mr-trail { display: grid; grid-template-columns: 1fr; margin: 5px 0 0; gap: 0; }
+.mr-table .mr-trail li { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 0 9px; align-items: start; padding-bottom: 3px; font-size: 0.74rem; line-height: 1.25; }
+.mr-table .mr-trail li:last-child { padding-bottom: 0; }
+.mr-table .mr-trail li:not(:last-child)::after { content: ''; position: absolute; left: 6px; top: 14px; bottom: -3px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--lg-line, #cbd5e1), transparent); }
+.mr-table .mr-trail-dot { width: 12px; height: 12px; margin-top: 1px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-card, #fff) 100%, transparent), inset 0 0 0 2px #fff; }
+.mr-table .mr-trail-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.mr-table .mr-tl-cap { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--lg-mute); white-space: nowrap; }
+.mr-table .mr-tl-who { font-weight: 700; color: var(--lg-ink); min-width: 0; }
+.mr-table .mr-trail-text em { display: inline; font-size: 0.68rem; color: var(--lg-faint); }
+.mr-table .mr-trail-amber .mr-tl-cap { color: #b45309; } .mr-table .mr-trail-blue .mr-tl-cap { color: #1d4ed8; } .mr-table .mr-trail-red .mr-tl-cap { color: #b91c1c; } .mr-table .mr-trail-violet .mr-tl-cap { color: #6d28d9; }
+.mr-table .mr-trail-cyan .mr-tl-cap { color: #0e7490; } .mr-table .mr-trail-teal .mr-tl-cap { color: #0f766e; } .mr-table .mr-trail-green .mr-tl-cap { color: #047857; }
 @media (max-width: 767.98px) {
   .mr-table .mr-status-cell { min-width: 0; }
-  .mr-table .mr-trail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mr-table .mr-trail { margin-top: 10px; }
   .mr-td-wh, .mr-td-by { max-width: none; min-width: 0; }
   .mr-table.lg-responsive tbody tr:not(.lg-empty-row) td::before { flex: 0 1 38% !important; min-width: 0; overflow-wrap: anywhere !important; word-break: break-word; white-space: normal !important; }
   .mr-id, .mr-w, .mr-u { justify-content: flex-end; text-align: right; flex: 1 1 0; min-width: 0; }
