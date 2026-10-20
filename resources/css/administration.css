@@ -24,12 +24,18 @@
 .wa-ui .wa-stage.is-done::before, .wa-ui .wa-stage.is-now::before { background: linear-gradient(90deg, #14b8a6, var(--wa)); }
 .wa-ui .wa-node { position: relative; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--sc-mute, #64748b); background: var(--sc-card, #fff); box-shadow: inset 0 0 0 2px var(--sc-line, #cbd5e1), 0 8px 14px -10px rgba(31, 70, 130, 0.5); }
 .wa-ui .wa-stage.is-done .wa-node { color: #fff; background: linear-gradient(135deg, #14b8a6, var(--wa2)); box-shadow: 0 10px 16px -10px rgba(15, 118, 110, 0.9); }
-.wa-ui .wa-stage.is-now .wa-node { color: var(--wa); box-shadow: inset 0 0 0 2.5px var(--wa), 0 0 0 5px rgba(15, 118, 110, 0.14); animation: wa-pulse 2.2s ease-in-out infinite; }
+.wa-ui .wa-stage.is-now .wa-node { color: #dc2626; }
+/* the glowing ring: green when the stage is completed, red while it is not (waiting, not reached or refused) */
+.wa-ui .wa-stage.is-done .wa-node { animation: wa-glow-green 2.4s ease-in-out infinite; }
+.wa-ui .wa-stage:not(.is-done) .wa-node { box-shadow: inset 0 0 0 2.5px #ef4444, 0 0 0 3px rgba(239, 68, 68, 0.18); animation: wa-glow-red 2.4s ease-in-out infinite; }
+.wa-ui .wa-stage.is-bad .wa-node { box-shadow: inset 0 0 0 2.5px #fecaca, 0 0 0 3px rgba(239, 68, 68, 0.3); }
+@keyframes wa-glow-green { 0%, 100% { box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.95), 0 0 6px 2px rgba(34, 197, 94, 0.45); } 50% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.55), 0 0 16px 6px rgba(34, 197, 94, 0.55); } }
+@keyframes wa-glow-red { 0%, 100% { box-shadow: inset 0 0 0 2.5px #ef4444, 0 0 0 2px rgba(239, 68, 68, 0.9), 0 0 6px 2px rgba(239, 68, 68, 0.4); } 50% { box-shadow: inset 0 0 0 2.5px #ef4444, 0 0 0 3px rgba(239, 68, 68, 0.5), 0 0 16px 6px rgba(239, 68, 68, 0.5); } }
 .wa-ui .wa-stage.is-bad .wa-node { color: #fff; background: linear-gradient(135deg, #f87171, #b91c1c); box-shadow: 0 10px 16px -10px rgba(185, 28, 28, 0.9); }
 .wa-ui .wa-stage b { font-size: 0.82rem; } .wa-ui .wa-stage small { font-size: 0.72rem; color: var(--sc-mute, #64748b); line-height: 1.3; }
 .wa-ui .wa-stage em { font-style: normal; font-size: 0.7rem; font-weight: 700; color: var(--wa); }
 @keyframes wa-pulse { 50% { box-shadow: inset 0 0 0 2.5px var(--wa), 0 0 0 9px rgba(15, 118, 110, 0.07); } }
-@media (prefers-reduced-motion: reduce) { .wa-ui .wa-stage.is-now .wa-node { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .wa-ui .wa-stage .wa-node { animation: none !important; } }
 
 /* ---- the document on screen (like the paper) ---- */
 .wa-ui .wa-paper { border-radius: 16px; overflow: hidden; background: var(--sc-card, #fff); box-shadow: 0 0 0 1px var(--sc-line, #e3e9f2), 0 14px 24px -18px rgba(31, 70, 130, 0.55); }
