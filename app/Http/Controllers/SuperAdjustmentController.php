@@ -71,10 +71,11 @@ class SuperAdjustmentController extends Controller
     {
         abort_unless($request->user()->can('read-super-adjustments'), 403);
 
-        $filters = $request->only('search', 'status');
+        $filters = $request->only('search', 'status', 'session_id');
 
-        $superAdjustments = SuperAdjustment::with(['warehouse:id,name,code', 'user:id,name', 'approver:id,name', 'rejecter:id,name', 'approvals.user:id,name'])
+        $superAdjustments = SuperAdjustment::with(['warehouse:id,name,code', 'user:id,name', 'approver:id,name', 'rejecter:id,name', 'approvals.user:id,name', 'adjustmentSession:id,reference,status'])
             ->when($filters['search'] ?? null, fn ($q, $s) => $q->search($s))
+            ->when(ctype_digit((string) ($filters['session_id'] ?? '')), fn ($q) => $q->where('adjustment_session_id', (int) $filters['session_id']))
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->orderByDesc('id')
             ->paginate(20)
@@ -96,6 +97,7 @@ class SuperAdjustmentController extends Controller
             'superAdjustments' => new SuperAdjustmentCollection($superAdjustments),
             'statuses' => SuperAdjustment::statuses(),
             'canCreate' => $request->user()->can('create-super-adjustments'),
+            'canSessions' => $request->user()->can('read-adjustment-sessions') && \App\Services\FeatureManager::canAccess('adjustment_sessions', $request->user()),
             'rule' => ['approvals' => SuperAdjustment::requiredApprovals(), 'can_change' => $request->user()->hasRole('Super Admin'), 'super_admins' => \App\Models\User::role('Super Admin')->where('is_active', true)->count()],
         ]);
     }
@@ -108,6 +110,8 @@ class SuperAdjustmentController extends Controller
             'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'status']),
             'today' => now()->format('Y-m-d'),
             'responsibleUser' => $request->user()->only(['id', 'name']),
+            'openSessions' => $this->openSessions(),
+            'preselectWarehouseId' => ctype_digit((string) $request->query('warehouse_id', '')) ? (int) $request->query('warehouse_id') : null,
         ]);
     }
 
@@ -120,7 +124,20 @@ class SuperAdjustmentController extends Controller
             return $response;
         }
 
-        $superAdjustment = $this->persist(new SuperAdjustment(), $data, $request->file('attachments'));
+        return $this->submitCount($request, $data, $request->file('attachments'));
+    }
+
+    /** The Super Adjustment that submitCount() just saved (the Adjustment Session needs it for the count it makes when it ends). */
+    public ?SuperAdjustment $submitted = null;
+
+    /**
+     * Saves a count and sends it on the normal way (approvers told, a Super Admin's own count approved on the spot under the one-approval rule). Used by the form
+     * and by the Adjustment Session for the count that clears the items nobody counted, so both follow the same approval rules.
+     */
+    public function submitCount(Request $request, array $data, $attachments = null, ?\App\Models\AdjustmentSession $session = null)
+    {
+        $superAdjustment = $this->persist(new SuperAdjustment(), $data, $attachments, $session);
+        $this->submitted = $superAdjustment;
 
         $this->alert('super_created', $superAdjustment, $request->user(), __('Super Adjustment Created'), $superAdjustment->reference . ' was created by ' . $request->user()->name . ' for ' . optional($superAdjustment->warehouse)->name . '.', ['skip_actor' => true]);
 
@@ -146,6 +163,13 @@ class SuperAdjustmentController extends Controller
                 : __('Super Adjustment submitted for review.'));
     }
 
+    /** The open Adjustment Sessions by warehouse id, so the form can say that a count is added to a session (and skip the "items not counted" question). */
+    private function openSessions(): array
+    {
+        return \App\Models\AdjustmentSession::query()->where('status', \App\Models\AdjustmentSession::STATUS_OPEN)->get(['id', 'reference', 'name', 'warehouse_id', 'started_at'])
+            ->mapWithKeys(fn ($x) => [(int) $x->warehouse_id => ['id' => $x->id, 'reference' => $x->reference, 'name' => $x->name, 'started_at' => optional($x->started_at)->toIso8601String(), 'url' => route('adjustment-sessions.show', $x->id)]])->all();
+    }
+
     public function edit(SuperAdjustment $super_adjustment)
     {
         $this->authorizeDraftMutation($super_adjustment, 'update-super-adjustments');
@@ -160,6 +184,7 @@ class SuperAdjustmentController extends Controller
             'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code', 'status']),
             'today' => $super_adjustment->date,
             'responsibleUser' => $super_adjustment->user()->first()?->only(['id', 'name']),
+            'openSessions' => $this->openSessions(),
             'existingItems' => $super_adjustment->items->load('item:id,name,code,unit_id', 'unit:id,name,code')->map(fn ($i) => [
                 'item_id' => $i->item_id,
                 'name' => optional($i->item)->name ?? __('(Item removed)'),
@@ -275,6 +300,8 @@ class SuperAdjustmentController extends Controller
             'items' => $items,
             'attachments' => $attachments,
             'approval' => $this->approvalPanel($super_adjustment),
+            'session' => $super_adjustment->adjustment_session_id && ($as = \App\Models\AdjustmentSession::find($super_adjustment->adjustment_session_id))
+                ? ['id' => $as->id, 'reference' => $as->reference, 'status' => $as->status, 'url' => route('adjustment-sessions.show', $as->id)] : null,
         ]);
     }
 
@@ -876,6 +903,11 @@ class SuperAdjustmentController extends Controller
             'item_ids.*' => 'integer',
         ]);
 
+        // An open Adjustment Session for this warehouse tracks the items not counted across all its Super Adjustments, so the per-document question is switched off.
+        if (\App\Models\AdjustmentSession::openFor((int) $data['warehouse_id'])) {
+            return response()->json([]);
+        }
+
         return Stock::main()->ofWarehouse($data['warehouse_id'])
             ->where('quantity', '!=', 0)
             ->whereNotIn('item_id', $data['item_ids'] ?? [])
@@ -956,13 +988,13 @@ class SuperAdjustmentController extends Controller
         abort_unless($super_adjustment->status === SuperAdjustment::STATUS_DRAFT, 422, __('Only a Draft Super Adjustment can be modified.'));
     }
 
-    private function persist(SuperAdjustment $superAdjustment, array $data, $attachments): SuperAdjustment
+    private function persist(SuperAdjustment $superAdjustment, array $data, $attachments, ?\App\Models\AdjustmentSession $session = null): SuperAdjustment
     {
         $itemIds = collect($data['items'])->pluck('item_id')->unique()->values();
         $unitByItem = Item::whereIn('id', $itemIds)->pluck('unit_id', 'id');
         $liveStock = Stock::main()->ofWarehouse($data['warehouse_id'])->whereIn('item_id', $itemIds)->pluck('quantity', 'item_id');
 
-        return DB::transaction(function () use ($superAdjustment, $data, $attachments, $unitByItem, $liveStock) {
+        return DB::transaction(function () use ($superAdjustment, $data, $attachments, $unitByItem, $liveStock, $session) {
             $isNew = ! $superAdjustment->exists;
 
             $superAdjustment->fill([
@@ -973,6 +1005,19 @@ class SuperAdjustmentController extends Controller
                 'remarks' => $data['remarks'] ?? null,
                 'status' => SuperAdjustment::STATUS_DRAFT,
             ]);
+
+            // Adjustment Session: a count of a warehouse that has an open session belongs to it (an older count is linked only if it was made after the session started)
+            $open = $session ?: \App\Models\AdjustmentSession::openFor((int) $data['warehouse_id']);
+            if ($isNew) {
+                $superAdjustment->adjustment_session_id = $open ? $open->id : null;
+            } elseif ($superAdjustment->adjustment_session_id) {
+                $linked = \App\Models\AdjustmentSession::find($superAdjustment->adjustment_session_id);
+                if (! $linked || (int) $linked->warehouse_id !== (int) $data['warehouse_id']) {
+                    $superAdjustment->adjustment_session_id = $open ? $open->id : null;
+                }
+            } elseif ($open && $superAdjustment->created_at && $superAdjustment->created_at->gte($open->started_at)) {
+                $superAdjustment->adjustment_session_id = $open->id;
+            }
 
             if ($isNew) {
                 $superAdjustment->reference = $this->nextSuperAdjustmentReference();

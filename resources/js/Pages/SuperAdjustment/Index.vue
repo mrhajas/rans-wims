@@ -2,6 +2,10 @@
   <admin-layout :title="$t('Super Adjustments')">
     <div class="lg-page px-4 md:px-0">
       <page-header icon="adjustments" :title="$t('Super Adjustments')" :subtitle="$t('Physical stock counts pending or already reconciled against system stock.')">
+        <Link v-if="canSessions" :href="route('adjustment-sessions.index')" class="lg-btn lg-btn-soft">
+          <icons name="clock" class="w-4 h-4" />
+          <span>{{ $t('Adjustment Sessions') }}</span>
+        </Link>
         <Link v-if="canCreate" :href="route('super-adjustments.create')" class="lg-btn lg-btn-primary">
           <icons name="plus" class="w-4 h-4" />
           <span>{{ $t('New Super Adjustment') }}</span>
@@ -35,6 +39,7 @@
         </template>
       </tec-dialog-modal>
 
+      <div v-if="filters.session_id" class="lg-note lg-note-amber" style="margin-bottom: 10px"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Showing only the Super Adjustments of one Adjustment Session.') }} <Link :href="route('super-adjustments.index')" style="font-weight: 800; text-decoration: underline">{{ $t('Show all') }}</Link></span></div>
       <stat-tiles :items="statItems" @select="pickTile" />
 
       <section class="lg-card lg-filters">
@@ -66,7 +71,7 @@
           </thead>
           <tbody>
             <tr v-for="sa in superAdjustments.data" :key="sa.id" class="is-click" @click="$inertia.visit(route('super-adjustments.show', sa.id))">
-              <td :data-label="$t('Reference')"><span class="lg-main lg-mono">{{ sa.reference }}</span></td>
+              <td :data-label="$t('Reference')"><span class="lg-main lg-mono">{{ sa.reference }}</span><Link v-if="sa.session && canSessions" :href="route('adjustment-sessions.show', sa.session.id)" class="sa-sesschip" :title="$t('Adjustment Session')" @click.stop><icons name="clock" class="w-3 h-3" />{{ sa.session.reference }}</Link></td>
               <td :data-label="$t('Status')" class="sa-status">
                 <approval-track :status="sa.status" :phases="sa.phases || []" :approver="sa.approver" :approver-role="sa.approved_by_role || ''" :rejecter="sa.rejecter" />
               </td>
@@ -123,6 +128,7 @@ export default {
     statuses: Array,
     stats: { type: Object, default: () => ({}) },
     canCreate: Boolean,
+    canSessions: Boolean,
     rule: { type: Object, default: () => ({ approvals: 2, can_change: false, super_admins: 0 }) },
   },
 
@@ -202,6 +208,7 @@ export default {
 </script>
 
 <style scoped>
+.sa-sesschip { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; color: #fff; background: linear-gradient(135deg, #f97316, #c2410c); text-decoration: none; vertical-align: middle; }
 .sa-rule { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 /* on a phone the rule card is stacked: icon and title on one line, the explanation across the full width, the button full width underneath */
 @media (max-width: 720px) {

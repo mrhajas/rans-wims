@@ -61,6 +61,17 @@ class PermissionRegistry
                 ],
             ],
 
+            // Adjustment Session: a multi-day count of one Project / Warehouse made of several Super Adjustments. Super Admin has these by default.
+            'adjustment_sessions' => [
+                'label' => __('Adjustment Sessions'),
+                'abilities' => [
+                    'read-adjustment-sessions' => __('View Adjustment Sessions'),
+                    'start-adjustment-sessions' => __('Start Adjustment Sessions'),
+                    'end-adjustment-sessions' => __('End Adjustment Sessions (and clear the items not counted)'),
+                    'print-adjustment-sessions' => __('Print / Download Adjustment Sessions'),
+                ],
+            ],
+
             // Vehicles reuse the existing Asset model (scoped to the
             // 'Vehicles' asset-category tree) and Drivers reuse Contacts
             // (category = 'Drivers') — see TransportVehicleController /

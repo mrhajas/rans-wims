@@ -2376,6 +2376,7 @@ html.dark .lg-btn-soft { color: #bfdbfe; border-color: rgba(147, 197, 253, 0.3);
 .lg-chip-green { color: #047857; background: rgba(16, 185, 129, 0.14); }
 .lg-chip-red { color: #be123c; background: rgba(244, 63, 94, 0.13); }
 .lg-chip-amber { color: #92400e; background: rgba(245, 158, 11, 0.17); }
+.lg-chip-orange { color: #fff; background: linear-gradient(135deg, #f97316, #c2410c); }
 .lg-chip-violet { color: #6d28d9; background: rgba(139, 92, 246, 0.14); }
 .lg-chip-cyan { color: #0e7490; background: rgba(6, 182, 212, 0.14); }
 .lg-chip-slate { color: #475569; background: rgba(100, 116, 139, 0.14); }

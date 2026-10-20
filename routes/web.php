@@ -1774,6 +1774,13 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::put('super-adjustments/approval-rule', [Controllers\SuperAdjustmentController::class, 'saveApprovalRule'])
         ->middleware('throttle:20,1,super-adjustments.approval-rule')
         ->name('super-adjustments.approval-rule');
+    // Adjustment Session (a multi-day count of one warehouse made of several Super Adjustments): registered before the super-adjustments resource so "sessions" is not read as a record id
+    Route::get('super-adjustments/sessions', [Controllers\AdjustmentSessionController::class, 'index'])->name('adjustment-sessions.index');
+    Route::post('super-adjustments/sessions', [Controllers\AdjustmentSessionController::class, 'store'])->middleware('throttle:20,1')->name('adjustment-sessions.store');
+    Route::get('super-adjustments/sessions/{session}', [Controllers\AdjustmentSessionController::class, 'show'])->name('adjustment-sessions.show')->whereNumber('session');
+    Route::post('super-adjustments/sessions/{session}/end', [Controllers\AdjustmentSessionController::class, 'end'])->middleware('throttle:20,1')->name('adjustment-sessions.end')->whereNumber('session');
+    Route::get('super-adjustments/sessions/{session}/print', [Controllers\AdjustmentSessionController::class, 'print'])->name('adjustment-sessions.print')->whereNumber('session');
+    Route::get('super-adjustments/sessions/{session}/pdf', [Controllers\AdjustmentSessionController::class, 'pdf'])->name('adjustment-sessions.pdf')->whereNumber('session');
     Route::get('super-adjustments/item-stock', [Controllers\SuperAdjustmentController::class, 'itemStock'])
         ->name('super-adjustments.item-stock');
     Route::get('super-adjustments/warehouse-stock', [Controllers\SuperAdjustmentController::class, 'warehouseStock'])

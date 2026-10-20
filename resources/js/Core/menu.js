@@ -132,7 +132,7 @@ const menus = [
     heading: null,
     children: ['adjustments', 'super-adjustments'],
     lang: { helper: null, main: 'Adjustments' },
-    permissions: ['read-adjustments', 'read-super-adjustments'],
+    permissions: ['read-adjustments', 'read-super-adjustments', 'read-adjustment-sessions'],
     sub_menu: [
       {
         name: 'adjustments.list',
@@ -162,6 +162,16 @@ const menus = [
         sub_menu: false,
         permissions: ['read-super-adjustments'],
         lang: { main: 'Super Adjustment' },
+      },
+      {
+        name: 'adjustment-sessions.list',
+        route: 'adjustment-sessions.index',
+        feature: 'adjustment_sessions',
+        icon: 'clock',
+        hidden: false,
+        sub_menu: false,
+        permissions: ['read-adjustment-sessions'],
+        lang: { main: 'Adjustment Sessions' },
       },
       {
         name: 'super-adjustments.create',

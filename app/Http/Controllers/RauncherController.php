@@ -225,6 +225,23 @@ class RauncherController extends Controller
                 'title' => fn ($m) => $m->reference ?: ('#' . $m->id),
                 'subtitle' => fn ($m) => optional($m->date)->format('Y-m-d'),
             ],
+            // Adjustment Sessions (multi-day Super Adjustment counts), only while the feature is on.
+            'adjustment-sessions' => [
+                'label' => 'Adjustment Sessions',
+                'icon' => 'clock',
+                'permission' => 'read-adjustment-sessions',
+                'route' => 'adjustment-sessions.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\AdjustmentSession::query()->whereIn('warehouse_id', \App\Models\Warehouse::ofAccount()->visible()->select('id'))
+                        ->where(fn ($q) => $q->where('reference', 'like', $like)->orWhere('name', 'like', $like)->orWhereHas('warehouse', fn ($w) => $w->where('name', 'like', $like)))
+                        ->when(! \App\Services\FeatureManager::canAccess('adjustment_sessions', $u), fn ($q) => $q->whereRaw('1 = 0'))->orderByDesc('id');
+                },
+                'title' => fn ($m) => $m->reference . ($m->name ? ' - ' . $m->name : ''),
+                'subtitle' => fn ($m) => trim(optional($m->warehouse)->name . ' · ' . __($m->status)),
+            ],
             'transfers' => [
                 'label' => 'Transfers',
                 'icon' => 'refresh',

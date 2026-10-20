@@ -3,6 +3,7 @@
     <div class="lg-page px-4 md:px-0">
       <page-header icon="adjustments" :title="superAdjustment.reference" :subtitle="$t('Super Adjustments')">
         <span class="lg-chip" :class="statusTone"><icons v-if="superAdjustment.status === 'Approved'" name="tick" class="w-3.5 h-3.5 inline-flex" />{{ statusText }}</span>
+        <Link v-if="session && $can('read-adjustment-sessions')" :href="session.url" class="lg-chip lg-chip-orange" style="text-transform: none; text-decoration: none"><icons name="clock" class="w-3.5 h-3.5 inline-flex" />{{ $t('Session') }} {{ session.reference }}</Link>
         <Link :href="route('super-adjustments.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" />{{ $t('Super Adjustments') }}</Link>
         <a v-if="superAdjustment.can_print" :href="route('super-adjustments.print', superAdjustment.id)" target="_blank" class="lg-btn lg-btn-soft">
           <icons name="printer" class="w-4 h-4" />{{ $t('Print') }}
@@ -261,6 +262,7 @@ export default {
     items: Array,
     attachments: Array,
     approval: { type: Object, default: () => ({ required: 1, phases: [], history: [] }) },
+    session: { type: Object, default: null },
   },
 
   data() {

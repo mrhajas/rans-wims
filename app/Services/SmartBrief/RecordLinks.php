@@ -24,6 +24,7 @@ class RecordLinks
         \App\Models\MultiTransfer::class => ['multi-transfers.show', 'read-multi-transfers'],
         \App\Models\Adjustment::class => ['adjustments.show', 'read-adjustments'],
         \App\Models\SuperAdjustment::class => ['super-adjustments.show', 'read-super-adjustments'],
+        \App\Models\AdjustmentSession::class => ['adjustment-sessions.show', 'read-adjustment-sessions'],
         \App\Models\MaterialRequest::class => ['material-requests.show', 'read-material-requests'],
         \App\Models\PaymentVoucher::class => ['payment-vouchers.show', 'read-payment-vouchers'],
         \App\Models\Staff::class => ['staffs.show', 'read-staffs'],

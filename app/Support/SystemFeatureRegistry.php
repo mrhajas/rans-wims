@@ -385,6 +385,14 @@ class SystemFeatureRegistry
                 'route_prefixes' => ['super-adjustments.'],
                 'depends_on' => 'adjustments',
             ],
+            'adjustment_sessions' => [
+                'name' => __('Adjustment Sessions'),
+                'description' => __('A physical count of one Project / Warehouse that takes several days and several Super Adjustments: start a session, count over the days, and when it ends see (and clear) the items that were never counted.'),
+                'module' => __('Warehouse & Inventory'),
+                'icon' => 'adjustments',
+                'route_prefixes' => ['adjustment-sessions.'],
+                'depends_on' => 'super_adjustments',
+            ],
             'issue_return' => [
                 'name' => __('Issue & Return'),
                 'description' => __('Issuing materials to work and returning them.'),

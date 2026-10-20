@@ -29,6 +29,7 @@ class QrRegistry
             'checkout' => ['label' => 'Checkout', 'model' => $m('Checkout'), 'route' => 'checkouts.show', 'param' => 'checkout', 'can' => ['read-checkouts']],
             'adjustment' => ['label' => 'Adjustment', 'model' => $m('Adjustment'), 'route' => 'adjustments.show', 'param' => 'adjustment', 'can' => ['read-adjustments']],
             'super_adjustment' => ['label' => 'Super Adjustment', 'model' => $m('SuperAdjustment'), 'route' => 'super-adjustments.show', 'param' => 'super_adjustment', 'can' => ['read-super-adjustments']],
+            'adjustment_session' => ['label' => 'Adjustment Session', 'model' => $m('AdjustmentSession'), 'route' => 'adjustment-sessions.show', 'param' => 'session', 'can' => ['read-adjustment-sessions']],
             'issue' => ['label' => 'Issue & Return', 'model' => $m('IssueTransaction'), 'route' => 'issue-materials.show', 'param' => 'issueMaterial', 'can' => ['read-issue-returns']],
             'material_request' => ['label' => 'Material Request', 'model' => $m('MaterialRequest'), 'route' => 'material-requests.show', 'param' => 'material_request', 'can' => ['read-material-requests', 'view-all-material-requests']],
             'material_reallocation' => ['label' => 'Material Reallocation', 'model' => $m('MaterialReallocation'), 'route' => 'material-reallocations.show', 'param' => 'material_reallocation', 'can' => ['read-material-reallocations']],

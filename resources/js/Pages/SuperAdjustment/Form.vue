@@ -77,6 +77,11 @@
             </div>
           </div>
 
+          <!-- an open Adjustment Session of this Project / Warehouse: this count is added to it and the "items not in this count" question is off -->
+          <div v-if="openSession" class="lg-note lg-note-amber sa-session">
+            <icons name="clock" class="w-4 h-4" />
+            <span>{{ $t('Adjustment Session :r is open for this Project / Warehouse. This count is added to it, and the items you do not count here are not asked about: the session keeps track of them and you decide when you end it.', { r: openSession.reference }) }} <a :href="openSession.url" target="_blank" rel="noopener" class="sa-session-link">{{ $t('Open the session') }}</a></span>
+          </div>
           <div v-if="!form.warehouse_id" class="lg-note lg-note-blue">
             <icons name="info" class="w-4 h-4" />
             <span>{{ $t('Select a Project / Warehouse above before adding items.') }}</span>
@@ -329,6 +334,8 @@ export default {
     responsibleUser: Object,
     existingItems: { type: Array, default: () => [] },
     existingAttachments: { type: Array, default: () => [] },
+    openSessions: { type: Object, default: () => ({}) },
+    preselectWarehouseId: { type: Number, default: null },
   },
 
   data() {
@@ -347,7 +354,7 @@ export default {
       ],
       form: this.$inertia.form({
         _method: this.edit ? 'PUT' : 'POST',
-        warehouse_id: this.edit ? this.edit.warehouse_id : null,
+        warehouse_id: this.edit ? this.edit.warehouse_id : (this.preselectWarehouseId && (this.warehouses || []).some(w => Number(w.value ?? w.id) === this.preselectWarehouseId) ? this.preselectWarehouseId : null),
         reason: this.edit ? this.edit.reason : '',
         details: this.edit ? [this.edit.details, this.edit.remarks].filter(Boolean).join('\n\n') : '',
         items: this.existingItems.map(i => ({
@@ -385,6 +392,8 @@ export default {
   },
 
   computed: {
+    // the open Adjustment Session of the chosen Project / Warehouse, if there is one
+    openSession() { return this.form.warehouse_id ? (this.openSessions || {})[this.form.warehouse_id] || null : null; },
     allCleared() {
       return this.form.items.length > 0 && this.form.items.every(r => r.auto_cleared);
     },
@@ -868,4 +877,5 @@ html.dark .sa-modal-card { background: #0f172a; }
 @media (prefers-reduced-motion: reduce) {
   .sa-file-row { animation: none; }
 }
+.sa-session { margin-bottom: 10px; } .sa-session-link { font-weight: 800; text-decoration: underline; }
 </style>

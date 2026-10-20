@@ -29,7 +29,7 @@ class SuperAdjustment extends Model
     const RULE_KEY = 'super_adjustment_approvals';
 
     protected $fillable = [
-        'reference', 'warehouse_id', 'date', 'user_id', 'reason', 'details', 'remarks',
+        'reference', 'warehouse_id', 'adjustment_session_id', 'date', 'user_id', 'reason', 'details', 'remarks',
         'status', 'approved_by_user_id', 'approved_by_role', 'approved_at', 'rejected_by_user_id', 'rejected_at',
         'rejection_reason', 'created_addition_adjustment_id', 'created_subtraction_adjustment_id',
         'account_id',
@@ -117,6 +117,12 @@ class SuperAdjustment extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    /** The Adjustment Session this count belongs to (a multi-day count of the warehouse), if any. */
+    public function adjustmentSession()
+    {
+        return $this->belongsTo(AdjustmentSession::class, 'adjustment_session_id');
     }
 
     public function user()

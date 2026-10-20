@@ -34,6 +34,8 @@ class SuperAdjustmentResource extends JsonResource
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
 
+            'adjustment_session_id' => $this->adjustment_session_id,
+            'session' => $this->whenLoaded('adjustmentSession', fn () => $this->adjustmentSession ? ['id' => $this->adjustmentSession->id, 'reference' => $this->adjustmentSession->reference, 'status' => $this->adjustmentSession->status] : null),
             'warehouse' => $this->whenLoaded('warehouse'),
             'user' => $this->whenLoaded('user'),
             'approver' => $this->whenLoaded('approver'),
