@@ -312,7 +312,7 @@ export default {
     },
     statusChartOptions() {
       return {
-        chart: { type: 'column', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" } },
+        chart: { type: 'column', style: { fontFamily: 'Nunito' } },
         title: { text: '' },
         credits: { enabled: false },
         xAxis: { categories: this.chart.status_labels || [] },
@@ -325,7 +325,7 @@ export default {
       const labels = (this.chart.top_variance_materials || []).map((row) => row.name);
       const data = (this.chart.top_variance_materials || []).map((row) => Number(row.value || 0));
       return {
-        chart: { type: 'bar', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" } },
+        chart: { type: 'bar', style: { fontFamily: 'Nunito' } },
         title: { text: '' },
         credits: { enabled: false },
         xAxis: { categories: labels },

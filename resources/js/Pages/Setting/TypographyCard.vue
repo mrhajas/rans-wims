@@ -26,10 +26,10 @@
     <span v-for="(m, k) in errors" :key="k" class="ty-err">{{ m }}</span>
 
     <div class="ty-foot">
-      <p class="ty-note"><icons name="info" class="w-4 h-4" />{{ $t('Avenir is a licensed Apple font: it is used on Mac, iPhone and iPad and Montserrat is used on every other device. A part left on "Same as the whole application" and "Automatic" keeps the design as it is.') }}</p>
+      <p class="ty-note"><icons name="info" class="w-4 h-4" />{{ $t('The starting font is Nunito. Avenir is a licensed Apple font: if you choose it, it is used on Mac, iPhone and iPad and Montserrat on every other device. A part left on "Same as the whole application" and "Automatic" keeps the design as it is.') }}</p>
       <div class="ty-btns">
         <span v-if="saved" class="st-saved-badge"><icons name="tick" class="w-3.5 h-3.5" />{{ $t('Saved!') }}</span>
-        <button type="button" class="lg-btn t-slate" :disabled="busy" @click="reset"><icons name="refresh" class="w-4 h-4" />{{ $t('Reset to Avenir') }}</button>
+        <button type="button" class="lg-btn t-slate" :disabled="busy" @click="reset"><icons name="refresh" class="w-4 h-4" />{{ $t('Reset to Nunito') }}</button>
         <button type="button" class="lg-btn lg-btn-primary" :disabled="busy" @click="save"><icons name="tick" class="w-4 h-4" />{{ busy ? $t('Saving...') : $t('Save Typography') }}</button>
       </div>
     </div>

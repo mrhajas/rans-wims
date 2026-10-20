@@ -158,7 +158,7 @@ export default {
         chart: {
           type: 'bar',
           spacingTop: 10,
-          style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" },
+          style: { fontFamily: 'Nunito' },
           height: Math.max(220, sorted.length * 36),
         },
         credits: { enabled: false },

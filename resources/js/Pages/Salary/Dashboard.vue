@@ -131,7 +131,7 @@ export default {
     trendChart() {
       if (!this.trend || this.trend.length === 0) return null;
       return {
-        chart: { type: 'column', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" }, backgroundColor: 'transparent' },
+        chart: { type: 'column', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         xAxis: { categories: this.trend.map(t => t.label), crosshair: true },
@@ -150,7 +150,7 @@ export default {
       const entries = Object.entries(this.byStatus || {});
       if (entries.length === 0) return null;
       return {
-        chart: { type: 'pie', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" }, backgroundColor: 'transparent' },
+        chart: { type: 'pie', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         tooltip: { pointFormat: '{point.y} ({point.percentage:.0f}%)' },

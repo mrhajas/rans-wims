@@ -62,7 +62,7 @@ class Typography
     {
         $d = [];
         foreach (self::roles() as $k => $r) {
-            $d[$k] = ['font' => $k === 'base' ? 'avenir' : 'inherit', 'weight' => 'auto', 'italic' => false];
+            $d[$k] = ['font' => $k === 'base' ? 'nunito' : 'inherit', 'weight' => 'auto', 'italic' => false];
         }
 
         return $d;

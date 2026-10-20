@@ -103,7 +103,7 @@ body,
   }
 }
 
-/* Avenir is a licensed Apple font: it is used when the device has it (Mac, iPhone, iPad); every other device gets Montserrat (loaded from Google Fonts).
+/* Only used when Avenir is chosen in Settings > Typography. Avenir is a licensed Apple font: it is used when the device has it (Mac, iPhone, iPad); other devices fall back to Montserrat.
    Each CSS weight is mapped to the right installed Avenir face so Light is light and Bold is bold. */
 @font-face { font-family: 'WIMS Avenir'; font-weight: 300; font-style: normal; src: local('Avenir-Light'), local('Avenir Light'), local('AvenirNext-Regular'); }
 @font-face { font-family: 'WIMS Avenir'; font-weight: 400; font-style: normal; src: local('Avenir-Book'), local('Avenir Book'), local('AvenirNext-Regular'), local('Avenir-Roman'); }
@@ -112,16 +112,13 @@ body,
 @font-face { font-family: 'WIMS Avenir'; font-weight: 700; font-style: normal; src: local('AvenirNext-Bold'), local('Avenir Next Bold'), local('Avenir-Heavy'); }
 @font-face { font-family: 'WIMS Avenir'; font-weight: 800; font-style: normal; src: local('AvenirNext-Heavy'), local('Avenir Next Heavy'), local('Avenir-Black'); }
 @font-face { font-family: 'WIMS Avenir'; font-weight: 900; font-style: normal; src: local('Avenir-Black'), local('Avenir Black'), local('AvenirNext-Heavy'); }
-/* the WIMS typeface: Avenir (Montserrat where Avenir is not installed): Light 300, Regular 400, Medium 500, SemiBold 600, Bold 700, ExtraBold 800. Form controls follow it too. */
-html, body, button, input, select, textarea, optgroup { font-family: 'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, 'Segoe UI', Arial, sans-serif; }
-body { font-weight: 400; font-synthesis: none; text-rendering: optimizeLegibility; }
 
 .app-shell {
   background: transparent;
 }
 
 .brand-wordmark {
-  font-family: 'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, 'Segoe UI', Arial, sans-serif;
+  font-family: Nunito, 'Segoe UI', Arial, sans-serif;
   font-weight: 400;
   font-size: 28px;
   letter-spacing: 0.02em;

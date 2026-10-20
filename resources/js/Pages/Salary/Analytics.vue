@@ -133,7 +133,7 @@ export default {
     trendChart() {
       if (!this.trend || this.trend.length === 0) return null;
       return {
-        chart: { type: 'areaspline', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" }, backgroundColor: 'transparent' },
+        chart: { type: 'areaspline', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         xAxis: { categories: this.trend.map(t => t.label) },
@@ -153,7 +153,7 @@ export default {
       if (entries.length === 0) return null;
       const colors = { component: '#64748b', advance: '#0284c7', loan: '#d97706', outstanding: '#be123c', manual: '#7c3aed' };
       return {
-        chart: { type: 'pie', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" }, backgroundColor: 'transparent' },
+        chart: { type: 'pie', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         tooltip: { pointFormat: 'TSH {point.y:,.0f} ({point.percentage:.0f}%)' },
@@ -168,7 +168,7 @@ export default {
       const buckets = this.ageingBuckets || {};
       if (this.ageingTotal <= 0) return null;
       return {
-        chart: { type: 'bar', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" }, backgroundColor: 'transparent' },
+        chart: { type: 'bar', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         xAxis: { categories: Object.keys(buckets).map(k => k + ' ' + this.$t('days')) },

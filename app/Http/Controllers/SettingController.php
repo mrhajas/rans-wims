@@ -184,7 +184,7 @@ class SettingController extends Controller
         Setting::where('tec_key', \App\Support\Typography::KEY)->where('account_id', $user->account_id)->delete();
         log_activity('Typography settings reset to the defaults', [], null, 'Setting');
 
-        return back()->with('message', __('Typography reset to the starting fonts (Avenir).'));
+        return back()->with('message', __('Typography reset to the starting font (Nunito).'));
     }
 
     /** How many devices one person may be signed in on at once (0 = no limit). Super Admin, with their own password. See App\Services\Security\DeviceLimit. */

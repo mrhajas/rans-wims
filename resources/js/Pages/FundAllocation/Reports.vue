@@ -402,7 +402,7 @@ export default {
     chart() {
       if (!this.byDate.length) return null;
       return {
-        chart: { type: 'column', style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" }, backgroundColor: 'transparent' },
+        chart: { type: 'column', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         xAxis: { categories: this.byDate.map(d => d.date), crosshair: true },

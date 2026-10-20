@@ -234,7 +234,7 @@ export default {
         chart: {
           type: 'spline',
           spacingTop: 20,
-          style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" },
+          style: { fontFamily: 'Nunito' },
           backgroundColor: 'transparent',
         },
         credits: { enabled: false },
