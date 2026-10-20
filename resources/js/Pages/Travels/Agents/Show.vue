@@ -222,6 +222,10 @@ export default {
     paymentsShown() { return this.grep(this.payments.filter(p => (!this.payStatus || p.status === this.payStatus) && (!this.payCurrency || p.currency === this.payCurrency)), this.q.payments, p => [p.reference, p.pv_number, p.status_label, p.voucher_status, p.currency, p.amount, p.by, p.paid_by, p.travel, p.method, p.payment_reference, p.requested_on, p.paid_on]); },
     travelsShown() { return this.grep(this.travels.filter(t => !this.travelStatus || t.status === this.travelStatus), this.q.travels, t => [t.reference, t.travellers, t.to_place, t.to_country, t.status_label, t.currency, t.depart_date]); },
   },
+  mounted() {
+    const want = new URLSearchParams(window.location.search).get('pay');
+    if (want && this.can.pay) this.$nextTick(() => this.openPay(want.toUpperCase()));
+  },
   methods: {
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     dt(v) { try { return this.$date(v); } catch (e) { return v; } },

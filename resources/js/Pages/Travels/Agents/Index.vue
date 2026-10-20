@@ -27,21 +27,26 @@
       </section>
 
       <div class="lg-table-wrap">
-        <table class="lg-table lg-responsive tr-table tr-wide">
+        <table class="lg-table lg-responsive tr-table tr-wide tr-cards">
           <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Agent') }}</th><th class="tr-c">{{ $t('Cur.') }}</th><th class="tr-num">{{ $t('Opening') }}</th><th class="tr-num">{{ $t('Tickets') }}</th><th class="tr-num">{{ $t('Visas') }}</th><th class="tr-num">{{ $t('Paid') }}</th><th class="tr-num">{{ $t('Balance owed') }}</th><th class="tr-num">{{ $t('In waiting vouchers') }}</th><th class="tr-nw">{{ $t('Last payment') }}</th><th></th></tr></thead>
           <tbody>
             <tr v-for="(r, n) in rows" :key="r.contact_id + '|' + r.currency" class="is-click" @click="$inertia.visit(route('travels.agents.show', r.contact_id))">
               <td :data-label="$t('No')" class="tr-no">{{ n + 1 }}</td>
-              <td :data-label="$t('Agent')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.agent }}</b><small>{{ [r.category, r.phone].filter(Boolean).join(' · ') }}</small></div></td>
-              <td :data-label="$t('Cur.')" class="tr-c">{{ r.currency || '-' }}</td>
-              <td :data-label="$t('Opening')" class="tr-num"><span v-if="r.currency" class="tr-m">{{ money(r.opening) }}</span><span v-else>-</span><small v-if="r.opening_date" class="lg-subtext" style="display: block">{{ $date(r.opening_date) }}</small></td>
-              <td :data-label="$t('Tickets')" class="tr-num"><span v-if="r.currency" class="tr-m">{{ money(r.ticket) }}</span><span v-else>-</span></td>
-              <td :data-label="$t('Visas')" class="tr-num"><span v-if="r.currency" class="tr-m">{{ money(r.visa) }}</span><span v-else>-</span></td>
-              <td :data-label="$t('Paid')" class="tr-num"><span v-if="r.currency" class="tr-g">{{ money(r.paid) }}</span><span v-else>-</span></td>
-              <td :data-label="$t('Balance owed')" class="tr-num"><b class="tr-tm" :class="{ 'tr-neg': Number(r.balance) < 0 }">{{ r.currency ? money(r.balance) : '-' }}</b><small v-if="Number(r.pending)" class="lg-subtext" style="display: block">+ {{ money(r.pending) }} {{ $t('pending approval') }}</small></td>
-              <td :data-label="$t('In waiting vouchers')" class="tr-num"><span v-if="r.currency && Number(r.reserved)" class="tr-o">{{ money(r.reserved) }}</span><span v-else>-</span></td>
-              <td :data-label="$t('Last payment')" class="tr-nw">{{ r.last_payment ? $date(r.last_payment) : '-' }}</td>
-              <td class="lg-sticky-end tr-acts-cell" @click.stop><span class="tr-acts"><Link :href="route('travels.agents.show', r.contact_id)" class="lg-icon-btn lg-tip" :data-tip="$t('Open the account')" :aria-label="$t('Open the account')"><icons name="doc" class="w-4 h-4" /></Link></span></td>
+              <td :data-label="$t('Agent')" class="tr-wrap tr-head"><span class="tr-ci tc-b"><icons name="users" class="w-4 h-4" /></span><div class="tr-cell"><b class="lg-main">{{ r.agent }}</b><small>{{ [r.category, r.phone].filter(Boolean).join(' · ') }}</small></div></td>
+              <td :data-label="$t('Cur.')" class="tr-c"><span class="tr-ci tc-b"><icons name="globe" class="w-4 h-4" /></span>{{ r.currency || '-' }}</td>
+              <td :data-label="$t('Opening')" class="tr-num"><span class="tr-ci tc-m"><icons name="doc-text" class="w-4 h-4" /></span><div class="tr-val"><span v-if="r.currency" class="tr-m"><i class="tr-cp">{{ r.currency }}</i>{{ money(r.opening) }}</span><span v-else>-</span><small v-if="r.opening_date" class="lg-subtext">{{ $date(r.opening_date) }}</small></div></td>
+              <td :data-label="$t('Tickets')" class="tr-num"><span class="tr-ci tc-m"><icons name="plane" class="w-4 h-4" /></span><span v-if="r.currency" class="tr-m"><i class="tr-cp">{{ r.currency }}</i>{{ money(r.ticket) }}</span><span v-else>-</span></td>
+              <td :data-label="$t('Visas')" class="tr-num"><span class="tr-ci tc-m"><icons name="globe" class="w-4 h-4" /></span><span v-if="r.currency" class="tr-m"><i class="tr-cp">{{ r.currency }}</i>{{ money(r.visa) }}</span><span v-else>-</span></td>
+              <td :data-label="$t('Paid')" class="tr-num"><span class="tr-ci tc-g"><icons name="tick" class="w-4 h-4" /></span><span v-if="r.currency" class="tr-g"><i class="tr-cp">{{ r.currency }}</i>{{ money(r.paid) }}</span><span v-else>-</span></td>
+              <td :data-label="$t('Balance owed')" class="tr-num tr-key"><span class="tr-ci tc-m"><icons name="cash" class="w-4 h-4" /></span><div class="tr-val"><b class="tr-tm" :class="{ 'tr-neg': Number(r.balance) < 0 }"><i v-if="r.currency" class="tr-cp">{{ r.currency }}</i>{{ r.currency ? money(r.balance) : '-' }}</b><small v-if="Number(r.pending)" class="lg-subtext">+ {{ money(r.pending) }} {{ $t('pending approval') }}</small></div></td>
+              <td :data-label="$t('In waiting vouchers')" class="tr-num"><span class="tr-ci tc-o"><icons name="clock" class="w-4 h-4" /></span><span v-if="r.currency && Number(r.reserved)" class="tr-o"><i class="tr-cp">{{ r.currency }}</i>{{ money(r.reserved) }}</span><span v-else>-</span></td>
+              <td :data-label="$t('Last payment')" class="tr-nw"><span class="tr-ci tc-o"><icons name="refresh" class="w-4 h-4" /></span>{{ r.last_payment ? $date(r.last_payment) : '-' }}</td>
+              <td class="lg-sticky-end tr-acts-cell" @click.stop><span class="tr-acts">
+                <Link :href="route('travels.agents.show', r.contact_id)" class="lg-icon-btn tr-abtn lg-tip" :data-tip="$t('Open the account')" :aria-label="$t('Open the account')"><icons name="doc" class="w-4 h-4" /><span class="tr-bl">{{ $t('Account') }}</span></Link>
+                <Link v-if="can.pay && r.currency && Number(r.available) > 0" :href="route('travels.agents.show', { contact: r.contact_id, pay: r.currency })" class="lg-icon-btn tr-abtn is-pay lg-tip" :data-tip="$t('Make a payment')" :aria-label="$t('Make a payment')"><icons name="cash" class="w-4 h-4" /><span class="tr-bl">{{ $t('Pay') }}</span></Link>
+                <a v-if="can.print && r.currency" :href="route('travels.reports.pdf', { type: 'agent_statement', contact_id: r.contact_id, currency: r.currency })" class="lg-icon-btn tr-abtn lg-tip" :data-tip="$t('Statement (PDF)')" :aria-label="$t('Statement (PDF)')"><icons name="download" class="w-4 h-4" /><span class="tr-bl">{{ $t('Statement') }}</span></a>
+                <a v-if="r.phone" :href="'tel:' + String(r.phone).replace(/\s+/g, '')" class="lg-icon-btn tr-abtn lg-tip" :data-tip="$t('Call')" :aria-label="$t('Call')"><icons name="mobile" class="w-4 h-4" /><span class="tr-bl">{{ $t('Call') }}</span></a>
+              </span></td>
             </tr>
             <tr v-if="!rows.length" class="lg-empty-row"><td class="lg-empty" colspan="11">{{ hasFilters ? $t('No agent matches these filters.') : $t('No ticket agents yet. Add a contact in the Ticket Agent category and it appears here.') }}</td></tr>
           </tbody>

@@ -91,10 +91,14 @@
         </table></div>
       </section>
 
-      <section v-if="can.agents && payments.length" class="lg-card">
-        <header class="lg-card-head"><span class="lg-card-ico lg-ico-amber"><icons name="cash" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Payments made for this travel') }}</h2></div></header>
-        <div class="lg-table-wrap"><table class="lg-table lg-responsive"><thead><tr><th>{{ $t('Payment') }}</th><th>{{ $t('Agent') }}</th><th>{{ $t('Voucher') }}</th><th>{{ $t('Date') }}</th><th class="ac-num">{{ $t('Amount') }}</th><th>{{ $t('Status') }}</th></tr></thead>
-          <tbody><tr v-for="p in payments" :key="p.id" class="is-click" @click="$inertia.visit(route('travels.agents.payments.show', p.id))"><td :data-label="$t('Payment')" class="lg-main">{{ p.reference }}</td><td :data-label="$t('Agent')">{{ p.agent }}</td><td :data-label="$t('Voucher')">{{ p.pv_number || '-' }}</td><td :data-label="$t('Date')">{{ $date(p.date) }}</td><td :data-label="$t('Amount')" class="ac-num">{{ p.currency }} {{ money(p.amount) }}</td><td :data-label="$t('Status')"><span class="lg-chip" :class="payChip(p.status)">{{ p.status_label }}</span></td></tr></tbody></table></div>
+      <section v-if="can.agents && payments.length" class="lg-card tr-fold" :class="{ 'is-open': payOpen }">
+        <header class="lg-card-head tr-fold-head" role="button" tabindex="0" :aria-expanded="payOpen" @click="payOpen = !payOpen" @keydown.enter.prevent="payOpen = !payOpen" @keydown.space.prevent="payOpen = !payOpen">
+          <span class="lg-card-ico lg-ico-amber"><icons name="cash" class="w-5 h-5" /></span>
+          <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Payments History') }} <span class="tr-fold-n">{{ payments.length }}</span></h2><p class="lg-card-sub">{{ payOpen ? $t('The payment vouchers made for this travel.') : $t('Press the arrow to see the payment vouchers made for this travel.') }}</p></div>
+          <button type="button" class="tr-xbtn" :aria-label="payOpen ? $t('Collapse') : $t('Expand')" @click.stop="payOpen = !payOpen"><icons name="chevron-down" class="w-5 h-5" /></button>
+        </header>
+        <div v-show="payOpen" class="tr-fold-body"><div class="lg-table-wrap"><table class="lg-table lg-responsive"><thead><tr><th>{{ $t('Payment') }}</th><th>{{ $t('Agent') }}</th><th>{{ $t('Voucher') }}</th><th>{{ $t('Date') }}</th><th class="ac-num">{{ $t('Amount') }}</th><th>{{ $t('Status') }}</th></tr></thead>
+          <tbody><tr v-for="p in payments" :key="p.id" class="is-click" @click="$inertia.visit(route('travels.agents.payments.show', p.id))"><td :data-label="$t('Payment')" class="lg-main">{{ p.reference }}</td><td :data-label="$t('Agent')">{{ p.agent }}</td><td :data-label="$t('Voucher')">{{ p.pv_number || '-' }}</td><td :data-label="$t('Date')">{{ $date(p.date) }}</td><td :data-label="$t('Amount')" class="ac-num"><b :class="p.status === 'Paid' ? 'tr-g' : 'tr-o'">{{ p.currency }} {{ money(p.amount) }}</b></td><td :data-label="$t('Status')"><span class="lg-chip" :class="payChip(p.status)">{{ p.status_label }}</span></td></tr></tbody></table></div></div>
       </section>
 
       <section class="lg-card">
@@ -120,7 +124,7 @@ import AcctFileList from '@/Pages/Accounts/AcctFileList.vue';
 export default {
   components: { AdminLayout, PageHeader, Link, AcctDropzone, AcctFileList },
   props: { t: Object, attachments: Array, payments: Array, can: Object },
-  data() { return { asking: '', reason: '', busy: false, up: this.$inertia.form({ attachments: [] }) }; },
+  data() { return { payOpen: false, asking: '', reason: '', busy: false, up: this.$inertia.form({ attachments: [] }) }; },
   computed: { names() { return this.t.travellers.map(p => p.name).join(', '); } },
   methods: {
     rate(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 6 }); },
