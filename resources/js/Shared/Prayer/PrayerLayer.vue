@@ -56,7 +56,11 @@
               <adhan-waves />
             </div>
             <div class="pl-actions">
-              <button v-if="adhan.enabled" type="button" class="pl-ghost" @click="toggleAdhan"><span class="pl-eq" :class="{ on: playing }"><i></i><i></i><i></i><i></i></span>{{ playing ? $t('Pause adhan') : $t('Play adhan') }}</button>
+              <button v-if="adhan.enabled" type="button" class="pl-ghost" :class="{ 'is-playing': playing }" :disabled="playing" :aria-disabled="playing" @click="startAdhanAgain">
+                <span v-if="playing" class="pl-eq on"><i></i><i></i><i></i><i></i></span>
+                <svg v-else class="pl-playico" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4.2v11.6a.8.8 0 0 0 1.2.7l9.4-5.8a.8.8 0 0 0 0-1.4L7.2 3.5A.8.8 0 0 0 6 4.2Z" /></svg>
+                {{ playing ? $t('Adhan playing') : $t('Play adhan') }}
+              </button>
               <button type="button" class="pl-btn" @click="closePrayer"><span>{{ $t('Close') }}</span></button>
             </div>
           </template>
@@ -98,6 +102,8 @@ export default {
   },
   // The layout remounts on every page visit. Read what this person already acknowledged BEFORE the first paint,
   // otherwise the alert dialogue would flash for a moment on every page and then disappear.
+  mounted() { window.addEventListener('keydown', this.onKey); },
+  beforeUnmount() { window.removeEventListener('keydown', this.onKey); },
   created() {
     const p = this.ph;
     this.lastKey = this.keyOf(p);
@@ -133,7 +139,9 @@ export default {
     ackAlert() { this.alertSeen = true; try { sessionStorage.setItem('pl-alert-' + this.ph.e.at, '1'); } catch (e) { /* no storage */ } },
     closePrayer() { this.prayerClosed = true; this.stopAdhan(); try { sessionStorage.setItem('pl-prayer-' + this.ph.e.at, '1'); } catch (e) { /* no storage */ } if (prayerState.preview) prayerState.preview = null; },
     startAdhan() { if (this.adhan.enabled) playAdhan(); },
-    toggleAdhan() { if (adhanState.playing) stopAdhan(); else playAdhan(true); },
+    // only offered when the adhan is not playing (it ended or was stopped): starts it again from the beginning
+    startAdhanAgain() { if (!adhanState.playing) playAdhan(true); },
+    onKey(e) { if (e.key !== 'Escape' || !this.show) return; if (this.modal === 'alert') { e.preventDefault(); this.ackAlert(); } else if (this.modal === 'prayer') { e.preventDefault(); this.closePrayer(); } },
     stopAdhan() { stopAdhan(); },
   },
 };
@@ -144,7 +152,7 @@ export default {
 .pl-mono { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .pl-backdrop { --pl-ink: #14532d; --pl-text: #166534; --pl-soft: #5b7a66; --pl-gold: #c2410c; --pl-verse-bg: rgba(255, 255, 255, 0.72); --pl-verse-line: rgba(234, 88, 12, 0.3); --pl-verse-text: #334155; --pl-ring-bg: rgba(22, 101, 52, 0.12); --pl-ring: #f97316; --pl-btn-text: #fff; --pl-ghost: rgba(22, 163, 74, 0.1); --pl-ghost-line: rgba(22, 163, 74, 0.35); --pl-ghost-text: #166534; --pl-star: #f59e0b;
   position: fixed; inset: 0; z-index: 10050; display: grid; place-items: center; padding: 1rem; background: radial-gradient(120% 90% at 50% 0%, rgba(220, 252, 231, 0.82), rgba(255, 237, 213, 0.86)); backdrop-filter: blur(8px); }
-.pl-card { position: relative; width: min(500px, 100%); max-height: calc(100vh - 2rem); overflow: auto; padding: 2.2rem 1.6rem 1.5rem; border-radius: 28px; text-align: center; color: var(--pl-ink); background: linear-gradient(165deg, #f0fdf4 0%, #fffbeb 55%, #fff1e0 100%); box-shadow: 0 40px 80px -34px rgba(22, 101, 52, 0.55), 0 0 0 1px rgba(34, 197, 94, 0.35), inset 0 0 60px rgba(251, 191, 36, 0.1); animation: pl-pop 0.6s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+.pl-card { position: relative; width: min(500px, 100%); max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); overflow: hidden; padding: 2.2rem 1.6rem 1.5rem; border-radius: 28px; text-align: center; color: var(--pl-ink); background: linear-gradient(165deg, #f0fdf4 0%, #fffbeb 55%, #fff1e0 100%); box-shadow: 0 40px 80px -34px rgba(22, 101, 52, 0.55), 0 0 0 1px rgba(34, 197, 94, 0.35), inset 0 0 60px rgba(251, 191, 36, 0.1); animation: pl-pop 0.6s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
 .pl-card.is-alert { background: linear-gradient(165deg, #fff7ed 0%, #fffbeb 55%, #f0fdf4 100%); box-shadow: 0 40px 80px -34px rgba(194, 65, 12, 0.5), 0 0 0 1px rgba(251, 146, 60, 0.5), inset 0 0 60px rgba(251, 146, 60, 0.1); }
 .pl-arch { position: absolute; left: 50%; top: -2px; width: 220px; height: 60px; transform: translateX(-50%); border-bottom-left-radius: 120px 60px; border-bottom-right-radius: 120px 60px; background: radial-gradient(60% 100% at 50% 0, rgba(251, 146, 60, 0.28), transparent); pointer-events: none; }
 .pl-stars { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
@@ -227,4 +235,30 @@ html.dark .pl-ar { color: #fde68a; } html.dark .pl-text b { color: #fde68a; } ht
 html.dark .pl-btn { background: linear-gradient(135deg, #fde68a, #f59e0b); } html.dark .pl-eq i { background: #34d399; }
 html.dark .pl-bar { color: #fff7ed; background: linear-gradient(90deg, #7c2d12, #b45309); box-shadow: 0 12px 30px -12px rgba(124, 45, 18, 0.9), 0 0 0 1px rgba(253, 186, 116, 0.5); } html.dark .pl-bar small { color: #fed7aa; } html.dark .pl-bar b { color: #fde68a; }
 @media (prefers-reduced-motion: reduce) { .pl-card, .pl-moon, .pl-star5, .pl-stars i, .pl-btn::after, .pl-verse, .pl-star8, .pl-embers i, .pl-ripples i, .pl-orbit, .pl-calm, .pl-calm__dots i, .pl-card.is-alert .pl-btn, .pl-ring__t b, .pl-player.is-on, .pl-player.is-on .pl-player__ico, .pl-ar, .pl-verse { animation: none; } .pl-stars i { opacity: 0.6; } .pl-embers, .pl-ripples { display: none; } }
+
+/* no scrolling inside the popups: on a short screen the spacing and the sizes shrink instead */
+.pl-backdrop { overflow: hidden; }
+.pl-card.is-alert .pl-btn { margin-top: 1.1rem; }
+.pl-card.is-alert .pl-calm { margin-bottom: 0.25rem; }
+.pl-ghost[disabled] { cursor: default; opacity: 1; transform: none; color: #166534; background: rgba(22, 163, 74, 0.14); }
+.pl-ghost.is-playing { box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.45), 0 0 0 4px rgba(22, 163, 74, 0.1); }
+.pl-playico { width: 14px; height: 14px; fill: currentColor; }
+.pl-player .aw { height: 64px; grid-column: 1 / -1; }
+@media (max-height: 820px) {
+  .pl-card { padding: 1.5rem 1.4rem 1.1rem; }
+  .pl-card .sky { width: 64px; height: 64px; margin-bottom: 0.3rem; }
+  .pl-title { font-size: 1.2rem; margin: 0.2rem 0 0.35rem; }
+  .pl-ring { width: 128px; height: 128px; margin: 0.45rem auto; } .pl-ring__t b { font-size: 1.5rem; }
+  .pl-verse { margin: 0.5rem 0 0.25rem; padding: 0.65rem 0.8rem 0.55rem; } .pl-verse__ar { font-size: 1.3rem; line-height: 1.8; margin-bottom: 0.3rem; } .pl-verse blockquote { font-size: 0.85rem; line-height: 1.45; }
+  .pl-player { margin-top: 0.5rem; padding: 0.45rem 0.8rem; } .pl-player .aw { height: 54px; }
+  .pl-actions { margin-top: 0.6rem; } .pl-calm { margin-top: 0.3rem; padding: 0.45rem 0.85rem; font-size: 0.82rem; }
+  .pl-card.is-alert .pl-btn { margin-top: 0.8rem; }
+}
+@media (max-height: 640px) {
+  .pl-card { padding: 1rem 1.1rem 0.8rem; }
+  .pl-card .sky { width: 46px; height: 46px; margin-bottom: 0.15rem; }
+  .pl-ring { width: 104px; height: 104px; } .pl-ring__t b { font-size: 1.3rem; }
+  .pl-verse__ar { font-size: 1.1rem; line-height: 1.6; } .pl-verse blockquote { font-size: 0.78rem; } .pl-text { font-size: 0.82rem; margin: 0.2rem 0; }
+  .pl-player .aw { height: 42px; } .pl-btn, .pl-ghost { padding: 0.5rem 1rem; }
+}
 </style>
