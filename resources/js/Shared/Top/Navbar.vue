@@ -90,9 +90,8 @@
                     <span class="wh-sec-count">{{ sec.items.length }}</span>
                   </div>
                   <tec-dropdown-link as="button" v-for="w in sec.items" :key="w.id" @click="selectWarehouse(w.id)">
-                    <span class="wh-picker-item" :class="{ 'wh-picker-item-active': currentWarehouse && currentWarehouse.id === w.id }">
+                    <span class="wh-picker-item wh-has-cat" :class="{ 'wh-picker-item-active': currentWarehouse && currentWarehouse.id === w.id }" :data-cat="w.category || null">
                       <span class="truncate">{{ w.name }}</span>
-                      <span v-if="w.tag" class="wh-tag" :class="'wh-tag-' + w.tag.toLowerCase()">{{ $t(w.tag) }}</span>
                       <icons v-if="currentWarehouse && currentWarehouse.id === w.id" name="tick" class="wh-picker-check" />
                     </span>
                   </tec-dropdown-link>
@@ -997,11 +996,10 @@ export default {
 .wh-sec-name { flex: 1; min-width: 0; }
 .wh-sec-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--sc) 12%, transparent); color: var(--sc); text-align: center; font-size: 0.62rem; line-height: 1.6; }
 .wh-sec .wh-picker-item { padding-left: 8px; }
-.wh-tag { flex: none; padding: 0 6px; border-radius: 999px; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.7; }
-.wh-tag-government { color: #1d4ed8; background: rgba(37, 99, 235, 0.1); box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.3); }
-.wh-tag-private { color: #6d28d9; background: rgba(124, 58, 237, 0.1); box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.3); }
-.wh-picker-item-active .wh-tag { margin-left: auto; margin-right: 4px; } .wh-tag + .wh-picker-check { margin-left: 0; }
-.wh-picker-item .wh-tag { margin-left: auto; }
+/* the category (Main Warehouse, Government, Private, Directors...) shows as a small tooltip on hover or keyboard focus, inside the row so the scroll area never clips it */
+.wh-has-cat { position: relative; }
+.wh-has-cat[data-cat]::after { content: 'Category: ' attr(data-cat); position: absolute; right: 22px; top: 50%; transform: translateY(-50%) scale(0.96); z-index: 20; padding: 3px 9px; border-radius: 8px; background: #0f2540; color: #fff; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.4; white-space: nowrap; box-shadow: 0 8px 16px -6px rgba(15, 37, 64, 0.55); opacity: 0; pointer-events: none; transition: opacity 0.12s ease, transform 0.12s ease; }
+.wh-has-cat[data-cat]:hover::after, button:focus-visible .wh-has-cat[data-cat]::after { opacity: 1; transform: translateY(-50%) scale(1); }
 
 .nb-new-btn {
   display: inline-flex;

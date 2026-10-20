@@ -30,9 +30,10 @@ export function groupWarehouses(list, query = '') {
   const out = WAREHOUSE_GROUPS.map(g => ({ ...g, items: [] }));
   (list || []).forEach(w => {
     if (q && !clean(w.name).includes(q) && !clean(w.status).includes(q)) return;
-    out.find(g => g.key === groupOfStatus(w.status)).items.push({ ...w, tag: tagOfStatus(w.status) });
+    out.find(g => g.key === groupOfStatus(w.status)).items.push({ ...w, tag: tagOfStatus(w.status), category: String(w.status || '').trim() });
   });
-  out.forEach(g => g.items.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })));
+  // A to Z, case-insensitive, numbers in natural order (Container 2 before Container 10)
+  out.forEach(g => g.items.sort((a, b) => String(a.name || '').trim().localeCompare(String(b.name || '').trim(), undefined, { numeric: true, sensitivity: 'base' })));
 
   return out.filter(g => g.items.length);
 }
