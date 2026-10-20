@@ -257,6 +257,14 @@ class SystemFeatureRegistry
                 'route_prefixes' => ['weekly-administration.charity.'],
                 'depends_on' => 'weekly_administration',
             ],
+            'administration_payments' => [
+                'name' => __('Administration Payments'),
+                'description' => __('Paying an authorized Administration document: mark all, one line or part of a line paid to a user or staff member, or make a Payment Voucher for it.'),
+                'module' => __('Finance'),
+                'icon' => 'cash',
+                'route_prefixes' => ['weekly-administration.payments.'],
+                'depends_on' => 'weekly_administration',
+            ],
             'administration_reports' => [
                 'name' => __('Administration Reports'),
                 'description' => __('Register, expenses by item (monthly or between dates), by month, by beneficiary and charity reports, with print, PDF and Excel.'),

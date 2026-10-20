@@ -16,6 +16,8 @@
       </div>
       <div class="wa-totals">
         <div class="wa-tot"><small>{{ $t('Authorized') }}</small><b class="tr-tm">{{ totals.currency }} {{ money(totals.authorized) }}</b></div>
+        <div class="wa-tot"><small>{{ $t('Paid out') }}</small><b class="tr-g">{{ totals.currency }} {{ money(totals.paid) }}</b></div>
+        <div class="wa-tot"><small>{{ $t('Authorized, still to pay') }}</small><b class="tr-m">{{ totals.currency }} {{ money(totals.to_pay) }}</b></div>
         <div class="wa-tot"><small>{{ $t('Still waiting') }}</small><b class="tr-o">{{ totals.currency }} {{ money(totals.waiting) }}</b></div>
         <div class="wa-tot"><small>{{ $t('All listed') }}</small><b class="tr-tm">{{ totals.currency }} {{ money(totals.all) }}</b></div>
       </div>
@@ -27,6 +29,7 @@
           <div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Reference, requested by, description or beneficiary of a line')" autocomplete="off" /></div>
           <div class="ac-f"><label>{{ $t('Requested by') }}</label><acct-select v-model="f.beneficiary_id" :options="users" :placeholder="$t('Anyone')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Item') }}</label><acct-select v-model="f.item_id" :options="items" :placeholder="$t('Any')" clearable /></div>
+          <div class="ac-f"><label>{{ $t('Payment') }}</label><acct-select v-model="f.pay" :options="payOptions" :placeholder="$t('Any')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Date from') }}</label><date-picker v-model="f.from" /></div>
           <div class="ac-f"><label>{{ $t('Date to') }}</label><date-picker v-model="f.to" /></div>
           <div class="tr-f tr-end"><label aria-hidden="true">&nbsp;</label><button type="button" class="lg-btn t-slate" :disabled="!hasFilters" @click="reset"><icons name="cross" class="w-4 h-4" />{{ $t('Clear') }}</button></div>
@@ -40,12 +43,12 @@
           <tbody>
             <tr v-for="(r, n) in rows.data" :key="r.id" class="is-click" @click="$inertia.visit(route('weekly-administration.show', r.id))">
               <td :data-label="$t('No')" class="tr-no">{{ (rows.from || 1) + n }}</td>
-              <td :data-label="$t('Document')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="lg-chip" :class="chip(r.status)" style="text-transform: none">{{ r.status_label }}</span></div><small>{{ $date(r.doc_date) }}<template v-if="r.source === 'duplicate'"> · {{ $t('duplicate') }}</template></small></div></td>
+              <td :data-label="$t('Document')" class="tr-wrap"><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="lg-chip" :class="chip(r.status)" style="text-transform: none">{{ r.status_label }}</span><span v-if="r.payment_status" class="lg-chip" :class="payChip(r.payment_status)" style="text-transform: none">{{ $t(r.payment_status) }}</span></div><small>{{ $date(r.doc_date) }}<template v-if="r.source === 'duplicate'"> · {{ $t('duplicate') }}</template></small></div></td>
               <td :data-label="$t('Requested by')" class="tr-wrap"><div class="tr-cell"><b>{{ r.beneficiary || '-' }}</b><small>{{ $t('prepared by') }} {{ r.by || '-' }}</small></div></td>
               <td :data-label="$t('The three stages')" class="tr-wrap"><div class="tr-cell"><span><small>{{ $t('Approved') }}</small> {{ r.approved_by || '-' }}</span><span><small>{{ $t('Authorized') }}</small> {{ r.authorized_by || '-' }}</span></div></td>
               <td :data-label="$t('Lines')" class="tr-num">{{ r.lines_count }}</td>
               <td :data-label="$t('Charity')" class="tr-num"><span v-if="r.include_charity" class="tr-o">{{ money(r.charity_total) }} <small>({{ r.charity_count }})</small></span><span v-else>-</span></td>
-              <td :data-label="$t('Total')" class="tr-num"><div class="tr-money"><b class="tr-tm">{{ r.currency }} {{ money(r.total_amount) }}</b></div></td>
+              <td :data-label="$t('Total')" class="tr-num"><div class="tr-money"><b class="tr-tm">{{ r.currency }} {{ money(r.total_amount) }}</b><small v-if="r.payment_status" class="tr-g">{{ $t('paid') }} {{ money(r.paid_total) }}</small><small v-if="r.payment_status && Number(r.balance)" class="tr-m">{{ $t('balance') }} {{ money(r.balance) }}</small></div></td>
               <td class="lg-sticky-end tr-acts-cell" @click.stop><span class="tr-acts">
                 <a v-if="can.print" :href="route('weekly-administration.print', r.id)" target="_blank" rel="noopener" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
                 <a v-if="can.print" :href="route('weekly-administration.pdf', r.id)" class="lg-icon-btn lg-tip" :data-tip="$t('Download')" :aria-label="$t('Download')"><icons name="download" class="w-4 h-4" /></a>
@@ -77,7 +80,7 @@ import Pager from '@/Pages/Accounts/Pager.vue';
 
 export default {
   components: { SendDialog, DuplicateDialog, ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect, Pager },
-  props: { rows: Object, filters: Object, statuses: Array, users: Array, items: Array, stats: Object, totals: Object, can: Object },
+  props: { rows: Object, filters: Object, statuses: Array, users: Array, items: Array, stats: Object, payStats: Object, totals: Object, can: Object },
   data() { return { f: { ...this.filters }, busy: false, timer: null, sendDoc: null, dupDoc: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {
@@ -86,10 +89,12 @@ export default {
       return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.total }, { key: 'Requested', label: this.$t('Requested'), icon: 'clock', tone: 'amber', count: s.requested }, { key: 'Approved', label: this.$t('Approved'), icon: 'tick', tone: 'sky', count: s.approved },
         { key: 'Authorized', label: this.$t('Authorized'), icon: 'check-double', tone: 'emerald', count: s.authorized }, { key: 'Rejected', label: this.$t('Rejected'), icon: 'x-circle', tone: 'rose', count: s.rejected }, { key: 'Cancelled', label: this.$t('Cancelled'), icon: 'x-circle', tone: 'slate', count: s.cancelled }];
     },
+    payOptions() { return ['Unpaid', 'Partially Paid', 'Paid'].map(x => ({ value: x, label: this.$t(x) + ' (' + this.payStats[x] + ')' })); },
     hasFilters() { return Object.keys(this.f).some(k => this.f[k]); },
   },
   methods: {
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+    payChip(s) { return { Paid: 'lg-chip-green', 'Partially Paid': 'lg-chip-amber', Unpaid: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     chip(s) { return { Requested: 'lg-chip-amber', Approved: 'lg-chip-blue', Authorized: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     queue() { clearTimeout(this.timer); this.busy = true; this.timer = setTimeout(this.go, 380); },
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('weekly-administration.index'), q, { preserveState: true, preserveScroll: true, replace: true, onFinish: () => (this.busy = false) }); },

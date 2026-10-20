@@ -751,6 +751,7 @@ class PaymentVoucherController extends Controller
 
         DB::transaction(function () use (&$voucher, $data, $request, &$wasRejected, &$loadingPaymentId, $id) {
             $travelPaymentId = null;
+            $adminPaymentId = null;
             // The status was read before this transaction: lock the row and look again, so an approval (or a delete) that
             // arrived in between cannot be overwritten by this edit.
             $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
@@ -785,6 +786,8 @@ class PaymentVoucherController extends Controller
 
             $loadingPaymentId = \App\Services\Transport\LoadingVoucherService::syncOnEdit($voucher, $wasLoading, (float) $data['total_amount']);
             $travelPaymentId = \App\Services\Travels\TravelVoucherService::syncOnEdit($voucher, $wasTravel, (float) $data['total_amount']);
+            // An Administration voucher keeps the amount of the document lines it pays; its first line points back at the payment.
+            $adminPaymentId = \App\Services\Administration\AdminPaymentService::syncOnEdit($voucher, (float) $data['total_amount']);
 
             // The lines are written again, so each line keeps the transport trip it was created for: by its own id when the
             // form sent one, otherwise by its position. The trips of the voucher are also remembered as a set on the voucher itself,
@@ -803,6 +806,7 @@ class PaymentVoucherController extends Controller
                     'transport_record_id' => $old?->transport_record_id,
                     'transport_loading_payment_id' => $index === 0 ? $loadingPaymentId : null,
                     'travel_agent_payment_id' => $index === 0 ? $travelPaymentId : null,
+                    'admin_document_payment_id' => $index === 0 ? $adminPaymentId : null,
                     'particulars' => PaymentVoucher::particularsText($item['particulars_remainder']),
                     'amount' => $item['amount'],
                 ]);
@@ -875,6 +879,7 @@ class PaymentVoucherController extends Controller
 
             // A travel agent payment waiting on this voucher is released (the amount is available again).
             \App\Services\Travels\TravelVoucherService::release($voucher, __('Voucher deleted.'));
+            \App\Services\Administration\AdminPaymentService::release($voucher, __('Voucher deleted.'));
 
             $linkedTrips = \App\Models\TransportRecord::where('payment_voucher_id', $voucher->id)->lockForUpdate()->get();
             foreach ($linkedTrips as $trip) {
@@ -1253,6 +1258,8 @@ class PaymentVoucherController extends Controller
 
             // Travel agent payments made through this voucher: the payment becomes real and reduces what the agent is owed.
             \App\Services\Travels\TravelVoucherService::markPaid($voucher);
+            // Administration documents paid through this voucher: the payment becomes real.
+            \App\Services\Administration\AdminPaymentService::markPaid($voucher);
 
             return [$voucher, $this->payLinkedTrips($voucher)];
         });

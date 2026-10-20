@@ -34,13 +34,13 @@ class AdminDocument extends Model
     protected $setUser = true;
 
     protected $fillable = [
-        'account_id', 'reference', 'hash', 'status', 'doc_date', 'department', 'currency', 'beneficiary_user_id', 'beneficiary_name', 'include_charity', 'items_total', 'charity_total', 'total_amount', 'notes',
+        'account_id', 'reference', 'hash', 'status', 'doc_date', 'department', 'currency', 'beneficiary_user_id', 'beneficiary_name', 'include_charity', 'items_total', 'charity_total', 'total_amount', 'paid_total', 'reserved_total', 'payment_status', 'last_paid_at', 'notes',
         'source', 'duplicated_from_id', 'user_id', 'approved_by_user_id', 'approved_at', 'approval_remarks', 'authorized_by_user_id', 'authorized_at', 'authorization_remarks',
         'rejected_by_user_id', 'rejected_at', 'rejection_reason', 'cancelled_by_user_id', 'cancelled_at', 'cancel_reason', 'sent_count', 'last_sent_at', 'deleted_by', 'extra_attributes',
     ];
 
     public $casts = [
-        'doc_date' => 'date', 'include_charity' => 'boolean', 'items_total' => 'decimal:2', 'charity_total' => 'decimal:2', 'total_amount' => 'decimal:2',
+        'doc_date' => 'date', 'include_charity' => 'boolean', 'items_total' => 'decimal:2', 'charity_total' => 'decimal:2', 'total_amount' => 'decimal:2', 'paid_total' => 'decimal:2', 'reserved_total' => 'decimal:2', 'last_paid_at' => 'datetime',
         'approved_at' => 'datetime', 'authorized_at' => 'datetime', 'rejected_at' => 'datetime', 'cancelled_at' => 'datetime', 'last_sent_at' => 'datetime', 'extra_attributes' => 'array',
     ];
 
@@ -52,6 +52,11 @@ class AdminDocument extends Model
     public function charityLines()
     {
         return $this->hasMany(AdminDocumentCharity::class, 'admin_document_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(AdminDocumentPayment::class, 'admin_document_id')->orderByDesc('id');
     }
 
     public function sends()
@@ -116,7 +121,8 @@ class AdminDocument extends Model
     /** Which documents a person may see: all of them for people who approve, authorize or may see everything; otherwise the ones they made or are the beneficiary of. */
     public function scopeVisibleTo($q, User $u)
     {
-        if ($u->hasRole('Super Admin') || $u->view_all || $u->can('view-all-weekly-administration') || $u->can('approve-weekly-administration') || $u->can('authorize-weekly-administration')) {
+        if ($u->hasRole('Super Admin') || $u->view_all || $u->can('view-all-weekly-administration') || $u->can('approve-weekly-administration') || $u->can('authorize-weekly-administration')
+            || $u->can('mark-paid-weekly-administration') || $u->can('create-payment-voucher-from-administration')) {
             return $q;
         }
 

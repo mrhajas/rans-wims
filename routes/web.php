@@ -463,6 +463,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         $ch = Controllers\WeeklyAdministration\CharityController::class;
         $rp = Controllers\WeeklyAdministration\ReportController::class;
         $st = Controllers\WeeklyAdministration\SettingsController::class;
+        $pc = Controllers\WeeklyAdministration\PaymentController::class;
         Route::get('/', [$dc, 'index'])->name('index');
         Route::get('create', [$dc, 'create'])->name('create');
         Route::post('/', [$dc, 'store'])->middleware('throttle:60,1,weekly-administration.store')->name('store');
@@ -491,6 +492,9 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('{document}/authorize', [$dc, 'authorizeIt'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.authorize')->name('authorize');
         Route::post('{document}/reject', [$dc, 'reject'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.reject')->name('reject');
         Route::post('{document}/cancel', [$dc, 'cancel'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.cancel')->name('cancel');
+        Route::post('{document}/payments', [$pc, 'store'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.payments.store')->name('payments.store');
+        Route::post('{document}/payments/voucher', [$pc, 'voucher'])->whereNumber('document')->middleware('throttle:30,1,weekly-administration.payments.voucher')->name('payments.voucher');
+        Route::post('payments/{payment}/reverse', [$pc, 'reverse'])->whereNumber('payment')->middleware('throttle:30,1,weekly-administration.payments.reverse')->name('payments.reverse');
         Route::post('{document}/duplicate', [$dc, 'duplicate'])->whereNumber('document')->middleware('throttle:10,1,weekly-administration.duplicate')->name('duplicate');
         Route::post('{document}/send', [$dc, 'send'])->whereNumber('document')->middleware('throttle:20,1,weekly-administration.send')->name('send');
         Route::get('{document}/print', [$dc, 'print'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.print')->name('print');

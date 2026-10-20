@@ -15,7 +15,7 @@ use Rap2hpoutre\FastExcel\FastExcel;
 /** Administration reports: the same WIMS report layout as every other report; print, PDF, Excel and CSV; every export is logged. */
 class ReportController extends Controller
 {
-    private const KEYS = ['search', 'status', 'from', 'to', 'item_id', 'user_id', 'beneficiary', 'section', 'charity', 'amount_min', 'amount_max'];
+    private const KEYS = ['search', 'status', 'from', 'to', 'item_id', 'user_id', 'beneficiary', 'section', 'charity', 'amount_min', 'amount_max', 'pay', 'pstatus'];
 
     public function __construct()
     {
@@ -37,6 +37,7 @@ class ReportController extends Controller
             'catalog' => AdminReports::catalog(), 'type' => $type, 'filters' => $filters,
             'statuses' => collect(array_merge(AdminDocument::STATUSES))->map(fn ($s) => ['value' => $s, 'label' => __($s)])->push(['value' => 'open', 'label' => __('Waiting (requested or approved)')])->values(),
             'items' => AdminItem::query()->orderBy('name')->get(['id', 'name'])->map(fn ($i) => ['value' => $i->id, 'label' => $i->name])->values(),
+            'payStatuses' => collect(['Unpaid', 'Partially Paid', 'Paid'])->map(fn ($x) => ['value' => $x, 'label' => __($x)])->values(), 'paymentStatuses' => collect(\App\Models\AdminDocumentPayment::STATUSES)->map(fn ($x) => ['value' => $x, 'label' => __($x)])->values(),
             'users' => User::query()->orderBy('name')->get(['id', 'name'])->map(fn ($u) => ['value' => $u->id, 'label' => $u->name])->values(), 'can' => ['print' => $me->can('print-weekly-administration')],
         ]);
     }

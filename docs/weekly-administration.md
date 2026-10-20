@@ -22,3 +22,9 @@ Every action writes the activity log (requested, updated, approved, authorized, 
 
 ## Deploy
 Migration `2026_11_28_100000_create_weekly_administration` (tables, permissions for Super Admin, the three features, and the starting template of 26 lines = 3,959,000.00 from the owner's weekly sheet). `php artisan administration:samples` (local review samples + sample Charity list) and `--remove`.
+
+## Payment (added 2026-10-20)
+An **Authorized** document is paid in two ways that share one ledger (`admin_document_payments` + `admin_document_payment_lines`; what a line has been paid is the sum of its payment lines):
+- **Mark paid** (`mark-paid-weekly-administration`): all remaining lines at once, the chosen lines, or part of a line, to a chosen **user or staff member** (date, method, reference, notes). Recorded at once with the name of the person. Reversible with a reason (`reverse-payments-weekly-administration`).
+- **Payment Voucher** (`create-payment-voucher-from-administration`): a Draft voucher (type Administration, payee the staff member or the user's name, one voucher line per document line) is made and the amount is held ("Pending Voucher"). It becomes a real payment when the voucher is marked paid in Payment Vouchers; a rejected / cancelled / deleted voucher releases it. Editing the voucher cannot change its amount.
+Line status: Unpaid, Partially Paid, Paid (or Pending Voucher while held); the document is Unpaid, Partially Paid or Paid. A document with payments cannot be cancelled until they are reversed / released. Alerts events: `partially_paid`, `fully_paid`, `voucher_requested`, `voucher_released`, `payment_reversed`; the creation alert (`requested`) is on for bell, SMS and email by default. Report "Payments made"; the register has Paid / Balance / Payment and a payment filter. Migration `2026_11_29_100000`.

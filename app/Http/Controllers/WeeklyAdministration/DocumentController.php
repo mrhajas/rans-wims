@@ -55,7 +55,7 @@ class DocumentController extends Controller
     {
         $this->need('read-weekly-administration');
         $f = ['search' => trim((string) $request->query('search', '')), 'status' => (string) $request->query('status', ''), 'from' => (string) $request->query('from', ''), 'to' => (string) $request->query('to', ''),
-            'beneficiary_id' => (string) $request->query('beneficiary_id', ''), 'item_id' => (string) $request->query('item_id', ''), 'charity' => (string) $request->query('charity', ''), 'mine' => (string) $request->query('mine', '')];
+            'beneficiary_id' => (string) $request->query('beneficiary_id', ''), 'item_id' => (string) $request->query('item_id', ''), 'charity' => (string) $request->query('charity', ''), 'mine' => (string) $request->query('mine', ''), 'pay' => (string) $request->query('pay', '')];
         $like = fn (string $v) => '%' . str_replace(['%', '_'], ['\\%', '\\_'], $v) . '%';
         $me = $request->user();
         $base = $this->visible()
@@ -64,6 +64,7 @@ class DocumentController extends Controller
             ->when(ctype_digit($f['beneficiary_id']) && $f['beneficiary_id'] !== '', fn ($q) => $q->where('beneficiary_user_id', (int) $f['beneficiary_id']))
             ->when(ctype_digit($f['item_id']) && $f['item_id'] !== '', fn ($q) => $q->whereHas('lines', fn ($l) => $l->where('admin_item_id', (int) $f['item_id'])))
             ->when($f['charity'] === '1', fn ($q) => $q->where('include_charity', true))->when($f['charity'] === '0', fn ($q) => $q->where('include_charity', false))
+            ->when(in_array($f['pay'], ['Unpaid', 'Partially Paid', 'Paid'], true), fn ($q) => $q->where('status', AdminDocument::AUTHORIZED)->where('payment_status', $f['pay']))
             ->when($f['mine'] === '1', fn ($q) => $q->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('beneficiary_user_id', $me->id)))
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', $like($f['search']))->orWhere('beneficiary_name', 'like', $like($f['search']))->orWhere('notes', 'like', $like($f['search']))
                 ->orWhereHas('lines', fn ($l) => $l->where('description', 'like', $like($f['search']))->orWhere('beneficiary', 'like', $like($f['search'])))
@@ -73,15 +74,16 @@ class DocumentController extends Controller
         $counts = $this->visible()->selectRaw('status, COUNT(*) n')->groupBy('status')->pluck('n', 'status');
         // the money of what is listed: what is authorized is spent; what is waiting is still to be decided
         $money = (clone $base)->when($f['status'] === '', fn ($q) => $q->whereIn('status', [AdminDocument::REQUESTED, AdminDocument::APPROVED, AdminDocument::AUTHORIZED]))
-            ->selectRaw('status, SUM(items_total) i, SUM(charity_total) c, SUM(total_amount) t')->groupBy('status')->get()->keyBy('status');
+            ->selectRaw('status, SUM(items_total) i, SUM(charity_total) c, SUM(total_amount) t, SUM(paid_total) p')->groupBy('status')->get()->keyBy('status');
         $sum = fn ($statuses, $col) => number_format((float) collect($statuses)->sum(fn ($s) => (float) optional($money->get($s))->{$col}), 2, '.', '');
 
         return Inertia::render('WeeklyAdministration/Index', [
             'rows' => $rows, 'filters' => $f, 'statuses' => collect(AdminDocument::STATUSES)->map(fn ($s) => ['value' => $s, 'label' => __($s)])->values(),
             'users' => $this->userOptions(), 'items' => AdminItem::query()->orderBy('name')->get(['id', 'name'])->map(fn ($i) => ['value' => $i->id, 'label' => $i->name]),
+            'payStats' => ['Unpaid' => $this->visible()->where('status', AdminDocument::AUTHORIZED)->where('payment_status', 'Unpaid')->count(), 'Partially Paid' => $this->visible()->where('status', AdminDocument::AUTHORIZED)->where('payment_status', 'Partially Paid')->count(), 'Paid' => $this->visible()->where('status', AdminDocument::AUTHORIZED)->where('payment_status', 'Paid')->count()],
             'stats' => ['total' => (int) $counts->sum(), 'requested' => (int) ($counts[AdminDocument::REQUESTED] ?? 0), 'approved' => (int) ($counts[AdminDocument::APPROVED] ?? 0), 'authorized' => (int) ($counts[AdminDocument::AUTHORIZED] ?? 0),
                 'rejected' => (int) ($counts[AdminDocument::REJECTED] ?? 0), 'cancelled' => (int) ($counts[AdminDocument::CANCELLED] ?? 0)],
-            'totals' => ['currency' => AdminDocument::currency(), 'all' => $sum(array_keys($money->all()), 't'), 'authorized' => $sum([AdminDocument::AUTHORIZED], 't'), 'waiting' => $sum([AdminDocument::REQUESTED, AdminDocument::APPROVED], 't'), 'charity' => $sum(array_keys($money->all()), 'c')],
+            'totals' => ['currency' => AdminDocument::currency(), 'all' => $sum(array_keys($money->all()), 't'), 'authorized' => $sum([AdminDocument::AUTHORIZED], 't'), 'waiting' => $sum([AdminDocument::REQUESTED, AdminDocument::APPROVED], 't'), 'charity' => $sum(array_keys($money->all()), 'c'), 'paid' => $sum([AdminDocument::AUTHORIZED], 'p'), 'to_pay' => number_format(max(0, (float) $sum([AdminDocument::AUTHORIZED], 't') - (float) $sum([AdminDocument::AUTHORIZED], 'p')), 2, '.', '')],
             'can' => $this->can($me),
         ]);
     }
@@ -180,6 +182,15 @@ class DocumentController extends Controller
                 ->map(fn ($x) => ['id' => $x->id, 'text' => $x->description, 'at' => $x->created_at->toDateTimeString(), 'by' => optional(User::withoutGlobalScopes()->find($x->causer_id))->name])->values(),
             'can' => $a,
             'users' => $this->userOptions(),
+            'pay' => $document->status === AdminDocument::AUTHORIZED || $document->payments()->exists() ? [
+                'lines' => \App\Services\Administration\AdminPaymentService::lineTable($document),
+                'payments' => $document->payments()->with(['voucher:id,pv_number,status', 'user:id,name'])->get()->map(fn ($p) => ['id' => $p->id, 'reference' => $p->reference, 'status' => $p->status, 'source' => $p->source, 'paid_on' => optional($p->paid_on)->toDateString(), 'requested_on' => optional($p->requested_on)->toDateString(),
+                    'amount' => (string) $p->total_amount, 'to' => $p->paid_to_name, 'to_type' => $p->payee_type, 'method' => $p->method, 'payment_reference' => $p->payment_reference, 'notes' => $p->notes, 'by' => optional($p->user)->name,
+                    'voucher' => $p->voucher ? ['id' => $p->voucher->id, 'pv_number' => $p->voucher->pv_number, 'status' => $p->voucher->status] : null, 'release_reason' => $p->release_reason, 'reverse_reason' => $p->reverse_reason, 'reversed_at' => optional($p->reversed_at)->toDateTimeString(),
+                    'lines' => $p->lines()->count(), 'can_reverse' => $p->status === 'Paid' && $p->source === 'direct'])->values(),
+                'payees' => $a['pay'] || $a['voucher'] ? \App\Services\Administration\AdminPaymentService::payeeOptions() : [], 'methods' => \App\Services\Administration\AdminPaymentService::METHODS,
+                'default_payee' => $document->beneficiary_user_id ? 'u:' . $document->beneficiary_user_id : '',
+            ] : null,
         ]);
     }
 
@@ -198,6 +209,8 @@ class DocumentController extends Controller
             'cancel' => (in_array($d->status, [AdminDocument::REQUESTED, AdminDocument::REJECTED], true) && ($own || $me->can('cancel-weekly-administration') || $me->can('approve-weekly-administration'))) || (in_array($d->status, [AdminDocument::APPROVED, AdminDocument::AUTHORIZED], true) && $me->can('cancel-weekly-administration')),
             'print' => $me->can('print-weekly-administration'), 'send' => $me->can('send-weekly-administration') && $d->status !== AdminDocument::CANCELLED,
             'duplicate' => $me->can('duplicate-weekly-administration') && $me->can('create-weekly-administration'),
+            'pay' => $d->status === AdminDocument::AUTHORIZED && $me->can('mark-paid-weekly-administration'), 'voucher' => $d->status === AdminDocument::AUTHORIZED && $me->can('create-payment-voucher-from-administration'),
+            'reverse' => $me->can('reverse-payments-weekly-administration'),
         ];
     }
 
@@ -298,6 +311,11 @@ class DocumentController extends Controller
         $error = null;
         DB::transaction(function () use ($document, $me, $reason, $own, &$error) {
             $d = AdminDocument::withoutGlobalScopes()->lockForUpdate()->find($document->id);
+            if (\App\Models\AdminDocumentPayment::query()->where('admin_document_id', $d->id)->whereIn('status', [\App\Models\AdminDocumentPayment::PAID, \App\Models\AdminDocumentPayment::PENDING_VOUCHER])->exists()) {
+                $error = __('This document has payments or a Payment Voucher waiting. Reverse the payments or release the voucher first.');
+
+                return;
+            }
             if (in_array($d->status, [AdminDocument::REQUESTED, AdminDocument::REJECTED], true)) {
                 if (! ($own || $me->can('cancel-weekly-administration') || $me->can('approve-weekly-administration'))) {
                     $error = __('You may not cancel this document.');
@@ -510,6 +528,7 @@ class DocumentController extends Controller
     {
         return ['id' => $d->id, 'reference' => $d->reference, 'status' => $d->status, 'status_label' => __($d->status), 'doc_date' => $d->doc_date->toDateString(), 'currency' => $d->currency, 'beneficiary' => $d->beneficiary_name, 'include_charity' => (bool) $d->include_charity,
             'items_total' => (string) $d->items_total, 'charity_total' => (string) $d->charity_total, 'total_amount' => (string) $d->total_amount, 'lines_count' => (int) ($d->lines_count ?? $d->lines()->count()), 'charity_count' => (int) ($d->charity_lines_count ?? $d->charityLines()->count()),
+            'payment_status' => $d->status === AdminDocument::AUTHORIZED ? $d->payment_status : null, 'paid_total' => (string) $d->paid_total, 'reserved_total' => (string) $d->reserved_total, 'balance' => number_format(max(0, (float) $d->total_amount - (float) $d->paid_total), 2, '.', ''),
             'by' => optional($d->user)->name, 'approved_by' => optional($d->approvedBy)->name, 'authorized_by' => optional($d->authorizedBy)->name, 'source' => $d->source, 'sent_count' => (int) $d->sent_count, 'last_sent_at' => optional($d->last_sent_at)->toDateTimeString()];
     }
 }

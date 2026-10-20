@@ -15,6 +15,8 @@
           <div v-if="uses('section')" class="ac-f"><label>{{ $t('Section') }}</label><acct-select v-model="f.section" :options="sections" :placeholder="$t('Both')" clearable /></div>
           <div v-if="uses('charity')" class="ac-f"><label>{{ $t('Charity section') }}</label><acct-select v-model="f.charity" :options="charityOpts" :placeholder="$t('Any')" clearable /></div>
           <div v-if="uses('status')" class="ac-f"><label>{{ $t('Status') }}</label><acct-select v-model="f.status" :options="statuses" :placeholder="money ? $t('Authorized only') : $t('Any')" clearable /></div>
+          <div v-if="uses('pay')" class="ac-f"><label>{{ $t('Payment') }}</label><acct-select v-model="f.pay" :options="payStatuses" :placeholder="$t('Any')" clearable /></div>
+          <div v-if="uses('pstatus')" class="ac-f"><label>{{ $t('Payment status') }}</label><acct-select v-model="f.pstatus" :options="paymentStatuses" :placeholder="$t('Paid')" clearable /></div>
           <div v-if="uses('from')" class="ac-f"><label>{{ $t('From') }}</label><date-picker v-model="f.from" /></div>
           <div v-if="uses('to')" class="ac-f"><label>{{ $t('To') }}</label><date-picker v-model="f.to" /></div>
           <div v-if="uses('amount_min')" class="ac-f"><label>{{ $t('Amount from') }}</label><input v-model="f.amount_min" type="number" min="0" step="0.01" inputmode="decimal" /></div>
@@ -60,25 +62,25 @@ const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOStri
 
 export default {
   components: { ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect },
-  props: { catalog: Array, type: String, filters: Object, statuses: Array, items: Array, users: Array, can: Object },
+  props: { catalog: Array, type: String, filters: Object, statuses: Array, payStatuses: Array, paymentStatuses: Array, items: Array, users: Array, can: Object },
   data() { return { t: this.type, report: null, loading: false, f: { ...this.filters }, timer: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {
     current() { return this.catalog.find(c => c.key === this.t); },
-    money() { return ['by_item', 'item_monthly', 'lines', 'by_month', 'by_beneficiary', 'charity', 'charity_people'].includes(this.t); },
+    money() { return ['by_item', 'item_monthly', 'lines', 'by_month', 'by_beneficiary', 'charity', 'charity_people', 'payments'].includes(this.t); },
     hasFilters() { return Object.keys(this.f).some(k => this.f[k]); },
     sections() { return [{ value: 'items', label: this.$t('Lines only') }, { value: 'charity', label: this.$t('Charity only') }]; },
     charityOpts() { return [{ value: '1', label: this.$t('With charity') }, { value: '0', label: this.$t('Without charity') }]; },
     quick() { return [{ k: 'month', label: this.$t('This month') }, { k: 'last', label: this.$t('Last month') }, { k: 'quarter', label: this.$t('This quarter') }, { k: 'year', label: this.$t('This year') }]; },
     tabs() {
-      const look = { register: ['list', 'sky'], by_item: ['collection', 'teal'], item_monthly: ['calendar', 'emerald'], lines: ['table', 'indigo'], by_month: ['chart-bar', 'violet'], by_beneficiary: ['users', 'amber'], charity: ['heart', 'rose'], charity_people: ['group', 'rose'] };
+      const look = { register: ['list', 'sky'], payments: ['cash', 'emerald'], by_item: ['collection', 'teal'], item_monthly: ['calendar', 'emerald'], lines: ['table', 'indigo'], by_month: ['chart-bar', 'violet'], by_beneficiary: ['users', 'amber'], charity: ['heart', 'rose'], charity_people: ['group', 'rose'] };
       return this.catalog.map(c => ({ key: c.key, label: c.title, icon: (look[c.key] || ['doc', 'navy'])[0], tone: (look[c.key] || ['doc', 'navy'])[1] }));
     },
   },
   mounted() { this.run(); },
   methods: {
     isMoney(v) { return /^([A-Z]{3} )?-?[\d,]+\.\d{2}$/.test(String(v)); },
-    tone(c) { if (c.type !== 'money') return ''; return ['total'].includes(c.key) ? 'tr-tm' : 'tr-m'; },
+    tone(c) { if (c.type !== 'money') return ''; if (c.key === 'paid') return 'tr-g'; if (c.key === 'balance') return 'tr-o'; return ['total'].includes(c.key) ? 'tr-tm' : 'tr-m'; },
     uses(k) { return this.current && this.current.filters.includes(k); },
     params() { const q = { type: this.t }; (this.current ? this.current.filters : []).forEach(k => { if (this.f[k] !== '' && this.f[k] !== null && this.f[k] !== undefined) q[k] = this.f[k]; }); return q; },
     url(fmt) { return route('weekly-administration.reports.' + fmt, this.params()); },

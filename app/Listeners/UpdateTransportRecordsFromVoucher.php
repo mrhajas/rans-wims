@@ -30,6 +30,7 @@ class UpdateTransportRecordsFromVoucher
         if (in_array($voucher->status, [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED], true)) {
             // A travel agent payment waiting on this voucher is released: the amount is available again.
             \App\Services\Travels\TravelVoucherService::release($voucher, __('Voucher :s.', ['s' => strtolower((string) $voucher->status)]));
+            \App\Services\Administration\AdminPaymentService::release($voucher, __('Voucher :s.', ['s' => strtolower((string) $voucher->status)]));
 
             // Loading & Unloading payments waiting on this voucher are released: the amount is available again.
             \App\Models\TransportLoadingPayment::pendingVoucher()->where('payment_voucher_id', $voucher->id)->get()->each(function ($loadingPayment) use ($voucher) {
