@@ -402,7 +402,7 @@ export default {
     chart() {
       if (!this.byDate.length) return null;
       return {
-        chart: { type: 'column', style: { fontFamily: 'Nunito' }, backgroundColor: 'transparent' },
+        chart: { type: 'column', style: { fontFamily: 'Montserrat' }, backgroundColor: 'transparent' },
         credits: { enabled: false },
         title: { text: undefined },
         xAxis: { categories: this.byDate.map(d => d.date), crosshair: true },

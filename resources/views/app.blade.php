@@ -27,7 +27,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap">
 
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -110,8 +110,8 @@
     }
 
     /* ===== Loading screen: a glowing HUD ring, the percentage in its centre, a glowing progress bar underneath ===== */
-    .app-loading { overflow: hidden; background: radial-gradient(120% 90% at 50% 38%, #e6f0ff 0%, #f5f9ff 48%, #ffffff 100%); font-family: Nunito, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
-    .wl-pct, .wl-wims, .wl-status, .wl-footer { font-family: Nunito, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    .app-loading { overflow: hidden; background: radial-gradient(120% 90% at 50% 38%, #e6f0ff 0%, #f5f9ff 48%, #ffffff 100%); font-family: Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    .wl-pct, .wl-wims, .wl-status, .wl-footer { font-family: Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
     .app-loading.bg-gray-50 { background: radial-gradient(120% 90% at 50% 38%, #e6f0ff 0%, #f5f9ff 48%, #ffffff 100%); }
     .wl-grid { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.07) 1px, transparent 1px); background-size: 34px 34px; -webkit-mask-image: radial-gradient(60% 55% at 50% 45%, #000 10%, transparent 75%); mask-image: radial-gradient(60% 55% at 50% 45%, #000 10%, transparent 75%); }
     .wl-corner { position: absolute; width: 46px; height: 46px; border: 0 solid rgba(37, 99, 235, 0.7); filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.6)); }
@@ -213,12 +213,12 @@
       var finished = false;
       var lastTime = null;
       var rafId = null;
-      // show the loader's text only once the WIMS font (Nunito) is ready, so the percentage is never drawn in a fallback face (1.5 s at most)
+      // show the loader's text only once the WIMS font (Montserrat) is ready, so the percentage is never drawn in a fallback face (1.5 s at most)
       (function () {
         var wrap = document.getElementById('app-loading');
         var show = function () { if (wrap) wrap.classList.add('wl-font'); };
         if (document.fonts && document.fonts.load) {
-          Promise.all([document.fonts.load('700 38px Nunito'), document.fonts.load('600 12px Nunito')]).then(show, show);
+          Promise.all([document.fonts.load('700 38px Montserrat'), document.fonts.load('600 12px Montserrat')]).then(show, show);
           setTimeout(show, 1500);
         } else { show(); }
       })();

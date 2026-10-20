@@ -1627,7 +1627,7 @@ export default {
       return {
         ...frame,
         ...this.chartAxes(keys.map(d => this.$month(d))),
-        chart: { type: 'areaspline', height: 340, spacingTop: 18, backgroundColor: 'transparent', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'areaspline', height: 340, spacingTop: 18, backgroundColor: 'transparent', style: { fontFamily: 'Montserrat' } },
         series: this.movementSeries(this.chart.year, 'areaspline'),
       };
     },
@@ -1640,7 +1640,7 @@ export default {
       return {
         ...frame,
         ...axes,
-        chart: { type: 'column', height: 340, spacingTop: 18, backgroundColor: 'transparent', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'column', height: 340, spacingTop: 18, backgroundColor: 'transparent', style: { fontFamily: 'Montserrat' } },
         plotOptions: {
           column: { stacking: 'normal', borderWidth: 0, borderRadius: 3, groupPadding: 0.08, pointPadding: 0.04, maxPointWidth: 22 },
         },
@@ -1702,7 +1702,7 @@ export default {
           spacingTop: 18,
           backgroundColor: 'transparent',
           plotShadow: false,
-          style: { fontFamily: 'Nunito' },
+          style: { fontFamily: 'Montserrat' },
           events: {
             render: function () {
               const chart = this;
@@ -1722,12 +1722,12 @@ export default {
                 chart.renderer
                   .text(Highcharts.numberFormat(total, 0, '.', ','), cx, cy + 1)
                   .attr({ align: 'center' })
-                  .css({ fontSize: '22px', fontWeight: '800', color: '#1e293b', fontFamily: 'Nunito, sans-serif' })
+                  .css({ fontSize: '22px', fontWeight: '800', color: '#1e293b', fontFamily: 'Montserrat, sans-serif' })
                   .add(chart.centerLabel);
                 chart.renderer
                   .text(String(vm.$t('Movement')).toUpperCase(), cx, cy + 17)
                   .attr({ align: 'center' })
-                  .css({ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '.05em', fontFamily: 'Nunito, sans-serif' })
+                  .css({ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '.05em', fontFamily: 'Montserrat, sans-serif' })
                   .add(chart.centerLabel);
               }
 

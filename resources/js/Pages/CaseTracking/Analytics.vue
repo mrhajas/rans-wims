@@ -134,7 +134,7 @@ export default {
     },
     createdOverTimeOptions() {
       return {
-        chart: { type: 'line', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'line', style: { fontFamily: 'Montserrat' } },
         credits: { enabled: false },
         title: { text: '' },
         colors: ['#9f1239'],
@@ -145,7 +145,7 @@ export default {
     },
     byStatusOptions() {
       return {
-        chart: { type: 'column', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'column', style: { fontFamily: 'Montserrat' } },
         credits: { enabled: false },
         title: { text: '' },
         colors: ['#9f1239'],
@@ -166,7 +166,7 @@ export default {
   methods: {
     pieOptions(dataObj) {
       return {
-        chart: { type: 'pie', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'pie', style: { fontFamily: 'Montserrat' } },
         credits: { enabled: false },
         title: { text: '' },
         colors: ['#9f1239', '#fb7185', '#f59e0b', '#0ea5e9', '#22c55e', '#94a3b8'],

@@ -54,13 +54,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>WIMS Licence {{ $licence->licence_number }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap">
     <style>
         @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        html, body { background: #e8edf5; font-family: Nunito, 'Segoe UI', Arial, sans-serif; color: #0f172a; }
+        html, body { background: #e8edf5; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; color: #0f172a; }
         .bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 10px; justify-content: center; padding: 10px; background: #0f172a; }
-        .bar button { padding: 8px 18px; border: 0; border-radius: 10px; font: 800 13px Nunito, sans-serif; color: #fff; background: #4f46e5; cursor: pointer; }
+        .bar button { padding: 8px 18px; border: 0; border-radius: 10px; font: 800 13px Montserrat, sans-serif; color: #fff; background: #4f46e5; cursor: pointer; }
         .bar button.alt { background: #334155; }
         .sheet { position: relative; width: 210mm; height: 297mm; margin: 12px auto; padding: 9mm; overflow: hidden; background: #fffdf9; box-shadow: 0 10px 40px rgba(15, 23, 42, .25); }
         .frame { position: relative; height: 100%; padding: 5.5mm 8mm 4mm; border-radius: 6mm; border: .5mm solid {{ $c1 }}; outline: .25mm solid {{ $c2 }}; outline-offset: 1.2mm; overflow: hidden; background: linear-gradient(160deg, #fff 0%, {{ $soft }} 140%); }
@@ -92,7 +92,7 @@
         .tl .track { position: relative; height: 3mm; margin: 5.4mm 0 1.8mm; border-radius: 99px; background: #e2e8f0; }
         .tl .fill { position: absolute; inset: 0 auto 0 0; width: {{ $elapsed }}%; border-radius: inherit; background: linear-gradient(90deg, #16a34a, #f59e0b); }
         .tl .now { position: absolute; top: 50%; left: {{ $elapsed }}%; width: 6mm; height: 6mm; margin: -3mm 0 0 -3mm; border-radius: 50%; background: #fff; border: 1.1mm solid {{ $c1 }}; }
-        .tl .now i { position: absolute; bottom: 7mm; {{ $elapsed < 14 ? 'left: -1mm; transform: none;' : ($elapsed > 86 ? 'right: -1mm; left: auto; transform: none;' : 'left: 50%; transform: translateX(-50%);') }} padding: .4mm 2mm; border-radius: 99px; font: 800 2.5mm Nunito, sans-serif; font-style: normal; color: #fff; background: {{ $c1 }}; white-space: nowrap; }
+        .tl .now i { position: absolute; bottom: 7mm; {{ $elapsed < 14 ? 'left: -1mm; transform: none;' : ($elapsed > 86 ? 'right: -1mm; left: auto; transform: none;' : 'left: 50%; transform: translateX(-50%);') }} padding: .4mm 2mm; border-radius: 99px; font: 800 2.5mm Montserrat, sans-serif; font-style: normal; color: #fff; background: {{ $c1 }}; white-space: nowrap; }
         .tl .ends { display: flex; justify-content: space-between; font-size: 2.9mm; font-weight: 700; color: #64748b; }
         .tl .ends b { display: block; font-size: 3.5mm; color: #0f172a; } .tl .ends div:last-child { text-align: right; }
         .tl .mid { text-align: center; }

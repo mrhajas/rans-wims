@@ -158,7 +158,7 @@ export default {
         chart: {
           type: 'bar',
           spacingTop: 10,
-          style: { fontFamily: 'Nunito' },
+          style: { fontFamily: 'Montserrat' },
           height: Math.max(220, sorted.length * 36),
         },
         credits: { enabled: false },

@@ -312,7 +312,7 @@ export default {
     },
     statusChartOptions() {
       return {
-        chart: { type: 'column', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'column', style: { fontFamily: 'Montserrat' } },
         title: { text: '' },
         credits: { enabled: false },
         xAxis: { categories: this.chart.status_labels || [] },
@@ -325,7 +325,7 @@ export default {
       const labels = (this.chart.top_variance_materials || []).map((row) => row.name);
       const data = (this.chart.top_variance_materials || []).map((row) => Number(row.value || 0));
       return {
-        chart: { type: 'bar', style: { fontFamily: 'Nunito' } },
+        chart: { type: 'bar', style: { fontFamily: 'Montserrat' } },
         title: { text: '' },
         credits: { enabled: false },
         xAxis: { categories: labels },

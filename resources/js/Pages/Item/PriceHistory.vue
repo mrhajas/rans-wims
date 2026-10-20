@@ -234,7 +234,7 @@ export default {
         chart: {
           type: 'spline',
           spacingTop: 20,
-          style: { fontFamily: 'Nunito' },
+          style: { fontFamily: 'Montserrat' },
           backgroundColor: 'transparent',
         },
         credits: { enabled: false },

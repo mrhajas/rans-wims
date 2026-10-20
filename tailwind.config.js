@@ -23,7 +23,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Nunito', ...defaultTheme.fontFamily.sans],
+        sans: ['Montserrat', ...defaultTheme.fontFamily.sans],
       },
       screens: {
         // Dedicated breakpoint for the main nav/sidebar: tablets (768-1024px) get the

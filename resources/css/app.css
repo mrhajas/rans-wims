@@ -103,12 +103,16 @@ body,
   }
 }
 
+/* the WIMS typeface: Montserrat (Light 300, Regular 400, Medium 500, SemiBold 600, Bold 700, ExtraBold 800). Form controls follow it too. */
+html, body, button, input, select, textarea, optgroup { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+body { font-weight: 400; font-synthesis: none; text-rendering: optimizeLegibility; }
+
 .app-shell {
   background: transparent;
 }
 
 .brand-wordmark {
-  font-family: Nunito, 'Segoe UI', Arial, sans-serif;
+  font-family: Montserrat, 'Segoe UI', Arial, sans-serif;
   font-weight: 400;
   font-size: 28px;
   letter-spacing: 0.02em;

@@ -162,7 +162,7 @@ export default {
       const vm = this;
       const materials = this.dashboardKpi.top_expensive_materials;
       return {
-        chart: { type: 'pie', style: { fontFamily: 'Nunito' }, height: 240 },
+        chart: { type: 'pie', style: { fontFamily: 'Montserrat' }, height: 240 },
         credits: { enabled: false },
         title: { text: undefined },
         colors: ['#4f46e5', '#0891b2', '#d97706'],
@@ -193,7 +193,7 @@ export default {
       const vm = this;
       const projects = this.dashboardKpi.top_consuming_projects;
       return {
-        chart: { type: 'bar', style: { fontFamily: 'Nunito' }, height: 240 },
+        chart: { type: 'bar', style: { fontFamily: 'Montserrat' }, height: 240 },
         credits: { enabled: false },
         title: { text: undefined },
         colors: ['#e11d48', '#f59e0b', '#4f46e5'],

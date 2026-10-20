@@ -278,7 +278,7 @@ export default {
     baseChartConfig() {
       return {
         credits: { enabled: false },
-        chart: { style: { fontFamily: 'Nunito' }, spacingTop: 20, backgroundColor: 'transparent' },
+        chart: { style: { fontFamily: 'Montserrat' }, spacingTop: 20, backgroundColor: 'transparent' },
         colors: CHART_COLORS,
         tooltip: {
           shared: true,
