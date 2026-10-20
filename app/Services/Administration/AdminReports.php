@@ -80,7 +80,7 @@ class AdminReports
             return $o;
         }, $kept);
         foreach ($display as $i => $r) {
-            $display[$i] = ['no' => $i + 1] + $r;
+            $display[$i] = ['no' => $i + 1, '_doc' => $kept[$i]['doc_id'] ?? null] + $r; // the document a row belongs to: the screen opens it in a new tab
         }
         array_unshift($cols, ['key' => 'no', 'label' => __('No'), 'type' => 'num']);
         $cols = array_map(fn ($c) => $c + ['align' => in_array($c['type'] ?? '', ['money', 'num'], true) ? 'right' : 'left'], $cols);
@@ -226,10 +226,10 @@ class AdminReports
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', self::like($f['search']))->orWhere('beneficiary_name', 'like', self::like($f['search']))->orWhereHas('lines', fn ($l) => $l->where('description', 'like', self::like($f['search']))->orWhere('beneficiary', 'like', self::like($f['search'])))))
             ->when($f['amount_min'] !== null, fn ($q) => $q->where('total_amount', '>=', $f['amount_min']))->when($f['amount_max'] !== null, fn ($q) => $q->where('total_amount', '<=', $f['amount_max']))
             ->with(['user:id,name', 'approvedBy:id,name', 'authorizedBy:id,name'])->withCount(['lines', 'charityLines'])->orderBy('doc_date')->orderBy('id')->limit(self::LIMIT + 1)->get();
-        $rows = $ds->map(fn ($d) => ['reference' => $d->reference, 'hq' => $d->hq, 'date' => $d->doc_date->toDateString(), 'requested_by' => $d->beneficiary_name, 'status' => __($d->status), 'lines' => $d->lines_count, 'charity_lines' => $d->include_charity ? $d->charity_lines_count : 0,
+        $rows = $ds->map(fn ($d) => ['doc_id' => $d->id, 'reference' => $d->reference, 'hq' => $d->hq, 'date' => $d->doc_date->toDateString(), 'requested_by' => $d->beneficiary_name, 'status' => __($d->status), 'lines' => $d->lines_count, 'charity_lines' => $d->include_charity ? $d->charity_lines_count : 0,
             'items' => (string) $d->items_total, 'charity' => (string) $d->charity_total, 'total' => (string) $d->total_amount, 'paid' => (string) $d->paid_total, 'balance' => (string) max(0, (float) $d->total_amount - (float) $d->paid_total), 'payment' => $d->status === AdminDocument::AUTHORIZED ? __($d->payment_status) : '', 'approved_by' => optional($d->approvedBy)->name, 'authorized_by' => optional($d->authorizedBy)->name, 'prepared_by' => optional($d->user)->name])->all();
-        $cols = [['key' => 'reference', 'label' => __('Reference')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'date', 'label' => __('Date')], ['key' => 'requested_by', 'label' => __('Requested by')], ['key' => 'status', 'label' => __('Status')], ['key' => 'lines', 'label' => __('Administration lines'), 'type' => 'num'],
-            ['key' => 'charity_lines', 'label' => __('Charity lines'), 'type' => 'num'], ['key' => 'items', 'label' => __('Administration'), 'type' => 'money'], ['key' => 'charity', 'label' => __('Charity'), 'type' => 'money'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'],
+        $cols = [['key' => 'reference', 'label' => __('Reference')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'date', 'label' => __('Date')], ['key' => 'requested_by', 'label' => __('Requested by')], ['key' => 'status', 'label' => __('Status')],
+            ['key' => 'items', 'label' => __('Administration'), 'type' => 'money'], ['key' => 'charity', 'label' => __('Charity'), 'type' => 'money'], ['key' => 'total', 'label' => __('Total'), 'type' => 'money'],
             ['key' => 'paid', 'label' => __('Paid'), 'type' => 'money'], ['key' => 'balance', 'label' => __('Balance'), 'type' => 'money'], ['key' => 'payment', 'label' => __('Payment')],
             ['key' => 'approved_by', 'label' => __('Approved by')], ['key' => 'authorized_by', 'label' => __('Authorized by')]];
         $by = [];
@@ -330,13 +330,13 @@ class AdminReports
         $cur = AdminDocument::currency();
         $rows = [];
         if ($f['section'] !== 'charity') {
-            foreach (self::lineQuery($f, $user)->selectRaw('d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, COALESCE(i.name, l.description) item, l.description, l.beneficiary, l.category, sf.name person, l.amount')->orderBy('d.doc_date')->orderBy('d.id')->orderBy('l.sort_order')->limit(self::LIMIT + 1)->get() as $r) {
-                $rows[] = ['date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'requested_by' => $r->req, 'section' => __('Administration'), 'item' => $r->description, 'category' => $r->category, 'staff' => $r->person, 'beneficiary' => $r->beneficiary, 'amount' => (string) $r->amount];
+            foreach (self::lineQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, COALESCE(i.name, l.description) item, l.description, l.beneficiary, l.category, sf.name person, l.amount')->orderBy('d.doc_date')->orderBy('d.id')->orderBy('l.sort_order')->limit(self::LIMIT + 1)->get() as $r) {
+                $rows[] = ['doc_id' => $r->doc_id, 'date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'requested_by' => $r->req, 'section' => __('Administration'), 'item' => $r->description, 'category' => $r->category, 'staff' => $r->person, 'beneficiary' => $r->beneficiary, 'amount' => (string) $r->amount];
             }
         }
         if ($f['section'] !== 'items' && ! $f['item_id'] && $f['amount_min'] === null && $f['amount_max'] === null) {
-            foreach (self::charityQuery($f, $user)->selectRaw('d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, c.description, c.name, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::LIMIT + 1)->get() as $r) {
-                $rows[] = ['date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'requested_by' => $r->req, 'section' => __('Charity'), 'item' => $r->description, 'category' => 'Charity', 'staff' => null, 'beneficiary' => $r->name, 'amount' => (string) $r->amount];
+            foreach (self::charityQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, d.beneficiary_name req, c.description, c.name, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::LIMIT + 1)->get() as $r) {
+                $rows[] = ['doc_id' => $r->doc_id, 'date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'requested_by' => $r->req, 'section' => __('Charity'), 'item' => $r->description, 'category' => 'Charity', 'staff' => null, 'beneficiary' => $r->name, 'amount' => (string) $r->amount];
             }
         }
         usort($rows, fn ($a, $b) => strcmp($a['date'] . $a['reference'], $b['date'] . $b['reference']));
@@ -373,8 +373,8 @@ class AdminReports
     private static function charity(array $f, User $user): array
     {
         $cur = AdminDocument::currency();
-        $rows = self::charityQuery($f, $user)->selectRaw('d.doc_date, d.reference, d.hq, d.status, c.name, c.description, c.monthly_amount, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::LIMIT + 1)->get()
-            ->map(fn ($r) => ['date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'name' => $r->name, 'description' => $r->description, 'monthly' => (string) $r->monthly_amount, 'amount' => (string) $r->amount])->all();
+        $rows = self::charityQuery($f, $user)->selectRaw('d.id doc_id, d.doc_date, d.reference, d.hq, d.status, c.name, c.description, c.monthly_amount, c.amount')->orderBy('d.doc_date')->orderBy('d.id')->limit(self::LIMIT + 1)->get()
+            ->map(fn ($r) => ['doc_id' => $r->doc_id, 'date' => $r->doc_date, 'reference' => $r->reference, 'hq' => $r->hq, 'status' => __($r->status), 'name' => $r->name, 'description' => $r->description, 'monthly' => (string) $r->monthly_amount, 'amount' => (string) $r->amount])->all();
         $cols = [['key' => 'date', 'label' => __('Date')], ['key' => 'reference', 'label' => __('Document')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'status', 'label' => __('Status')], ['key' => 'name', 'label' => __('Person / place')], ['key' => 'description', 'label' => __('Description')],
             ['key' => 'monthly', 'label' => __('Monthly amount'), 'type' => 'money'], ['key' => 'amount', 'label' => __('Paid'), 'type' => 'money']];
 
@@ -401,9 +401,9 @@ class AdminReports
             ->whereNull('p.deleted_at')->whereIn('d.id', $docIds)->where('p.status', $status)
             ->when($f['from'], fn ($w, $v) => $w->whereDate(DB::raw('COALESCE(p.paid_on, p.requested_on)'), '>=', $v))->when($f['to'], fn ($w, $v) => $w->whereDate(DB::raw('COALESCE(p.paid_on, p.requested_on)'), '<=', $v))
             ->when($f['search'] !== '', fn ($w) => $w->where(fn ($x) => $x->where('p.paid_to_name', 'like', self::like($f['search']))->orWhere('p.reference', 'like', self::like($f['search']))->orWhere('d.reference', 'like', self::like($f['search']))->orWhere('p.payment_reference', 'like', self::like($f['search']))->orWhere('v.pv_number', 'like', self::like($f['search']))))
-            ->selectRaw('COALESCE(p.paid_on, p.requested_on) on_date, p.reference, d.reference doc, d.hq, p.paid_to_name, p.payee_type, p.total_amount, p.method, p.payment_reference, v.pv_number, p.status, p.source, u.name by_name, (select count(*) from admin_document_payment_lines l where l.admin_document_payment_id = p.id and l.deleted_at is null) n')
+            ->selectRaw('d.id doc_id, COALESCE(p.paid_on, p.requested_on) on_date, p.reference, d.reference doc, d.hq, p.paid_to_name, p.payee_type, p.total_amount, p.method, p.payment_reference, v.pv_number, p.status, p.source, u.name by_name, (select count(*) from admin_document_payment_lines l where l.admin_document_payment_id = p.id and l.deleted_at is null) n')
             ->orderBy('on_date')->orderBy('p.id')->limit(self::LIMIT + 1)->get();
-        $rows = $q->map(fn ($r) => ['date' => $r->on_date, 'payment' => $r->reference, 'document' => $r->doc, 'hq' => $r->hq, 'paid_to' => $r->paid_to_name, 'type' => __(ucfirst((string) $r->payee_type)), 'lines' => (int) $r->n, 'amount' => (string) $r->total_amount, 'method' => $r->method,
+        $rows = $q->map(fn ($r) => ['doc_id' => $r->doc_id, 'date' => $r->on_date, 'payment' => $r->reference, 'document' => $r->doc, 'hq' => $r->hq, 'paid_to' => $r->paid_to_name, 'type' => __(ucfirst((string) $r->payee_type)), 'lines' => (int) $r->n, 'amount' => (string) $r->total_amount, 'method' => $r->method,
             'reference' => $r->payment_reference, 'voucher' => $r->pv_number, 'how' => $r->source === 'voucher' ? __('Payment Voucher') : __('Marked paid'), 'status' => __($r->status), 'by' => $r->by_name])->all();
         $cols = [['key' => 'date', 'label' => __('Date')], ['key' => 'payment', 'label' => __('Payment')], ['key' => 'document', 'label' => __('Document')], ['key' => 'hq', 'label' => __('HQ')], ['key' => 'paid_to', 'label' => __('Paid to')], ['key' => 'type', 'label' => __('User / staff')], ['key' => 'lines', 'label' => __('Lines'), 'type' => 'num'],
             ['key' => 'amount', 'label' => __('Amount'), 'type' => 'money'], ['key' => 'how', 'label' => __('How')], ['key' => 'method', 'label' => __('Method')], ['key' => 'reference', 'label' => __('Reference')], ['key' => 'voucher', 'label' => __('Payment Voucher')], ['key' => 'status', 'label' => __('Status')], ['key' => 'by', 'label' => __('Recorded by')]];

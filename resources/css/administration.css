@@ -157,3 +157,7 @@
 .wa-ui .wa-hqlist { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .wa-ui .wa-hqlist .wa-hqchip { padding: 10px 18px; font-size: 0.92rem; }
 .wa-ui .wa-locked { opacity: 0.45; pointer-events: none; filter: grayscale(0.6); }
+
+/* ---- report rows that open their document ---- */
+.wa-ui tr.is-click { cursor: pointer; }
+.wa-ui .wa-reflink { font-weight: 800; color: var(--wa2); text-decoration: underline; text-decoration-color: rgba(15, 118, 110, 0.35); text-underline-offset: 3px; } .wa-ui .wa-reflink:hover { color: var(--wa); text-decoration-color: currentColor; }

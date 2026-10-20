@@ -43,7 +43,7 @@
         <div class="lg-table-wrap"><table class="lg-table lg-responsive tr-table tr-wide">
           <thead><tr><th v-for="c in report.columns" :key="c.key" :class="{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no' }">{{ c.label }}</th></tr></thead>
           <tbody>
-            <tr v-for="(row, i) in report.rows" :key="i"><td v-for="c in report.columns" :key="c.key" :data-label="c.label" :class="[{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no' }, tone(c)]">{{ row[c.key] === null || row[c.key] === undefined || row[c.key] === '' ? (c.type === 'money' ? '' : '-') : row[c.key] }}</td></tr>
+            <tr v-for="(row, i) in report.rows" :key="i" :class="{ 'is-click': row._doc }" :title="row._doc ? $t('Open the document in a new tab') : null" @click="openDoc(row)"><td v-for="c in report.columns" :key="c.key" :data-label="c.label" :class="[{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no' }, tone(c)]"><a v-if="row._doc && (c.key === 'reference' || c.key === 'document')" :href="route('weekly-administration.show', row._doc)" target="_blank" rel="noopener" class="wa-reflink" @click.stop>{{ row[c.key] }}</a><template v-else>{{ row[c.key] === null || row[c.key] === undefined || row[c.key] === '' ? (c.type === 'money' ? '' : '-') : row[c.key] }}</template></td></tr>
             <tr v-if="!report.rows.length" class="lg-empty-row"><td class="lg-empty" :colspan="report.columns.length">{{ $t('Nothing was recorded for this report.') }}</td></tr>
           </tbody></table></div>
         <p v-if="report.truncated" class="lg-sub" style="margin-top: 6px">{{ $t('Showing the first :n of :t rows. Export to get all of them.', { n: report.rows.length, t: report.total_rows }) }}</p>
@@ -82,6 +82,8 @@ export default {
   },
   mounted() { this.run(); },
   methods: {
+    // a row that belongs to a document opens that document in a new tab
+    openDoc(row) { if (row._doc) window.open(route('weekly-administration.show', row._doc), '_blank', 'noopener'); },
     isMoney(v) { return /^([A-Z]{3} )?-?[\d,]+\.\d{2}$/.test(String(v)); },
     tone(c) { if (c.type !== 'money') return ''; if (c.key === 'paid') return 'tr-g'; if (c.key === 'balance') return 'tr-o'; return ['total'].includes(c.key) ? 'tr-tm' : 'tr-m'; },
     uses(k) { return this.current && this.current.filters.includes(k); },
