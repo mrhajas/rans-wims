@@ -358,6 +358,41 @@ class RauncherController extends Controller
                 'title' => fn ($m) => $m->name,
                 'subtitle' => fn ($m) => trim(($m->category ?: '') . ' ' . ($m->phone ? '· ' . $m->phone : '')),
             ],
+            // Administration: the weekly documents the person may see (their own, or all for people who approve or authorize), only while the module is on.
+            'administration' => [
+                'label' => 'Administration',
+                'icon' => 'doc-text',
+                'permission' => 'read-weekly-administration',
+                'route' => 'weekly-administration.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\AdminDocument::query()->visibleTo($u)
+                        ->where(fn ($q) => $q->where('reference', 'like', $like)->orWhere('beneficiary_name', 'like', $like)->orWhere('status', 'like', $like)
+                            ->orWhereHas('lines', fn ($l) => $l->where('description', 'like', $like)->orWhere('beneficiary', 'like', $like)))
+                        ->when(! \App\Services\FeatureManager::canAccess('weekly_administration', $u), fn ($q) => $q->whereRaw('1 = 0'))
+                        ->orderByDesc('doc_date')->orderByDesc('id');
+                },
+                'title' => fn ($m) => $m->reference . ' - ' . $m->doc_date->format('d M Y'),
+                'subtitle' => fn ($m) => trim($m->currency . ' ' . number_format((float) $m->total_amount, 2) . ' · ' . __($m->status) . ($m->beneficiary_name ? ' · ' . $m->beneficiary_name : '')),
+            ],
+            // Administration charity: the people of the Charity list and their monthly amounts, only for people who may see the list.
+            'administration-charity' => [
+                'label' => 'Administration Charity',
+                'icon' => 'users',
+                'permission' => 'read-administration-charity',
+                'url' => fn ($m) => route('weekly-administration.charity.index', ['search' => $m->name]),
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\AdminCharityPerson::query()->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('phone', 'like', $like))
+                        ->when(! \App\Services\FeatureManager::canAccess('administration_charity', $u), fn ($q) => $q->whereRaw('1 = 0'))->orderBy('name');
+                },
+                'title' => fn ($m) => $m->name,
+                'subtitle' => fn ($m) => trim(number_format((float) $m->monthly_amount, 2) . ' ' . __('a month') . ($m->is_active ? '' : ' · ' . __('Inactive'))),
+            ],
             // Accounts Tracking: transactions of the accounts the person may see, only while the module is on.
             'acct-transactions' => [
                 'label' => 'Account Transactions',

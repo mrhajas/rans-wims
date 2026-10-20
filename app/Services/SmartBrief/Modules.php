@@ -44,6 +44,8 @@ class Modules
         'case_tracking' => ['read-case-tracking', 'read-all-case-tracking'],
         'daily_site_reports' => ['read-daily-site-reports'],
         'digital_attendance' => ['read-digital-attendance', 'read-all-digital-attendance'],
+        'travels' => ['read-travels'],
+        'weekly_administration' => ['read-weekly-administration', 'read-administration-charity'],
         'compliance' => ['read-compliance-records', 'view-project-certificates', 'read-labour'],
         'delivery_gate' => ['read-delivery-notes', 'read-gate-passes'],
         'wims_connect' => ['read-wims-connect'],

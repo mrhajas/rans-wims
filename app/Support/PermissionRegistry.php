@@ -233,6 +233,26 @@ class PermissionRegistry
                 ],
             ],
 
+            'weekly_administration' => [
+                'label' => __('Administration (Weekly)'),
+                'abilities' => [
+                    'read-weekly-administration' => __('Open Administration: the weekly documents, the Charity list and the reports'),
+                    'create-weekly-administration' => __('Make a weekly Administration document (from the template or from zero)'),
+                    'update-weekly-administration' => __('Edit an Administration document that is waiting for approval, and add or remove its charity section'),
+                    'approve-weekly-administration' => __('Approve or reject an Administration document (stage 2)'),
+                    'authorize-weekly-administration' => __('Authorize an approved Administration document (stage 3, the last)'),
+                    'cancel-weekly-administration' => __('Cancel an Administration document, even one that is approved or authorized'),
+                    'duplicate-weekly-administration' => __('Duplicate an Administration document (asks for the password of the person doing it)'),
+                    'print-weekly-administration' => __('Print and download Administration documents and reports'),
+                    'send-weekly-administration' => __('Send an Administration document by email to chosen people or to the Super Admins'),
+                    'view-all-weekly-administration' => __('See every Administration document (otherwise only the ones the person made or is the beneficiary of)'),
+                    'manage-administration-items' => __('Change the Administration template and the list of items'),
+                    'read-administration-charity' => __('See the Charity list (people and their monthly amounts)'),
+                    'manage-administration-charity' => __('Add, change and remove people and their monthly amounts in the Charity list'),
+                    'manage-administration-settings' => __('Change the Administration settings (department name, currency, charity wording)'),
+                ],
+            ],
+
             'subcontracts' => [
                 'label' => __('Subcontractor Management'),
                 'abilities' => [

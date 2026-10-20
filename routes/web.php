@@ -456,6 +456,47 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('{movement}/transport-route', [Controllers\ExternalStock\RouteController::class, 'store'])->whereNumber('movement')->name('transport-route.store');
     });
 
+    // Administration: the weekly document in three stages (requested, approved, authorized), the template and items, the Charity list, reports. Names all start "weekly-administration." so Global Feature Control covers them.
+    Route::prefix('weekly-administration')->name('weekly-administration.')->group(function () {
+        $dc = Controllers\WeeklyAdministration\DocumentController::class;
+        $it = Controllers\WeeklyAdministration\ItemController::class;
+        $ch = Controllers\WeeklyAdministration\CharityController::class;
+        $rp = Controllers\WeeklyAdministration\ReportController::class;
+        $st = Controllers\WeeklyAdministration\SettingsController::class;
+        Route::get('/', [$dc, 'index'])->name('index');
+        Route::get('create', [$dc, 'create'])->name('create');
+        Route::post('/', [$dc, 'store'])->middleware('throttle:60,1,weekly-administration.store')->name('store');
+        Route::get('charity-pull', [$dc, 'charityPull'])->middleware('throttle:60,1,weekly-administration.charity-pull')->name('charity-pull');
+        Route::get('settings', [$st, 'index'])->name('settings');
+        Route::put('settings', [$st, 'update'])->middleware('throttle:30,1,weekly-administration.settings.update')->name('settings.update');
+        Route::get('items', [$it, 'index'])->name('items.index');
+        Route::post('items', [$it, 'store'])->middleware('throttle:60,1,weekly-administration.items.store')->name('items.store');
+        Route::post('items/reorder', [$it, 'reorder'])->middleware('throttle:60,1,weekly-administration.items.reorder')->name('items.reorder');
+        Route::put('items/{item}', [$it, 'update'])->whereNumber('item')->middleware('throttle:60,1,weekly-administration.items.update')->name('items.update');
+        Route::delete('items/{item}', [$it, 'destroy'])->whereNumber('item')->middleware('throttle:60,1,weekly-administration.items.destroy')->name('items.destroy');
+        Route::get('charity', [$ch, 'index'])->name('charity.index');
+        Route::post('charity', [$ch, 'store'])->middleware('throttle:60,1,weekly-administration.charity.store')->name('charity.store');
+        Route::put('charity/{person}', [$ch, 'update'])->whereNumber('person')->middleware('throttle:60,1,weekly-administration.charity.update')->name('charity.update');
+        Route::delete('charity/{person}', [$ch, 'destroy'])->whereNumber('person')->middleware('throttle:60,1,weekly-administration.charity.destroy')->name('charity.destroy');
+        Route::get('reports', [$rp, 'index'])->name('reports.index');
+        Route::get('reports/print', [$rp, 'print'])->middleware('throttle:30,1,weekly-administration.reports.print')->name('reports.print');
+        Route::get('reports/pdf', [$rp, 'pdf'])->middleware('throttle:20,1,weekly-administration.reports.pdf')->name('reports.pdf');
+        Route::get('reports/csv', [$rp, 'csv'])->middleware('throttle:20,1,weekly-administration.reports.csv')->name('reports.csv');
+        Route::get('reports/xlsx', [$rp, 'xlsx'])->middleware('throttle:20,1,weekly-administration.reports.xlsx')->name('reports.xlsx');
+        // the documents
+        Route::get('{document}', [$dc, 'show'])->whereNumber('document')->name('show');
+        Route::get('{document}/edit', [$dc, 'edit'])->whereNumber('document')->name('edit');
+        Route::put('{document}', [$dc, 'update'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.update')->name('update');
+        Route::post('{document}/approve', [$dc, 'approve'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.approve')->name('approve');
+        Route::post('{document}/authorize', [$dc, 'authorizeIt'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.authorize')->name('authorize');
+        Route::post('{document}/reject', [$dc, 'reject'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.reject')->name('reject');
+        Route::post('{document}/cancel', [$dc, 'cancel'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.cancel')->name('cancel');
+        Route::post('{document}/duplicate', [$dc, 'duplicate'])->whereNumber('document')->middleware('throttle:10,1,weekly-administration.duplicate')->name('duplicate');
+        Route::post('{document}/send', [$dc, 'send'])->whereNumber('document')->middleware('throttle:20,1,weekly-administration.send')->name('send');
+        Route::get('{document}/print', [$dc, 'print'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.print')->name('print');
+        Route::get('{document}/pdf', [$dc, 'pdfDownload'])->whereNumber('document')->middleware('throttle:60,1,weekly-administration.pdf')->name('pdf');
+    });
+
     // Travels: the travels of staff and users (approval based), ticket agents and what they are owed, reports. Names all start "travels." so Global Feature Control covers them.
     Route::prefix('travels')->name('travels.')->group(function () {
         $tr = Controllers\Travels\TravelController::class;

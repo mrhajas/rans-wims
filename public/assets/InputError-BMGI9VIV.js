@@ -1,0 +1,1 @@
+import{_ as s,k as t,p as a,o as r,c as o,a as c,t as i}from"./app-DPYPE8Pz.js";const n={props:["message"]},_={class:"max-w-full wims-field-error",role:"alert"},l={class:"text-sm text-red-600 break-words"};function d(m,p,e,f,x,g){return t((r(),o("div",_,[c("p",l,i(e.message?e.message.replace(" id",""):""),1)],512)),[[a,e.message]])}const u=s(n,[["render",d]]);export{u as T};

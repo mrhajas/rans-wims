@@ -43,6 +43,8 @@ class ActivityModules
         'case_tracking' => ['Case Tracking', '/^case/'],
         'daily_site_reports' => ['Daily Site Reports', '/^dailysitereport/'],
         'digital_attendance' => ['Digital Attendance', '/^digitalattendance/'],
+        'travels' => ['Travels', '/^(travel)/'],
+        'weekly_administration' => ['Administration (Weekly)', '/^(administration|admindocument|adminitem|admincharity)/'],
         'compliance' => ['Compliance', '/^(boqmaterialcompliance|compliance|projectcertificate|labour)/'],
         'delivery_gate' => ['Delivery Notes & Gate Passes', '/^(deliverynote|gatepass)/'],
         'wims_connect' => ['WIMS Connect', '/^wimsconnect/'],
