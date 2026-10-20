@@ -55,7 +55,7 @@ class DocumentController extends Controller
     {
         $this->need('read-weekly-administration');
         $f = ['search' => trim((string) $request->query('search', '')), 'status' => (string) $request->query('status', ''), 'from' => (string) $request->query('from', ''), 'to' => (string) $request->query('to', ''),
-            'beneficiary_id' => (string) $request->query('beneficiary_id', ''), 'item_id' => (string) $request->query('item_id', ''), 'charity' => (string) $request->query('charity', ''), 'mine' => (string) $request->query('mine', ''), 'pay' => (string) $request->query('pay', '')];
+            'beneficiary_id' => (string) $request->query('beneficiary_id', ''), 'item_id' => (string) $request->query('item_id', ''), 'charity' => (string) $request->query('charity', ''), 'mine' => (string) $request->query('mine', ''), 'pay' => (string) $request->query('pay', ''), 'category' => trim((string) $request->query('category', '')), 'staff_id' => (string) $request->query('staff_id', '')];
         $like = fn (string $v) => '%' . str_replace(['%', '_'], ['\\%', '\\_'], $v) . '%';
         $me = $request->user();
         $base = $this->visible()
@@ -65,6 +65,7 @@ class DocumentController extends Controller
             ->when(ctype_digit($f['item_id']) && $f['item_id'] !== '', fn ($q) => $q->whereHas('lines', fn ($l) => $l->where('admin_item_id', (int) $f['item_id'])))
             ->when($f['charity'] === '1', fn ($q) => $q->where('include_charity', true))->when($f['charity'] === '0', fn ($q) => $q->where('include_charity', false))
             ->when(in_array($f['pay'], ['Unpaid', 'Partially Paid', 'Paid'], true), fn ($q) => $q->where('status', AdminDocument::AUTHORIZED)->where('payment_status', $f['pay']))
+            ->when($f['category'] !== '' || (ctype_digit($f['staff_id']) && $f['staff_id'] !== ''), fn ($q) => $q->whereHas('lines', fn ($l) => $l->when($f['category'] !== '', fn ($x) => $x->where('category', $f['category']))->when(ctype_digit($f['staff_id']) && $f['staff_id'] !== '', fn ($x) => $x->where('staff_id', (int) $f['staff_id']))))
             ->when($f['mine'] === '1', fn ($q) => $q->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('beneficiary_user_id', $me->id)))
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', $like($f['search']))->orWhere('beneficiary_name', 'like', $like($f['search']))->orWhere('notes', 'like', $like($f['search']))
                 ->orWhereHas('lines', fn ($l) => $l->where('description', 'like', $like($f['search']))->orWhere('beneficiary', 'like', $like($f['search'])))
@@ -80,6 +81,7 @@ class DocumentController extends Controller
         return Inertia::render('WeeklyAdministration/Index', [
             'rows' => $rows, 'filters' => $f, 'statuses' => collect(AdminDocument::STATUSES)->map(fn ($s) => ['value' => $s, 'label' => __($s)])->values(),
             'users' => $this->userOptions(), 'items' => AdminItem::query()->orderBy('name')->get(['id', 'name'])->map(fn ($i) => ['value' => $i->id, 'label' => $i->name]),
+            'categories' => \App\Services\Administration\AdminCategories::list(), 'staffOptions' => \App\Models\Staff::query()->whereIn('status', \App\Models\Staff::PAYROLL_STATUSES)->orderBy('name')->get(['id', 'name'])->map(fn ($s) => ['value' => $s->id, 'label' => $s->name])->values(),
             'payStats' => ['Unpaid' => $this->visible()->where('status', AdminDocument::AUTHORIZED)->where('payment_status', 'Unpaid')->count(), 'Partially Paid' => $this->visible()->where('status', AdminDocument::AUTHORIZED)->where('payment_status', 'Partially Paid')->count(), 'Paid' => $this->visible()->where('status', AdminDocument::AUTHORIZED)->where('payment_status', 'Paid')->count()],
             'stats' => ['total' => (int) $counts->sum(), 'requested' => (int) ($counts[AdminDocument::REQUESTED] ?? 0), 'approved' => (int) ($counts[AdminDocument::APPROVED] ?? 0), 'authorized' => (int) ($counts[AdminDocument::AUTHORIZED] ?? 0),
                 'rejected' => (int) ($counts[AdminDocument::REJECTED] ?? 0), 'cancelled' => (int) ($counts[AdminDocument::CANCELLED] ?? 0)],
@@ -164,7 +166,7 @@ class DocumentController extends Controller
     {
         $this->need('read-weekly-administration');
         $this->authorizeView($document);
-        $document->load(['lines', 'charityLines', 'user:id,name', 'beneficiary:id,name', 'approvedBy:id,name', 'authorizedBy:id,name', 'rejectedBy:id,name', 'duplicatedFrom:id,reference', 'sends.user:id,name']);
+        $document->load(['lines.staff:id,name', 'charityLines', 'user:id,name', 'beneficiary:id,name', 'approvedBy:id,name', 'authorizedBy:id,name', 'rejectedBy:id,name', 'duplicatedFrom:id,reference', 'sends.user:id,name']);
         $me = auth()->user();
         $a = $this->abilities($document, $me);
 
@@ -174,7 +176,7 @@ class DocumentController extends Controller
                 'cancel_reason' => $document->cancel_reason, 'rejected_by' => optional($document->rejectedBy)->name, 'rejected_at' => optional($document->rejected_at)->toDateTimeString(), 'cancelled_at' => optional($document->cancelled_at)->toDateTimeString(),
                 'duplicated_from' => $document->duplicatedFrom ? ['id' => $document->duplicatedFrom->id, 'reference' => $document->duplicatedFrom->reference] : null, 'created_at' => $document->created_at->toDateTimeString(),
                 'approved_at' => optional($document->approved_at)->toDateTimeString(), 'authorized_at' => optional($document->authorized_at)->toDateTimeString(),
-                'lines' => $document->lines->values()->map(fn ($l, $i) => ['no' => $i + 1, 'description' => $l->description, 'beneficiary' => $l->beneficiary, 'amount' => (string) $l->amount])->all(),
+                'lines' => $document->lines->values()->map(fn ($l, $i) => ['no' => $i + 1, 'description' => $l->description, 'beneficiary' => $l->beneficiary, 'category' => $l->category, 'staff' => optional($l->staff)->name, 'amount' => (string) $l->amount])->all(),
                 'charity_lines' => $document->charityLines->values()->map(fn ($c, $i) => ['no' => $i + 1, 'description' => $c->description, 'amount' => (string) $c->amount, 'monthly_amount' => (string) $c->monthly_amount])->all(),
             ],
             'sends' => $document->sends->take(10)->map(fn ($s) => ['id' => $s->id, 'at' => $s->created_at->toDateTimeString(), 'by' => optional($s->user)->name, 'recipients' => (array) $s->recipients, 'super_admins' => $s->to_super_admins, 'status' => $s->status, 'error' => $s->error])->values(),
@@ -493,7 +495,7 @@ class DocumentController extends Controller
     {
         $d = $request->validate([
             'doc_date' => 'nullable|date', 'beneficiary_user_id' => 'nullable|integer|exists:users,id', 'notes' => 'nullable|string|max:2000', 'include_charity' => 'nullable|boolean', 'source' => 'nullable|in:template,blank',
-            'lines' => 'nullable|array|max:300', 'lines.*.description' => 'nullable|string|max:255', 'lines.*.beneficiary' => 'nullable|string|max:190', 'lines.*.beneficiary_user_id' => 'nullable|integer', 'lines.*.admin_item_id' => 'nullable|integer',
+            'lines' => 'nullable|array|max:300', 'lines.*.description' => 'nullable|string|max:255', 'lines.*.beneficiary' => 'nullable|string|max:190', 'lines.*.beneficiary_user_id' => 'nullable|integer', 'lines.*.admin_item_id' => 'nullable|integer', 'lines.*.category' => 'nullable|string|max:60', 'lines.*.staff_id' => 'nullable|integer',
             'lines.*.amount' => 'nullable|numeric|min:0|max:999999999999',
             'charity' => 'nullable|array|max:300', 'charity.*.name' => 'nullable|string|max:190', 'charity.*.description' => 'nullable|string|max:255', 'charity.*.admin_charity_person_id' => 'nullable|integer',
             'charity.*.amount' => 'nullable|numeric|min:0|max:999999999999', 'charity.*.monthly_amount' => 'nullable|numeric|min:0',
@@ -511,14 +513,16 @@ class DocumentController extends Controller
     private function formProps(?AdminDocument $doc): array
     {
         $me = auth()->user();
-        $lines = $doc ? $doc->lines->map(fn ($l) => ['admin_item_id' => $l->admin_item_id, 'description' => $l->description, 'beneficiary' => (string) $l->beneficiary, 'beneficiary_user_id' => $l->beneficiary_user_id, 'amount' => (string) $l->amount])->values()->all() : [];
+        $lines = $doc ? $doc->lines->map(fn ($l) => ['admin_item_id' => $l->admin_item_id, 'description' => $l->description, 'beneficiary' => (string) $l->beneficiary, 'beneficiary_user_id' => $l->beneficiary_user_id, 'category' => $l->category, 'staff_id' => $l->staff_id, 'amount' => (string) $l->amount])->values()->all() : [];
         $charity = $doc ? $doc->charityLines->map(fn ($c) => ['admin_charity_person_id' => $c->admin_charity_person_id, 'name' => $c->name, 'description' => $c->description, 'amount' => (string) $c->amount, 'monthly_amount' => (string) $c->monthly_amount])->values()->all() : [];
 
         return [
             'doc' => $doc ? ['id' => $doc->id, 'reference' => $doc->reference, 'status' => $doc->status, 'doc_date' => $doc->doc_date->toDateString(), 'beneficiary_user_id' => $doc->beneficiary_user_id, 'beneficiary_name' => $doc->beneficiary_name, 'include_charity' => (bool) $doc->include_charity,
                 'notes' => $doc->notes, 'rejection_reason' => $doc->rejection_reason, 'lines' => $lines, 'charity' => $charity] : null,
             'template' => AdminDocumentService::templateLines(), 'users' => $this->userOptions(), 'me' => ['id' => $me->id, 'name' => $me->name], 'today' => now()->toDateString(),
-            'itemNames' => AdminItem::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'default_beneficiary', 'default_amount'])->map(fn ($i) => ['id' => $i->id, 'name' => $i->name, 'beneficiary' => $i->default_beneficiary, 'amount' => (string) $i->default_amount]),
+            'itemNames' => AdminItem::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'default_beneficiary', 'default_amount', 'category', 'staff_id'])->map(fn ($i) => ['id' => $i->id, 'name' => $i->name, 'beneficiary' => $i->default_beneficiary, 'amount' => (string) $i->default_amount, 'category' => $i->category, 'staff_id' => $i->staff_id]),
+            'categories' => \App\Services\Administration\AdminCategories::list(),
+            'staffOptions' => \App\Models\Staff::query()->whereIn('status', \App\Models\Staff::PAYROLL_STATUSES)->orderBy('name')->get(['id', 'name'])->map(fn ($s) => ['value' => $s->id, 'label' => $s->name])->values(),
             'charityPeople' => (int) \App\Models\AdminCharityPerson::query()->where('is_active', true)->count(), 'department' => AdminDocument::departmentName(), 'currency' => AdminDocument::currency(),
             'can' => ['charity' => $me->can('read-administration-charity'), 'items' => $me->can('manage-administration-items')],
         ];

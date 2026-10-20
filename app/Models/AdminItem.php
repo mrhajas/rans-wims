@@ -14,7 +14,7 @@ class AdminItem extends Model
 
     protected $setUser = true;
 
-    protected $fillable = ['account_id', 'name', 'name_key', 'default_beneficiary', 'default_beneficiary_user_id', 'default_amount', 'in_template', 'is_active', 'sort_order', 'user_id', 'deleted_by', 'extra_attributes'];
+    protected $fillable = ['account_id', 'name', 'name_key', 'category', 'staff_id', 'default_beneficiary', 'default_beneficiary_user_id', 'default_amount', 'in_template', 'is_active', 'sort_order', 'user_id', 'deleted_by', 'extra_attributes'];
 
     public $casts = ['default_amount' => 'decimal:2', 'in_template' => 'boolean', 'is_active' => 'boolean', 'extra_attributes' => 'array'];
 
@@ -24,7 +24,12 @@ class AdminItem extends Model
     }
 
     /** The item with this name (a new one when there is none yet). Typing the same item twice, in any case, is the same item. */
-    public static function forName(string $name, ?string $beneficiary = null, float $amount = 0): self
+    public function staff()
+    {
+        return $this->belongsTo(Staff::class, 'staff_id')->withTrashed();
+    }
+
+    public static function forName(string $name, ?string $beneficiary = null, float $amount = 0, ?string $category = null, ?int $staffId = null): self
     {
         $name = trim(preg_replace('/\s+/', ' ', $name));
         $key = self::keyOf($name);
@@ -33,7 +38,7 @@ class AdminItem extends Model
             return $item;
         }
 
-        return self::create(['name' => $name, 'name_key' => $key, 'default_beneficiary' => $beneficiary ?: null, 'default_amount' => $amount, 'in_template' => false, 'is_active' => true,
+        return self::create(['name' => $name, 'name_key' => $key, 'category' => $category ?: \App\Services\Administration\AdminCategories::guess($name), 'staff_id' => $staffId, 'default_beneficiary' => $beneficiary ?: null, 'default_amount' => $amount, 'in_template' => false, 'is_active' => true,
             'sort_order' => (int) self::query()->max('sort_order') + 1]);
     }
 }

@@ -14,6 +14,10 @@
           <div class="ac-f" style="max-width: 200px"><label>{{ $t('Currency') }} *</label><input v-model="form.currency" maxlength="3" :placeholder="defaults.currency" /><span class="ac-err">{{ err('currency') }}</span></div>
         </section>
         <section class="lg-card">
+          <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Categories of items') }}</h2><p class="lg-card-sub">{{ $t('The categories an item can have, so reports can follow fuel, cleaning and the rest. Separate them with commas. A category already used is always kept.') }}</p></div></header>
+          <div class="ac-f"><label>{{ $t('Categories') }} *</label><input v-model="form.categories" maxlength="1000" :placeholder="defaults.categories" /><span class="ac-err">{{ err('categories') }}</span></div>
+        </section>
+        <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-rose"><icons name="heart" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Charity wording') }}</h2><p class="lg-card-sub">{{ $t('How each charity line reads when it is pulled. :name becomes the person or place and :month the month, for example CHARITY - SHEIKH ALI ISSA FOR OCTOBER 2026.') }}</p></div></header>
           <div class="ac-f"><label>{{ $t('Wording') }} *</label><input v-model="form.charity_wording" maxlength="190" :placeholder="defaults.charity_wording" /><span class="ac-err">{{ err('charity_wording') }}</span></div>
         </section>

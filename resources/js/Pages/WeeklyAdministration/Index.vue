@@ -29,6 +29,8 @@
           <div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Reference, requested by, description or beneficiary of a line')" autocomplete="off" /></div>
           <div class="ac-f"><label>{{ $t('Requested by') }}</label><acct-select v-model="f.beneficiary_id" :options="users" :placeholder="$t('Anyone')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Item') }}</label><acct-select v-model="f.item_id" :options="items" :placeholder="$t('Any')" clearable /></div>
+          <div class="ac-f"><label>{{ $t('Category') }}</label><acct-select v-model="f.category" :options="categories.map(c => ({ value: c, label: c }))" :placeholder="$t('Any')" clearable /></div>
+          <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="f.staff_id" :options="staffOptions" :placeholder="$t('Any')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Payment') }}</label><acct-select v-model="f.pay" :options="payOptions" :placeholder="$t('Any')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Date from') }}</label><date-picker v-model="f.from" /></div>
           <div class="ac-f"><label>{{ $t('Date to') }}</label><date-picker v-model="f.to" /></div>
@@ -80,7 +82,7 @@ import Pager from '@/Pages/Accounts/Pager.vue';
 
 export default {
   components: { SendDialog, DuplicateDialog, ScTabs, AdminLayout, PageHeader, Link, DatePicker, AcctSelect, Pager },
-  props: { rows: Object, filters: Object, statuses: Array, users: Array, items: Array, stats: Object, payStats: Object, totals: Object, can: Object },
+  props: { rows: Object, filters: Object, statuses: Array, users: Array, items: Array, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, stats: Object, payStats: Object, totals: Object, can: Object },
   data() { return { f: { ...this.filters }, busy: false, timer: null, sendDoc: null, dupDoc: null }; },
   watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {

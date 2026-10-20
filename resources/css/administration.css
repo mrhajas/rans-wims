@@ -111,3 +111,10 @@
 .wa-ui .wa-payrow .who { display: grid; gap: 2px; min-width: 0; } .wa-ui .wa-payrow .who small { color: var(--sc-mute, #64748b); font-size: 0.74rem; overflow-wrap: anywhere; }
 .wa-ui .wa-payrow .amt { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; color: #0d8a5a; }
 @media (max-width: 760px) { .wa-ui .wa-paytable .hide-sm { display: none; } }
+
+/* ---- category and staff member of a line ---- */
+.wa-ui .wa-lmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 2px 2px 46px; }
+.wa-ui .wa-lmeta .ac-f { margin: 0; min-width: 200px; flex: 1 1 200px; max-width: 320px; }
+.wa-ui .wa-lmeta .ac-f input { height: 34px; }
+.wa-ui .wa-link { border: 0; background: transparent; cursor: pointer; padding: 2px 6px; font-size: 0.72rem; font-weight: 800; color: var(--wa); text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 760px) { .wa-ui .wa-lmeta { padding-left: 0; } }

@@ -53,9 +53,10 @@ class AdminTemplateSeeder
             return 0;
         }
         $n = 0;
+        $withCategory = \Illuminate\Support\Facades\Schema::hasColumn('admin_items', 'category'); // the columns arrive with a later migration on a fresh database
         foreach (self::LINES as [$name, $who, $amount]) {
             DB::table('admin_items')->insert(['account_id' => $accountId, 'name' => $name, 'name_key' => mb_strtolower(trim(preg_replace('/\s+/', ' ', $name))), 'default_beneficiary' => $who, 'default_amount' => $amount,
-                'in_template' => 1, 'is_active' => 1, 'sort_order' => ++$n, 'created_at' => now(), 'updated_at' => now()]);
+                'in_template' => 1, 'is_active' => 1, 'sort_order' => ++$n, 'created_at' => now(), 'updated_at' => now()] + ($withCategory ? ['category' => AdminCategories::guess($name), 'staff_id' => optional(AdminCategories::staffByName($who))->id] : []));
         }
 
         return $n;

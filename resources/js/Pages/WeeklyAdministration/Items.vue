@@ -8,17 +8,23 @@
 
       <sc-tabs :tabs="tabs" :model-value="f.view || ''" @update:model-value="setView" />
       <section class="lg-card">
-        <div class="tr-fbar"><div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Item or beneficiary')" autocomplete="off" /></div></div>
+        <div class="tr-fbar">
+          <div class="ac-f tr-wide"><label>{{ $t('Search') }}</label><input v-model="f.search" type="search" :placeholder="$t('Item or beneficiary')" autocomplete="off" /></div>
+          <div class="ac-f"><label>{{ $t('Category') }}</label><acct-select v-model="f.category" :options="categories.map(c => ({ value: c, label: c }))" :placeholder="$t('Any')" clearable /></div>
+          <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="f.staff_id" :options="staffOptions" :placeholder="$t('Any')" clearable /></div>
+        </div>
         <p class="wa-note"><icons name="info" class="w-4 h-4" />{{ $t('Items marked "In the template" are filled in for you when a document starts from the template, in the order shown here. Changing an item never changes a document that was already made.') }}</p>
       </section>
 
       <div class="lg-table-wrap">
         <table class="lg-table lg-responsive tr-table tr-wide">
-          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Item') }}</th><th>{{ $t('Usual beneficiary') }}</th><th class="tr-num">{{ $t('Usual amount') }}</th><th>{{ $t('Use') }}</th><th class="tr-num">{{ $t('Used') }}</th><th class="tr-num">{{ $t('Spent') }}</th><th class="lg-sticky-end"></th></tr></thead>
+          <thead><tr><th class="tr-no">{{ $t('No') }}</th><th>{{ $t('Item') }}</th><th>{{ $t('Category') }}</th><th>{{ $t('Staff member') }}</th><th>{{ $t('Usual beneficiary') }}</th><th class="tr-num">{{ $t('Usual amount') }}</th><th>{{ $t('Use') }}</th><th class="tr-num">{{ $t('Used') }}</th><th class="tr-num">{{ $t('Spent') }}</th><th class="lg-sticky-end"></th></tr></thead>
           <tbody>
             <tr v-for="(r, n) in rows.data" :key="r.id">
               <td :data-label="$t('No')" class="tr-no">{{ (rows.from || 1) + n }}</td>
               <td :data-label="$t('Item')" class="tr-wrap"><div class="tr-cell"><b>{{ r.name }}</b><small v-if="r.last_on">{{ $t('last paid') }} {{ $date(r.last_on) }}</small></div></td>
+              <td :data-label="$t('Category')"><span v-if="r.category" class="lg-chip lg-chip-indigo" style="text-transform: none">{{ r.category }}</span><span v-else>-</span></td>
+              <td :data-label="$t('Staff member')" class="tr-wrap">{{ r.staff || '-' }}</td>
               <td :data-label="$t('Usual beneficiary')" class="tr-wrap">{{ r.default_beneficiary || '-' }}</td>
               <td :data-label="$t('Usual amount')" class="tr-num"><span class="tr-m">{{ Number(r.default_amount) ? money(r.default_amount) : '-' }}</span></td>
               <td :data-label="$t('Use')"><span v-if="r.in_template" class="wa-sw is-tpl"><icons name="collection" class="w-3 h-3" />{{ $t('In the template') }}</span> <span v-if="!r.is_active" class="wa-sw is-off">{{ $t('Not offered') }}</span><span v-if="!r.in_template && r.is_active" class="wa-sw is-on">{{ $t('Offered') }}</span></td>
@@ -31,7 +37,7 @@
                 <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="del = r"><icons name="trash" class="w-4 h-4" /></button>
               </span></td>
             </tr>
-            <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="8">{{ $t('There is no data to display.') }}</td></tr>
+            <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="10">{{ $t('There is no data to display.') }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -40,6 +46,10 @@
       <travel-modal :show="editing" :title="form.id ? $t('Edit Item') : $t('Add an Item')" icon="collection" :busy="busy" @close="editing = false">
         <form id="wa-item" @submit.prevent="save">
           <div class="ac-f"><label>{{ $t('Item') }} *</label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example WEEKLY FUEL - MR NASSOR')" /><span class="ac-err">{{ err('name') }}</span></div>
+          <div class="tr-fbar" style="margin-top: 10px">
+            <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="form.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning... (chosen for you when empty)')" /><datalist id="wa-cats"><option v-for="c in categories" :key="c" :value="c"></option></datalist><span class="ac-err">{{ err('category') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="form.staff_id" :options="staffOptions" :placeholder="$t('Not linked to a staff member')" clearable /><span class="ac-err">{{ err('staff_id') }}</span></div>
+          </div>
           <div class="tr-fbar" style="margin-top: 10px">
             <div class="ac-f"><label>{{ $t('Usual beneficiary') }}</label><input v-model="form.default_beneficiary" list="wa-people" maxlength="190" /></div>
             <div class="ac-f"><label>{{ $t('Usual amount') }} ({{ currency }})</label><input v-model="form.default_amount" type="number" min="0" step="0.01" inputmode="decimal" /><span class="ac-err">{{ err('default_amount') }}</span></div>
@@ -71,14 +81,15 @@ import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import Pager from '@/Pages/Accounts/Pager.vue';
+import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 
-const blank = () => ({ id: null, name: '', default_beneficiary: '', default_amount: '', in_template: true, is_active: true });
+const blank = () => ({ id: null, name: '', category: '', staff_id: '', default_beneficiary: '', default_amount: '', in_template: true, is_active: true });
 
 export default {
-  components: { TravelModal, ScTabs, AdminLayout, PageHeader, Link, Pager },
-  props: { rows: Object, filters: Object, stats: Object, users: Array, currency: String, can: Object },
+  components: { TravelModal, ScTabs, AdminLayout, PageHeader, Link, Pager, AcctSelect },
+  props: { rows: Object, filters: Object, stats: Object, users: Array, currency: String, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, can: Object },
   data() { return { f: { ...this.filters }, timer: null, editing: false, del: null, busy: false, form: blank() }; },
-  watch: { 'f.search'() { this.queue(); } },
+  watch: { f: { deep: true, handler() { this.queue(); } } },
   computed: {
     tabs() { const s = this.stats; return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.all }, { key: 'template', label: this.$t('Template'), icon: 'list', tone: 'teal', count: s.template }, { key: 'other', label: this.$t('Other items'), icon: 'doc', tone: 'sky', count: s.other }, { key: 'inactive', label: this.$t('Not offered'), icon: 'eye-off', tone: 'slate', count: s.inactive }]; },
     tpl() { return this.rows.data.filter(r => r.in_template); },
@@ -88,10 +99,10 @@ export default {
     money(v) { return Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     queue() { clearTimeout(this.timer); this.timer = setTimeout(this.go, 380); },
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('weekly-administration.items.index'), q, { preserveState: true, preserveScroll: true, replace: true }); },
-    setView(v) { this.f.view = this.f.view === v ? '' : v; this.go(); },
-    open(r) { this.form = r ? { id: r.id, name: r.name, default_beneficiary: r.default_beneficiary, default_amount: Number(r.default_amount) ? r.default_amount : '', in_template: r.in_template, is_active: r.is_active } : blank(); this.editing = true; },
+    setView(v) { this.f.view = this.f.view === v ? '' : v; },
+    open(r) { this.form = r ? { id: r.id, name: r.name, category: r.category || '', staff_id: r.staff_id || '', default_beneficiary: r.default_beneficiary, default_amount: Number(r.default_amount) ? r.default_amount : '', in_template: r.in_template, is_active: r.is_active } : blank(); this.editing = true; },
     save() {
-      this.busy = true; const f = this.form; const body = { name: f.name, default_beneficiary: f.default_beneficiary, default_amount: f.default_amount || 0, in_template: f.in_template ? 1 : 0, is_active: f.is_active ? 1 : 0 };
+      this.busy = true; const f = this.form; const body = { name: f.name, category: f.category, staff_id: f.staff_id || '', default_beneficiary: f.default_beneficiary, default_amount: f.default_amount || 0, in_template: f.in_template ? 1 : 0, is_active: f.is_active ? 1 : 0 };
       const o = { preserveScroll: true, onSuccess: () => { this.editing = false; }, onFinish: () => (this.busy = false) };
       if (f.id) this.$inertia.put(route('weekly-administration.items.update', f.id), body, o); else this.$inertia.post(route('weekly-administration.items.store'), body, o);
     },

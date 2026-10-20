@@ -35,6 +35,7 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="list" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Lines') }}</h2><p class="lg-card-sub">{{ $t('Add and remove lines freely. A line you type is remembered as an item, so reports can follow it month by month.') }}</p></div></header>
           <datalist id="wa-items"><option v-for="i in itemNames" :key="i.id" :value="i.name"></option></datalist>
+          <datalist id="wa-cats"><option v-for="c in categories" :key="c" :value="c"></option></datalist>
           <datalist id="wa-people"><option v-for="u in users" :key="u.value" :value="u.label"></option></datalist>
           <div v-if="form.lines.length" class="wa-head-row"><span>{{ $t('No') }}</span><span>{{ $t('Description') }}</span><span>{{ $t('Beneficiary') }}</span><span class="r">{{ $t('Amount') }} ({{ currency }})</span><span></span></div>
           <div class="wa-lines">
@@ -48,6 +49,18 @@
                 <button type="button" class="wa-mini" :disabled="i === form.lines.length - 1" :aria-label="$t('Move down')" @click="move(form.lines, i, 1)"><icons name="chevron-down" class="w-4 h-4" /></button>
                 <button type="button" class="wa-mini is-red" :aria-label="$t('Remove this line')" @click="form.lines.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button>
               </span>
+              <div class="wa-lmeta" style="grid-column: 1 / -1">
+                <template v-if="!l._edit">
+                  <span class="lg-chip lg-chip-indigo" style="text-transform: none"><icons name="collection" class="w-3 h-3" /> {{ l.category || $t('No category') }}</span>
+                  <span v-if="l.staff_id" class="lg-chip lg-chip-green" style="text-transform: none"><icons name="user" class="w-3 h-3" /> {{ staffName(l.staff_id) }}</span>
+                  <button type="button" class="wa-link" @click="l._edit = true">{{ $t('Category / staff member') }}</button>
+                </template>
+                <template v-else>
+                  <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="l.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning...')" /></div>
+                  <div class="ac-f"><label>{{ $t('Staff member') }}</label><acct-select v-model="l.staff_id" :options="staffOptions" :placeholder="$t('Not linked')" clearable /></div>
+                  <button type="button" class="wa-link" @click="l._edit = false">{{ $t('Done') }}</button>
+                </template>
+              </div>
               <span v-if="lineErr(i)" class="ac-err" style="grid-column: 1 / -1">{{ lineErr(i) }}</span>
             </div>
           </div>
@@ -114,7 +127,7 @@ const withKey = x => ({ ...x, _k: ++key });
 
 export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect },
-  props: { doc: Object, mode: String, template: { type: Array, default: () => [] }, users: Array, me: Object, today: String, itemNames: { type: Array, default: () => [] }, charityPeople: Number, department: String, currency: String, can: Object },
+  props: { doc: Object, mode: String, template: { type: Array, default: () => [] }, users: Array, me: Object, today: String, itemNames: { type: Array, default: () => [] }, categories: { type: Array, default: () => [] }, staffOptions: { type: Array, default: () => [] }, charityPeople: Number, department: String, currency: String, can: Object },
   data() {
     const d = this.doc;
     return {
@@ -140,14 +153,15 @@ export default {
     move(list, i, d) { const j = i + d; if (j < 0 || j >= list.length) return; const x = list.splice(i, 1)[0]; list.splice(j, 0, x); },
     start(mode) {
       this.started = mode; this.form.source = mode;
-      if (mode === 'template') this.form.lines = this.template.map(t => withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, amount: t.amount }));
+      if (mode === 'template') this.form.lines = this.template.map(t => withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, amount: t.amount }));
       if (mode === 'blank' && !this.form.lines.length) this.addLine();
     },
-    addLine(extra = {}) { this.form.lines.push(withKey({ admin_item_id: null, description: '', beneficiary: '', beneficiary_user_id: null, amount: '', ...extra })); },
-    addKnown(id) { if (!id) return; const i = this.itemNames.find(x => x.id === id); if (i) this.addLine({ admin_item_id: i.id, description: i.name, beneficiary: i.beneficiary || '', amount: Number(i.amount) ? i.amount : '' }); this.$nextTick(() => (this.pickItem = '')); },
-    addTemplate() { const have = new Set(this.form.lines.map(l => (l.description || '').trim().toLowerCase())); this.template.forEach(t => { if (!have.has(t.description.trim().toLowerCase())) this.form.lines.push(withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, amount: t.amount })); }); },
+    addLine(extra = {}) { this.form.lines.push(withKey({ admin_item_id: null, description: '', beneficiary: '', beneficiary_user_id: null, category: '', staff_id: null, amount: '', ...extra })); },
+    staffName(id) { const s = this.staffOptions.find(x => x.value === id); return s ? s.label : ''; },
+    addKnown(id) { if (!id) return; const i = this.itemNames.find(x => x.id === id); if (i) this.addLine({ admin_item_id: i.id, description: i.name, beneficiary: i.beneficiary || '', category: i.category || '', staff_id: i.staff_id || null, amount: Number(i.amount) ? i.amount : '' }); this.$nextTick(() => (this.pickItem = '')); },
+    addTemplate() { const have = new Set(this.form.lines.map(l => (l.description || '').trim().toLowerCase())); this.template.forEach(t => { if (!have.has(t.description.trim().toLowerCase())) this.form.lines.push(withKey({ admin_item_id: t.admin_item_id, description: t.description, beneficiary: t.beneficiary || '', beneficiary_user_id: t.beneficiary_user_id || null, category: t.category || '', staff_id: t.staff_id || null, amount: t.amount })); }); },
     // typing a name of a known item brings its usual beneficiary and amount when the line is still empty
-    fillFromItem(l) { const k = (l.description || '').trim().toLowerCase(); const i = this.itemNames.find(x => x.name.toLowerCase() === k); if (!i) { l.admin_item_id = null; return; } l.admin_item_id = i.id; if (!l.beneficiary && i.beneficiary) l.beneficiary = i.beneficiary; if (!Number(l.amount) && Number(i.amount)) l.amount = i.amount; },
+    fillFromItem(l) { const k = (l.description || '').trim().toLowerCase(); const i = this.itemNames.find(x => x.name.toLowerCase() === k); if (!i) { l.admin_item_id = null; return; } l.admin_item_id = i.id; if (!l.category && i.category) l.category = i.category; if (!l.staff_id && i.staff_id) l.staff_id = i.staff_id; if (!l.beneficiary && i.beneficiary) l.beneficiary = i.beneficiary; if (!Number(l.amount) && Number(i.amount)) l.amount = i.amount; },
     addCharity() { this.form.charity.push(withKey({ admin_charity_person_id: null, name: '', description: '', amount: '', monthly_amount: 0 })); },
     onCharityToggle() { if (this.form.include_charity && !this.form.charity.length && this.can.charity && this.charityPeople) this.pull(true); },
     async pull(quiet) {
@@ -163,7 +177,7 @@ export default {
     },
     save() {
       this.busy = true;
-      const clean = a => a.map(({ _k, ...r }) => r);
+      const clean = a => a.map(({ _k, _edit, ...r }) => r);
       const body = { doc_date: this.form.doc_date, beneficiary_user_id: this.form.beneficiary_user_id, notes: this.form.notes, include_charity: this.form.include_charity ? 1 : 0, source: this.form.source === 'template' ? 'template' : 'blank', lines: clean(this.form.lines), charity: this.form.include_charity ? clean(this.form.charity) : [] };
       const o = { preserveScroll: true, onFinish: () => (this.busy = false) };
       if (this.doc) this.$inertia.put(route('weekly-administration.update', this.doc.id), body, o); else this.$inertia.post(route('weekly-administration.store'), body, o);

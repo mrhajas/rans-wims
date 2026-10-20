@@ -55,7 +55,7 @@
         <div class="wa-paper"><table>
           <thead><tr><th class="no">{{ $t('No') }}</th><th>{{ $t('Description') }}</th><th class="hide-sm">{{ $t('Beneficiary') }}</th><th class="num">{{ $t('Amount') }} ({{ d.currency }})</th></tr></thead>
           <tbody>
-            <tr v-for="l in d.lines" :key="l.no"><td class="no">{{ l.no }}</td><td>{{ l.description }}</td><td class="hide-sm">{{ l.beneficiary || '-' }}</td><td class="num tr-m">{{ money(l.amount) }}</td></tr>
+            <tr v-for="l in d.lines" :key="l.no"><td class="no">{{ l.no }}</td><td>{{ l.description }}<div v-if="l.category || l.staff" class="lg-subtext"><span v-if="l.category">{{ l.category }}</span><span v-if="l.staff"> · {{ l.staff }}</span></div></td><td class="hide-sm">{{ l.beneficiary || '-' }}</td><td class="num tr-m">{{ money(l.amount) }}</td></tr>
             <tr v-if="!d.lines.length"><td colspan="4" class="lg-empty" style="text-align: center">{{ $t('No lines.') }}</td></tr>
           </tbody>
           <tfoot><tr><td colspan="3" style="text-align: right">{{ $t('Total') }} {{ d.currency }}</td><td class="num tr-tm">{{ money(d.items_total) }}</td></tr></tfoot>

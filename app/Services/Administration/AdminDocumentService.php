@@ -21,7 +21,7 @@ class AdminDocumentService
     public static function templateLines(): array
     {
         return AdminItem::query()->where('in_template', true)->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
-            ->map(fn ($i) => ['admin_item_id' => $i->id, 'description' => $i->name, 'beneficiary' => (string) $i->default_beneficiary, 'beneficiary_user_id' => $i->default_beneficiary_user_id, 'amount' => (string) $i->default_amount])->values()->all();
+            ->map(fn ($i) => ['admin_item_id' => $i->id, 'description' => $i->name, 'beneficiary' => (string) $i->default_beneficiary, 'beneficiary_user_id' => $i->default_beneficiary_user_id, 'category' => $i->category, 'staff_id' => $i->staff_id, 'amount' => (string) $i->default_amount])->values()->all();
     }
 
     /** The wording of a charity line for a person and a month, from the Administration settings. */
@@ -48,11 +48,15 @@ class AdminDocumentService
                 continue;
             }
             $amount = round((float) ($l['amount'] ?? 0), 2);
+            $given = trim((string) ($l['category'] ?? '')) ?: null;
+            $staffId = ! empty($l['staff_id']) && \App\Models\Staff::query()->whereKey((int) $l['staff_id'])->exists() ? (int) $l['staff_id'] : null;
             $item = ! empty($l['admin_item_id']) ? AdminItem::withTrashed()->find((int) $l['admin_item_id']) : null;
             if (! $item || AdminItem::keyOf($item->name) !== AdminItem::keyOf($desc)) {
-                $item = AdminItem::forName($desc, ($l['beneficiary'] ?? null) ?: null, $amount);
+                $item = AdminItem::forName($desc, ($l['beneficiary'] ?? null) ?: null, $amount, $given ? mb_substr($given, 0, 60) : null, $staffId);
             }
-            $d->lines()->create(['admin_item_id' => $item->id, 'description' => $desc, 'beneficiary' => trim((string) ($l['beneficiary'] ?? '')) ?: $d->beneficiary_name, 'beneficiary_user_id' => $l['beneficiary_user_id'] ?? null, 'amount' => $amount, 'sort_order' => ++$n]);
+            // the line keeps the category and the staff member as they were when it was made (what the item says unless the line was given its own)
+            $d->lines()->create(['admin_item_id' => $item->id, 'description' => $desc, 'beneficiary' => trim((string) ($l['beneficiary'] ?? '')) ?: $d->beneficiary_name, 'beneficiary_user_id' => $l['beneficiary_user_id'] ?? null,
+                'category' => $given ? mb_substr($given, 0, 60) : $item->category, 'staff_id' => $staffId ?: $item->staff_id, 'amount' => $amount, 'sort_order' => ++$n]);
         }
     }
 
@@ -84,7 +88,7 @@ class AdminDocumentService
                 'beneficiary_user_id' => $by->id, 'beneficiary_name' => $by->name, 'include_charity' => $src->include_charity, 'notes' => $src->notes, 'source' => 'duplicate', 'duplicated_from_id' => $src->id, 'user_id' => $by->id,
             ]);
             foreach ($src->lines()->get() as $l) {
-                $d->lines()->create(['admin_item_id' => $l->admin_item_id, 'description' => $l->description, 'beneficiary' => $l->beneficiary, 'beneficiary_user_id' => $l->beneficiary_user_id, 'amount' => $l->amount, 'sort_order' => $l->sort_order]);
+                $d->lines()->create(['admin_item_id' => $l->admin_item_id, 'description' => $l->description, 'beneficiary' => $l->beneficiary, 'beneficiary_user_id' => $l->beneficiary_user_id, 'category' => $l->category, 'staff_id' => $l->staff_id, 'amount' => $l->amount, 'sort_order' => $l->sort_order]);
             }
             if ($src->include_charity) {
                 foreach ($src->charityLines()->get() as $c) {

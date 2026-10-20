@@ -21,21 +21,21 @@ class SettingsController extends Controller
         abort_unless($request->user()->can('manage-administration-settings'), 403);
 
         return Inertia::render('WeeklyAdministration/Settings', [
-            'values' => ['department' => AdminDocument::departmentName(), 'currency' => AdminDocument::currency(), 'charity_wording' => AdminDocument::charityWording()],
-            'defaults' => ['department' => 'ADMINISTRATION', 'currency' => 'TZS', 'charity_wording' => 'CHARITY - :name FOR :month'],
+            'values' => ['department' => AdminDocument::departmentName(), 'currency' => AdminDocument::currency(), 'charity_wording' => AdminDocument::charityWording(), 'categories' => implode(', ', \App\Services\Administration\AdminCategories::split((string) (get_settings('admin_categories') ?: \App\Services\Administration\AdminCategories::DEFAULTS)))],
+            'defaults' => ['department' => 'ADMINISTRATION', 'currency' => 'TZS', 'charity_wording' => 'CHARITY - :name FOR :month', 'categories' => \App\Services\Administration\AdminCategories::DEFAULTS],
         ]);
     }
 
     public function update(Request $request)
     {
         abort_unless($request->user()->can('manage-administration-settings'), 403);
-        $d = $request->validate(['department' => 'required|string|max:120', 'currency' => ['required', 'string', 'regex:/^[A-Za-z]{3}$/'], 'charity_wording' => 'required|string|max:190'], [
-            'currency.regex' => __('Use three letters, like TZS or USD.'), 'charity_wording.required' => __('Write the wording, for example CHARITY - :name FOR :month.'),
+        $d = $request->validate(['department' => 'required|string|max:120', 'currency' => ['required', 'string', 'regex:/^[A-Za-z]{3}$/'], 'charity_wording' => 'required|string|max:190', 'categories' => 'required|string|max:1000'], [
+            'currency.regex' => __('Use three letters, like TZS or USD.'), 'categories.required' => __('List at least one category, for example Fuel, Cleaning.'), 'charity_wording.required' => __('Write the wording, for example CHARITY - :name FOR :month.'),
         ]);
         if (! str_contains($d['charity_wording'], ':name')) {
             return back()->withErrors(['charity_wording' => __('The wording must contain :name so each line says who it is for.')]);
         }
-        $values = ['admin_department_name' => trim($d['department']), 'admin_currency' => strtoupper($d['currency']), 'admin_charity_wording' => trim($d['charity_wording'])];
+        $values = ['admin_department_name' => trim($d['department']), 'admin_currency' => strtoupper($d['currency']), 'admin_charity_wording' => trim($d['charity_wording']), 'admin_categories' => implode(', ', \App\Services\Administration\AdminCategories::split($d['categories']))];
         foreach ($values as $k => $v) {
             Setting::updateOrCreate(['tec_key' => $k, 'account_id' => $request->user()->account_id], ['tec_value' => $v]);
         }
