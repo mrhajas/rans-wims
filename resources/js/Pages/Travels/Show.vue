@@ -14,8 +14,8 @@
             <span class="lg-chip" :class="statusChip(t.status)">{{ t.status_label }}</span>
             <span class="lg-chip" :class="t.scope === 'international' ? 'lg-chip-violet' : 'lg-chip-slate'" style="text-transform: none">{{ t.scope_label }}</span>
             <span v-if="t.has_visa" class="lg-chip lg-chip-amber" style="text-transform: none">{{ $t('Visa included') }}</span>
-            <div class="ac-cur-total tr-m" style="margin-top: 6px">{{ t.currency }} {{ money(t.total_amount) }} <small class="lg-subtext">{{ $t('for :n traveller(s)', { n: t.travellers.length }) }}</small></div>
-            <div v-if="t.currency !== 'TZS' || t.items.length" class="tr-eqline"><span v-if="t.currency !== 'TZS'">{{ $t('Exchange rate agreed') }}: <b class="tr-o">1 {{ t.currency }} = TZS {{ rate(t.exchange_rate) }}</b></span><span v-if="t.items.length">{{ $t('All costs') }}: <b class="tr-o">TZS {{ money(t.grand_total_tzs) }}</b></span></div>
+            <div class="ac-cur-total tr-tm" style="margin-top: 6px">{{ t.currency }} {{ money(t.total_amount) }} <small class="lg-subtext">{{ $t('for :n traveller(s)', { n: t.travellers.length }) }}</small></div>
+            <div v-if="t.currency !== 'TZS' || t.items.length" class="tr-eqline"><span v-if="t.currency !== 'TZS'">{{ $t('Exchange rate agreed') }}: <b class="tr-o">1 {{ t.currency }} = TZS {{ rate(t.exchange_rate) }}</b></span><span v-if="t.items.length">{{ $t('All costs') }}: <b class="tr-tm">TZS {{ money(t.grand_total_tzs) }}</b></span></div>
           </div>
           <div class="ac-actions" style="justify-content: flex-end; margin: 0">
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" :disabled="busy" @click="approve"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
@@ -62,7 +62,7 @@
             <tr v-for="p in t.travellers" :key="p.id"><td :data-label="$t('Traveller')" class="lg-main">{{ p.name }}<div class="lg-subtext">{{ { staff: $t('Staff'), user: $t('User'), other: $t('Other') }[p.type] }}<template v-if="p.staff_number"> · {{ p.staff_number }}</template><template v-if="p.phone"> · {{ p.phone }}</template></div></td>
               <td :data-label="$t('Ticket number')">{{ p.ticket_number || '-' }}</td><td :data-label="$t('Ticket')" class="ac-num tr-m">{{ money(p.ticket_amount) }}</td><td v-if="t.has_visa" :data-label="$t('Visa')" class="ac-num tr-m">{{ money(p.visa_amount) }}</td><td :data-label="$t('Total')" class="ac-num"><b class="tr-m">{{ money(Number(p.ticket_amount) + Number(p.visa_amount)) }}</b></td></tr>
           </tbody>
-          <tfoot><tr><td colspan="2" class="ac-num"><b>{{ $t('Total') }} {{ t.currency }}</b></td><td class="ac-num"><b class="tr-m">{{ money(t.ticket_amount) }}</b></td><td v-if="t.has_visa" class="ac-num"><b class="tr-m">{{ money(t.visa_amount) }}</b></td><td class="ac-num"><b class="tr-m">{{ money(t.total_amount) }}</b></td></tr></tfoot>
+          <tfoot><tr><td colspan="2" class="ac-num"><b>{{ $t('Total') }} {{ t.currency }}</b></td><td class="ac-num"><b class="tr-tm">{{ money(t.ticket_amount) }}</b></td><td v-if="t.has_visa" class="ac-num"><b class="tr-tm">{{ money(t.visa_amount) }}</b></td><td class="ac-num"><b class="tr-tm">{{ money(t.total_amount) }}</b></td></tr></tfoot>
         </table></div>
         <div class="tr-agents">
           <div class="tr-agent"><small>{{ $t('Ticket issued by') }}</small><b>{{ t.ticket_agent || '-' }}</b><span v-if="t.ticket_agent_phone">{{ t.ticket_agent_phone }}</span>
@@ -84,9 +84,9 @@
               <td :data-label="$t('Cur.')">{{ i.currency }}</td><td :data-label="$t('Exchange rate agreed')" class="tr-num"><span v-if="i.currency !== 'TZS'" class="tr-o">{{ rate(i.exchange_rate) }}</span><span v-else>-</span></td><td :data-label="$t('Amount')" class="tr-num tr-m">{{ money(i.amount) }}</td><td :data-label="$t('In TZS')" class="tr-num"><b class="tr-o">{{ money(i.amount_tzs) }}</b></td></tr>
           </tbody>
           <tfoot>
-            <tr><td colspan="7" class="tr-num">{{ $t('Other costs') }}</td><td class="tr-num"><b class="tr-o">{{ money(t.items_total_tzs) }}</b></td></tr>
-            <tr><td colspan="7" class="tr-num">{{ $t('Travel total (ticket and visa) in TZS') }}</td><td class="tr-num"><b class="tr-o">{{ money(t.travel_total_tzs) }}</b></td></tr>
-            <tr><td colspan="7" class="tr-num"><b>{{ $t('All costs of the travel (TZS)') }}</b></td><td class="tr-num"><b class="tr-m">{{ money(t.grand_total_tzs) }}</b></td></tr>
+            <tr><td colspan="7" class="tr-num">{{ $t('Other costs') }}</td><td class="tr-num"><b class="tr-tm">{{ money(t.items_total_tzs) }}</b></td></tr>
+            <tr><td colspan="7" class="tr-num">{{ $t('Travel total (ticket and visa) in TZS') }}</td><td class="tr-num"><b class="tr-tm">{{ money(t.travel_total_tzs) }}</b></td></tr>
+            <tr><td colspan="7" class="tr-num"><b>{{ $t('All costs of the travel (TZS)') }}</b></td><td class="tr-num"><b class="tr-tm">{{ money(t.grand_total_tzs) }}</b></td></tr>
           </tfoot>
         </table></div>
       </section>

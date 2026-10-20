@@ -201,7 +201,7 @@ class TravelReports
             $c[$l['section']] += (int) round($l['tzs'] * 100);
         }
 
-        return [['label' => __('Owed to agents (TZS)'), 'value' => number_format($c['agents'] / 100, 2)], ['label' => __('Company expenses (TZS)'), 'value' => number_format($c['extras'] / 100, 2)], ['label' => __('All costs (TZS)'), 'value' => number_format(($c['agents'] + $c['extras']) / 100, 2)]];
+        return [['label' => __('Owed to agents (TZS)'), 'value' => 'TZS ' . number_format($c['agents'] / 100, 2)], ['label' => __('Company expenses (TZS)'), 'value' => 'TZS ' . number_format($c['extras'] / 100, 2)], ['label' => __('All costs (TZS)'), 'value' => 'TZS ' . number_format(($c['agents'] + $c['extras']) / 100, 2)]];
     }
 
     private static function travelCosts(array $f, $user): array

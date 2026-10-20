@@ -15,7 +15,7 @@
       </div>
 
       <div v-if="totals.length" class="tr-totals">
-        <div v-for="m in totals" :key="m.currency" class="tr-tot"><small>{{ $t('Total amount') }} {{ m.currency }}</small><b class="tr-m">{{ m.currency }} {{ moneyFmt(m.total) }}</b><span><em style="font-style: normal">{{ $t('Ticket and visa') }} <i class="tr-m">{{ moneyFmt(m.travel) }}</i></em><em style="font-style: normal">{{ $t('Other costs') }} <i class="tr-m">{{ moneyFmt(m.items) }}</i></em></span></div>
+        <div v-for="m in totals" :key="m.currency" class="tr-tot"><small>{{ $t('Total amount') }} {{ m.currency }}</small><b class="tr-tm">{{ m.currency }} {{ moneyFmt(m.total) }}</b><span><em style="font-style: normal">{{ $t('Ticket and visa') }} <i class="tr-tm">{{ m.currency }} {{ moneyFmt(m.travel) }}</i></em><em style="font-style: normal">{{ $t('Other costs') }} <i class="tr-tm">{{ m.currency }} {{ moneyFmt(m.items) }}</i></em></span></div>
       </div>
 
       <sc-tabs :tabs="tabs" :model-value="f.status || ''" @update:model-value="setStatus" />
@@ -46,7 +46,7 @@
               <td :data-label="$t('Flight')" class="tr-wrap"><div class="tr-cell"><b>{{ [r.airline, r.flight_number].filter(Boolean).join(' ') || '-' }}</b><small v-if="r.return_flight_number">{{ $t('Return') }}: {{ [r.return_airline || r.airline, r.return_flight_number].filter(Boolean).join(' ') }}</small><small v-if="r.booking_reference">PNR {{ r.booking_reference }}</small></div></td>
               <td :data-label="$t('Issued by')" class="tr-wrap"><div class="tr-cell"><span><small>{{ $t('Ticket') }}</small> {{ r.ticket_agent || '-' }}</span><span v-if="r.has_visa"><small>{{ $t('Visa') }}</small> {{ r.visa_agent || '-' }}</span></div></td>
               <td :data-label="$t('Exchange rate agreed')" class="tr-num"><div class="tr-money"><b v-if="r.currency !== 'TZS'" class="tr-o">1 {{ r.currency }} = TZS {{ rate(r.exchange_rate) }}</b><small v-else>{{ $t('TZS (no rate)') }}</small></div></td>
-              <td :data-label="$t('Amount')" class="tr-num"><div class="tr-money"><b class="tr-m">{{ r.currency }} {{ money(r.total_amount) }}</b><small class="tr-m">{{ $t('Ticket') }} {{ money(r.ticket_amount) }}</small><small v-if="r.has_visa" class="tr-m">{{ $t('Visa') }} {{ money(r.visa_amount) }}</small><small v-if="r.items.length" class="tr-o">{{ $t('Other costs') }} TZS {{ money(r.items_total_tzs) }}</small></div></td>
+              <td :data-label="$t('Amount')" class="tr-num"><div class="tr-money"><b class="tr-tm">{{ r.currency }} {{ money(r.total_amount) }}</b><small class="tr-m">{{ $t('Ticket') }} {{ money(r.ticket_amount) }}</small><small v-if="r.has_visa" class="tr-m">{{ $t('Visa') }} {{ money(r.visa_amount) }}</small><small v-if="r.items.length" class="tr-o">{{ $t('Other costs') }} TZS {{ money(r.items_total_tzs) }}</small></div></td>
               <td class="lg-sticky-end tr-acts-cell" @click.stop><span class="tr-acts"><a v-if="can.print" :href="route('travels.print', r.id)" target="_blank" rel="noopener" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a><a v-if="can.print" :href="route('travels.pdf', r.id)" class="lg-icon-btn lg-tip" :data-tip="$t('Download')" :aria-label="$t('Download')"><icons name="download" class="w-4 h-4" /></a></span></td>
             </tr>
             <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="10">{{ hasFilters ? $t('No travel matches these filters.') : $t('There is no data to display.') }}</td></tr>

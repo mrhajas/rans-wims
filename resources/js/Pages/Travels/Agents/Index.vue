@@ -11,8 +11,8 @@
       <div v-if="totals.length" class="tr-tiles">
         <div v-for="t in totals" :key="t.currency" class="tr-tile">
           <span class="tr-cur">{{ t.currency }}</span>
-          <div class="tr-big"><small>{{ $t('Owed to agents') }}</small><b class="tr-o" :class="{ 'ac-neg': Number(t.balance) < 0 }">{{ money(t.balance) }}</b></div>
-          <div class="tr-sub"><span>{{ $t('Opening') }} <b class="tr-m">{{ money(t.opening) }}</b></span><span>{{ $t('Billed') }} <b class="tr-m">{{ money(t.billed) }}</b></span><span>{{ $t('Paid') }} <b class="tr-g">{{ money(t.paid) }}</b></span><span v-if="Number(t.reserved)">{{ $t('In waiting vouchers') }} <b class="tr-o">{{ money(t.reserved) }}</b></span></div>
+          <div class="tr-big"><small>{{ $t('Owed to agents') }}</small><b class="tr-tm" :class="{ 'ac-neg': Number(t.balance) < 0 }">{{ t.currency }} {{ money(t.balance) }}</b></div>
+          <div class="tr-sub"><span>{{ $t('Opening') }} <b class="tr-m">{{ t.currency }} {{ money(t.opening) }}</b></span><span>{{ $t('Billed') }} <b class="tr-m">{{ t.currency }} {{ money(t.billed) }}</b></span><span>{{ $t('Paid') }} <b class="tr-g">{{ t.currency }} {{ money(t.paid) }}</b></span><span v-if="Number(t.reserved)">{{ $t('In waiting vouchers') }} <b class="tr-o">{{ t.currency }} {{ money(t.reserved) }}</b></span></div>
         </div>
       </div>
 
@@ -38,7 +38,7 @@
               <td :data-label="$t('Tickets')" class="tr-num"><span v-if="r.currency" class="tr-m">{{ money(r.ticket) }}</span><span v-else>-</span></td>
               <td :data-label="$t('Visas')" class="tr-num"><span v-if="r.currency" class="tr-m">{{ money(r.visa) }}</span><span v-else>-</span></td>
               <td :data-label="$t('Paid')" class="tr-num"><span v-if="r.currency" class="tr-g">{{ money(r.paid) }}</span><span v-else>-</span></td>
-              <td :data-label="$t('Balance owed')" class="tr-num"><b class="tr-o" :class="{ 'tr-neg': Number(r.balance) < 0 }">{{ r.currency ? money(r.balance) : '-' }}</b><small v-if="Number(r.pending)" class="lg-subtext" style="display: block">+ {{ money(r.pending) }} {{ $t('pending approval') }}</small></td>
+              <td :data-label="$t('Balance owed')" class="tr-num"><b class="tr-tm" :class="{ 'tr-neg': Number(r.balance) < 0 }">{{ r.currency ? money(r.balance) : '-' }}</b><small v-if="Number(r.pending)" class="lg-subtext" style="display: block">+ {{ money(r.pending) }} {{ $t('pending approval') }}</small></td>
               <td :data-label="$t('In waiting vouchers')" class="tr-num"><span v-if="r.currency && Number(r.reserved)" class="tr-o">{{ money(r.reserved) }}</span><span v-else>-</span></td>
               <td :data-label="$t('Last payment')" class="tr-nw">{{ r.last_payment ? $date(r.last_payment) : '-' }}</td>
               <td class="lg-sticky-end tr-acts-cell" @click.stop><span class="tr-acts"><Link :href="route('travels.agents.show', r.contact_id)" class="lg-icon-btn lg-tip" :data-tip="$t('Open the account')" :aria-label="$t('Open the account')"><icons name="doc" class="w-4 h-4" /></Link></span></td>

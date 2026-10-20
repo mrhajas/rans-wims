@@ -32,7 +32,7 @@
           <div><dt>{{ $t('Method') }}</dt><dd>{{ p.method || '-' }}</dd></div>
           <div><dt>{{ $t('Payment reference') }}</dt><dd>{{ p.payment_reference || '-' }}</dd></div>
           <div v-if="p.travel_id"><dt>{{ $t('For travel') }}</dt><dd><Link :href="route('travels.show', p.travel_id)">{{ p.travel }}</Link></dd></div>
-          <div><dt>{{ $t('Owed to the agent now') }}</dt><dd><span v-for="(v, c) in owed" :key="c" class="tr-owed-now tr-o">{{ c }} {{ money(v) }}</span><span v-if="!Object.keys(owed).length">-</span></dd></div>
+          <div><dt>{{ $t('Owed to the agent now') }}</dt><dd><span v-for="(v, c) in owed" :key="c" class="tr-owed-now tr-tm">{{ c }} {{ money(v) }}</span><span v-if="!Object.keys(owed).length">-</span></dd></div>
         </dl>
         <p v-if="p.notes" class="lg-sub" style="margin-top: 8px"><b>{{ $t('Notes') }}:</b> {{ p.notes }}</p>
       </section>

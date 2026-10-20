@@ -33,7 +33,7 @@
       </section>
       <section v-if="report" class="lg-card">
         <div class="ac-split" style="margin-bottom: 8px"><span v-for="(v, k) in report.filters" :key="k">{{ k }}: <b>{{ v }}</b></span></div>
-        <div class="ac-attn" v-if="report.tiles.length > 1"><div v-for="x in report.tiles" :key="x.label" class="ac-tile ac-glow tone-navy"><div><div class="n" style="font-size: 1rem">{{ x.value }}</div><div class="l">{{ x.label }}</div></div></div></div>
+        <div class="ac-attn" v-if="report.tiles.length > 1"><div v-for="x in report.tiles" :key="x.label" class="ac-tile ac-glow tone-navy"><div><div class="n" :class="{ 'tr-tm': isMoney(x.value) }" style="font-size: 1rem">{{ x.value }}</div><div class="l">{{ x.label }}</div></div></div></div>
         <div class="lg-table-wrap"><table class="lg-table lg-responsive tr-table tr-wide">
           <thead><tr><th v-for="c in report.columns" :key="c.key" :class="{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no' }">{{ c.label }}</th></tr></thead>
           <tbody>
@@ -74,9 +74,12 @@ export default {
   mounted() { this.run(); },
   methods: {
     // amounts wear a colour: maroon = owed / cost, green = paid, orange = balance, pending and TZS equivalents
+    // a tile that holds money (a currency and an amount) is a total: maroon
+    isMoney(v) { return /^([A-Z]{3} )?-?[\d,]+\.\d{2}$/.test(String(v)); },
     tone(c) {
       if (c.type !== 'money' && c.key !== 'rate') return '';
-      if (c.key === 'rate' || ['balance', 'balance_after', 'tzs', 'pending'].includes(c.key)) return 'tr-o';
+      if (['balance', 'balance_after', 'total', 'all_tzs'].includes(c.key)) return 'tr-tm';
+      if (c.key === 'rate' || ['tzs', 'pending'].includes(c.key)) return 'tr-o';
       if (c.key === 'paid' || (this.t === 'payments' && c.key === 'amount')) return 'tr-g';
       return 'tr-m';
     },
