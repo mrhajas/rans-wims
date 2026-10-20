@@ -37,6 +37,8 @@
           </template>
 
           <template v-else>
+            <svg class="pl-star8" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 2 61 27 88 12 73 39 98 50 73 61 88 88 61 73 50 98 39 73 12 88 27 61 2 50 27 39 12 12 39 27Z" /><circle cx="50" cy="50" r="22" /></svg>
+            <span class="pl-embers" aria-hidden="true"><i v-for="n in 9" :key="n" :style="{ '--x': (n * 11 + 4) % 96 + '%', '--d': (n % 5) * 1.3 + 's', '--t': 6 + (n % 4) * 1.5 + 's', '--s': 3 + (n % 3) * 2 + 'px' }"></i></span>
             <p class="pl-eyebrow">{{ $t('Prayer time') }}</p>
             <p class="pl-ar" lang="ar" dir="rtl">{{ arabicName(ph.e.key) }}</p>
             <h2 class="pl-title">{{ $t('It is time for') }} {{ ph.e.label }} {{ $t('prayer') }}</h2>
@@ -48,6 +50,11 @@
             </figure>
             <p v-if="sd" class="pl-lockline"><i></i>{{ $t('WIMS locks in') }} <b class="pl-mono">{{ lockCount }}</b> · {{ $t('back at') }} {{ at12(ph.e.unlock_at) }}</p>
             <p v-else class="pl-lockline"><i></i>{{ $t('Prayer time in') }} <b class="pl-mono">{{ lockCount }}</b></p>
+            <!-- the adhan now playing: who recites it, and waves that move with the sound -->
+            <div v-if="adhan.enabled" class="pl-player" :class="{ 'is-on': playing }">
+              <div class="pl-player__who"><span class="pl-player__ico"><span class="pl-eq" :class="{ on: playing }"><i></i><i></i><i></i><i></i></span></span><span class="pl-player__txt"><small>{{ playing ? $t('Now playing') : $t('Adhan') }}</small><b>{{ reciter }}</b></span></div>
+              <adhan-waves />
+            </div>
             <div class="pl-actions">
               <button v-if="adhan.enabled" type="button" class="pl-ghost" @click="toggleAdhan"><span class="pl-eq" :class="{ on: playing }"><i></i><i></i><i></i><i></i></span>{{ playing ? $t('Pause adhan') : $t('Play adhan') }}</button>
               <button type="button" class="pl-btn" @click="closePrayer"><span>{{ $t('Close') }}</span></button>
@@ -61,12 +68,13 @@
 
 <script>
 import PrayerSky from './PrayerSky.vue';
+import AdhanWaves from './AdhanWaves.vue';
 import { prayerState, phase, countdown, clock12, adhan as adhanState, playAdhan, stopAdhan } from './prayerStore';
 
 const ARABIC = { fajr: 'صلاة الفجر', dhuhr: 'صلاة الظهر', asr: 'صلاة العصر', maghrib: 'صلاة المغرب', isha: 'صلاة العشاء' };
 
 export default {
-  components: { PrayerSky },
+  components: { PrayerSky, AdhanWaves },
   data() { return { alertSeen: false, prayerClosed: false, lastKey: '', reloaded: false }; },
   computed: {
     ph() { return phase.value; },
@@ -82,6 +90,8 @@ export default {
     lockCount() { return this.ph.e ? countdown(this.ph.e.lockT) : ''; },
     adhan() { return (prayerState.data && prayerState.data.adhan) || { enabled: false }; },
     playing() { return adhanState.playing; },
+    // the stored name may be written without spaces (MuftMenk): show it as words
+    reciter() { const l = (this.adhan && this.adhan.label) || ''; return l ? l.replace(/([a-z])([A-Z])/g, '$1 $2') : this.$t('Adhan'); },
     topbarOn() { return !!(prayerState.data && prayerState.data.topbar); },
     msg() { return this.ph.e && this.ph.e.message; },
     cityLine() { return prayerState.data ? prayerState.data.city + ' (EAT)' : ''; },
@@ -193,6 +203,22 @@ export default {
 html.dark .pl-calm { color: #d1fae5; background: linear-gradient(120deg, rgba(6, 78, 59, 0.6), rgba(124, 45, 18, 0.5), rgba(6, 78, 59, 0.6)); background-size: 200% 100%; }
 html.dark .pl-star8 { opacity: 0.16; stroke: #fcd34d; }
 
+/* the adhan player of the prayer notice, and the shimmer of the Arabic name */
+.pl-player { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.5rem 1rem; margin: 0.75rem 0 0; padding: 0.6rem 0.9rem; border-radius: 18px; text-align: left; background: linear-gradient(120deg, rgba(220, 252, 231, 0.9), rgba(255, 237, 213, 0.9)); box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.28), 0 12px 22px -16px rgba(22, 163, 74, 0.9); }
+.pl-player.is-on { animation: pl-player-glow 2.4s ease-in-out infinite; }
+.pl-player__who { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.pl-player__ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; color: #16a34a; background: #fff; box-shadow: inset 0 0 0 1.5px #16a34a, 0 6px 10px -6px #16a34a; }
+.pl-player.is-on .pl-player__ico { animation: pl-breathe 1.2s ease-in-out infinite; }
+.pl-player__txt { display: grid; min-width: 0; line-height: 1.2; } .pl-player__txt small { font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pl-gold); } .pl-player__txt b { font-size: 0.92rem; color: var(--pl-ink); overflow-wrap: anywhere; }
+@media (max-width: 420px) { .pl-player { grid-template-columns: 1fr; } }
+.pl-ar { background: linear-gradient(100deg, #b45309 0%, #b45309 40%, #f59e0b 50%, #b45309 60%, #b45309 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: pl-sheen-text 5s ease-in-out infinite; }
+.pl-verse { animation: pl-rise 0.7s 0.3s ease both, pl-verse-glow 5s ease-in-out 1s infinite; }
+@keyframes pl-player-glow { 0%, 100% { box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.28), 0 12px 22px -16px rgba(22, 163, 74, 0.9); } 50% { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.6), 0 14px 28px -12px rgba(245, 158, 11, 0.9); } }
+@keyframes pl-sheen-text { 0%, 100% { background-position: 100% 50%; } 50% { background-position: 0% 50%; } }
+@keyframes pl-verse-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } 50% { box-shadow: 0 10px 24px -14px rgba(234, 88, 12, 0.55); } }
+html.dark .pl-player { background: linear-gradient(120deg, rgba(6, 78, 59, 0.6), rgba(124, 45, 18, 0.5)); } html.dark .pl-player__ico { background: transparent; color: #34d399; box-shadow: inset 0 0 0 1.5px #34d399; }
+html.dark .pl-ar { background: linear-gradient(100deg, #fde68a 0%, #fde68a 40%, #fff 50%, #fde68a 60%, #fde68a 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
 /* WIMS dark mode */
 html.dark .pl-backdrop { --pl-ink: #ecfdf5; --pl-text: #d1fae5; --pl-soft: #94a3b8; --pl-gold: #fcd34d; --pl-verse-bg: rgba(255, 255, 255, 0.06); --pl-verse-line: rgba(250, 204, 21, 0.25); --pl-verse-text: #e2e8f0; --pl-ring-bg: rgba(255, 255, 255, 0.12); --pl-ring: #fbbf24; --pl-btn-text: #422006; --pl-ghost: rgba(255, 255, 255, 0.08); --pl-ghost-line: rgba(255, 255, 255, 0.25); --pl-ghost-text: #ecfdf5; --pl-star: #fde68a; background: radial-gradient(120% 90% at 50% 0%, rgba(6, 78, 59, 0.78), rgba(2, 6, 23, 0.9)); }
 html.dark .pl-card { background: linear-gradient(165deg, #0b3b34 0%, #0a2a40 55%, #07142b 100%); box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(250, 204, 21, 0.35), inset 0 0 60px rgba(16, 185, 129, 0.12); }
@@ -200,5 +226,5 @@ html.dark .pl-card.is-alert { background: linear-gradient(165deg, #3b2a0b 0%, #0
 html.dark .pl-ar { color: #fde68a; } html.dark .pl-text b { color: #fde68a; } html.dark .pl-verse__ar { color: #fff; } html.dark .pl-lockline { color: #fed7aa; } html.dark .pl-lockline b { color: #fff; }
 html.dark .pl-btn { background: linear-gradient(135deg, #fde68a, #f59e0b); } html.dark .pl-eq i { background: #34d399; }
 html.dark .pl-bar { color: #fff7ed; background: linear-gradient(90deg, #7c2d12, #b45309); box-shadow: 0 12px 30px -12px rgba(124, 45, 18, 0.9), 0 0 0 1px rgba(253, 186, 116, 0.5); } html.dark .pl-bar small { color: #fed7aa; } html.dark .pl-bar b { color: #fde68a; }
-@media (prefers-reduced-motion: reduce) { .pl-card, .pl-moon, .pl-star5, .pl-stars i, .pl-btn::after, .pl-verse, .pl-star8, .pl-embers i, .pl-ripples i, .pl-orbit, .pl-calm, .pl-calm__dots i, .pl-card.is-alert .pl-btn, .pl-ring__t b { animation: none; } .pl-stars i { opacity: 0.6; } .pl-embers, .pl-ripples { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pl-card, .pl-moon, .pl-star5, .pl-stars i, .pl-btn::after, .pl-verse, .pl-star8, .pl-embers i, .pl-ripples i, .pl-orbit, .pl-calm, .pl-calm__dots i, .pl-card.is-alert .pl-btn, .pl-ring__t b, .pl-player.is-on, .pl-player.is-on .pl-player__ico, .pl-ar, .pl-verse { animation: none; } .pl-stars i { opacity: 0.6; } .pl-embers, .pl-ripples { display: none; } }
 </style>

@@ -7,15 +7,36 @@ export const prayerState = reactive({ data: null, offset: 0, now: Date.now(), pr
 // One adhan player shared by the prayer notice and the top-bar drawer, so it can be stopped from either.
 export const adhan = reactive({ playing: false, audio: null, blocked: false });
 
+// The waves of the prayer notice follow the real sound: the playing audio is also routed through an analyser. This is only done when the browser lets the audio
+// context run (never when it is suspended, because a suspended context would mute the adhan); otherwise the waves are drawn without the analyser.
+let audioCtx = null;
+let analyser = null;
+let analyserSource = null;
+export function adhanAnalyser() { return analyser; }
+async function hookAnalyser(el) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC || analyser) return;
+    audioCtx = audioCtx || new AC();
+    if (audioCtx.state !== 'running') { try { await audioCtx.resume(); } catch (e) { /* needs a click first */ } }
+    if (audioCtx.state !== 'running' || adhan.audio !== el) return;
+    const src = audioCtx.createMediaElementSource(el);
+    const an = audioCtx.createAnalyser();
+    an.fftSize = 512; an.smoothingTimeConstant = 0.8;
+    src.connect(an); an.connect(audioCtx.destination);
+    analyserSource = src; analyser = an;
+  } catch (e) { analyser = null; }
+}
+
 export function playAdhan(force = false) {
   const a = prayerState.data && prayerState.data.adhan;
   if (!a || !a.url || (!a.enabled && !force)) return Promise.resolve();
   if (!adhan.audio) {
     const el = markRaw(new Audio(a.url));
     el.volume = Math.max(0, Math.min(1, (adhan.volume ?? a.volume ?? 70) / 100));
-    el.addEventListener('ended', () => { adhan.playing = false; adhan.audio = null; });
+    el.addEventListener('ended', () => { adhan.playing = false; adhan.audio = null; try { if (analyserSource) analyserSource.disconnect(); } catch (e) { /* gone */ } analyser = null; analyserSource = null; });
     el.addEventListener('pause', () => { adhan.playing = false; });
-    el.addEventListener('play', () => { adhan.playing = true; adhan.blocked = false; });
+    el.addEventListener('play', () => { adhan.playing = true; adhan.blocked = false; hookAnalyser(el); });
     adhan.audio = el;
   }
   return adhan.audio.play().catch(() => { adhan.playing = false; adhan.blocked = true; }); // the browser may need one click first
@@ -25,6 +46,8 @@ export function stopAdhan() {
   if (adhan.audio) { adhan.audio.pause(); try { adhan.audio.currentTime = 0; } catch (e) { /* not seekable */ } }
   adhan.audio = null;
   adhan.playing = false;
+  try { if (analyserSource) analyserSource.disconnect(); } catch (e) { /* already gone */ }
+  analyser = null; analyserSource = null;
 }
 
 export function setAdhanVolume(v) {
