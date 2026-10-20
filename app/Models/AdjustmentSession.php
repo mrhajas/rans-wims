@@ -59,8 +59,9 @@ class AdjustmentSession extends Model
     }
 
     /** The open session of a warehouse, if there is one. */
-    public static function openFor(?int $warehouseId): ?self
+    public static function openFor(?int $warehouseId, bool $lock = false): ?self
     {
-        return $warehouseId ? self::query()->where('open_warehouse_id', $warehouseId)->where('status', self::STATUS_OPEN)->first() : null;
+        // $lock: a shared lock, so a count being saved waits while the session is being ended (and then finds it ended)
+        return $warehouseId ? self::query()->where('open_warehouse_id', $warehouseId)->where('status', self::STATUS_OPEN)->when($lock, fn ($q) => $q->sharedLock())->first() : null;
     }
 }

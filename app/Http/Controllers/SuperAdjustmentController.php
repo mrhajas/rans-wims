@@ -166,7 +166,7 @@ class SuperAdjustmentController extends Controller
     /** The open Adjustment Sessions by warehouse id, so the form can say that a count is added to a session (and skip the "items not counted" question). */
     private function openSessions(): array
     {
-        return \App\Models\AdjustmentSession::query()->where('status', \App\Models\AdjustmentSession::STATUS_OPEN)->get(['id', 'reference', 'name', 'warehouse_id', 'started_at'])
+        return \App\Models\AdjustmentSession::query()->where('status', \App\Models\AdjustmentSession::STATUS_OPEN)->whereIn('warehouse_id', Warehouse::ofAccount()->visible()->select('id'))->get(['id', 'reference', 'name', 'warehouse_id', 'started_at'])
             ->mapWithKeys(fn ($x) => [(int) $x->warehouse_id => ['id' => $x->id, 'reference' => $x->reference, 'name' => $x->name, 'started_at' => optional($x->started_at)->toIso8601String(), 'url' => route('adjustment-sessions.show', $x->id)]])->all();
     }
 
@@ -1007,7 +1007,7 @@ class SuperAdjustmentController extends Controller
             ]);
 
             // Adjustment Session: a count of a warehouse that has an open session belongs to it (an older count is linked only if it was made after the session started)
-            $open = $session ?: \App\Models\AdjustmentSession::openFor((int) $data['warehouse_id']);
+            $open = $session ?: \App\Models\AdjustmentSession::openFor((int) $data['warehouse_id'], true);
             if ($isNew) {
                 $superAdjustment->adjustment_session_id = $open ? $open->id : null;
             } elseif ($superAdjustment->adjustment_session_id) {

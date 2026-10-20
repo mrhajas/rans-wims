@@ -287,7 +287,7 @@ export default {
       }
       row.fieldKey++;
     },
-    submit() {
+    submit(confirmDuplicate = false) {
       this.form.transform(data => ({
         type: data.type,
         payee_type: data.payee_type,
@@ -305,7 +305,15 @@ export default {
           remarks: row.remarks,
         })),
         attachments: this.selectedFiles,
-      })).post(route('payment-vouchers.batches.store'));
+        confirm_duplicate: confirmDuplicate === true,
+      })).post(route('payment-vouchers.batches.store'), {
+        // the same payee and amount twice (or a recent identical voucher): the person decides
+        onError: async errors => {
+          if (errors.duplicate && await this.$confirm(errors.duplicate + ' ' + this.$t('Continue anyway?'))) {
+            this.submit(true);
+          }
+        },
+      });
     },
   },
 };

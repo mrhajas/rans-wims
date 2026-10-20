@@ -130,9 +130,9 @@ class TaskReferenceRegistry
                 'model' => PaymentVoucher::class,
                 'route' => 'payment-vouchers.show',
                 'param' => 'payment_voucher',
-                'match' => fn (Builder $q, string $code) => $q->where('pv_number', $code),
-                'search' => fn (Builder $q, string $term) => $q->where('pv_number', 'like', "%{$term}%")
-                    ->orWhere('payee_name', 'like', "%{$term}%"),
+                'match' => fn (Builder $q, string $code) => $q->visibleTo(auth()->user())->where('pv_number', $code),
+                'search' => fn (Builder $q, string $term) => $q->visibleTo(auth()->user())->where(fn ($w) => $w->where('pv_number', 'like', "%{$term}%")
+                    ->orWhere('payee_name', 'like', "%{$term}%")),
                 'code' => fn ($r) => $r->pv_number,
                 'title' => fn ($r) => $r->payee_name,
             ],

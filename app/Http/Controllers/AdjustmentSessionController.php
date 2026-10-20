@@ -51,7 +51,7 @@ class AdjustmentSessionController extends Controller
         $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']) . '%';
 
         $base = AdjustmentSession::query()->whereIn('warehouse_id', $visible);
-        $rows = (clone $base)->with(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name'])->withCount('superAdjustments')
+        $rows = (clone $base)->with(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name'])->withCount(['superAdjustments' => fn ($q) => $q->withoutGlobalScope('mine')])
             ->when($filters['status'] !== '', fn ($q) => $q->where('status', $filters['status']))
             ->when($filters['warehouse_id'] !== '', fn ($q) => $q->where('warehouse_id', (int) $filters['warehouse_id']))
             ->when($filters['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', $like)->orWhere('name', 'like', $like)->orWhereHas('warehouse', fn ($x) => $x->where('name', 'like', $like))))
@@ -102,7 +102,8 @@ class AdjustmentSessionController extends Controller
     /** What the Show page, the print and the PDF all read. */
     private function payload(AdjustmentSession $s): array
     {
-        $s->loadMissing(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name', 'clearingSuperAdjustment:id,reference,status']);
+        $s->loadMissing(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name']);
+        $clearingDoc = $s->clearing_super_adjustment_id ? SuperAdjustment::withoutGlobalScope('mine')->find($s->clearing_super_adjustment_id, ['id', 'reference', 'status']) : null;
         $docs = Svc::documents($s);
         $snap = (array) $s->snapshot;
 
@@ -125,7 +126,7 @@ class AdjustmentSessionController extends Controller
                 'warehouse' => ['id' => $s->warehouse_id, 'name' => optional($s->warehouse)->name, 'code' => optional($s->warehouse)->code],
                 'started_by' => optional($s->startedBy)->name, 'started_at' => optional($s->started_at)->toIso8601String(),
                 'ended_by' => optional($s->endedBy)->name, 'ended_at' => optional($s->ended_at)->toIso8601String(), 'end_note' => $s->end_note,
-                'clearing' => $s->clearingSuperAdjustment ? ['id' => $s->clearingSuperAdjustment->id, 'reference' => $s->clearingSuperAdjustment->reference, 'status' => $s->clearingSuperAdjustment->status] : null,
+                'clearing' => $clearingDoc ? ['id' => $clearingDoc->id, 'reference' => $clearingDoc->reference, 'status' => $clearingDoc->status] : null,
             ],
             'documents' => $docs->map(fn ($d) => ['id' => $d->id, 'reference' => $d->reference, 'status' => $d->status, 'date' => (string) $d->date, 'by' => optional($d->user)->name, 'items' => (int) $d->items_count, 'created_at' => optional($d->created_at)->toIso8601String(), 'is_clearing' => (int) $s->clearing_super_adjustment_id === (int) $d->id])->values(),
             'pending' => $pending->pluck('reference')->values(),
@@ -148,7 +149,7 @@ class AdjustmentSessionController extends Controller
     {
         $this->need('end-adjustment-sessions');
         $this->authorizeSession($session);
-        $data = $request->validate(['clear_item_ids' => 'nullable|array|max:5000', 'clear_item_ids.*' => 'integer', 'note' => 'nullable|string|max:1000']);
+        $data = $request->validate(['clear_item_ids' => 'nullable|array|max:20000', 'clear_item_ids.*' => 'integer', 'note' => 'nullable|string|max:1000']);
         $clear = array_values(array_unique(array_map('intval', $data['clear_item_ids'] ?? [])));
         if ($clear) {
             $this->need('create-super-adjustments');
@@ -163,14 +164,18 @@ class AdjustmentSessionController extends Controller
             return back()->with('error', __('This Adjustment Session is being ended right now.'));
         }
         try {
-            $session = AdjustmentSession::query()->whereKey($session->id)->first();
-            abort_unless($session && $session->isOpen(), 422, __('This Adjustment Session has already ended.'));
+            // ONE transaction: the session row is locked, so a count being saved at the same moment waits and then finds the session ended; if anything fails nothing is left half done
+            [$ended, $clearing] = \Illuminate\Support\Facades\DB::transaction(function () use ($session, $request, $clear, $data) {
+                $locked = AdjustmentSession::query()->whereKey($session->id)->lockForUpdate()->first();
+                abort_unless($locked && $locked->isOpen(), 422, __('This Adjustment Session has already ended.'));
 
-            $sac = app(SuperAdjustmentController::class);
-            [$ended, $clearing] = Svc::end($request->user(), $session, $clear, $data['note'] ?? null, function (array $d) use ($sac, $request, $session) {
-                $sac->submitCount($request, $d, null, $session);
+                $sac = app(SuperAdjustmentController::class);
 
-                return $sac->submitted;
+                return Svc::end($request->user(), $locked, $clear, $data['note'] ?? null, function (array $d) use ($sac, $request, $locked) {
+                    $sac->submitCount($request, $d, null, $locked);
+
+                    return $sac->submitted;
+                });
             });
         } finally {
             $lock->release();

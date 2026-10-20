@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\PaymentVoucherStatusChanged;
 use App\Services\PaymentVoucherNotifier;
+use App\Support\VoucherSeparation;
 use App\Http\Resources\PaymentVoucherCollection;
 use App\Models\Asset;
 use App\Models\Contact;
@@ -49,13 +50,31 @@ class PaymentVoucherController extends Controller
         'status' => 'status',
     ];
 
+    /** Super Admin only, with their password: switches the separation of duties (nobody takes two steps of the same voucher) on or off. */
+    public function saveRules(Request $request)
+    {
+        abort_unless($request->user()->hasRole('Super Admin'), 403);
+        $data = $request->validate(['separation' => 'required|boolean', 'password' => 'required|string']);
+        if (! \Illuminate\Support\Facades\Hash::check($data['password'], $request->user()->password)) {
+            log_activity('Payment Voucher rule change refused: wrong password', ['by' => $request->user()->name], $request->user(), 'Payment Voucher');
+
+            return back()->withErrors(['password' => __('The password is not correct.')]);
+        }
+        $before = VoucherSeparation::enabled();
+        VoucherSeparation::setEnabled((bool) $data['separation']);
+        log_activity('Payment Voucher separation of duties ' . ($data['separation'] ? 'switched on' : 'switched off'), ['before' => $before, 'after' => (bool) $data['separation']], $request->user(), 'Payment Voucher');
+
+        return back()->with('message', $data['separation'] ? __('Separation of duties is on: nobody takes two steps of the same voucher.') : __('Separation of duties is off.'));
+    }
+
     public function index(Request $request)
     {
         $filters = $this->filtersFromRequest($request);
 
         [$sort, $direction] = $this->sortFromRequest($request);
 
-        $vouchers = PaymentVoucher::query()
+        $me = $request->user();
+        $vouchers = PaymentVoucher::query()->visibleTo($me)
             ->with(['items', 'batch:id,batch_number'])
             ->filter($filters)
             ->orderBy($sort, $direction)
@@ -66,18 +85,20 @@ class PaymentVoucherController extends Controller
 
         return Inertia::render('PaymentVoucher/Index', [
             'filters' => array_merge($filters, ['sort' => $this->text($request->query('sort')), 'direction' => $direction]),
+            'separation' => VoucherSeparation::enabled(),
+            'canChangeRules' => $me->hasRole('Super Admin'),
             'statuses' => array_merge(array_slice(self::STATUSES, 0, 4), [PaymentVoucher::DISPLAY_PAID], array_slice(self::STATUSES, 4)),
             'warehouses' => $this->warehouseOptions(),
             ...$this->peopleLists($request),
             'types' => $this->typesBank(),
             'paymentVouchers' => new PaymentVoucherCollection($vouchers),
             'cards' => [
-                'draft' => PaymentVoucher::where('status', PaymentVoucher::STATUS_DRAFT)->count(),
-                'submitted' => PaymentVoucher::where('status', PaymentVoucher::STATUS_SUBMITTED)->count(),
-                'approved' => PaymentVoucher::where('status', PaymentVoucher::STATUS_APPROVED)->count(),
-                'authorised' => PaymentVoucher::where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNull('paid_at')->count(),
-                'paid' => PaymentVoucher::where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNotNull('paid_at')->count(),
-                'total_value' => (float) PaymentVoucher::whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])->sum('total_amount'),
+                'draft' => PaymentVoucher::visibleTo($me)->where('status', PaymentVoucher::STATUS_DRAFT)->count(),
+                'submitted' => PaymentVoucher::visibleTo($me)->where('status', PaymentVoucher::STATUS_SUBMITTED)->count(),
+                'approved' => PaymentVoucher::visibleTo($me)->where('status', PaymentVoucher::STATUS_APPROVED)->count(),
+                'authorised' => PaymentVoucher::visibleTo($me)->where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNull('paid_at')->count(),
+                'paid' => PaymentVoucher::visibleTo($me)->where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNotNull('paid_at')->count(),
+                'total_value' => (float) PaymentVoucher::visibleTo($me)->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])->sum('total_amount'),
             ],
         ]);
     }
@@ -107,7 +128,7 @@ class PaymentVoucherController extends Controller
 
         $filters = $this->filtersFromRequest($request);
 
-        $rows = PaymentVoucher::query()
+        $rows = PaymentVoucher::query()->visibleTo($request->user())
             ->with('items')
             ->filter($filters)
             ->orderByDesc('voucher_date')
@@ -153,7 +174,7 @@ class PaymentVoucherController extends Controller
             'date_to' => $this->text($request->query('date_to')),
         ];
 
-        $vouchers = PaymentVoucher::query()
+        $vouchers = PaymentVoucher::query()->visibleTo($request->user())
             ->with(['asset:id,name,asset_number', 'warehouse:id,name'])
             ->filter($filters + ['type' => 'Transport / Fuel'])
             ->orderByDesc('voucher_date')
@@ -167,7 +188,7 @@ class PaymentVoucherController extends Controller
             'vouchers' => new PaymentVoucherCollection($vouchers),
             'assets' => $this->assetOptions(),
             'warehouses' => $this->warehouseOptions(),
-            'totalAmount' => (float) PaymentVoucher::query()
+            'totalAmount' => (float) PaymentVoucher::query()->visibleTo($request->user())
                 ->filter($filters + ['type' => 'Transport / Fuel'])
                 ->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])
                 ->sum('total_amount'),
@@ -206,8 +227,9 @@ class PaymentVoucherController extends Controller
         $filters = $this->filtersFromRequest($request);
         [$sort, $direction] = $this->sortFromRequest($request);
 
-        $matching = PaymentVoucher::query()->filter($filters)->count();
-        $vouchers = PaymentVoucher::query()
+        $me = $request->user();
+        $matching = PaymentVoucher::query()->visibleTo($me)->filter($filters)->count();
+        $vouchers = PaymentVoucher::query()->visibleTo($me)
             ->with('items')
             ->filter($filters)
             ->orderBy($sort, $direction)
@@ -221,7 +243,7 @@ class PaymentVoucherController extends Controller
         return [
             'vouchers' => $vouchers,
             // like the index card: Rejected and Cancelled vouchers are listed but never counted as money, and the total covers every matching voucher, not only the rows shown
-            'totalValue' => (float) PaymentVoucher::query()->filter($filters)->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])->sum('total_amount'),
+            'totalValue' => (float) PaymentVoucher::query()->visibleTo($me)->filter($filters)->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])->sum('total_amount'),
             'listNote' => $matching > $limit
                 ? __('Showing the first :shown of :all matching vouchers. For the complete list use the Excel export.', ['shown' => number_format($limit), 'all' => number_format($matching)])
                 : null,
@@ -375,7 +397,7 @@ class PaymentVoucherController extends Controller
 
         $q = trim((string) $this->text($request->query('q')));
 
-        $vouchers = PaymentVoucher::query()
+        $vouchers = PaymentVoucher::query()->visibleTo($request->user())
             ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
                 $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
                 $w->where('pv_number', 'like', $like)->orWhere('payee_name', 'like', $like);
@@ -689,6 +711,7 @@ class PaymentVoucherController extends Controller
             'paymentVoucher' => $this->presentDetail($voucher),
             'companyName' => PaymentVoucher::COMPANY_NAME,
             'activity' => $this->activityHistory($voucher),
+            'separation' => VoucherSeparation::enabled(),
         ]);
     }
 
@@ -820,6 +843,8 @@ class PaymentVoucherController extends Controller
         });
         $this->rememberType($data['type']);
 
+        // whoever edits a voucher counts as having prepared it (separation of duties)
+        VoucherSeparation::noteHandler($voucher, $request->user());
         log_activity(__('Payment Voucher updated.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
 
         PaymentVoucherNotifier::fire('updated', $voucher->fresh(), $request->user(), 'Payment Voucher Edited', 'Payment Voucher ' . $voucher->pv_number . ' was edited by ' . $request->user()->name . '.', ['skip_actor' => true]);
@@ -914,7 +939,7 @@ class PaymentVoucherController extends Controller
     {
         $this->authorize('update-payment-vouchers');
 
-        DB::transaction(function () use ($id) {
+        DB::transaction(function () use ($id, $request) {
             $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($voucher->status, [PaymentVoucher::STATUS_DRAFT, PaymentVoucher::STATUS_REJECTED], true), 422, 'This payment voucher must be Draft or Rejected to submit.');
             $this->guardSubcontractVoucher($voucher);
@@ -928,6 +953,8 @@ class PaymentVoucherController extends Controller
 
             // A voucher that goes round again carries none of the stamps of the earlier round.
             $voucher->update(['status' => PaymentVoucher::STATUS_SUBMITTED] + $this->clearedApprovalStamps());
+            // whoever submits a voucher counts as having prepared it (separation of duties)
+            VoucherSeparation::noteHandler($voucher, $request->user());
             log_activity(__('Payment Voucher submitted for approval.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
             event(new PaymentVoucherStatusChanged($voucher->fresh()));
         });
@@ -982,6 +1009,9 @@ class PaymentVoucherController extends Controller
     public function approve(Request $request, $id)
     {
         $this->authorize('approve-payment-vouchers');
+        if ($why = VoucherSeparation::approveRefusal(PaymentVoucher::findOrFail($id), $request->user())) {
+            return back()->with('error', $why);
+        }
 
         DB::transaction(function () use ($id, $request) {
             $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
@@ -1020,6 +1050,9 @@ class PaymentVoucherController extends Controller
     public function authorise(Request $request, $id)
     {
         $this->authorize('authorise-payment-vouchers');
+        if ($why = VoucherSeparation::authoriseRefusal(PaymentVoucher::findOrFail($id), $request->user())) {
+            return back()->with('error', $why);
+        }
 
         DB::transaction(function () use ($id, $request) {
             $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
@@ -1070,13 +1103,20 @@ class PaymentVoucherController extends Controller
 
         $data = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer']);
 
-        $candidateIds = PaymentVoucher::whereIn('id', $data['ids'])->where('status', PaymentVoucher::STATUS_SUBMITTED)->pluck('id');
+        $candidateIds = PaymentVoucher::visibleTo($request->user())->whereIn('id', $data['ids'])->where('status', PaymentVoucher::STATUS_SUBMITTED)->pluck('id');
         $processed = 0;
+        $own = 0;
 
         foreach ($candidateIds as $id) {
-            DB::transaction(function () use ($id, $request, &$processed) {
+            DB::transaction(function () use ($id, $request, &$processed, &$own) {
                 $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->first();
                 if (! $voucher || $voucher->status !== PaymentVoucher::STATUS_SUBMITTED) {
+                    return;
+                }
+                // separation of duties: a voucher the person prepared is approved by somebody else
+                if (VoucherSeparation::approveRefusal($voucher, $request->user())) {
+                    $own++;
+
                     return;
                 }
 
@@ -1091,9 +1131,13 @@ class PaymentVoucherController extends Controller
             });
         }
 
-        $skipped = count($data['ids']) - $processed;
+        $skipped = count($data['ids']) - $processed - $own;
+        $message = $this->bulkSummary($processed, $skipped, 'approved');
+        if ($own) {
+            $message .= ' ' . $own . ' left for somebody else to approve (you prepared them).';
+        }
 
-        return back()->with('message', $this->bulkSummary($processed, $skipped, 'approved'));
+        return back()->with($processed > 0 ? 'message' : 'error', $message);
     }
 
     /**
@@ -1110,33 +1154,48 @@ class PaymentVoucherController extends Controller
 
         $data = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer']);
 
-        $candidateIds = PaymentVoucher::whereIn('id', $data['ids'])
+        $candidateIds = PaymentVoucher::visibleTo($request->user())->whereIn('id', $data['ids'])
             ->whereIn('status', [PaymentVoucher::STATUS_SUBMITTED, PaymentVoucher::STATUS_APPROVED])
             ->pluck('id');
-        $processed = 0;
-
+        $processed = 0;      // approved AND authorised
+        $approvedOnly = 0;   // approved, left for somebody else to authorise
+        $left = 0;           // refused by the separation of duties
         $blocked = [];
 
         foreach ($candidateIds as $id) {
             try {
-                DB::transaction(function () use ($id, $request, &$processed) {
+                DB::transaction(function () use ($id, $request, &$processed, &$approvedOnly, &$left) {
                     $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->first();
                     if (! $voucher || ! in_array($voucher->status, [PaymentVoucher::STATUS_SUBMITTED, PaymentVoucher::STATUS_APPROVED], true)) {
                         return;
                     }
+                    $me = $request->user();
 
                     if ($voucher->status === PaymentVoucher::STATUS_SUBMITTED) {
+                        if (VoucherSeparation::approveRefusal($voucher, $me)) {
+                            $left++;
+
+                            return;
+                        }
                         $voucher->update([
                             'status' => PaymentVoucher::STATUS_APPROVED,
-                            'approved_by_user_id' => $request->user()->id,
+                            'approved_by_user_id' => $me->id,
                             'approved_at' => now(),
                         ]);
                         log_activity(__('Payment Voucher approved.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
                     }
 
+                    // separation of duties: the person who approved (or prepared) a voucher does not authorise it; it stays Approved for somebody else
+                    if (VoucherSeparation::authoriseRefusal($voucher->fresh(), $me)) {
+                        event(new PaymentVoucherStatusChanged($voucher->fresh()));
+                        $approvedOnly++;
+
+                        return;
+                    }
+
                     $voucher->update([
                         'status' => PaymentVoucher::STATUS_AUTHORISED,
-                        'authorised_by_user_id' => $request->user()->id,
+                        'authorised_by_user_id' => $me->id,
                         'authorised_at' => now(),
                     ]);
                     // Signatories finalisation guard: same rule as authorise(); a blocked voucher is left exactly as it was.
@@ -1152,14 +1211,20 @@ class PaymentVoucherController extends Controller
             }
         }
 
-        $skipped = count($data['ids']) - $processed - count($blocked);
+        $skipped = count($data['ids']) - $processed - $approvedOnly - $left - count($blocked);
 
         $message = $this->bulkSummary($processed, $skipped, 'approved and authorised');
+        if ($approvedOnly) {
+            $message .= ' ' . $approvedOnly . ' approved only: the person who approves or prepares a voucher cannot also authorise it, so another person must authorise them.';
+        }
+        if ($left) {
+            $message .= ' ' . $left . ' left for somebody else (you prepared them).';
+        }
         if ($blocked) {
             $message .= ' ' . count($blocked) . ' left unchanged because required signatures are missing: ' . implode(' | ', $blocked);
         }
 
-        return back()->with('message', $message);
+        return back()->with($processed + $approvedOnly > 0 ? 'message' : 'error', $message);
     }
 
     /**
@@ -1190,19 +1255,31 @@ class PaymentVoucherController extends Controller
         return $message;
     }
 
+    /**
+     * Cancels a voucher that is not paid yet, with the reason (who, when and why are kept on the voucher). A Draft, Submitted or Approved voucher is cancelled by an
+     * approver; an AUTHORISED one that is still unpaid (a wrong payee or amount found before the money moves) needs the authorise permission. A paid voucher is never cancelled.
+     */
     public function cancel(Request $request, $id)
     {
         $this->authorize('approve-payment-vouchers');
+        $data = $request->validate(['cancel_reason' => 'required|string|min:3|max:1000'], ['cancel_reason.required' => __('Write why this voucher is cancelled.')]);
 
-        DB::transaction(function () use ($id) {
+        $current = PaymentVoucher::findOrFail($id);
+        if ($current->status === PaymentVoucher::STATUS_AUTHORISED && empty($current->paid_at)) {
+            $this->authorize('authorise-payment-vouchers');
+        }
+
+        DB::transaction(function () use ($id, $data, $request) {
             $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
-            abort_if(in_array($voucher->status, [PaymentVoucher::STATUS_AUTHORISED, PaymentVoucher::STATUS_CANCELLED, PaymentVoucher::STATUS_REJECTED], true), 422, 'This payment voucher can no longer be cancelled.');
+            abort_if(in_array($voucher->status, [PaymentVoucher::STATUS_CANCELLED, PaymentVoucher::STATUS_REJECTED], true), 422, 'This payment voucher can no longer be cancelled.');
+            abort_if($voucher->status === PaymentVoucher::STATUS_AUTHORISED && ! empty($voucher->paid_at), 422, 'A paid payment voucher cannot be cancelled.');
 
-            $voucher->update(['status' => PaymentVoucher::STATUS_CANCELLED]);
+            $wasAuthorised = $voucher->status === PaymentVoucher::STATUS_AUTHORISED;
+            $voucher->update(['status' => PaymentVoucher::STATUS_CANCELLED, 'cancelled_by_user_id' => $request->user()->id, 'cancelled_at' => now(), 'cancel_reason' => trim($data['cancel_reason'])]);
             // a Funds Allocation line that waited on this voucher is free again
             $this->releaseFundItems($voucher, __('voucher cancelled'));
             \App\Services\Subcontracts\SubcontractClaims::releaseVoucher($voucher->id, __('voucher cancelled'));
-            log_activity(__('Payment Voucher cancelled.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
+            log_activity(__('Payment Voucher cancelled.'), ['pv_number' => $voucher->pv_number, 'reason' => trim($data['cancel_reason']), 'was_authorised' => $wasAuthorised], $voucher, 'Payment Voucher');
             event(new PaymentVoucherStatusChanged($voucher->fresh()));
         });
 
@@ -1224,6 +1301,10 @@ class PaymentVoucherController extends Controller
             'payment_method' => 'nullable|string|max:100',
         ]);
 
+        if ($why = VoucherSeparation::payRefusal(PaymentVoucher::findOrFail($id), $request->user())) {
+            return back()->with('error', $why);
+        }
+
         $this->payOne($request, $id, $data);
 
         return back()->with('message', __('Payment Voucher marked as paid.'));
@@ -1240,11 +1321,17 @@ class PaymentVoucherController extends Controller
 
         $data = $request->validate(['ids' => 'required|array|min:1|max:200', 'ids.*' => 'integer', 'payment_reference' => 'nullable|string|max:190', 'payment_method' => 'nullable|string|max:100']);
         $ids = collect($data['ids'])->map(fn ($i) => (int) $i)->unique()->values();
-        $candidates = PaymentVoucher::whereIn('id', $ids)->where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNull('paid_at')->orderBy('id')->pluck('id');
+        $candidates = PaymentVoucher::visibleTo($request->user())->whereIn('id', $ids)->where('status', PaymentVoucher::STATUS_AUTHORISED)->whereNull('paid_at')->orderBy('id')->pluck('id');
 
         $processed = 0;
         $blocked = [];
         foreach ($candidates as $id) {
+            // separation of duties: the person who authorised a voucher does not record its payment
+            if ($why = VoucherSeparation::payRefusal(PaymentVoucher::find($id), $request->user())) {
+                $blocked[] = $why;
+
+                continue;
+            }
             try {
                 $this->payOne($request, $id, $data);
                 $processed++;
@@ -1479,6 +1566,23 @@ class PaymentVoucherController extends Controller
         ];
     }
 
+    /** A wrongly attached file is removed from a voucher that can still be edited (Draft or Rejected); a voucher on its way keeps its files. */
+    public function destroyAttachment(Request $request, $id, Attachment $attachment)
+    {
+        $this->authorize('update-payment-vouchers');
+        abort_unless((int) $attachment->model_id === (int) $id && $attachment->model_type === PaymentVoucher::class, 404);
+        $voucher = PaymentVoucher::findOrFail($id);
+        abort_unless(in_array($voucher->status, [PaymentVoucher::STATUS_DRAFT, PaymentVoucher::STATUS_REJECTED], true), 422, 'Files can only be removed from a Draft or Rejected payment voucher.');
+        $this->guardSubcontractVoucher($voucher);
+
+        $title = $attachment->title ?: $attachment->filename;
+        Storage::disk($attachment->disk)->delete($attachment->filepath);
+        $attachment->delete();
+        log_activity(__('Payment Voucher file removed.'), ['pv_number' => $voucher->pv_number, 'file' => $title], $voucher, 'Payment Voucher');
+
+        return back()->with('message', __('File removed.'));
+    }
+
     public function downloadAttachment(Request $request, $id, Attachment $attachment)
     {
         $this->authorize('read-payment-vouchers');
@@ -1516,6 +1620,12 @@ class PaymentVoucherController extends Controller
             'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
         ]);
+
+        // a person assigned to projects can only raise (or move) a voucher for one of those projects, or for the company
+        $mine = PaymentVoucher::projectIdsFor($request->user());
+        if ($mine !== null && ! empty($data['warehouse_id']) && ! in_array((int) $data['warehouse_id'], $mine, true)) {
+            throw ValidationException::withMessages(['warehouse_id' => __('You are not assigned to this project, so you cannot raise a voucher for it.')]);
+        }
 
         if ($data['payee_type'] === PaymentVoucher::PAYEE_TYPE_STAFF) {
             $data['payee_contact_id'] = null;
@@ -1620,7 +1730,7 @@ class PaymentVoucherController extends Controller
             return;
         }
 
-        $existing = PaymentVoucher::query()
+        $existing = PaymentVoucher::query()->visibleTo(auth()->user())
             ->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])
             ->where('total_amount', $data['total_amount'])
             ->where('voucher_date', $data['voucher_date'])
@@ -1666,7 +1776,9 @@ class PaymentVoucherController extends Controller
 
     private function warehouseOptions(): array
     {
-        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status'])
+        $mine = PaymentVoucher::projectIdsFor(auth()->user());
+
+        return Warehouse::ofAccount()->active()->visible()->when($mine !== null, fn ($q) => $q->whereIn('id', $mine))->orderBy('name')->get(['id', 'name', 'status'])
             ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'status' => $w->status])->values()->all();
     }
 
@@ -1716,6 +1828,9 @@ class PaymentVoucherController extends Controller
             'display_status' => $voucher->display_status,
             'paid_at' => optional($voucher->paid_at)->toIso8601String(),
             'prepared_by_user_id' => $voucher->prepared_by_user_id,
+            'prepared_by_ids' => VoucherSeparation::handlers($voucher),
+            'approved_by_user_id' => $voucher->approved_by_user_id,
+            'authorised_by_user_id' => $voucher->authorised_by_user_id,
             'prepared_by_name' => $this->userName($voucher->prepared_by_user_id),
             'created_at' => optional($voucher->created_at)->toIso8601String(),
             'printed_count' => $voucher->printed_count,
@@ -1770,6 +1885,9 @@ class PaymentVoucherController extends Controller
             'authorised_by_name' => $this->userName($voucher->authorised_by_user_id),
             'authorised_at' => optional($voucher->authorised_at)->toIso8601String(),
             'approval_remarks' => $voucher->approval_remarks,
+            'cancel_reason' => $voucher->cancel_reason,
+            'cancelled_at' => optional($voucher->cancelled_at)->toIso8601String(),
+            'cancelled_by_name' => $this->userName($voucher->cancelled_by_user_id),
             'recipient_name' => $voucher->recipient_name,
             'recipient_date' => optional($voucher->recipient_date)->format('Y-m-d'),
             // the internal note is for the people who prepare vouchers; a reader of the voucher does not get it

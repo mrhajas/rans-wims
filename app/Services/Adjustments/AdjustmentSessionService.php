@@ -77,15 +77,21 @@ class AdjustmentSessionService
         if (AdjustmentSession::openFor($warehouseId)) {
             throw ValidationException::withMessages(['warehouse_id' => __('This Project / Warehouse already has an open Adjustment Session. End it first.')]);
         }
-        try {
-            return DB::transaction(fn () => AdjustmentSession::create([
-                'reference' => self::nextReference(), 'warehouse_id' => $warehouseId, 'name' => $name ? mb_substr(trim($name), 0, 190) : null, 'note' => $note ? trim($note) : null,
-                'status' => AdjustmentSession::STATUS_OPEN, 'open_warehouse_id' => $warehouseId, 'started_by_user_id' => $user->id, 'started_at' => now(),
-            ]));
-        } catch (QueryException $e) {
-            // two people started it at the same moment (the unique open_warehouse_id / reference), the second one is told
-            throw ValidationException::withMessages(['warehouse_id' => __('This Project / Warehouse already has an open Adjustment Session. End it first.')]);
+        // two people can start at the same moment: a clash on the warehouse means a session is already open; a clash only on the reference is retried with the next number
+        for ($try = 0; $try < 4; $try++) {
+            try {
+                return DB::transaction(fn () => AdjustmentSession::create([
+                    'reference' => self::nextReference(), 'warehouse_id' => $warehouseId, 'name' => $name ? mb_substr(trim($name), 0, 190) : null, 'note' => $note ? trim($note) : null,
+                    'status' => AdjustmentSession::STATUS_OPEN, 'open_warehouse_id' => $warehouseId, 'started_by_user_id' => $user->id, 'started_at' => now(),
+                ]));
+            } catch (QueryException $e) {
+                if (AdjustmentSession::openFor($warehouseId)) {
+                    throw ValidationException::withMessages(['warehouse_id' => __('This Project / Warehouse already has an open Adjustment Session. End it first.')]);
+                }
+            }
         }
+
+        throw ValidationException::withMessages(['warehouse_id' => __('The session could not be started, please try again.')]);
     }
 
     /**

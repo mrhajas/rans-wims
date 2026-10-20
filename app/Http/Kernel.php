@@ -117,6 +117,7 @@ class Kernel extends HttpKernel
         'system.lockdown'  => \App\Http\Middleware\SystemLockdown::class,
         'licence.manager'  => \App\Http\Middleware\LicenceManagerOnly::class,
         'feature.gate'     => \App\Http\Middleware\FeatureGate::class,
+        'pv.scope'         => \App\Http\Middleware\EnsurePaymentVoucherInScope::class,
         'reject.offline.mutations' => \App\Http\Middleware\RejectOfflineMutations::class,
         'not.simulation'   => \App\Http\Middleware\NotInSimulation::class,
         'only.simulation'  => \App\Http\Middleware\OnlyInSimulation::class,

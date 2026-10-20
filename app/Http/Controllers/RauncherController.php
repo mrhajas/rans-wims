@@ -524,7 +524,7 @@ class RauncherController extends Controller
                 'icon' => 'doc-text',
                 'permission' => 'read-payment-vouchers',
                 'route' => 'payment-vouchers.show',
-                'search' => fn ($term) => \App\Models\PaymentVoucher::query()->where(function ($q) use ($term) {
+                'search' => fn ($term) => \App\Models\PaymentVoucher::query()->visibleTo(auth()->user())->where(function ($q) use ($term) {
                     $q->where('pv_number', 'like', "%{$term}%")
                         ->orWhere('payee_name', 'like', "%{$term}%");
                 }),
@@ -536,7 +536,7 @@ class RauncherController extends Controller
                 'icon' => 'folder',
                 'permission' => 'read-payment-vouchers',
                 'route' => 'payment-vouchers.batches.show',
-                'search' => fn ($term) => \App\Models\PaymentVoucherBatch::query()->where(function ($q) use ($term) {
+                'search' => fn ($term) => \App\Models\PaymentVoucherBatch::query()->visibleTo(auth()->user())->where(function ($q) use ($term) {
                     $q->where('batch_number', 'like', "%{$term}%")
                         ->orWhere('reference', 'like', "%{$term}%");
                 }),

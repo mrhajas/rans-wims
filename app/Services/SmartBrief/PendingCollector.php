@@ -133,7 +133,7 @@ class PendingCollector
             return \App\Models\MultiTransfer::query()->visibleTo($who)->whereHas('transfers', fn ($t) => $t->withoutGlobalScope('mine')->where('approval_status', 'pending'));
         }
         if ($module === 'payment_vouchers') {
-            return \App\Models\PaymentVoucher::query()->where('status', 'Submitted');
+            return \App\Models\PaymentVoucher::query()->visibleTo($who)->where('status', 'Submitted');
         }
         if ($module === 'material_requests') {
             return \App\Models\MaterialRequest::query()->where('status', 'Pending Approval');

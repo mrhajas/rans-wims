@@ -56,7 +56,7 @@ class PaymentVoucher extends Model
         'pv_number', 'payment_voucher_batch_id', 'type', 'payee_type', 'payee_contact_id', 'staff_id', 'payee_name', 'warehouse_id', 'asset_id', 'voucher_date',
         'total_amount', 'amount_in_words', 'status',
         'prepared_by_user_id', 'approved_by_user_id', 'approved_at',
-        'authorised_by_user_id', 'authorised_at', 'approval_remarks',
+        'authorised_by_user_id', 'authorised_at', 'approval_remarks', 'cancelled_by_user_id', 'cancelled_at', 'cancel_reason',
         'recipient_name', 'recipient_date', 'internal_notes', 'remarks',
         'purchase_order_id', 'supplier_invoice_id', 'payment_request_id',
         'labour_list_id', 'labour_list_item_id', 'subcontract_payment_id', 'subcontract_claim_id',
@@ -70,6 +70,7 @@ class PaymentVoucher extends Model
         'recipient_date' => 'date:Y-m-d',
         'approved_at' => 'datetime',
         'authorised_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'paid_at' => 'datetime',
         'first_printed_at' => 'datetime',
     ];
@@ -168,6 +169,48 @@ class PaymentVoucher extends Model
     public static function particularsText(string $remainder): string
     {
         return self::PARTICULARS_PREFIX . mb_substr(trim($remainder), 0, self::PARTICULARS_MAX);
+    }
+
+    /**
+     * The projects (warehouses) a person works in, or null when they are not limited to any (Super Admin, view-all, an Admin without an assignment, or nobody assigned).
+     * Computed fresh each time (no static cache) so it is right for every person in the same process.
+     */
+    public static function projectIdsFor(?User $u): ?array
+    {
+        if (! $u || $u->hasRole('Super Admin') || $u->view_all) {
+            return null;
+        }
+        $assigned = $u->warehouses()->pluck('warehouses.id')->map(fn ($i) => (int) $i)->all();
+        if ($assigned) {
+            return $assigned;
+        }
+        if ($u->hasRole(['Super Admin', 'Admin'])) {
+            return null;
+        }
+
+        return $u->warehouse_id ? [(int) $u->warehouse_id] : null;
+    }
+
+    /**
+     * Who sees which vouchers: everybody who is not limited to projects sees all; a person assigned to projects sees the vouchers of those projects, the
+     * company-wide ones (no project) and the ones they prepared themselves.
+     */
+    public function scopeVisibleTo($query, ?User $u)
+    {
+        $ids = self::projectIdsFor($u);
+        if ($ids === null) {
+            return $query;
+        }
+
+        return $query->where(fn ($w) => $w->whereIn($w->getModel()->getTable() . '.warehouse_id', $ids)->orWhereNull($w->getModel()->getTable() . '.warehouse_id')->orWhere($w->getModel()->getTable() . '.prepared_by_user_id', $u->id));
+    }
+
+    /** Whether this person may open / act on this voucher (the same rule as visibleTo). */
+    public function visibleToUser(?User $u): bool
+    {
+        $ids = self::projectIdsFor($u);
+
+        return $ids === null || $this->warehouse_id === null || in_array((int) $this->warehouse_id, $ids, true) || (int) $this->prepared_by_user_id === (int) $u->id;
     }
 
     public function scopeFilter($query, array $filters)

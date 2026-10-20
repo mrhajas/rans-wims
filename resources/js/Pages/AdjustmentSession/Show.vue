@@ -148,7 +148,7 @@ export default {
     docChip(s) { return { Draft: 'lg-chip-amber', 'Awaiting Phase 2': 'lg-chip-sky', Approved: 'lg-chip-green', Rejected: 'lg-chip-red' }[s] || 'lg-chip-slate'; },
     openDoc(d) { window.open(this.route('super-adjustments.show', d.id), '_blank', 'noopener'); },
     openEnd() {
-      this.picked = {}; this.rows.forEach(r => { if (!r.moved) this.picked[r.item_id] = true; }); // what moved since the start is not ticked
+      this.picked = {}; if (this.can.clear) this.rows.forEach(r => { if (!r.moved) this.picked[r.item_id] = true; }); // what moved since the start is not ticked; a person who cannot clear ticks nothing
       this.pickSearch = ''; this.pickLimit = 200; this.endNote = ''; this.endError = ''; this.endOpen = true;
     },
     tickAll(on) { const p = {}; if (on) this.rows.forEach(r => { p[r.item_id] = true; }); this.picked = p; },
@@ -159,7 +159,7 @@ export default {
       this.$inertia.post(this.route('adjustment-sessions.end', this.session.id), { clear_item_ids: this.ticked, note: this.endNote }, {
         preserveScroll: true,
         onSuccess: () => { this.endOpen = false; },
-        onError: e => { this.endError = Object.values(e)[0] || this.$t('Could not end the session.'); },
+        onError: e => { const m = Object.values(e || {})[0]; this.endError = (Array.isArray(m) ? m[0] : m) || this.$t('Could not end the session.'); },
         onFinish: () => { this.ending = false; },
       });
     },

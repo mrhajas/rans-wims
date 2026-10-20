@@ -152,7 +152,7 @@ class StaffController extends Controller
     {
         $staff = Staff::with(['attachments', 'contracts.attachments', 'contracts.renewedFrom'])->findOrFail($id);
 
-        $vouchers = PaymentVoucher::where('staff_id', $staff->id)
+        $vouchers = PaymentVoucher::visibleTo(auth()->user())->where('staff_id', $staff->id)
             ->orderByDesc('voucher_date')
             ->orderByDesc('id')
             ->limit(200)

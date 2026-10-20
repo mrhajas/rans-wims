@@ -252,6 +252,7 @@
                 <li v-for="file in paymentVoucher.attachments" :key="file.id">
                   <span class="truncate">{{ file.name }}</span>
                   <a :href="route('payment-vouchers.attachments.download', [paymentVoucher.id, file.id])" class="pv-dl-link shrink-0">{{ $t('Download') }}</a>
+                  <button v-if="$can('update-payment-vouchers')" type="button" class="pv-rm shrink-0" :title="$t('Remove this file')" :aria-label="$t('Remove this file')" @click="removeFile(file)"><icons name="trash" class="w-4 h-4" /></button>
                 </li>
               </ul>
             </div>
@@ -373,6 +374,11 @@ export default {
   },
 
   methods: {
+    // a wrongly attached file is removed from a voucher that can still be edited
+    async removeFile(file) {
+      if (!await this.$confirm(this.$t('Remove :f from this voucher?', { f: file.name }), { variant: 'danger' })) return;
+      this.$inertia.delete(route('payment-vouchers.attachments.destroy', [this.paymentVoucher.id, file.id]), { preserveScroll: true, preserveState: true });
+    },
     emptyRow() {
       return { particularsRemainder: '', amount: 0 };
     },
@@ -544,4 +550,5 @@ html.dark .pv-dl-link { color: #93c5fd; }
   .pv-particulars-prefix { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--lg-line); padding: 0.4rem 0.65rem; white-space: normal; }
   .pv-form .pv-particulars-remainder, .pvb-form .pv-particulars-remainder, .pv-particulars-remainder { flex: 1 1 100%; width: 100%; }
 }
+.pv-rm { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; color: #b91c1c; background: rgba(244, 63, 94, 0.1); cursor: pointer; } .pv-rm:hover { background: rgba(244, 63, 94, 0.2); }
 </style>

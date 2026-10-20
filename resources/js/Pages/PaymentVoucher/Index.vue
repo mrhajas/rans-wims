@@ -18,6 +18,30 @@
 
       <stat-tiles :items="statTiles" @select="pickTile" />
 
+      <!-- separation of duties: nobody takes two steps of the same voucher (a Super Admin can change it, with their password) -->
+      <section class="lg-card pv-rule">
+        <span class="lg-card-ico" :class="separation ? 'lg-ico-emerald' : 'lg-ico-amber'"><icons name="lock-closed" class="w-5 h-5" /></span>
+        <div class="min-w-0 flex-1">
+          <h2 class="lg-card-title">{{ separation ? $t('Separation of duties is on') : $t('Separation of duties is off') }}</h2>
+          <p class="lg-card-sub">{{ separation ? $t('The person who prepares a voucher cannot approve or authorise it, the person who approves it cannot authorise it, and the person who authorises it cannot record its payment.') : $t('One person can take several steps of the same voucher. Switch it on so that every step is done by a different person.') }}</p>
+        </div>
+        <button v-if="canChangeRules" type="button" class="lg-btn lg-btn-soft" @click="openRules"><icons name="cog" class="w-4 h-4" />{{ $t('Change rule') }}</button>
+      </section>
+      <modal :show="rulesOpen" max-width="md" @close="rulesOpen = false">
+        <div class="pv-paydlg">
+          <header class="pv-paydlg__head"><icons name="lock-closed" class="w-5 h-5" /><div><h3>{{ $t('Separation of duties') }}</h3><p>{{ $t('Applies to everyone, Super Admins included.') }}</p></div></header>
+          <div class="pv-paydlg__body">
+            <label class="pv-opt" :class="{ 'is-on': rulesForm.separation === true }"><input v-model="rulesForm.separation" type="radio" :value="true" /><span><b>{{ $t('On') }}</b><small>{{ $t('Prepared, approved, authorised and paid by different people.') }}</small></span></label>
+            <label class="pv-opt" :class="{ 'is-on': rulesForm.separation === false }"><input v-model="rulesForm.separation" type="radio" :value="false" /><span><b>{{ $t('Off') }}</b><small>{{ $t('One person may take several steps of the same voucher.') }}</small></span></label>
+            <text-input v-model="rulesForm.password" type="password" :label="$t('Your password')" :error="rulesForm.errors.password" autocomplete="current-password" />
+          </div>
+          <footer class="pv-paydlg__foot">
+            <button type="button" class="lg-btn lg-btn-soft" @click="rulesOpen = false">{{ $t('Cancel') }}</button>
+            <button type="button" class="lg-btn lg-btn-green" :disabled="rulesForm.processing || !rulesForm.password" @click="saveRules"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button>
+          </footer>
+        </div>
+      </modal>
+
       <div v-if="selectedIds.length" class="pv-bulk-bar mb-4 flex items-center justify-between gap-3 flex-wrap">
         <span class="text-sm font-bold pv-bulk-count">{{ selectedIds.length }} {{ $t('selected') }}<small v-if="bulk.pay.length || bulk.approve.length || bulk.authorise.length" class="pv-bulk-hint"> · <template v-if="bulk.approve.length">{{ bulk.approve.length }} {{ $t('to approve') }}</template><template v-if="bulk.authorise.length"><template v-if="bulk.approve.length">, </template>{{ bulk.authorise.length }} {{ $t('to authorise') }}</template><template v-if="bulk.pay.length"><template v-if="bulk.approve.length || bulk.authorise.length">, </template>{{ bulk.pay.length }} {{ $t('to pay') }}</template></small></span>
         <div class="flex items-center gap-2 flex-wrap">
@@ -26,7 +50,7 @@
           <button v-if="$can('approve-payment-vouchers') && bulk.approve.length" type="button" class="lg-btn lg-btn-dark" @click="bulkApprove">
             <icons name="tick" class="w-4 h-4" />{{ $t('Approve Selected') }} ({{ bulk.approve.length }})
           </button>
-          <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers') && (bulk.approve.length || bulk.authorise.length)" type="button" class="lg-btn lg-btn-primary" @click="bulkApproveAndAuthorise">
+          <button v-if="$can('approve-payment-vouchers') && $can('authorise-payment-vouchers') && (bulk.approve.length || bulk.authorise.length)" type="button" class="lg-btn lg-btn-primary" :title="separation && bulk.approve.length ? $t('Vouchers you approve here stay Approved: the person who approves a voucher cannot also authorise it.') : ''" @click="bulkApproveAndAuthorise">
             <icons name="lock-closed" class="w-4 h-4" />{{ $t('Approve & Authorise Selected') }} ({{ bulk.approve.length + bulk.authorise.length }})
           </button>
           <button v-if="$can('record-payment-payment-vouchers') && bulk.pay.length" type="button" class="lg-btn lg-btn-green" @click="openPay">
@@ -205,6 +229,8 @@ export default {
   components: { AdminLayout, PageHeader, StatTiles, AutoComplete, TextInput, Pagination, SortIcon, Modal },
 
   props: {
+    separation: { type: Boolean, default: false },
+    canChangeRules: { type: Boolean, default: false },
     filters: Object,
     statuses: Array,
     warehouses: Array,
@@ -220,6 +246,8 @@ export default {
     return {
       selectedIds: [],
       seen: {},
+      rulesOpen: false,
+      rulesForm: this.$inertia.form({ separation: true, password: '' }),
       payOpen: false,
       paying: false,
       payForm: { payment_reference: '', payment_method: '' },
@@ -286,15 +314,18 @@ export default {
     // what the checked vouchers (also those on other pages) are waiting for
     bulk() {
       const out = { approve: [], authorise: [], pay: [] };
+      const me = this.me;
       this.selectedIds.forEach(id => {
         const v = this.seen[id];
         if (!v) return;
-        if (v.status === 'Submitted') out.approve.push(v);
-        else if (v.status === 'Approved') out.authorise.push(v);
-        else if (v.status === 'Authorised' && !v.paid_at) out.pay.push(v);
+        // separation of duties: a person does not take two steps of the same voucher, so those are not counted for them
+        if (v.status === 'Submitted') { if (!(this.separation && (v.prepared_by_ids || []).map(Number).includes(me))) out.approve.push(v); }
+        else if (v.status === 'Approved') { if (!(this.separation && [Number(v.approved_by_user_id), ...(v.prepared_by_ids || []).map(Number)].includes(me))) out.authorise.push(v); }
+        else if (v.status === 'Authorised' && !v.paid_at) { if (!(this.separation && Number(v.authorised_by_user_id) === me)) out.pay.push(v); }
       });
       return out;
     },
+    me() { return this.$page.props.auth && this.$page.props.auth.user ? Number(this.$page.props.auth.user.id) : 0; },
     bulkPayTotal() { return this.bulk.pay.reduce((sum, v) => sum + (parseFloat(v.total_amount) || 0), 0); },
     selectedTotal() {
       return this.paymentVouchers.data
@@ -309,7 +340,7 @@ export default {
   watch: {
     // remember the status of every voucher that was shown, so a checked voucher on another page still counts for the buttons
     paymentVouchers: {
-      handler(list) { ((list && list.data) || []).forEach(r => { this.seen[r.id] = { id: r.id, pv_number: r.pv_number, payee_name: r.payee_name, total_amount: r.total_amount, status: r.status, paid_at: r.paid_at }; }); },
+      handler(list) { ((list && list.data) || []).forEach(r => { this.seen[r.id] = { id: r.id, pv_number: r.pv_number, payee_name: r.payee_name, total_amount: r.total_amount, status: r.status, paid_at: r.paid_at, prepared_by_ids: r.prepared_by_ids || [r.prepared_by_user_id], approved_by_user_id: r.approved_by_user_id, authorised_by_user_id: r.authorised_by_user_id }; }); },
       immediate: true,
     },
     form: {
@@ -391,6 +422,8 @@ export default {
         this.selectedIds = [...new Set([...this.selectedIds, ...visibleIds])];
       }
     },
+    openRules() { this.rulesForm.separation = this.separation; this.rulesForm.password = ''; this.rulesForm.clearErrors(); this.rulesOpen = true; },
+    saveRules() { this.rulesForm.put(route('payment-vouchers.rules'), { preserveScroll: true, onSuccess: () => { this.rulesOpen = false; this.rulesForm.password = ''; } }); },
     openPay() {
       this.payForm = { payment_reference: '', payment_method: '' };
       this.payOpen = true;
@@ -471,6 +504,8 @@ export default {
 .pv-batch:hover { background: rgba(20, 184, 166, 0.22); } .pv-batch:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
 .pv-batch__ico { width: 0.65rem; height: 0.65rem; flex: none; }
 html.dark .pv-batch { color: #5eead4; }
+.pv-rule { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; } @media (max-width: 720px) { .pv-rule > .lg-btn { width: 100%; justify-content: center; } }
+.pv-opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin-bottom: 8px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4); } .pv-opt.is-on { box-shadow: inset 0 0 0 2px #10b981; background: rgba(16, 185, 129, 0.08); } .pv-opt span { display: grid; gap: 2px; } .pv-opt small { color: var(--lg-mute, #64748b); }
 .pv-bulk-bar {
   background: rgba(190, 24, 93, 0.06); border: 1px solid rgba(190, 24, 93, 0.2); border-radius: 1rem; padding: 0.7rem 1rem;
 }

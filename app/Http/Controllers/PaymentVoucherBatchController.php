@@ -35,7 +35,7 @@ class PaymentVoucherBatchController extends Controller
     {
         $filters = $this->filtersFromRequest($request);
 
-        $batches = PaymentVoucherBatch::query()
+        $batches = PaymentVoucherBatch::query()->visibleTo($request->user())
             ->with(['vouchers:id,payment_voucher_batch_id,status,total_amount,paid_at', 'warehouse:id,name'])
             ->when($filters['type'], fn ($q, $type) => $q->where('type', $type))
             ->when($filters['warehouse_id'], fn ($q, $id) => $q->where('warehouse_id', $id))
@@ -51,7 +51,7 @@ class PaymentVoucherBatchController extends Controller
             ->paginate()
             ->withQueryString();
         // without a filter the page total IS the number of batches: no second identical count
-        $totalBatches = array_filter($filters) ? PaymentVoucherBatch::count() : $batches->total();
+        $totalBatches = array_filter($filters) ? PaymentVoucherBatch::visibleTo($request->user())->count() : $batches->total();
         $batches = $batches->through(fn (PaymentVoucherBatch $b) => $this->presentSummary($b));
 
         return Inertia::render('PaymentVoucherBatch/Index', [
@@ -61,8 +61,8 @@ class PaymentVoucherBatchController extends Controller
             'batches' => new PaymentVoucherCollection($batches),
             'cards' => [
                 'total_batches' => $totalBatches,
-                'total_vouchers' => PaymentVoucher::whereNotNull('payment_voucher_batch_id')->count(),
-                'total_value' => (float) PaymentVoucher::whereNotNull('payment_voucher_batch_id')
+                'total_vouchers' => PaymentVoucher::visibleTo($request->user())->whereNotNull('payment_voucher_batch_id')->count(),
+                'total_value' => (float) PaymentVoucher::visibleTo($request->user())->whereNotNull('payment_voucher_batch_id')
                     ->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])
                     ->sum('total_amount'),
             ],
@@ -104,7 +104,7 @@ class PaymentVoucherBatchController extends Controller
     {
         $filters = $this->filtersFromRequest($request);
 
-        $batches = PaymentVoucherBatch::query()
+        $batches = PaymentVoucherBatch::query()->visibleTo($request->user())
             ->with(['vouchers:id,payment_voucher_batch_id,status,total_amount,paid_at', 'warehouse:id,name'])
             ->when($filters['type'], fn ($q, $type) => $q->where('type', $type))
             ->when($filters['warehouse_id'], fn ($q, $id) => $q->where('warehouse_id', $id))
@@ -130,6 +130,38 @@ class PaymentVoucherBatchController extends Controller
             'printedAt' => now()->format('Y-m-d H:i'),
             'logoPath' => file_exists($logoPath) ? $logoPath : null,
         ];
+    }
+
+    /**
+     * The same payee for the same amount twice in this batch, or the same payee / amount / date as a voucher made in the last three days, is stopped
+     * until the person confirms (the same warning a single voucher gives). Rows are named so the right one can be fixed.
+     */
+    private function guardDuplicateRows(Request $request, array $data, bool $isStaffBatch): void
+    {
+        if ($request->boolean('confirm_duplicate')) {
+            return;
+        }
+        $names = $isStaffBatch ? Staff::whereIn('id', collect($data['rows'])->pluck('staff_id')->filter())->pluck('name', 'id') : Contact::whereIn('id', collect($data['rows'])->pluck('payee_contact_id')->filter())->pluck('name', 'id');
+        $seen = [];
+        $problems = [];
+        foreach ($data['rows'] as $i => $row) {
+            $key = ($isStaffBatch ? 's' . ($row['staff_id'] ?? '') : (! empty($row['payee_contact_id']) ? 'c' . $row['payee_contact_id'] : 'n' . mb_strtolower(trim((string) ($row['payee_name'] ?? ''))))) . '|' . number_format((float) $row['amount'], 2, '.', '');
+            $who = $isStaffBatch ? ($names[$row['staff_id'] ?? 0] ?? '') : (! empty($row['payee_contact_id']) ? ($names[$row['payee_contact_id']] ?? '') : trim((string) ($row['payee_name'] ?? '')));
+            if (isset($seen[$key])) {
+                $problems[] = __('row :a and row :b: :w, same amount', ['a' => $seen[$key], 'b' => $i + 1, 'w' => $who]);
+                continue;
+            }
+            $seen[$key] = $i + 1;
+            $recent = PaymentVoucher::query()->visibleTo($request->user())->whereNotIn('status', [PaymentVoucher::STATUS_REJECTED, PaymentVoucher::STATUS_CANCELLED])
+                ->where('total_amount', number_format((float) $row['amount'], 2, '.', ''))->where('voucher_date', $data['voucher_date'])->where('created_at', '>=', now()->subDays(3))
+                ->where(fn ($q) => $isStaffBatch ? $q->where('staff_id', $row['staff_id'] ?? 0) : (! empty($row['payee_contact_id']) ? $q->where('payee_contact_id', $row['payee_contact_id']) : $q->where('payee_name', trim((string) ($row['payee_name'] ?? '')))))->first();
+            if ($recent) {
+                $problems[] = __('row :a: :w looks like :pv (same payee, amount and date, made recently)', ['a' => $i + 1, 'w' => $who, 'pv' => $recent->pv_number]);
+            }
+        }
+        if ($problems) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['duplicate' => __('Possible duplicates: :p. Submit again to confirm these are separate vouchers.', ['p' => implode('; ', array_slice($problems, 0, 5))])]);
+        }
     }
 
     public function create()
@@ -168,12 +200,19 @@ class PaymentVoucherBatchController extends Controller
             'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
+        // a person assigned to projects can only raise vouchers for one of those projects, or for the company
+        $mine = PaymentVoucher::projectIdsFor($request->user());
+        if ($mine !== null && ! empty($data['warehouse_id']) && ! in_array((int) $data['warehouse_id'], $mine, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['warehouse_id' => __('You are not assigned to this project, so you cannot raise vouchers for it.')]);
+        }
+
         $data['type'] = trim($data['type']) ?: 'Administration';
         if (mb_strtolower($data['type']) === mb_strtolower(\App\Services\Administration\AdminPaymentService::VOUCHER_TYPE)) {
             throw \Illuminate\Validation\ValidationException::withMessages(['type' => __('Payment Vouchers of type :t are made from the Administration module. They cannot be started here.', ['t' => \App\Services\Administration\AdminPaymentService::VOUCHER_TYPE])]);
         }
         $data['common_particulars'] = trim($data['common_particulars']);
         $isStaffBatch = $data['payee_type'] === PaymentVoucher::PAYEE_TYPE_STAFF;
+        $this->guardDuplicateRows($request, $data, $isStaffBatch);
 
         // The numbering lock is taken before the transaction opens, so every number is read from a fresh snapshot (see PaymentVoucherNumbers).
         $batch = PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($data, $request, $isStaffBatch) {
@@ -257,6 +296,7 @@ class PaymentVoucherBatchController extends Controller
         return Inertia::render('PaymentVoucherBatch/Show', [
             'batch' => $this->presentDetail($batch),
             'companyName' => PaymentVoucher::COMPANY_NAME,
+            'separation' => \App\Support\VoucherSeparation::enabled(),
             'activity' => $this->activityHistory($batch),
         ]);
     }
@@ -400,7 +440,9 @@ class PaymentVoucherBatchController extends Controller
 
     private function warehouseOptions(): array
     {
-        return Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status'])
+        $mine = PaymentVoucher::projectIdsFor(auth()->user());
+
+        return Warehouse::ofAccount()->active()->visible()->when($mine !== null, fn ($q) => $q->whereIn('id', $mine))->orderBy('name')->get(['id', 'name', 'status'])
             ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'status' => $w->status])->values()->all();
     }
 
@@ -475,7 +517,7 @@ class PaymentVoucherBatchController extends Controller
                 'pv_number' => $v->pv_number,
                 'payee_name' => $v->payee_name,
                 'total_amount' => (float) $v->total_amount,
-                'status' => $v->status, 'display_status' => $v->display_status,
+                'status' => $v->status, 'display_status' => $v->display_status, 'prepared_by_ids' => \App\Support\VoucherSeparation::handlers($v), 'approved_by_user_id' => $v->approved_by_user_id,
                 'printed_count' => $v->printed_count,
             ])->values(),
         ]);

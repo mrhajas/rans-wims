@@ -197,6 +197,13 @@
         </loading-button>
       </section>
 
+      <div v-if="(ownApprove && $can('approve-payment-vouchers')) || (ownAuthorise && $can('authorise-payment-vouchers')) || (ownPayment && $can('record-payment-payment-vouchers'))" class="lg-note lg-note-amber pv-sep">
+        <icons name="lock-closed" class="w-4 h-4" />
+        <span v-if="ownApprove">{{ $t('You prepared this voucher, so someone else must approve it (nobody takes two steps of the same voucher).') }}</span>
+        <span v-else-if="ownAuthorise">{{ $t('You prepared or approved this voucher, so someone else must authorise it (nobody takes two steps of the same voucher).') }}</span>
+        <span v-else>{{ $t('You authorised this voucher, so someone else must record its payment (nobody takes two steps of the same voucher).') }}</span>
+      </div>
+
       <!-- Stage 1: Approve -->
       <section v-if="canApprove" class="lg-card">
         <div class="lg-card-head">
@@ -210,7 +217,7 @@
           <button type="button" class="lg-btn lg-btn-red" @click="rejectApproval">
             <icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}
           </button>
-          <loading-button type="button" :loading="reviewForm.processing" :disabled="reviewForm.processing" @click="approve">
+          <loading-button v-if="!ownApprove" type="button" :loading="reviewForm.processing" :disabled="reviewForm.processing" @click="approve">
             <icons name="tick" class="w-4 h-4 mr-1" /> {{ $t('Approve') }}
           </loading-button>
         </div>
@@ -229,7 +236,7 @@
           <button type="button" class="lg-btn lg-btn-red" @click="rejectAuthorisation">
             <icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}
           </button>
-          <loading-button type="button" :loading="authForm.processing" :disabled="authForm.processing" @click="authorise">
+          <loading-button v-if="!ownAuthorise" type="button" :loading="authForm.processing" :disabled="authForm.processing" @click="authorise">
             <icons name="tick" class="w-4 h-4 mr-1" /> {{ $t('Authorise') }}
           </loading-button>
         </div>
@@ -291,11 +298,29 @@
       </section>
 
       <!-- Cancel -->
-      <section v-if="canCancel" class="lg-card flex items-center justify-between gap-3 flex-wrap">
-        <div class="lg-card-title">{{ $t('Cancel Voucher') }}</div>
-        <button type="button" class="lg-btn lg-btn-dark" @click="cancel">
-          <icons name="cross" class="w-4 h-4" />{{ $t('Cancel Voucher') }}
-        </button>
+      <section v-if="canCancel" class="lg-card">
+        <div class="lg-card-head">
+          <span class="lg-card-ico lg-ico-rose"><icons name="cross" class="w-5 h-5" /></span>
+          <div class="flex-1 min-w-0">
+            <div class="lg-card-title">{{ $t('Cancel Voucher') }}</div>
+            <p class="lg-card-sub">{{ paymentVoucher.status === 'Authorised' ? $t('This voucher is authorised but not paid yet. Cancel it if the payee or the amount is wrong. Who cancelled it, when and why are kept on the voucher.') : $t('Who cancelled it, when and why are kept on the voucher.') }}</p>
+          </div>
+        </div>
+        <textarea-input v-model="cancelForm.cancel_reason" :label="$t('Why is it cancelled? (required)')" :error="$page.props.errors.cancel_reason" />
+        <div class="flex justify-end mt-3">
+          <button type="button" class="lg-btn lg-btn-red" :disabled="cancelForm.processing" @click="cancel">
+            <icons name="cross" class="w-4 h-4" />{{ $t('Cancel Voucher') }}
+          </button>
+        </div>
+      </section>
+      <!-- the cancel record -->
+      <section v-if="paymentVoucher.status === 'Cancelled' && (paymentVoucher.cancel_reason || paymentVoucher.cancelled_at)" class="lg-card">
+        <div class="lg-card-head"><span class="lg-card-ico lg-ico-rose"><icons name="cross" class="w-5 h-5" /></span><div class="flex-1 min-w-0"><div class="lg-card-title">{{ $t('Cancelled') }}</div></div></div>
+        <dl class="pv-dl">
+          <div v-if="paymentVoucher.cancelled_by_name"><dt>{{ $t('Cancelled By') }}</dt><dd>{{ paymentVoucher.cancelled_by_name }}</dd></div>
+          <div v-if="paymentVoucher.cancelled_at"><dt>{{ $t('Cancelled On') }}</dt><dd>{{ $datetime(paymentVoucher.cancelled_at) }}</dd></div>
+          <div v-if="paymentVoucher.cancel_reason" style="grid-column: 1 / -1"><dt>{{ $t('Reason') }}</dt><dd>{{ paymentVoucher.cancel_reason }}</dd></div>
+        </dl>
       </section>
     </div>
   </admin-layout>
@@ -313,6 +338,7 @@ export default {
   components: { AdminLayout, PageHeader, StatTiles, TextareaInput, TextInput, LoadingButton },
 
   props: {
+    separation: { type: Boolean, default: false },
     paymentVoucher: Object,
     companyName: String,
     activity: { type: Array, default: () => [] },
@@ -323,7 +349,7 @@ export default {
       submitForm: this.$inertia.form({}),
       reviewForm: this.$inertia.form({ approval_remarks: '' }),
       authForm: this.$inertia.form({ approval_remarks: '' }),
-      cancelForm: this.$inertia.form({}),
+      cancelForm: this.$inertia.form({ cancel_reason: '' }),
       paymentForm: this.$inertia.form({ payment_reference: '', payment_method: '' }),
     };
   },
@@ -354,17 +380,26 @@ export default {
     canSubmit() {
       return ['Draft', 'Rejected'].includes(this.paymentVoucher.status) && this.$can('update-payment-vouchers');
     },
+    // the review sections stay (Reject is always possible); Approve / Authorise are left out for the person who may not take that step
     canApprove() {
       return this.paymentVoucher.status === 'Submitted' && this.$can('approve-payment-vouchers');
     },
     canAuthorise() {
       return this.paymentVoucher.status === 'Approved' && this.$can('authorise-payment-vouchers');
     },
+    // a voucher that is not paid yet can be cancelled; an Authorised one needs the authorise permission
     canCancel() {
-      return !['Authorised', 'Cancelled', 'Rejected'].includes(this.paymentVoucher.status) && this.$can('approve-payment-vouchers');
+      const v = this.paymentVoucher;
+      if (['Cancelled', 'Rejected'].includes(v.status) || v.paid_at) return false;
+      return this.$can('approve-payment-vouchers') && (v.status !== 'Authorised' || this.$can('authorise-payment-vouchers'));
     },
+    me() { return this.$page.props.auth && this.$page.props.auth.user ? Number(this.$page.props.auth.user.id) : 0; },
+    // separation of duties: nobody takes two steps of the same voucher
+    ownApprove() { return this.separation && this.paymentVoucher.status === 'Submitted' && (this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number).includes(this.me); },
+    ownAuthorise() { return this.separation && this.paymentVoucher.status === 'Approved' && [Number(this.paymentVoucher.approved_by_user_id), ...(this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number)].includes(this.me); },
+    ownPayment() { return this.separation && this.paymentVoucher.status === 'Authorised' && !this.paymentVoucher.paid_at && Number(this.paymentVoucher.authorised_by_user_id) === this.me; },
     canRecordPayment() {
-      return this.paymentVoucher.status === 'Authorised' && !this.paymentVoucher.paid_at && this.$can('record-payment-payment-vouchers');
+      return this.paymentVoucher.status === 'Authorised' && !this.paymentVoucher.paid_at && this.$can('record-payment-payment-vouchers') && !this.ownPayment;
     },
   },
 
@@ -393,6 +428,10 @@ export default {
       this.authForm.patch(route('payment-vouchers.reject-authorisation', this.paymentVoucher.id));
     },
     async cancel() {
+      if (!this.cancelForm.cancel_reason || !this.cancelForm.cancel_reason.trim()) {
+        await this.$alert(this.$t('Please write why this voucher is cancelled.'));
+        return;
+      }
       if (!await this.$confirm(this.$t('Are you sure you want to cancel this payment voucher?'), { variant: 'danger' })) {
         return;
       }

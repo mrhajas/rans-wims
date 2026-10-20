@@ -1032,6 +1032,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('payment-vouchers/pdf-list', [Controllers\PaymentVoucherController::class, 'pdfList'])->name('payment-vouchers.pdf-list');
     Route::get('payment-vouchers/search-for-fund', [Controllers\PaymentVoucherController::class, 'searchForFund'])->name('payment-vouchers.search-for-fund');
     Route::get('payment-vouchers/export', [Controllers\PaymentVoucherController::class, 'export'])->name('payment-vouchers.export');
+    Route::put('payment-vouchers/rules', [Controllers\PaymentVoucherController::class, 'saveRules'])->middleware('throttle:10,1')->name('payment-vouchers.rules');
     Route::post('payment-vouchers/bulk-approve', [Controllers\PaymentVoucherController::class, 'bulkApprove'])->name('payment-vouchers.bulk-approve');
     Route::post('payment-vouchers/bulk-mark-paid', [Controllers\PaymentVoucherController::class, 'bulkMarkPaid'])->name('payment-vouchers.bulk-mark-paid');
     Route::post('payment-vouchers/bulk-approve-authorise', [Controllers\PaymentVoucherController::class, 'bulkApproveAndAuthorise'])->name('payment-vouchers.bulk-approve-authorise');
@@ -1042,21 +1043,25 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     // route below, or "print-list"/"pdf-list" would be swallowed as an id.
     Route::get('payment-vouchers/batches/print-list', [Controllers\PaymentVoucherBatchController::class, 'printList'])->name('payment-vouchers.batches.print-list');
     Route::get('payment-vouchers/batches/pdf-list', [Controllers\PaymentVoucherBatchController::class, 'pdfList'])->name('payment-vouchers.batches.pdf-list');
-    Route::get('payment-vouchers/batches/{payment_voucher_batch}', [Controllers\PaymentVoucherBatchController::class, 'show'])->name('payment-vouchers.batches.show');
-    Route::get('payment-vouchers/batches/{payment_voucher_batch}/print', [Controllers\PaymentVoucherBatchController::class, 'printAll'])->name('payment-vouchers.batches.print');
-    Route::get('payment-vouchers/batches/{payment_voucher_batch}/pdf', [Controllers\PaymentVoucherBatchController::class, 'pdfAll'])->name('payment-vouchers.batches.pdf');
-    Route::get('payment-vouchers/batches/{payment_voucher_batch}/attachments/{attachment}/download', [Controllers\PaymentVoucherBatchController::class, 'downloadAttachment'])->name('payment-vouchers.batches.attachments.download');
-    Route::resource('payment-vouchers', Controllers\PaymentVoucherController::class)->parameters(['payment-vouchers' => 'payment_voucher']);
-    Route::patch('payment-vouchers/{payment_voucher}/submit', [Controllers\PaymentVoucherController::class, 'submit'])->name('payment-vouchers.submit');
-    Route::patch('payment-vouchers/{payment_voucher}/approve', [Controllers\PaymentVoucherController::class, 'approve'])->name('payment-vouchers.approve');
-    Route::patch('payment-vouchers/{payment_voucher}/reject-approval', [Controllers\PaymentVoucherController::class, 'rejectApproval'])->name('payment-vouchers.reject-approval');
-    Route::patch('payment-vouchers/{payment_voucher}/authorise', [Controllers\PaymentVoucherController::class, 'authorise'])->name('payment-vouchers.authorise');
-    Route::patch('payment-vouchers/{payment_voucher}/reject-authorisation', [Controllers\PaymentVoucherController::class, 'rejectAuthorisation'])->name('payment-vouchers.reject-authorisation');
-    Route::patch('payment-vouchers/{payment_voucher}/cancel', [Controllers\PaymentVoucherController::class, 'cancel'])->name('payment-vouchers.cancel');
-    Route::get('payment-vouchers/{payment_voucher}/print', [Controllers\PaymentVoucherController::class, 'print'])->name('payment-vouchers.print');
-    Route::get('payment-vouchers/{payment_voucher}/pdf', [Controllers\PaymentVoucherController::class, 'pdf'])->name('payment-vouchers.pdf');
-    Route::get('payment-vouchers/{payment_voucher}/attachments/{attachment}/download', [Controllers\PaymentVoucherController::class, 'downloadAttachment'])->name('payment-vouchers.attachments.download');
-    Route::patch('payment-vouchers/{payment_voucher}/record-payment', [Controllers\PaymentVoucherController::class, 'recordPayment'])->name('payment-vouchers.record-payment');
+    // every route with a voucher / batch id is limited to the projects of the person (company-wide vouchers and their own stay open)
+    Route::middleware('pv.scope')->group(function () {
+        Route::get('payment-vouchers/batches/{payment_voucher_batch}', [Controllers\PaymentVoucherBatchController::class, 'show'])->name('payment-vouchers.batches.show');
+        Route::get('payment-vouchers/batches/{payment_voucher_batch}/print', [Controllers\PaymentVoucherBatchController::class, 'printAll'])->name('payment-vouchers.batches.print');
+        Route::get('payment-vouchers/batches/{payment_voucher_batch}/pdf', [Controllers\PaymentVoucherBatchController::class, 'pdfAll'])->name('payment-vouchers.batches.pdf');
+        Route::get('payment-vouchers/batches/{payment_voucher_batch}/attachments/{attachment}/download', [Controllers\PaymentVoucherBatchController::class, 'downloadAttachment'])->name('payment-vouchers.batches.attachments.download');
+        Route::resource('payment-vouchers', Controllers\PaymentVoucherController::class)->parameters(['payment-vouchers' => 'payment_voucher']);
+        Route::patch('payment-vouchers/{payment_voucher}/submit', [Controllers\PaymentVoucherController::class, 'submit'])->name('payment-vouchers.submit');
+        Route::patch('payment-vouchers/{payment_voucher}/approve', [Controllers\PaymentVoucherController::class, 'approve'])->name('payment-vouchers.approve');
+        Route::patch('payment-vouchers/{payment_voucher}/reject-approval', [Controllers\PaymentVoucherController::class, 'rejectApproval'])->name('payment-vouchers.reject-approval');
+        Route::patch('payment-vouchers/{payment_voucher}/authorise', [Controllers\PaymentVoucherController::class, 'authorise'])->name('payment-vouchers.authorise');
+        Route::patch('payment-vouchers/{payment_voucher}/reject-authorisation', [Controllers\PaymentVoucherController::class, 'rejectAuthorisation'])->name('payment-vouchers.reject-authorisation');
+        Route::patch('payment-vouchers/{payment_voucher}/cancel', [Controllers\PaymentVoucherController::class, 'cancel'])->name('payment-vouchers.cancel');
+        Route::get('payment-vouchers/{payment_voucher}/print', [Controllers\PaymentVoucherController::class, 'print'])->name('payment-vouchers.print');
+        Route::get('payment-vouchers/{payment_voucher}/pdf', [Controllers\PaymentVoucherController::class, 'pdf'])->name('payment-vouchers.pdf');
+        Route::get('payment-vouchers/{payment_voucher}/attachments/{attachment}/download', [Controllers\PaymentVoucherController::class, 'downloadAttachment'])->name('payment-vouchers.attachments.download');
+        Route::delete('payment-vouchers/{payment_voucher}/attachments/{attachment}', [Controllers\PaymentVoucherController::class, 'destroyAttachment'])->name('payment-vouchers.attachments.destroy');
+        Route::patch('payment-vouchers/{payment_voucher}/record-payment', [Controllers\PaymentVoucherController::class, 'recordPayment'])->name('payment-vouchers.record-payment');
+    });
 
     // Transport Routes — Vehicles reuse the Asset model (scoped to the
     // 'Vehicles' category tree), Drivers reuse Contacts (category =

@@ -466,7 +466,7 @@ class TransportVehicleController extends Controller
         $asset->activity = $this->activityHistory(Asset::class, $asset->id);
 
         $voucherIds = (clone $trips)->whereNotNull('payment_voucher_id')->pluck('payment_voucher_id')->unique();
-        $asset->payment_vouchers = PaymentVoucher::whereIn('id', $voucherIds)
+        $asset->payment_vouchers = PaymentVoucher::visibleTo(auth()->user())->whereIn('id', $voucherIds)
             ->orderByDesc('voucher_date')
             ->orderByDesc('id')
             ->get(['id', 'pv_number', 'status', 'voucher_date', 'total_amount']);
