@@ -348,7 +348,7 @@ export default {
   font-size: 44px;
   font-weight: 800;
   fill: #7c2d12;
-  font-family: Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-family: 'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, 'Segoe UI', Arial, sans-serif;
 }
 
 .err-beacon {

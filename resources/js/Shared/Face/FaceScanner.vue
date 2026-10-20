@@ -515,7 +515,7 @@ html.dark .fs { --fs-ink: #f1f5f9; --fs-mute: #94a3b8; }
 .fs__bigtick path { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: fs-draw 0.5s 0.15s ease forwards; }
 
 /* panel under the oval: flat, one accent (navy), greys, nothing else */
-.fs { --fs-accent: #1c3f66; --fs-track: #e5e9f0; --fs-card: #ffffff; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+.fs { --fs-accent: #1c3f66; --fs-track: #e5e9f0; --fs-card: #ffffff; font-family: 'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, 'Segoe UI', Arial, sans-serif; }
 .fs *, .fs button, .fs input { font-family: inherit; }
 html.dark .fs { --fs-accent: #8fb4e8; --fs-track: rgba(255, 255, 255, 0.14); --fs-card: #141a33; }
 .fs__panel { display: grid; gap: 0.55rem; justify-items: center; text-align: center; max-width: 360px; width: 100%; }

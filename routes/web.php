@@ -313,6 +313,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('settings/logo', [Controllers\SettingController::class, 'uploadLogo'])->name('settings.logo.upload');
     Route::put('settings/terms', [Controllers\SettingController::class, 'updateTerms'])->name('settings.terms.update');
     Route::put('settings/impersonation-expiry', [Controllers\SettingController::class, 'updateImpersonationExpiry'])->name('settings.impersonation-expiry.update');
+    Route::put('settings/typography', [Controllers\SettingController::class, 'updateTypography'])->name('settings.typography.update');
+    Route::delete('settings/typography', [Controllers\SettingController::class, 'resetTypography'])->name('settings.typography.reset');
     Route::put('settings/device-limit', [Controllers\SettingController::class, 'updateDeviceLimit'])->name('settings.device-limit.update');
     // the devices a person is signed in on: the held sign-in page and the sign-out actions (Profile uses the same ones)
     Route::get('device-limit', [Controllers\DeviceController::class, 'show'])->name('device-limit.show');

@@ -246,7 +246,7 @@ export default {
         chart: {
           type: 'bar',
           spacingTop: 10,
-          style: { fontFamily: 'Montserrat' },
+          style: { fontFamily: "'WIMS Avenir', 'Avenir Next', Avenir, Montserrat, sans-serif" },
           height: Math.max(220, sorted.length * 34),
         },
         credits: { enabled: false },

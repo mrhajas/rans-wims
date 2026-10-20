@@ -368,6 +368,8 @@
             </form>
           </section>
 
+          <typography-card v-if="$super && typography" :data="typography" />
+
           <!-- Devices per user (Super Admin) -->
           <section v-if="$super" id="st-devices" class="lg-card">
             <header class="lg-card-head">
@@ -438,12 +440,14 @@ import AutoComplete from '@/Shared/AutoComplete.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
+import TypographyCard from './TypographyCard.vue';
 import TecActionMessage from '@/Jetstream/ActionMessage.vue';
 
 export default {
-  props: ['current'],
+  props: ['current', 'typography'],
 
   components: {
+    TypographyCard,
     Link,
     CheckBox,
     TextInput,
@@ -523,6 +527,7 @@ export default {
       if (this.$super) {
         items.unshift({ id: 'features', icon: 'toggle', label: this.$t('Feature Control') });
         items.push({ id: 'security', icon: 'impersonate', label: this.$t('User Impersonation') });
+        items.push({ id: 'typography', icon: 'adjustments', label: this.$t('Typography') });
         items.push({ id: 'devices', icon: 'desktop-computer', label: this.$t('Devices per user') });
       }
       items.push({ id: 'about', icon: 'info', label: this.$t('About') });

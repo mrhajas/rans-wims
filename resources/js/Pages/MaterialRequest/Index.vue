@@ -57,7 +57,7 @@
 
       <section class="lg-card mr-card">
         <div class="lg-table-wrap">
-          <table class="lg-table lg-responsive">
+          <table class="lg-table lg-responsive mr-table">
             <thead>
               <tr>
                 <th v-if="canForce" class="mr-th-pick">
@@ -78,7 +78,9 @@
                 </td>
                 <td class="mr-td-no" :data-label="$t('No')">{{ rowNo(index) }}</td>
                 <td :data-label="$t('Request')">
-                  <div>
+                  <div class="mr-id">
+                    <span class="mr-ic tc-navy"><icons name="doc-text" class="w-4 h-4" /></span>
+                    <div>
                     <div class="lg-main mr-ref">
                       <hover-preview category="material-requests" :id="materialRequest.id">{{ materialRequest.reference }}</hover-preview>
                       <span
@@ -91,11 +93,12 @@
                         @click.stop
                       ><icons name="lock-closed" class="w-3.5 h-3.5" /></span>
                     </div>
-                    <div class="lg-subtext">{{ $date(materialRequest.date_requested) }}</div>
+                    <div class="lg-subtext mr-date"><icons name="clock" class="w-3 h-3" />{{ $date(materialRequest.date_requested) }}</div>
+                    </div>
                   </div>
                 </td>
-                <td :data-label="$t('Warehouse / Site')">{{ materialRequest.warehouse?.name }}</td>
-                <td :data-label="$t('Requested By')">{{ materialRequest.user?.name }}</td>
+                <td :data-label="$t('Warehouse / Site')" class="mr-td-wh"><div class="mr-w"><span class="mr-ic tc-teal"><icons name="building" class="w-4 h-4" /></span><span class="mr-wt">{{ materialRequest.warehouse?.name }}</span></div></td>
+                <td :data-label="$t('Requested By')" class="mr-td-by"><div class="mr-u"><span class="mr-ic tc-indigo"><icons name="user" class="w-4 h-4" /></span><span class="mr-ut">{{ materialRequest.user?.name }}</span></div></td>
                 <td :data-label="$t('Status')" class="mr-status-cell">
                   <div class="mr-chips">
                     <span
@@ -404,6 +407,38 @@ export default {
 
 <style scoped>
 .mr-status-cell { min-width: 330px; }
+/* ---- compact, easy-to-scan rows: tighter padding, names wrap instead of stretching the row, outlined icons, a soft inner shadow instead of hard lines ---- */
+.mr-table td { padding-top: 9px; padding-bottom: 9px; border-bottom: 0; box-shadow: inset 0 -8px 8px -9px rgba(15, 37, 64, 0.28); }
+.mr-table tbody tr:last-child td { box-shadow: none; }
+.mr-table td.lg-sticky-end { box-shadow: inset 0 -8px 8px -9px rgba(15, 37, 64, 0.2), -10px 0 14px -12px rgba(15, 23, 42, 0.25); }
+.mr-table tbody tr:hover td { background: color-mix(in srgb, var(--lg-soft) 70%, #fff); }
+.mr-table th { padding-top: 10px; padding-bottom: 10px; }
+.mr-td-wh { white-space: normal; min-width: 210px; max-width: 300px; }
+.mr-td-by { white-space: normal; min-width: 150px; max-width: 200px; }
+.mr-id, .mr-w, .mr-u { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.mr-ic { --ic: #1c3f66; flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: var(--ic); background: var(--lg-card, #fff); box-shadow: inset 0 0 0 1.5px var(--ic), 0 6px 10px -6px var(--ic); }
+.mr-ic.tc-navy { --ic: #1c3f66; } .mr-ic.tc-teal { --ic: #0f766e; } .mr-ic.tc-indigo { --ic: #4338ca; }
+.mr-wt { font-weight: 600; color: #0f766e; line-height: 1.3; overflow-wrap: anywhere; }
+.mr-ut { font-weight: 600; color: #4338ca; line-height: 1.3; overflow-wrap: anywhere; }
+.mr-ref .lg-main, .mr-ref { color: var(--lg-navy, #1c3f66); }
+.mr-date { display: inline-flex; align-items: center; gap: 4px; margin-top: 1px; }
+html.dark .mr-wt { color: #5eead4; } html.dark .mr-ut { color: #a5b4fc; }
+/* status: the chips on one line, the approval trail in three columns, so a request needs one short row */
+.mr-table .mr-status-cell { min-width: 430px; }
+.mr-table .mr-chip { min-width: 7.6rem; padding-top: 2px; padding-bottom: 2px; }
+.mr-table .mr-trail { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 6px; gap: 5px 14px; }
+.mr-table .mr-trail li { font-size: 0.72rem; line-height: 1.25; }
+.mr-table .mr-trail-dot { width: 7px; height: 7px; margin-top: 4px; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
+@media (max-width: 767.98px) {
+  .mr-table .mr-status-cell { min-width: 0; }
+  .mr-table .mr-trail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mr-td-wh, .mr-td-by { max-width: none; min-width: 0; }
+  .mr-table.lg-responsive tbody tr:not(.lg-empty-row) td::before { flex: 0 1 38% !important; min-width: 0; overflow-wrap: anywhere !important; word-break: break-word; white-space: normal !important; }
+  .mr-id, .mr-w, .mr-u { justify-content: flex-end; text-align: right; flex: 1 1 0; min-width: 0; }
+  .mr-td-wh > .mr-w, .mr-td-by > .mr-u { margin-left: auto; }
+  .mr-table td { box-shadow: none; }
+}
+
 .mr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* status and delivery chips are the same size; Cleared is the deeper green, Fully Delivered the lighter one */
 .mr-chip { min-width: 8.6rem; justify-content: center; gap: 4px; }

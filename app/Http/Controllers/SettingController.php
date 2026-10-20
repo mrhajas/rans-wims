@@ -13,7 +13,7 @@ class SettingController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Setting/Index', ['current' => get_settings()]);
+        return Inertia::render('Setting/Index', ['current' => get_settings(), 'typography' => auth()->user() && auth()->user()->hasRole('Super Admin') ? \App\Support\Typography::forSettings() : null]);
     }
 
     public function store(Request $request)
@@ -142,6 +142,49 @@ class SettingController extends Controller
             'success' => true,
             'enabled' => (bool) $validated['enabled'],
         ]);
+    }
+
+    /** The typefaces of the interface: one for the whole application and, optionally, a font / weight / italic for headings, paragraphs, labels, buttons, tabs, tables, tooltips and fields. Super Admin. */
+    public function updateTypography(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasRole('Super Admin'), 403);
+        $roles = array_keys(\App\Support\Typography::roles());
+        $data = $request->validate([
+            'roles' => 'required|array',
+            'roles.*.font' => 'required|string|max:40',
+            'roles.*.weight' => 'required|string|in:' . implode(',', array_keys(\App\Support\Typography::WEIGHTS)),
+            'roles.*.italic' => 'nullable|boolean',
+        ]);
+        $fonts = \App\Support\Typography::fonts();
+        $errors = [];
+        foreach ($data['roles'] as $role => $r) {
+            if (! in_array($role, $roles, true)) {
+                $errors['roles.' . $role] = __('Unknown part of the interface.');
+            } elseif ($r['font'] !== 'inherit' && ! isset($fonts[$r['font']])) {
+                $errors['roles.' . $role . '.font'] = __('Choose a font from the list.');
+            } elseif ($r['font'] === 'inherit' && $role === 'base') {
+                $errors['roles.base.font'] = __('Choose the font of the whole application.');
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+        $merged = \App\Support\Typography::merge(\App\Support\Typography::defaults(), $data['roles']);
+        Setting::updateOrCreate(['tec_key' => \App\Support\Typography::KEY, 'account_id' => $user->account_id], ['tec_value' => json_encode($merged)]);
+        log_activity('Typography settings saved', ['base' => $merged['base']['font']] + collect($merged)->except('base')->filter(fn ($r) => $r['font'] !== 'inherit' || $r['weight'] !== 'auto' || $r['italic'])->all(), null, 'Setting');
+
+        return back()->with('message', __('Typography saved. The new fonts are used on every page.'));
+    }
+
+    public function resetTypography(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasRole('Super Admin'), 403);
+        Setting::where('tec_key', \App\Support\Typography::KEY)->where('account_id', $user->account_id)->delete();
+        log_activity('Typography settings reset to the defaults', [], null, 'Setting');
+
+        return back()->with('message', __('Typography reset to the starting fonts (Avenir).'));
     }
 
     /** How many devices one person may be signed in on at once (0 = no limit). Super Admin, with their own password. See App\Services\Security\DeviceLimit. */
