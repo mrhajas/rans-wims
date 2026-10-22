@@ -22,7 +22,7 @@
         <span>{{ $t('Showing cached warehouses.') }} <span v-if="$connection.lastSyncAt">{{ $t('Last synced') }}: {{ $date($connection.lastSyncAt) }} {{ $time($connection.lastSyncAt) }}</span></span>
       </div>
 
-      <div class="txn-toolbar liquid-filter-row mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden relative z-20">
+      <div class="txn-toolbar wh-toolbar liquid-filter-row mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden relative z-20">
         <search-filter v-model="form.search" class="w-full max-w-md flex-1" @reset="reset">
           <label class="mt-4 block text-gray-700">{{ $t('Trashed') }}:</label>
           <select-input v-model="form.trashed" class="mt-1 w-full">
@@ -459,6 +459,8 @@ export default {
 @media (prefers-reduced-motion: reduce) { .wh-cat::before { animation: none; } .wh-cat { transition: none; } }
 .wh-sec td { background: var(--lg-soft, rgba(148, 163, 184, 0.12)); padding-top: 8px !important; padding-bottom: 8px !important; }
 .wh-sec-n { margin-left: 10px; font-size: 0.78rem; color: var(--lg-mute, #64748b); }
+/* the bar holds two rows (search, then the filters): a full pill would curve its corners deep into the content, so it gets a calm radius */
+.lg-page .txn-toolbar.wh-toolbar { border-radius: 22px; }
 .wh-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: center; }
 .wh-sel { width: 100%; min-width: 0; height: 2.5rem; padding-top: 0; padding-bottom: 0; }
 @media (max-width: 575.98px) { .wh-filters { grid-template-columns: 1fr; } }

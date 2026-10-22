@@ -9,8 +9,8 @@
 
       <stat-tiles :items="statTiles" @select="pickTile" />
 
-      <div class="txn-toolbar mb-6 flex justify-between items-center print:hidden relative z-20">
-        <div class="flex items-end gap-3 flex-wrap w-full mr-4 cx-filters">
+      <div class="txn-toolbar cx-toolbar mb-6 flex justify-between items-center print:hidden relative z-20">
+        <div class="flex items-center gap-3 flex-wrap w-full mr-4 cx-filters">
         <search-filter v-model="form.search" class="w-full max-w-md" @reset="reset">
           <label class="mt-4 block text-gray-700">{{ $t('Category') }}:</label>
           <select-input v-model="form.category" class="mt-1 w-full">
@@ -24,13 +24,7 @@
             <option value="only">{{ $t('Only Trashed') }}</option>
           </select-input>
         </search-filter>
-        <label class="cx-cat"><span>{{ $t('Category') }}</span>
-          <select-input v-model="form.category" class="mt-1" :aria-label="$t('Category')">
-            <option :value="null">{{ $t('All categories') }}</option>
-            <option v-for="category in categories" :key="category" :value="category">{{ $t(category) }}{{ stats && stats.categories && stats.categories[category] ? ' (' + stats.categories[category] + ')' : '' }}</option>
-          </select-input>
-        </label>
-        <button v-if="form.category" type="button" class="lg-btn t-slate" @click="form.category = null"><icons name="cross" class="w-4 h-4" />{{ $t('Clear') }}</button>
+        <div class="cx-cat"><acct-select v-model="form.category" :options="categoryOptions" :placeholder="$t('All categories')" clearable /></div>
         </div>
         <tec-dropdown align="right" width="48" v-if="$can(['import-contacts', 'export-contacts'])">
           <template #trigger>
@@ -132,6 +126,7 @@ import SelectInput from '@/Shared/SelectInput.vue';
 import TecDropdown from '@/Jetstream/Dropdown.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import SearchFilter from '@/Shared/SearchFilter.vue';
+import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import TecDropdownLink from '@/Jetstream/DropdownLink.vue';
 import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
@@ -146,6 +141,7 @@ export default {
     TecDropdown,
     SelectInput,
     SearchFilter,
+    AcctSelect,
     HoverPreview,
     TecDropdownLink,
     TecSectionTitle,
@@ -169,6 +165,11 @@ export default {
   },
 
   computed: {
+    // the Category filter: a searchable list (type to find a category), with how many contacts each holds
+    categoryOptions() {
+      const n = (this.stats && this.stats.categories) || {};
+      return this.categories.map(c => ({ value: c, label: this.$t(c) + (n[c] ? ' (' + n[c] + ')' : '') }));
+    },
     // Print / Download carry the search, category and trashed filter currently applied, so the paper matches the table.
     queryString() {
       const qs = new URLSearchParams(pickBy(this.form)).toString();
@@ -226,9 +227,11 @@ export default {
 </script>
 
 <style scoped>
-.cx-cat { display: grid; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; min-width: 220px; }
-.cx-cat span { margin-bottom: 2px; }
-@media (max-width: 560px) { .cx-cat { min-width: 100%; } }
+.lg-page .txn-toolbar.cx-toolbar { border-radius: 22px; }
+.cx-cat :deep(.mb-2) { margin-bottom: 0; }
+.cx-cat :deep(input) { height: 2.5rem; }
+.cx-cat { min-width: 240px; max-width: 320px; flex: 1 1 240px; font-weight: 400; }
+@media (max-width: 560px) { .cx-cat { min-width: 100%; max-width: none; } }
 .txn-shell {
   position: relative;
 }
