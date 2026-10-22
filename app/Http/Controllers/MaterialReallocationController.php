@@ -392,10 +392,20 @@ class MaterialReallocationController extends Controller
             ->all();
     }
 
+    /** Every Project / Warehouse a reallocation touches: its source and the destination of each item (plus any extra ids), as stock moves between them. */
+    private function reallocationWarehouses(MaterialReallocation $reallocation, array $extra = []): array
+    {
+        return array_values(array_filter(array_unique(array_merge(
+            [$reallocation->source_warehouse_id],
+            $reallocation->items()->whereNotNull('destination_warehouse_id')->pluck('destination_warehouse_id')->all(),
+            $extra
+        ))));
+    }
+
     public function store(MaterialReallocationStoreRequest $request)
     {
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($data['source_warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($data['source_warehouse_id'] ?? null)) {
             return $response;
         }
         $data['user_id'] = $request->user()->id;
@@ -499,7 +509,7 @@ class MaterialReallocationController extends Controller
     public function edit(Request $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('update', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
 
@@ -537,7 +547,7 @@ class MaterialReallocationController extends Controller
     {
         $this->authorize('update', $material_reallocation);
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id, $data['source_warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation, [$data['source_warehouse_id'] ?? null]))) {
             return $response;
         }
 
@@ -579,7 +589,7 @@ class MaterialReallocationController extends Controller
     public function destroy(Request $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('delete', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
 
@@ -593,7 +603,7 @@ class MaterialReallocationController extends Controller
     public function submit(Request $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('submit', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
 
@@ -627,7 +637,7 @@ class MaterialReallocationController extends Controller
     public function clear(MaterialReallocationClearRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('clear', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
         $data = $request->validated();
@@ -672,7 +682,7 @@ class MaterialReallocationController extends Controller
     public function allocate(MaterialReallocationAllocateRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('allocate', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation, collect($request->input('items', []))->flatMap(fn ($i) => collect($i['destinations'] ?? [])->pluck('warehouse_id'))->all()))) {
             return $response;
         }
         $data = $request->validated();
@@ -757,7 +767,7 @@ class MaterialReallocationController extends Controller
     public function dispatchShipment(MaterialReallocationDispatchRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('dispatch', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
         $data = $request->validated();
@@ -798,7 +808,7 @@ class MaterialReallocationController extends Controller
     public function receive(MaterialReallocationReceiveRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('receive', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
         $data = $request->validated();
@@ -856,7 +866,7 @@ class MaterialReallocationController extends Controller
     public function finalApprove(Request $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('finalApprove', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
 
@@ -917,7 +927,7 @@ class MaterialReallocationController extends Controller
     public function requestChanges(MaterialReallocationRemarksRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('requestChanges', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
         $data = $request->validated();
@@ -950,7 +960,7 @@ class MaterialReallocationController extends Controller
     public function reject(MaterialReallocationRemarksRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('reject', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
         $data = $request->validated();
@@ -983,7 +993,7 @@ class MaterialReallocationController extends Controller
     public function cancel(MaterialReallocationRemarksRequest $request, MaterialReallocation $material_reallocation)
     {
         $this->authorize('cancel', $material_reallocation);
-        if ($response = $this->rejectIfWarehouseCompleted($material_reallocation->source_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
         }
         $data = $request->validated();

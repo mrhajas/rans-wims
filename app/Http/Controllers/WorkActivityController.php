@@ -15,6 +15,8 @@ class WorkActivityController extends Controller
     public function __construct()
     {
         $this->setAbilities([]);
+        // the Activities screen belongs to people who make Check-outs (the same permission the menu asks for); nothing was checked here before
+        $this->requirePermissions(array_fill_keys(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy', 'restore', 'destroyPermanently'], 'create-checkouts'));
     }
 
     public function create()

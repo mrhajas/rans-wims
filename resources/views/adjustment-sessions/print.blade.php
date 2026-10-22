@@ -39,6 +39,9 @@
                 <td class="label">Started</td><td class="value"><strong>{{ $stamp($session['started_at']) }}</strong> by {{ $session['started_by'] }}</td>
                 <td class="label">Ended</td><td class="value"><strong>{{ $stamp($session['ended_at']) }}</strong>@if($session['ended_by']) by {{ $session['ended_by'] }}@endif</td>
             </tr>
+            @if(!empty($session['halt']['ever']))
+                <tr><td class="label">Stock movement</td><td class="value" colspan="3"><strong>{{ !empty($session['halt']['active']) ? 'HALTED' : 'Was halted' }}</strong> by {{ $session['halt']['by'] ?: '-' }} since {{ $stamp($session['halt']['at']) }}@if(!empty($session['halt']['released_at'])), released {{ $stamp($session['halt']['released_at']) }}@if($session['halt']['released_by']) by {{ $session['halt']['released_by'] }}@endif @endif</td></tr>
+            @endif
             @if($session['name'])
                 <tr><td class="label">Name</td><td class="value" colspan="3"><strong>{{ $session['name'] }}</strong></td></tr>
             @endif
@@ -51,36 +54,57 @@
             <td><b>{{ $stats['counted'] }}</b>Items counted</td>
             <td><b>{{ $stats['not_counted'] }}</b>{{ $open ? 'Not counted yet' : 'Not counted' }}</td>
             <td><b>{{ $stats['percent'] }}%</b>Counted</td>
+            @if(!empty($stats['not_counted_value']))<td><b>{{ number_format((float) $stats['not_counted_value'], 2) }}</b>Value untouched (Tsh)</td>@endif
             @if(! $open)<td><b>{{ $stats['cleared'] }}</b>Cleared</td>@endif
         </tr>
     </table>
 
     <div class="sec-title">Super Adjustments of this session</div>
     <table class="items">
-        <thead><tr><th class="no">No</th><th>Reference</th><th>Date</th><th>By</th><th>Status</th><th class="num">Items</th></tr></thead>
+        <thead><tr><th class="no">No</th><th>Reference</th><th>Date</th><th>Made by (when)</th><th>Status</th><th>Approved / rejected by (when)</th><th class="num">Items</th></tr></thead>
         <tbody>
             @forelse($documents as $i => $d)
-                <tr><td class="no">{{ $i + 1 }}</td><td>{{ $d['reference'] }}@if($d['is_clearing']) (clearing count)@endif</td><td>{{ $d['date'] }}</td><td>{{ $d['by'] }}</td><td>{{ $d['status'] }}</td><td class="num">{{ $d['items'] }}</td></tr>
+                <tr>
+                    <td class="no">{{ $i + 1 }}</td>
+                    <td>{{ $d['reference'] }}@if($d['is_clearing']) (clearing count)@endif</td>
+                    <td>{{ $d['date'] }}</td>
+                    <td>{{ $d['by'] }}<br><span style="color:#64748b">{{ $stamp($d['created_at']) }}</span></td>
+                    <td>{{ $d['status'] === 'Draft' ? 'Pending approval' : $d['status'] }}</td>
+                    <td>@if($d['approved_by']){{ $d['approved_by'] }}<br><span style="color:#64748b">{{ $stamp($d['approved_at']) }}</span>@elseif($d['rejected_by']){{ $d['rejected_by'] }} (rejected)<br><span style="color:#64748b">{{ $stamp($d['rejected_at']) }}@if($d['rejection_reason']) - {{ $d['rejection_reason'] }}@endif</span>@else - @endif</td>
+                    <td class="num">{{ $d['items'] }}</td>
+                </tr>
             @empty
-                <tr><td colspan="6" style="text-align:center">No Super Adjustment was made in this session.</td></tr>
+                <tr><td colspan="7" style="text-align:center">No Super Adjustment was made in this session.</td></tr>
             @endforelse
         </tbody>
     </table>
 
     <div class="sec-title">{{ $open ? 'Items with stock that are not counted yet' : 'Items with stock that were not counted' }}</div>
     <table class="items">
-        <thead><tr><th class="no">No</th><th>Code</th><th>Item</th><th class="num">System quantity</th><th>Unit</th>@if(! $open)<th>What was done</th>@else<th>Moved since start</th>@endif</tr></thead>
+        <thead><tr><th class="no">No</th><th>Code</th><th>Item</th><th class="num">Stock in warehouse</th><th>Unit</th><th class="num">Value (Tsh)</th>@if(! $open)<th>What was done</th>@else<th>Moved since start</th>@endif</tr></thead>
         <tbody>
             @forelse($uncounted as $i => $r)
                 <tr>
-                    <td class="no">{{ $i + 1 }}</td><td>{{ $r['code'] }}</td><td>{{ strtoupper($r['name']) }}</td><td class="num">{{ rtrim(rtrim(number_format((float) $r['quantity'], 4, '.', ','), '0'), '.') }}</td><td>{{ $r['unit'] }}</td>
+                    <td class="no">{{ $i + 1 }}</td><td>{{ $r['code'] }}</td><td>{{ strtoupper($r['name']) }}</td><td class="num">{{ rtrim(rtrim(number_format((float) $r['quantity'], 4, '.', ','), '0'), '.') }}</td><td>{{ $r['unit'] }}</td><td class="num">{{ !empty($r['value']) ? number_format((float) $r['value'], 2) : '-' }}</td>
                     @if(! $open)<td>{{ ! empty($r['cleared']) ? 'Cleared (counted at zero)' : 'Kept as it is' }}</td>@else<td>{{ ! empty($r['moved']) ? 'Yes' : '-' }}</td>@endif
                 </tr>
             @empty
-                <tr><td colspan="6" style="text-align:center">Every item with stock was counted.</td></tr>
+                <tr><td colspan="7" style="text-align:center">Every item with stock was counted.</td></tr>
             @endforelse
         </tbody>
     </table>
+
+    @if(!empty($history))
+        <div class="sec-title">History (who did what, and when)</div>
+        <table class="items">
+            <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+            <tbody>
+                @foreach($history as $e)
+                    <tr><td style="white-space:nowrap">{{ $stamp($e['at']) }}</td><td>{{ $e['by'] }}</td><td>{{ $e['text'] }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 
     @if($session['note'])<div class="note-box"><b>Note:</b> {{ $session['note'] }}</div>@endif
     @if($session['end_note'])<div class="note-box"><b>End note:</b> {{ $session['end_note'] }}</div>@endif

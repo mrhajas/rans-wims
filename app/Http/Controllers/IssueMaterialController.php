@@ -89,7 +89,7 @@ class IssueMaterialController extends Controller
 
         $data = $request->validated();
         abort_if(! $this->canUseWarehouse((int) $data['warehouse_id']), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($data['warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($data['warehouse_id'] ?? null)) {
             return $response;
         }
 
@@ -173,7 +173,7 @@ class IssueMaterialController extends Controller
     {
         abort_unless($this->canUpdate($issueMaterial), 403);
         abort_if($this->isRestrictedToOwnTransactions() && (int) $issueMaterial->user_id !== (int) auth()->id(), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($issueMaterial->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($issueMaterial->warehouse_id)) {
             return $response;
         }
 
@@ -206,7 +206,7 @@ class IssueMaterialController extends Controller
 
         $data = $request->validated();
         abort_if(! $this->canUseWarehouse((int) $data['warehouse_id']), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($issueMaterial->warehouse_id, $data['warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($issueMaterial->warehouse_id, $data['warehouse_id'] ?? null)) {
             return $response;
         }
 
@@ -251,7 +251,7 @@ class IssueMaterialController extends Controller
     {
         abort_unless($this->canDelete(), 403, 'Only Admin or Procurement Manager can delete issue transactions.');
         abort_if($this->isRestrictedToOwnTransactions() && (int) $issueMaterial->user_id !== (int) auth()->id(), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($issueMaterial->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($issueMaterial->warehouse_id)) {
             return $response;
         }
 

@@ -20,6 +20,7 @@
             <auto-complete
               clearable
               id="issue-warehouse"
+              stock-move
               :label="$t('Project(s) / Warehouse(s)')"
               v-model="form.warehouse_id"
               :suggestions="warehouseSuggestions"

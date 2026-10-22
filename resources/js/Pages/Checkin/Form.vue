@@ -21,7 +21,7 @@
           </div>
         </header>
         <div class="flex flex-wrap items-center gap-2">
-          <a v-if="$can('print-checkins')" :href="route('checkins.print', edit.id)" target="_blank" class="lg-btn lg-btn-soft">
+          <a v-if="$can('print-checkins')" :href="route('checkins.print', edit.id)" target="_blank" @click.exact.prevent="printThis" class="lg-btn lg-btn-soft">
             <icons name="printer" class="w-4 h-4" /> {{ $t('Print') }}
           </a>
           <a v-if="$can('print-checkins')" :href="route('checkins.pdf', edit.id)" class="lg-btn lg-btn-soft">
@@ -62,6 +62,7 @@
             <div>
               <auto-complete
                 id="warehouse"
+                stock-move
                 :label="$t('Warehouse')"
                 :suggestions="userWarehouses"
                 v-model="form.warehouse_id"
@@ -608,6 +609,7 @@
 </template>
 
 <script>
+import { printWithAnimation, printUrlInFrame, stockDocumentPrintSheet } from '@/Core/printAnimation';
 import _isEqual from 'lodash/isEqual';
 import throttle from 'lodash/throttle';
 import Dialog from '@/Shared/Dialog.vue';
@@ -765,6 +767,10 @@ export default {
   },
 
   methods: {
+    // the animation first, then the browser's print dialog on this document
+    printThis() {
+      printWithAnimation(stockDocumentPrintSheet(this, this.edit, 'Check-in'), () => printUrlInFrame(this.route('checkins.print', this.edit.id)));
+    },
     defaultWarehouseId() {
       const current = this.$page.props.currentWarehouse;
       if (current && current.id) return current.id;

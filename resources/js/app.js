@@ -28,6 +28,8 @@ import { initFieldErrors } from '@/Core/fieldErrors';
 import { useI18n } from 'vue-i18n';
 import { createApp, h } from 'vue';
 import { route, ZiggyVue } from 'ziggy-js';
+// the route table now arrives as its own cached script (ziggy.js), which no longer defines the global route() the page scripts call
+window.route = route;
 import labelizeDirective from './Core/labelizeDirective';
 import { createInertiaApp, Head, Link, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';

@@ -87,7 +87,7 @@ class MultiTransferController extends Controller
         if ($sources->contains($to)) {
             throw ValidationException::withMessages(['to_warehouse_id' => __('A source warehouse cannot also be the destination.')]);
         }
-        if ($response = $this->rejectIfWarehouseCompleted($to, ...$sources->all())) {
+        if ($response = $this->rejectIfWarehouseBlocked($to, ...$sources->all())) {
             return $response;
         }
         $allowed = accessible_warehouse_ids();
@@ -205,6 +205,11 @@ class MultiTransferController extends Controller
         foreach ($multiTransfer->transfers()->where('approval_status', Transfer::APPROVAL_PENDING)->get() as $transfer) {
             if ($this->isAnyWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
                 $problems[] = $transfer->reference . ': ' . $this->completedWarehouseMessage();
+
+                continue;
+            }
+            if ($halt = \App\Support\StockHalt::blocking($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
+                $problems[] = $transfer->reference . ': ' . \App\Support\StockHalt::message($halt);
 
                 continue;
             }

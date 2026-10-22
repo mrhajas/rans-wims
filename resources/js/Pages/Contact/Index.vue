@@ -10,7 +10,8 @@
       <stat-tiles :items="statTiles" @select="pickTile" />
 
       <div class="txn-toolbar mb-6 flex justify-between items-center print:hidden relative z-20">
-        <search-filter v-model="form.search" class="w-full max-w-md mr-4" @reset="reset">
+        <div class="flex items-end gap-3 flex-wrap w-full mr-4 cx-filters">
+        <search-filter v-model="form.search" class="w-full max-w-md" @reset="reset">
           <label class="mt-4 block text-gray-700">{{ $t('Category') }}:</label>
           <select-input v-model="form.category" class="mt-1 w-full">
             <option :value="null">{{ $t('All') }}</option>
@@ -23,6 +24,14 @@
             <option value="only">{{ $t('Only Trashed') }}</option>
           </select-input>
         </search-filter>
+        <label class="cx-cat"><span>{{ $t('Category') }}</span>
+          <select-input v-model="form.category" class="mt-1" :aria-label="$t('Category')">
+            <option :value="null">{{ $t('All categories') }}</option>
+            <option v-for="category in categories" :key="category" :value="category">{{ $t(category) }}{{ stats && stats.categories && stats.categories[category] ? ' (' + stats.categories[category] + ')' : '' }}</option>
+          </select-input>
+        </label>
+        <button v-if="form.category" type="button" class="lg-btn t-slate" @click="form.category = null"><icons name="cross" class="w-4 h-4" />{{ $t('Clear') }}</button>
+        </div>
         <tec-dropdown align="right" width="48" v-if="$can(['import-contacts', 'export-contacts'])">
           <template #trigger>
             <button class="lg-btn lg-btn-soft"><icons name="menu" class="w-4 h-4" />{{ $t('More') }}</button>
@@ -217,6 +226,9 @@ export default {
 </script>
 
 <style scoped>
+.cx-cat { display: grid; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; min-width: 220px; }
+.cx-cat span { margin-bottom: 2px; }
+@media (max-width: 560px) { .cx-cat { min-width: 100%; } }
 .txn-shell {
   position: relative;
 }

@@ -33,7 +33,7 @@ class AdjustmentController extends Controller
 
     public function destroy(Adjustment $adjustment)
     {
-        if ($response = $this->rejectIfWarehouseCompleted($adjustment->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($adjustment->warehouse_id)) {
             return $response;
         }
         $adjustment->load(['items.item', 'items.unit', 'items.variations']);
@@ -48,7 +48,7 @@ class AdjustmentController extends Controller
 
     public function destroyPermanently(Adjustment $adjustment)
     {
-        if ($response = $this->rejectIfWarehouseCompleted($adjustment->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($adjustment->warehouse_id)) {
             return $response;
         }
         $adjustment->load(['items.item', 'items.unit', 'items.variations']);
@@ -67,7 +67,7 @@ class AdjustmentController extends Controller
     {
         $this->authorize('update', $adjustment);
         abort_unless($this->canModifyAdjustment(), 403, 'Only Admin or Procurement Manager can modify adjustments.');
-        if ($response = $this->rejectIfWarehouseCompleted($adjustment->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($adjustment->warehouse_id)) {
             return $response;
         }
 
@@ -202,7 +202,7 @@ class AdjustmentController extends Controller
     public function store(AdjustmentRequest $request)
     {
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($data['warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($data['warehouse_id'] ?? null)) {
             return $response;
         }
 
@@ -236,7 +236,7 @@ class AdjustmentController extends Controller
         }
 
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($adjustment->warehouse_id, $data['warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($adjustment->warehouse_id, $data['warehouse_id'] ?? null)) {
             return $response;
         }
 
@@ -264,7 +264,7 @@ class AdjustmentController extends Controller
     public function approve(Request $request, Adjustment $adjustment)
     {
         abort_unless(Adjustment::userCanApprove($request->user()), 403, __('You are not allowed to approve adjustments.'));
-        if ($response = $this->rejectIfWarehouseCompleted($adjustment->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($adjustment->warehouse_id)) {
             return $response;
         }
 
@@ -308,7 +308,7 @@ class AdjustmentController extends Controller
             'status' => 'required|in:' . implode(',', Adjustment::statuses()),
             'rejection_reason' => 'required_if:status,' . Adjustment::STATUS_REJECTED . '|nullable|string|min:3|max:1000',
         ]);
-        if ($response = $this->rejectIfWarehouseCompleted($adjustment->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($adjustment->warehouse_id)) {
             return $response;
         }
 

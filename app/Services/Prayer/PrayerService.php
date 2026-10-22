@@ -65,6 +65,10 @@ class PrayerService
     /** All adhans: the two built-in ones, then the uploaded ones (key "custom-{id}"). @return array<string, array{label:string,file:string,note:string,custom:bool,id?:int}> */
     public static function adhans(): array
     {
+        static $memo = null; // kept for three seconds: a page asks for the adhans more than once
+        if ($memo !== null && $memo[0] > microtime(true)) {
+            return $memo[1];
+        }
         $all = [];
         foreach (self::ADHANS as $k => $a) {
             $all[$k] = $a + ['custom' => false];
@@ -78,6 +82,7 @@ class PrayerService
         } catch (\Throwable) {
             // the table is not there yet: only the built-in adhans
         }
+        $memo = [microtime(true) + 3, $all];
 
         return $all;
     }
@@ -268,7 +273,12 @@ class PrayerService
     public static function messageFor(string $prayer, CarbonImmutable $day): ?array
     {
         try {
-            $all = PrayerMessage::query()->where('is_active', true)->whereIn('prayer', ['any', $prayer])->orderBy('id')->get();
+            // every active message is read once per request (this runs for each of the day's prayers: four identical queries a page); the prayer is picked here
+            static $memo = null;
+            if ($memo === null || $memo[0] < microtime(true)) {
+                $memo = [microtime(true) + 3, PrayerMessage::query()->where('is_active', true)->orderBy('id')->get()];
+            }
+            $all = $memo[1]->filter(fn ($m) => in_array($m->prayer, ['any', $prayer], true))->values();
         } catch (\Throwable) {
             return null;
         }

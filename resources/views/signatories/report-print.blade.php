@@ -8,7 +8,7 @@
     <style>
         @page { size: A4 {{ $landscape ? 'landscape' : 'portrait' }}; margin: 10mm; }
         body { margin: 14px; }
-        table.items th, table.items td { font-size: 9.2px; padding: 5px 7px; vertical-align: top; word-wrap: break-word; }
+        table.items th, table.items td { font-size: 9.2px; padding: 5px 7px; vertical-align: top; word-wrap: break-word; white-space: pre-line; }
         table.items th { vertical-align: middle; }
         table.items td.num, table.items th.num { text-align: right; white-space: nowrap; }
         table.items tr.zebra td { background: #f8fafc; }

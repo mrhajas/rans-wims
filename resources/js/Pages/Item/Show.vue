@@ -30,7 +30,7 @@
 import ItemDetails from './Details.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
-import { printWithAnimation, itemPrintSheet } from '@/Core/printAnimation';
+import { printWithAnimation, itemPrintSheet, printUrlInFrame } from '@/Core/printAnimation';
 
 export default {
   props: { item: Object },
@@ -43,7 +43,7 @@ export default {
   },
   methods: {
     print() {
-      printWithAnimation(itemPrintSheet(this, this.item), () => window.open(this.route('items.report.print', this.item.id), '_blank'));
+      printWithAnimation(itemPrintSheet(this, this.item), () => printUrlInFrame(this.route('items.report.print', this.item.id)));
     },
   },
 };

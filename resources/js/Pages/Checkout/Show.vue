@@ -20,6 +20,7 @@
 import CheckoutDetails from './Details.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
+import { printWithAnimation, printUrlInFrame, stockDocumentPrintSheet } from '@/Core/printAnimation';
 
 export default {
   props: { checkout: Object },
@@ -39,7 +40,7 @@ export default {
     print() {
       // Open the redesigned print document when the user may print; otherwise fall back to the page print.
       if (this.$can('print-checkouts')) {
-        window.open(this.route('checkouts.print', this.checkout.id), '_blank');
+        printWithAnimation(stockDocumentPrintSheet(this, this.checkout, 'Check-out'), () => printUrlInFrame(this.route('checkouts.print', this.checkout.id)));
         return;
       }
       window.print();

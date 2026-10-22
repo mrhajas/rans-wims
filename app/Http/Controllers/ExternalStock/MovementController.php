@@ -438,6 +438,40 @@ class MovementController extends Controller
         abort_unless($m->status === ExternalStockMovement::PENDING && ($me->can('update-external-stock') || ((int) $m->user_id === (int) $me->id && $me->can('create-external-stock'))), 403);
     }
 
+    /**
+     * "Add External Personnel" on the movement form: saves a Contact in the category External Personnel and hands it back for the list. The same name or phone number as an existing
+     * External Personnel contact is offered instead of duplicated; a name used by a contact of another category is refused with a clear message.
+     */
+    public function storePerson(Request $request)
+    {
+        $this->need('create-external-stock');
+        $d = $request->validate(['name' => 'required|string|max:50', 'phone' => 'nullable|string|max:40', 'email' => 'nullable|email|max:190', 'location' => 'nullable|string|max:150', 'details' => 'nullable|string|max:500'],
+            ['name.required' => __('Type the name of the person.'), 'email.email' => __('That email address is not valid.')]);
+        if (trim((string) ($d['phone'] ?? '')) === '' && trim((string) ($d['email'] ?? '')) === '') {
+            return response()->json(['message' => __('Give a phone number or an email address.'), 'errors' => ['phone' => [__('Give a phone number or an email address.')]]], 422);
+        }
+        $name = trim(preg_replace('/\s+/', ' ', $d['name']));
+        $phone = \App\Models\Visitor::cleanPhone($d['phone'] ?? null);
+        $byName = Contact::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+        $byPhone = \App\Services\VisitorLogs\VisitorContacts::byPhone($phone);
+        $same = $byName ?: $byPhone;
+        if ($same && $same->category === Contact::EXTERNAL_CATEGORY) {
+            return response()->json(['message' => __('This person is already in the External Personnel list.'), 'existing' => $this->personCard($same)], 409);
+        }
+        if ($byName) {
+            return response()->json(['message' => __('A contact with this name already exists.'), 'errors' => ['name' => [__('A contact called :n already exists in the category :c. Add something to tell them apart, or change that contact\'s category in Contacts.', ['n' => $byName->name, 'c' => $byName->category ?: __('none')])]]], 422);
+        }
+        $c = Contact::create(['name' => $name, 'category' => Contact::EXTERNAL_CATEGORY, 'phone' => $phone, 'email' => trim((string) ($d['email'] ?? '')) ?: null, 'location' => trim((string) ($d['location'] ?? '')) ?: null, 'details' => trim((string) ($d['details'] ?? '')) ?: null]);
+        log_activity('External Personnel ' . $c->name . ' added from External Stock', ['category' => $c->category], $c, 'External Stock');
+
+        return response()->json(['person' => $this->personCard($c)], 201);
+    }
+
+    private function personCard(Contact $c): array
+    {
+        return ['value' => $c->id, 'label' => $c->name . ($c->phone ? ' (' . $c->phone . ')' : ''), 'location' => $c->location, 'name' => $c->name, 'phone' => $c->phone];
+    }
+
     private function people()
     {
         return Contact::query()->where('category', Contact::EXTERNAL_CATEGORY)->orderBy('name')->get(['id', 'name', 'phone', 'location'])->map(fn ($c) => ['value' => $c->id, 'label' => $c->name . ($c->phone ? ' (' . $c->phone . ')' : ''), 'location' => $c->location]);

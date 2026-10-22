@@ -15,6 +15,7 @@ class RoleRequest extends FormRequest
     {
         return [
             'name' => 'required|max:50|unique:roles,name,' . optional($this->route('role'))->id,
+            'all_warehouses' => 'nullable|boolean',
         ];
     }
 

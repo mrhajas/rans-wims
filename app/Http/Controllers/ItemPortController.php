@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ItemPortController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['export' => 'read-items', 'import' => 'create-items', 'save' => 'create-items']);
+    }
+
     public function export()
     {
         return (new FastExcel($this->itemGenerator()))->download('items.xlsx');

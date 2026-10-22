@@ -32,10 +32,10 @@
 /* ---- tables: every column on one line, numbers on the right edge, nothing cut off ---- */
 .tr-ui .lg-table.tr-table { width: 100%; }
 .tr-ui .tr-table th, .tr-ui .tr-table td { vertical-align: middle; }
-.tr-ui .tr-table th.tr-num, .tr-ui .tr-table td.tr-num { text-align: right; white-space: nowrap !important; font-variant-numeric: tabular-nums; }
+.tr-ui .tr-table th.tr-num, .tr-ui .tr-table td.tr-num { text-align: right; white-space: pre !important; font-variant-numeric: tabular-nums; }
 .tr-ui .tr-table th.tr-nw, .tr-ui .tr-table td.tr-nw { white-space: nowrap !important; }
 .tr-ui .tr-table th.tr-c, .tr-ui .tr-table td.tr-c { text-align: center; }
-.tr-ui .tr-table td { overflow-wrap: anywhere; }
+.tr-ui .tr-table td { overflow-wrap: anywhere; white-space: pre-line !important; }
 .tr-ui .tr-table td.tr-wrap { min-width: 150px; }
 .tr-ui .tr-table .tr-cell { display: grid; gap: 2px; min-width: 0; line-height: 1.35; }
 .tr-ui .tr-table .tr-cell > b { font-weight: 700; }
@@ -62,7 +62,7 @@
   .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 10px 0; text-align: right; white-space: normal; min-width: 0; border: 0; border-bottom: 1px solid var(--lg-line, #e3e9f2); background: transparent !important; box-shadow: none; width: auto; }
   .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td:last-child { border-bottom: 0; }
   .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td::before { content: attr(data-label); flex: 0 0 36%; max-width: 36%; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lg-faint, #94a3b8); text-align: left; padding-top: 3px; }
-  .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td { white-space: normal !important; }
+  .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td { white-space: pre-line !important; }
   .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td > * { min-width: 0; }
   .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td .tr-cell, .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td .tr-names { text-align: right; justify-items: end; }
   .tr-ui .lg-table.tr-table tbody tr:not(.lg-empty-row) td .tr-line { justify-content: flex-end; }
@@ -266,3 +266,26 @@ html.dark .tm-foot { border-top-color: rgba(255, 255, 255, 0.1); background: rgb
 @media (max-width: 1239.98px) {
   .tr-ui .lg-table.tr-table td.tr-head > .tr-ci { color: #fff; background: linear-gradient(135deg, var(--ci, #0e7490), color-mix(in srgb, var(--ci, #0e7490) 62%, #000)); box-shadow: 0 6px 10px -5px var(--ci, #0e7490); }
 }
+
+/* ---- report tables (2026-10-22): headings centred, in three shades of one blue that repeat; the travel status as a soft label ---- */
+.tr-ui .lg-table.tr-table thead th:not(.sc-hd) { text-align: center; color: #fff; font-weight: 800; letter-spacing: 0.04em; vertical-align: middle; border: 0; }
+.tr-ui .lg-table.tr-table thead th:not(.sc-hd) * { color: inherit; }
+.tr-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+1) { --hd-bg: #1e40af; background: #1e40af; }
+.tr-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+2) { --hd-bg: #2563eb; background: #2563eb; }
+.tr-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+3) { --hd-bg: #3b82f6; background: #3b82f6; }
+.tr-ui .lg-table.tr-table thead th:not(.sc-hd) { --hd-fg: #fff; box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.25); }
+html.dark .tr-ui .lg-table.tr-table thead th:not(.sc-hd) { --hd-fg: #fff; color: #fff; }
+html.dark .tr-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+1) { background: #1e3a8a; }
+html.dark .tr-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+2) { background: #1d4ed8; }
+html.dark .tr-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+3) { background: #2f6fdd; }
+.tr-ui .tr-st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+.tr-ui .tr-st i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.tr-ui .tr-st-pending { background: #fef6dc; color: #946200; }
+.tr-ui .tr-st-approved { background: #e1f5e8; color: #1c6b3a; }
+.tr-ui .tr-st-rejected { background: #fde6e6; color: #a13030; }
+.tr-ui .tr-st-cancelled { background: #eceff4; color: #5a6578; }
+html.dark .tr-ui .tr-st-pending { background: rgba(245, 180, 40, 0.16); color: #f3cd72; }
+html.dark .tr-ui .tr-st-approved { background: rgba(52, 190, 110, 0.16); color: #7fdba2; }
+html.dark .tr-ui .tr-st-rejected { background: rgba(240, 90, 90, 0.16); color: #f2a0a0; }
+html.dark .tr-ui .tr-st-cancelled { background: rgba(148, 163, 184, 0.16); color: #b7c1d1; }
+.tr-ui .tr-table td.tr-dates { white-space: pre !important; overflow-wrap: normal; text-align: center; font-variant-numeric: tabular-nums; }

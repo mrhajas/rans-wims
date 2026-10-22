@@ -146,6 +146,9 @@ class RoleController extends Controller
 
         $oldName = $role->name;
         $role->update($request->validated());
+        $role->refresh();
+        // "All warehouses": the people who hold this role get every project / warehouse now
+        \App\Support\AllWarehouseRoles::syncRoleUsers($role);
         if ($oldName !== $role->name) {
             \App\Services\UserNotifier::fireRole('role_updated', $role, __('Role Edited'), 'The role ' . $oldName . ' was renamed to ' . $role->name . ' by ' . $request->user()->name . '.', $request->user());
         }

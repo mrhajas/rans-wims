@@ -24,6 +24,9 @@
           </trashed-message>
           <div class="lg-fields">
             <div class="lg-span-2"><text-input v-model="form.name" :error="$page.props.errors.name" :label="$t('Name')" /></div>
+            <div class="lg-span-2 role-allwh">
+              <label class="role-allwh__row"><input v-model="form.all_warehouses" type="checkbox" /> <span><b>{{ $t('All warehouses') }}</b> {{ $t('Everyone with this role is given every project / warehouse, and every one created later.') }}</span></label>
+            </div>
           </div>
         </section>
 
@@ -293,6 +296,7 @@ export default {
       form: this.$inertia.form({
         _method: this.edit ? 'put' : 'post',
         name: this.edit ? this.edit.name : null,
+        all_warehouses: this.edit ? !!this.edit.all_warehouses : false,
       }),
       pform: this.$inertia.form({
         _method: 'post',
@@ -625,4 +629,6 @@ html.dark .permission-readonly-link {
 html.dark .us-danger-soft { color: #fca5a5; }
 html.dark .permission-chip { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.1); color: #cbd5e1; }
 html.dark .permission-chip-active, html.dark .permission-chip-active:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+.role-allwh__row { display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem; line-height: 1.4; cursor: pointer; }
+.role-allwh__row input { margin-top: 3px; }
 </style>

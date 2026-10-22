@@ -10,8 +10,42 @@ use App\Models\WeatherWarning;
 /** The shape the Weather pages (and the Site Diary panel) receive: always labelled by where the numbers come from and when. */
 class WeatherPresenter
 {
+    /** @var array<int,array>|null open warnings per project and the newest observation per project, loaded for all the cards of a page at once */
+    private ?array $warningsMemo = null;
+
+    private ?array $observedMemo = null;
+
     public function __construct(private WeatherManager $manager, private WeatherRiskService $risk)
     {
+    }
+
+    /** Loads what every card needs in a few queries (instead of several per card): warnings, newest site observation, scheduled work. */
+    public function warm(\Illuminate\Support\Collection $projects): void
+    {
+        $ids = $projects->pluck('id')->map(fn ($i) => (int) $i)->all();
+        if (! $ids) {
+            return;
+        }
+        $account = (int) ($projects->first()->account_id ?: 1);
+        $this->warningsMemo = array_fill_keys($ids, []);
+        foreach (WeatherWarning::query()->where('account_id', $account)->whereIn('warehouse_id', $ids)->whereIn('status', [WeatherWarning::OPEN, WeatherWarning::ACKNOWLEDGED])
+            ->where(fn ($q) => $q->whereNull('window_end')->orWhere('window_end', '>=', now()))->orderByRaw("FIELD(status, 'open', 'acknowledged')")->orderByDesc('raised_at')->get()->groupBy('warehouse_id') as $wid => $rows) {
+            $this->warningsMemo[(int) $wid] = $rows->take(8)->map(fn (WeatherWarning $x) => $this->warningRow($x))->all();
+        }
+        $this->observedMemo = array_fill_keys($ids, null);
+        foreach (WeatherObservation::query()->where('account_id', $account)->whereIn('warehouse_id', $ids)->where('observed_at', '>=', now()->subDay())->with(['recorder:id,name', 'warehouse:id,name', 'workPackage:id,title'])->orderByDesc('observed_at')->get()->groupBy('warehouse_id') as $wid => $rows) {
+            $this->observedMemo[(int) $wid] = $this->observation($rows->first());
+        }
+        $this->risk->warmWork($ids, $account);
+        $this->manager->warm($projects, $account);
+    }
+
+    private function warningRow(WeatherWarning $x): array
+    {
+        return [
+            'id' => $x->id, 'title' => $x->title, 'severity' => $x->severity, 'status' => $x->status, 'kind' => $x->kind, 'message' => $x->message,
+            'window_start' => optional($x->window_start)->toDateTimeString(), 'window_end' => optional($x->window_end)->toDateTimeString(),
+        ];
     }
 
     public function card(Warehouse $w, User $user): array
@@ -48,6 +82,10 @@ class WeatherPresenter
 
     public function openWarnings(Warehouse $w): array
     {
+        if ($this->warningsMemo !== null && array_key_exists($w->id, $this->warningsMemo)) {
+            return $this->warningsMemo[$w->id];
+        }
+
         return WeatherWarning::query()->where('account_id', $w->account_id)->where('warehouse_id', $w->id)->whereIn('status', [WeatherWarning::OPEN, WeatherWarning::ACKNOWLEDGED])
             ->where(fn ($q) => $q->whereNull('window_end')->orWhere('window_end', '>=', now()))->orderByRaw("FIELD(status, 'open', 'acknowledged')")->orderByDesc('raised_at')->limit(8)->get()
             ->map(fn (WeatherWarning $x) => [
@@ -59,6 +97,9 @@ class WeatherPresenter
     /** The newest weather observed on site in the last 24 hours (never mixed with provider data). */
     public function latestObserved(Warehouse $w): ?array
     {
+        if ($this->observedMemo !== null && array_key_exists($w->id, $this->observedMemo)) {
+            return $this->observedMemo[$w->id];
+        }
         $o = WeatherObservation::query()->where('account_id', $w->account_id)->where('warehouse_id', $w->id)->where('observed_at', '>=', now()->subDay())->with('recorder:id,name')->orderByDesc('observed_at')->first();
 
         return $o ? $this->observation($o) : null;

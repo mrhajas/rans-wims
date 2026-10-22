@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Storage;
 
 class UnitPortController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['export' => 'read-units', 'import' => 'create-units', 'save' => 'create-units']);
+    }
+
     public function export()
     {
         return (new FastExcel($this->unitGenerator()))->download('units.xlsx');

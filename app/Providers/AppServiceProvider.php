@@ -77,6 +77,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function register()
     {
+        // Spatie's registrar that counts permission resets, so the fast permission lists (App\Traits\FastPermissionChecks) are never used after a change
+        // (extend, not bind: the package registers its own registrar, and this swaps it whenever that one is first used)
+        $this->app->extend(\Spatie\Permission\PermissionRegistrar::class, fn ($registrar, $app) => $registrar instanceof \App\Support\Permissions\TrackedPermissionRegistrar
+            ? $registrar
+            : new \App\Support\Permissions\TrackedPermissionRegistrar($app->make(\Illuminate\Cache\CacheManager::class)));
         $this->app->extend(
             \Illuminate\Translation\Translator::class,
             fn ($translator) => new \App\Helpers\Translator($translator->getLoader(), $translator->getLocale())

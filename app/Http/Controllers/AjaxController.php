@@ -113,6 +113,7 @@ class AjaxController extends Controller
     public function readAlertNotification(Request $request, string $notification)
     {
         abort_unless($request->user(), 403);
+        \Illuminate\Support\Facades\Cache::forget('unread-alerts:' . $request->user()->id); // the page badge is kept for 10 seconds; reading an alert must show at once
 
         $record = $this->alertsNotificationQuery($request->user())
             ->whereKey($notification)
@@ -132,6 +133,7 @@ class AjaxController extends Controller
     public function readModuleAlertNotifications(Request $request, string $module)
     {
         abort_unless($request->user(), 403);
+        \Illuminate\Support\Facades\Cache::forget('unread-alerts:' . $request->user()->id); // the page badge is kept for 10 seconds; reading an alert must show at once
         abort_unless(in_array($module, AppNotification::alertModules(), true), 404);
 
         $this->alertsNotificationQuery($request->user())
@@ -147,6 +149,7 @@ class AjaxController extends Controller
     public function readAllAlertNotifications(Request $request)
     {
         abort_unless($request->user(), 403);
+        \Illuminate\Support\Facades\Cache::forget('unread-alerts:' . $request->user()->id); // the page badge is kept for 10 seconds; reading an alert must show at once
 
         $this->alertsNotificationQuery($request->user())->update(['read_at' => now()]);
 
@@ -300,6 +303,7 @@ class AjaxController extends Controller
 
     public function warehouse(Request $request, Warehouse $warehouse)
     {
+        abort_unless($request->user()->can('read-warehouses') || $request->user()->can('read-items'), 403);
         $filters = $request->all('search', 'trashed');
 
         return Inertia::render('Warehouse/Alerts', [

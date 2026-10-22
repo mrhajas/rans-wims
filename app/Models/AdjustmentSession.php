@@ -19,6 +19,7 @@ class AdjustmentSession extends Model
     protected $fillable = [
         'account_id', 'reference', 'warehouse_id', 'name', 'note', 'status', 'open_warehouse_id', 'started_by_user_id', 'started_at',
         'ended_by_user_id', 'ended_at', 'end_note', 'clearing_super_adjustment_id', 'snapshot',
+        'halt_stock', 'halted_by_user_id', 'halted_at', 'halt_released_by_user_id', 'halt_released_at',
     ];
 
     public $casts = [
@@ -26,6 +27,9 @@ class AdjustmentSession extends Model
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'snapshot' => 'array',
+        'halt_stock' => 'boolean',
+        'halted_at' => 'datetime',
+        'halt_released_at' => 'datetime',
     ];
 
     public function isOpen(): bool
@@ -46,6 +50,22 @@ class AdjustmentSession extends Model
     public function endedBy()
     {
         return $this->belongsTo(User::class, 'ended_by_user_id');
+    }
+
+    public function haltedBy()
+    {
+        return $this->belongsTo(User::class, 'halted_by_user_id');
+    }
+
+    public function haltReleasedBy()
+    {
+        return $this->belongsTo(User::class, 'halt_released_by_user_id');
+    }
+
+    /** True while this open session holds the stock movement of its warehouse. */
+    public function isHalting(): bool
+    {
+        return $this->isOpen() && (bool) $this->halt_stock;
     }
 
     public function superAdjustments()

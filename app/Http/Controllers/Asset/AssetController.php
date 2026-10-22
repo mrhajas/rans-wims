@@ -77,8 +77,11 @@ class AssetController extends Controller
             ->when($scopeWarehouseIds !== null, fn ($q) => $q->whereIn('current_warehouse_id', $scopeWarehouseIds))
             ->sortBy($filters['sort'], $filters['direction'], 'id', 'desc')
             ->paginate()
-            ->withQueryString()
-            ->through(fn (Asset $a) => $this->presentSummary($a, $isSiteEngineer));
+            ->withQueryString();
+        // each row shows its current book value, which reads the newest depreciation entry: fetch those for the whole page in one query (it was one query per row)
+        $latest = \App\Models\AssetDepreciationEntry::query()->whereIn('asset_id', $assets->getCollection()->pluck('id'))->orderByDesc('period_end')->get()->groupBy('asset_id');
+        $assets->getCollection()->each(fn (Asset $a) => $a->setRelation('depreciationEntries', collect($latest->get($a->id, collect())->take(1)->all())));
+        $assets = $assets->through(fn (Asset $a) => $this->presentSummary($a, $isSiteEngineer));
 
         // Register-wide summary for the stat tiles: same scope as the list
         // (disposed hidden unless include_disposed, Site Engineers limited

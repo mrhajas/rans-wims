@@ -58,6 +58,7 @@
               <template v-else>
                 <auto-complete
                   id="warehouse"
+                  stock-move
                   :label="$t('Warehouse')"
                   :suggestions="warehouses"
                   v-model="form.warehouse_id"

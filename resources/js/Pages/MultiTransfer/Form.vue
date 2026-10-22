@@ -10,7 +10,7 @@
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="info" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Details') }}</h2><p class="lg-card-sub">{{ $t('The date and the one destination everything goes to') }}</p></div></header>
           <div class="lg-fields apple-field-grid">
             <div><date-picker v-model="form.date" :error="err('date')" :label="$t('Date')" /></div>
-            <div><auto-complete id="mt-to" :suggestions="warehouses" :label="$t('To Warehouse')" v-model="form.to_warehouse_id" :error="err('to_warehouse_id')" /></div>
+            <div><auto-complete id="mt-to" stock-move :suggestions="warehouses" :label="$t('To Warehouse')" v-model="form.to_warehouse_id" :error="err('to_warehouse_id')" /></div>
             <div class="lg-span-all"><textarea-input v-model="form.details" :label="$t('Details')" :error="err('details')" /></div>
           </div>
         </section>
@@ -33,7 +33,7 @@
               <p v-else-if="l.loading" class="mt-hint">{{ $t('Checking stock...') }}</p>
               <p v-else-if="!l.sources.length" class="mt-err">{{ $t('No warehouse you can use has this item in stock.') }}</p>
               <div v-else class="mt-form-grid">
-                <div class="mt-f"><auto-complete :id="'mt-from-' + l.key" :label="$t('From warehouse')" :suggestions="sourceOptions(l)" v-model="l.from_warehouse_id" :placeholder="$t('Choose...')" /></div>
+                <div class="mt-f"><auto-complete :id="'mt-from-' + l.key" stock-move :label="$t('From warehouse')" :suggestions="sourceOptions(l)" v-model="l.from_warehouse_id" :placeholder="$t('Choose...')" /></div>
                 <div class="mt-f"><label>{{ $t('Quantity') }}</label><input v-model.number="l.quantity" type="number" min="0" step="any" inputmode="decimal" /></div>
                 <div class="mt-f"><auto-complete :id="'mt-unit-' + l.key" :label="$t('Unit')" :suggestions="unitOptions(l)" v-model="l.unit_id" /></div>
               </div>

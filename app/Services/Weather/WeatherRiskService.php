@@ -23,11 +23,32 @@ class WeatherRiskService
     {
     }
 
+    /** @var array<string,Collection> the rules read once per service object (a page with 36 project cards asked for them 36 times) */
+    private array $ruleMemo = [];
+
+    /** @var array<int,Collection>|null scheduled work per project, loaded for all the cards of a page at once */
+    private ?array $workMemo = null;
+
     public function rules(int $accountId, bool $activeOnly = true): Collection
     {
         RuleDefaults::ensure($accountId);
 
-        return WeatherRiskRule::query()->where('account_id', $accountId)->when($activeOnly, fn ($q) => $q->where('is_active', true))->orderBy('sort_order')->orderBy('id')->get();
+        return $this->ruleMemo[$accountId . ($activeOnly ? 'a' : 'x')] ??= WeatherRiskRule::query()->where('account_id', $accountId)->when($activeOnly, fn ($q) => $q->where('is_active', true))->orderBy('sort_order')->orderBy('id')->get();
+    }
+
+    /** One query for the candidate work of every project on the page (instead of one per card). */
+    public function warmWork(array $warehouseIds, int $accountId): void
+    {
+        $now = CarbonImmutable::now(config('weather.timezone'));
+        $to = $now->addHours((int) ($this->rules($accountId)->max('lookahead_hours') ?: 24));
+        $this->workMemo = array_fill_keys($warehouseIds, collect());
+        foreach (WorkPackage::query()->withoutGlobalScope('account')->whereIn('warehouse_id', $warehouseIds)->where('status', '!=', WorkPackage::STATUS_COMPLETED)
+            ->where(function ($q) use ($now, $to) {
+                $q->where(fn ($x) => $x->whereDate('planned_start', '<=', $to->toDateString())->whereDate('planned_finish', '>=', $now->toDateString()))
+                    ->orWhere(fn ($x) => $x->where('status', WorkPackage::STATUS_IN_PROGRESS)->whereDate('planned_start', '<=', $to->toDateString()));
+            })->orderBy('planned_start')->get(['id', 'warehouse_id', 'reference', 'title', 'category', 'planned_start', 'planned_finish', 'status'])->groupBy('warehouse_id') as $wid => $rows) {
+            $this->workMemo[(int) $wid] = $rows->values();
+        }
     }
 
     private function usable(array $state): bool
@@ -38,6 +59,10 @@ class WeatherRiskService
     /** Work not finished that could fall in the window: planned dates overlap it, or already started and still not completed. */
     private function candidateWork(Warehouse $w, CarbonImmutable $from, CarbonImmutable $to): Collection
     {
+        if ($this->workMemo !== null && isset($this->workMemo[$w->id])) {
+            return $this->workMemo[$w->id]; // loaded for the whole page by warmWork()
+        }
+
         return WorkPackage::query()->withoutGlobalScope('account')->where('warehouse_id', $w->id)->where('status', '!=', WorkPackage::STATUS_COMPLETED)
             ->where(function ($q) use ($from, $to) {
                 $q->where(fn ($x) => $x->whereDate('planned_start', '<=', $to->toDateString())->whereDate('planned_finish', '>=', $from->toDateString()))

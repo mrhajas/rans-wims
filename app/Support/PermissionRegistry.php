@@ -69,6 +69,7 @@ class PermissionRegistry
                     'start-adjustment-sessions' => __('Start Adjustment Sessions'),
                     'end-adjustment-sessions' => __('End Adjustment Sessions (and clear the items not counted)'),
                     'print-adjustment-sessions' => __('Print / Download Adjustment Sessions'),
+                    'stop-stock-movement' => __('Stop Stock Movement of a Project / Warehouse during an Adjustment Session (needs the password)'),
                 ],
             ],
 
@@ -241,6 +242,48 @@ class PermissionRegistry
                     'create-payment-voucher-from-travels' => __('Make a Payment Voucher for a ticket agent from the agent balance (the voucher then waits for approval in the Payment Vouchers module)'),
                     'manage-travel-agents' => __('Set or change the opening balance of a ticket agent (what they were owed before Travels started)'),
                     'manage-travel-settings' => __('Change the Travels settings: currencies, travel types and reminder days'),
+                ],
+            ],
+
+            'visitor_logs' => [
+                'label' => __('Visitor Logs'),
+                'abilities' => [
+                    // visits
+                    'read-visitor-logs' => __('Open Visitor Logs: the dashboard and the visitor register (only the visits made or received by the person, unless they may see all)'),
+                    'view-all-visits' => __('See every visit, not only the ones the person registered or is being visited in'),
+                    'view-active-visitors' => __('See who is on the premises now (the Currently on Premises list and report)'),
+                    'create-visitor-logs' => __('Register a visit: check a visitor in'),
+                    'update-visitor-logs' => __('Change the details of a visit (person visited, purpose, remarks), never its times'),
+                    'checkout-visitor-logs' => __('Mark a visitor as leaving (check out)'),
+                    'correct-visitor-logs' => __('Correct the check-in or check-out time of a visit, and set an earlier check-in time (a reason is always recorded)'),
+                    'cancel-visitor-logs' => __('Cancel a visit that was registered by mistake (a reason is always recorded)'),
+                    // directory
+                    'read-visitors' => __('Open the Visitor Directory and search visitors'),
+                    'create-visitors' => __('Add a visitor to the directory (also from inside the visit form)'),
+                    'update-visitors' => __('Change a visitor\'s details'),
+                    'create-duplicate-visitors' => __('Save a visitor even when the name and phone look like an existing one'),
+                    'deactivate-visitors' => __('Deactivate or reactivate a visitor'),
+                    'view-visitor-sensitive' => __('See and change sensitive visitor details: identification, nationality, address and emergency notes'),
+                    'view-visitor-history' => __('See the previous visits of a visitor'),
+                    // incoming items
+                    'read-incoming-items' => __('Open Incoming Mail & Deliveries: the register of letters, packages and documents received at reception'),
+                    'create-incoming-items' => __('Register a letter, package or document received at reception'),
+                    'update-incoming-items' => __('Change the details of a registered item'),
+                    'update-incoming-item-status' => __('Move an item through its statuses (notified, ready for collection...)'),
+                    'handover-incoming-items' => __('Hand an item over to the recipient or an authorized collector, or return it to the sender'),
+                    'correct-incoming-items' => __('Correct a delivery record after the item was handed over (a reason is always recorded)'),
+                    'view-confidential-incoming-items' => __('See the sender and the subject of items marked confidential'),
+                    'attach-incoming-items' => __('Attach, view and download the scans and photos of an item'),
+                    'view-incoming-item-history' => __('See the history of an item: every status, who changed it and when'),
+                    // reports and audit
+                    'read-visitor-reports' => __('Open the Visitor Logs reports'),
+                    'print-visitor-reports' => __('Print, download and export the Visitor Logs reports'),
+                    'view-visitor-notification-log' => __('See the Visitor Notification Log report: who was told, on which channel and whether it was delivered'),
+                    'view-visitor-audit' => __('See the Audit and Correction History report'),
+                    // configuration
+                    'manage-visitor-options' => __('Manage the lists: visit purposes, item types, item statuses, departments and visitor categories'),
+                    'manage-visitor-settings' => __('Change the Visitor Logs settings: thresholds, visitor fields, who can be visited, retention'),
+                    'manage-visitor-notifications' => __('Change who is notified of visitors and incoming items, on which channels, and the messages'),
                 ],
             ],
 

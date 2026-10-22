@@ -11,6 +11,7 @@ class RoleResource extends JsonResource
         return [
             'id'          => $this->id,
             'name'        => $this->name,
+            'all_warehouses' => (bool) ($this->all_warehouses ?? false),
             'deleted_at'  => $this->deleted_at,
             'permissions' => $this->permissions()->pluck('name'),
         ];

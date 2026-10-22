@@ -85,16 +85,19 @@
           <span>{{ $t('Save this contact first, then open it again to add supplier financial and bank details.') }}</span>
         </p>
 
-        <section v-if="edit" class="lg-card">
+        <!-- the records of this contact, by its category: visiting logs, agent statement, attendance, trips, stock statement, payment vouchers... -->
+        <section v-for="p in (edit ? panels : [])" :key="p.key" class="lg-card">
           <div class="fx-link-row">
-            <span class="lg-card-ico lg-ico-pink"><icons name="doc-text" class="w-5 h-5" /></span>
+            <span class="lg-card-ico" :class="'lg-ico-' + p.tone"><icons :name="p.icon" class="w-5 h-5" /></span>
             <div class="min-w-0 flex-1">
-              <h2 class="lg-card-title">{{ $t('Payment Vouchers') }}</h2>
-              <p class="lg-card-sub">{{ $t('Payment vouchers made out to this contact.') }}</p>
+              <h2 class="lg-card-title">{{ p.title }}</h2>
+              <p class="lg-card-sub">{{ p.about }}</p>
             </div>
-            <Link :href="route('payment-vouchers.index', { payee_contact_id: edit.id })" class="lg-btn lg-btn-soft">
-              <icons name="view" class="w-4 h-4" /> {{ $t('View') }}
-            </Link>
+            <div class="fx-links">
+              <Link v-for="(l, i) in p.links" :key="l.url" :href="l.url" class="lg-btn" :class="i === 0 ? 'lg-btn-primary' : 'lg-btn-soft'">
+                <icons name="view" class="w-4 h-4" /> {{ l.label }}
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -176,7 +179,7 @@ import TecSecondaryButton from '@/Jetstream/SecondaryButton.vue';
 export default {
   remember: 'form',
 
-  props: ['edit', 'categories', 'defaultCategory'],
+  props: { edit: Object, categories: Array, defaultCategory: String, panels: { type: Array, default: () => [] } },
 
   components: {
     Dialog,
@@ -289,5 +292,15 @@ export default {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+.fx-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+@media (max-width: 560px) {
+  .fx-links { width: 100%; justify-content: stretch; }
+  .fx-links .lg-btn { flex: 1 1 100%; justify-content: center; }
 }
 </style>

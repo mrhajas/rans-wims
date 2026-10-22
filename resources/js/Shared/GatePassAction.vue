@@ -29,6 +29,11 @@
       {{ $t('Generate Gate Pass') }}
     </button>
 
+    <!-- print: the printer animation, then the browser's print dialog on the pass -->
+    <button v-if="state.note && $can('print-gate-passes')" type="button" class="gp-print lg-tip" :data-tip="$t('Print Gate Pass')" :aria-label="$t('Print Gate Pass')" @click.stop="printNote">
+      <icons name="printer" class="w-4 h-4" />
+    </button>
+
     <!-- Driver + vehicle form -->
     <teleport to="body">
       <dialog-modal v-if="open" :show="open" max-width="lg" @close="close">
@@ -111,6 +116,7 @@
 </template>
 
 <script>
+import { printWithAnimation, printUrlInFrame, paperworkPrintSheet } from '@/Core/printAnimation';
 import DialogModal from '@/Jetstream/DialogModal.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -174,6 +180,9 @@ export default {
   },
 
   methods: {
+    printNote() {
+      printWithAnimation(paperworkPrintSheet(this, this.state, 'Gate Pass'), () => printUrlInFrame(this.route('gate-passes.print', this.state.note.id)));
+    },
     async openModal() {
       this.form.clearErrors();
       this.loadError = '';
@@ -250,6 +259,8 @@ export default {
 /* Compact icon (list rows) */
 .gp-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 2.1rem; width: 2.1rem; min-height: 0; padding: 0; border-radius: 9999px; transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .gp-icon:hover { transform: translateY(-1px); }
+.gp-print { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-height: 0; padding: 0; margin-left: 6px; border-radius: 9999px; color: #0f766e; background: #e6f7f5; border: 0; cursor: pointer; transition: transform 0.15s, background 0.15s; }
+.gp-print:hover { background: #d1f0ec; transform: translateY(-1px); }
 .gp-icon-open { background: #ece9ff; color: #4f46e5; box-shadow: 0 0 0 2px #6d5ff0, 0 0 10px 2px rgba(109, 95, 240, 0.55); animation: gp-glow 2.6s ease-in-out 0.4s infinite; }
 @keyframes gp-glow { 0%, 100% { box-shadow: 0 0 0 2px #6d5ff0, 0 0 6px 1px rgba(109, 95, 240, 0.4); } 50% { box-shadow: 0 0 0 2px #6d5ff0, 0 0 14px 4px rgba(109, 95, 240, 0.75); } }
 .gp-icon-new { background: linear-gradient(145deg, #8f86f4, #5b4fdb); color: #fff; box-shadow: 0 6px 12px -6px rgba(91, 79, 219, 0.85); }

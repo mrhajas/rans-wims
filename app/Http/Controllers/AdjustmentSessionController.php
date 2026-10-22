@@ -11,6 +11,8 @@ use App\Traits\GuardsCompletedWarehouse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -51,7 +53,7 @@ class AdjustmentSessionController extends Controller
         $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']) . '%';
 
         $base = AdjustmentSession::query()->whereIn('warehouse_id', $visible);
-        $rows = (clone $base)->with(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name'])->withCount(['superAdjustments' => fn ($q) => $q->withoutGlobalScope('mine')])
+        $rows = (clone $base)->with(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name', 'haltedBy:id,name'])->withCount(['superAdjustments' => fn ($q) => $q->withoutGlobalScope('mine')])
             ->when($filters['status'] !== '', fn ($q) => $q->where('status', $filters['status']))
             ->when($filters['warehouse_id'] !== '', fn ($q) => $q->where('warehouse_id', (int) $filters['warehouse_id']))
             ->when($filters['search'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('reference', 'like', $like)->orWhere('name', 'like', $like)->orWhereHas('warehouse', fn ($x) => $x->where('name', 'like', $like))))
@@ -63,7 +65,7 @@ class AdjustmentSessionController extends Controller
             return [
                 'id' => $s->id, 'reference' => $s->reference, 'name' => $s->name, 'status' => $s->status, 'warehouse' => optional($s->warehouse)->name,
                 'started_by' => optional($s->startedBy)->name, 'started_at' => optional($s->started_at)->toIso8601String(), 'ended_by' => optional($s->endedBy)->name, 'ended_at' => optional($s->ended_at)->toIso8601String(),
-                'documents' => (int) $s->super_adjustments_count,
+                'documents' => (int) $s->super_adjustments_count, 'halted' => $s->isHalting(), 'halted_by' => $s->isHalting() ? optional($s->haltedBy)->name : null,
                 'counted' => $s->isOpen() ? count(Svc::countedItemIds(Svc::documents($s))) : (int) ($snap['counted_items'] ?? 0),
                 'not_counted' => $s->isOpen() ? Svc::uncounted($s)->count() : (int) (($snap['cleared_count'] ?? 0) + ($snap['kept_count'] ?? 0)),
                 'cleared' => (int) ($snap['cleared_count'] ?? 0),
@@ -79,30 +81,129 @@ class AdjustmentSessionController extends Controller
             'filters' => $filters,
             'stats' => ['total' => (int) $counts->sum(), 'open' => (int) ($counts['Open'] ?? 0), 'ended' => (int) ($counts['Ended'] ?? 0)],
             'warehouses' => Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'code'])->map(fn ($w) => ['value' => $w->id, 'label' => $w->name . ($w->code ? ' (' . $w->code . ')' : ''), 'has_open' => in_array((int) $w->id, $openWh, true)])->values(),
-            'can' => ['start' => $user->can('start-adjustment-sessions'), 'count' => $user->can('create-super-adjustments')],
+            'can' => ['start' => $user->can('start-adjustment-sessions'), 'count' => $user->can('create-super-adjustments'), 'stop' => $user->can('stop-stock-movement')],
         ]);
+    }
+
+    /** The person's own password, asked before the stock movement of a warehouse is stopped or released. */
+    private function confirmPassword(Request $request, string $what): void
+    {
+        if (! Hash::check((string) $request->input('password'), (string) $request->user()->password)) {
+            log_activity('Adjustment Session ' . $what . ' refused: wrong password', [], null, 'Adjustment Session');
+            \App\Services\SecurityAlert::note((string) $request->ip(), 'wrong password on ' . $what);
+            throw ValidationException::withMessages(['password' => [__('The password is not correct.')]]);
+        }
     }
 
     public function store(Request $request)
     {
         $this->need('start-adjustment-sessions');
-        $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id', 'name' => 'nullable|string|max:190', 'note' => 'nullable|string|max:2000']);
+        $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id', 'name' => 'nullable|string|max:190', 'note' => 'nullable|string|max:2000', 'halt_stock' => 'nullable|boolean', 'password' => 'nullable|string|max:1024']);
         abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($data['warehouse_id'])->exists(), 403, __('You cannot use this Project / Warehouse.'));
         if ($response = $this->rejectIfWarehouseCompleted($data['warehouse_id'])) {
             return $response;
         }
+        $halt = ! empty($data['halt_stock']);
+        if ($halt) {
+            abort_unless($request->user()->can('stop-stock-movement'), 403, __('You do not have permission to stop stock movement.'));
+            $this->confirmPassword($request, 'stopping stock movement');
+        }
 
-        $s = Svc::start($request->user(), (int) $data['warehouse_id'], $data['name'] ?? null, $data['note'] ?? null);
-        log_activity('Adjustment Session ' . $s->reference . ' started', ['warehouse_id' => $s->warehouse_id, 'name' => $s->name], $s, 'Adjustment Session');
-        $this->alert('session_started', $s, $request->user(), __('Adjustment Session Started'), $s->reference . ' for ' . optional($s->warehouse)->name . ' was started by ' . $request->user()->name . '.');
+        $s = Svc::start($request->user(), (int) $data['warehouse_id'], $data['name'] ?? null, $data['note'] ?? null, $halt);
+        log_activity('Adjustment Session ' . $s->reference . ' started', ['warehouse_id' => $s->warehouse_id, 'name' => $s->name, 'stock_movement_halted' => $halt], $s, 'Adjustment Session');
+        $this->alert('session_started', $s, $request->user(), __('Adjustment Session Started'), $s->reference . ' for ' . optional($s->warehouse)->name . ' was started by ' . $request->user()->name . '.' . ($halt ? ' ' . __('Stock movement of this Project / Warehouse is halted.') : ''));
+        if ($halt) {
+            $this->alert('stock_halted', $s, $request->user(), __('Stock Movement Halted'), __('Stock movement of :w was halted by :n for the count in :r.', ['w' => optional($s->warehouse)->name, 'n' => $request->user()->name, 'r' => $s->reference]));
+        }
 
-        return redirect()->route('adjustment-sessions.show', $s->id)->with('message', __('Adjustment Session :r started. Every Super Adjustment of this Project / Warehouse is added to it until you end it.', ['r' => $s->reference]));
+        return redirect()->route('adjustment-sessions.show', $s->id)->with('message', __('Adjustment Session :r started. Every Super Adjustment of this Project / Warehouse is added to it until you end it.', ['r' => $s->reference]) . ($halt ? ' ' . __('Stock movement of this Project / Warehouse is halted until the session ends.') : ''));
+    }
+
+    /** Stop (halt = true) or release (halt = false) the stock movement of the session's warehouse while it stays open. Needs the permission and the person's password. */
+    public function halt(Request $request, AdjustmentSession $session)
+    {
+        $this->need('stop-stock-movement');
+        $this->authorizeSession($session);
+        $data = $request->validate(['halt' => 'required|boolean', 'password' => 'required|string|max:1024']);
+        $this->confirmPassword($request, $data['halt'] ? 'stopping stock movement' : 'releasing stock movement');
+        $warehouse = optional($session->warehouse)->name;
+
+        if ($data['halt']) {
+            if (! Svc::halt($request->user(), $session)) {
+                return back()->with('error', $session->isOpen() ? __('Stock movement of this Project / Warehouse is already halted.') : __('This Adjustment Session has already ended.'));
+            }
+            log_activity('Adjustment Session ' . $session->reference . ': stock movement halted', ['warehouse' => $warehouse], $session, 'Adjustment Session');
+            $this->alert('stock_halted', $session, $request->user(), __('Stock Movement Halted'), __('Stock movement of :w was halted by :n for the count in :r.', ['w' => $warehouse, 'n' => $request->user()->name, 'r' => $session->reference]));
+
+            return back()->with('message', __('Stock movement of :w is halted. Nobody can receive, issue or move stock there until the session ends or you release it.', ['w' => $warehouse]));
+        }
+        if (! Svc::release($request->user(), $session)) {
+            return back()->with('error', $session->isOpen() ? __('Stock movement of this Project / Warehouse is not halted.') : __('This Adjustment Session has already ended.'));
+        }
+        log_activity('Adjustment Session ' . $session->reference . ': stock movement released', ['warehouse' => $warehouse], $session, 'Adjustment Session');
+        $this->alert('stock_released', $session, $request->user(), __('Stock Movement Released'), __('Stock movement of :w was released by :n (:r).', ['w' => $warehouse, 'n' => $request->user()->name, 'r' => $session->reference]));
+
+        return back()->with('message', __('Stock movement of :w is released. Stock can move again.', ['w' => $warehouse]));
+    }
+
+    /**
+     * The audit trail of the session, oldest first: who started it, halted / released stock movement, made each Super Adjustment, approved or rejected it, deleted it, ended the session.
+     * Built from the session's own columns and log (so it survives edits) and from the Super Adjustments it holds, deleted ones included.
+     */
+    private function history(AdjustmentSession $s, $docs): array
+    {
+        $ev = [];
+        $add = function (?string $at, ?string $by, string $kind, string $text, ?int $docId = null, ?string $ref = null) use (&$ev) {
+            if ($at) {
+                $ev[] = ['at' => $at, 'by' => $by ?: __('System'), 'kind' => $kind, 'text' => $text, 'doc_id' => $docId, 'ref' => $ref];
+            }
+        };
+        $generic = '/has been (created|updated)\.?$/i';
+        $logs = \Spatie\Activitylog\Models\Activity::query()->where('subject_type', AdjustmentSession::class)->where('subject_id', $s->id)->with('causer:id,name')->orderBy('id')->get();
+        $sessionLogs = $logs->reject(fn ($a) => preg_match($generic, (string) $a->description));
+        foreach ($sessionLogs as $a) {
+            $d = (string) $a->description;
+            $kind = str_contains($d, 'started') ? 'started' : (str_contains($d, 'ended') ? 'ended' : (str_contains($d, 'released') ? 'released' : (str_contains($d, 'halted') ? 'halted' : (str_contains($d, 'refused') ? 'refused' : 'note'))));
+            $add(optional($a->created_at)->toIso8601String(), optional($a->causer)->name, $kind, $d);
+        }
+        // the columns back the log up (a session started before the log was kept, or a log line that was cleared)
+        if (! $sessionLogs->contains(fn ($a) => str_contains((string) $a->description, 'started'))) {
+            $add(optional($s->started_at)->toIso8601String(), optional($s->startedBy)->name, 'started', 'Adjustment Session ' . $s->reference . ' started');
+        }
+        if ($s->ended_at && ! $sessionLogs->contains(fn ($a) => str_contains((string) $a->description, 'ended'))) {
+            $add(optional($s->ended_at)->toIso8601String(), optional($s->endedBy)->name, 'ended', 'Adjustment Session ' . $s->reference . ' ended');
+        }
+
+        $all = SuperAdjustment::withTrashed()->withoutGlobalScope('mine')->where('adjustment_session_id', $s->id)->with(['user:id,name', 'approver:id,name', 'rejecter:id,name'])->get();
+        foreach ($all as $d) {
+            $add(optional($d->created_at)->toIso8601String(), optional($d->user)->name, 'count', __('Super Adjustment :r made', ['r' => $d->reference]) . ((int) $s->clearing_super_adjustment_id === (int) $d->id ? ' (' . __('clearing count') . ')' : ''), $d->id, $d->reference);
+            $add(optional($d->approved_at)->toIso8601String(), optional($d->approver)->name, 'approved', __('Super Adjustment :r approved', ['r' => $d->reference]), $d->id, $d->reference);
+            $add(optional($d->rejected_at)->toIso8601String(), optional($d->rejecter)->name, 'rejected', __('Super Adjustment :r rejected', ['r' => $d->reference]) . ($d->rejection_reason ? ': ' . $d->rejection_reason : ''), $d->id, $d->reference);
+            if ($d->deleted_at) {
+                $add(optional($d->deleted_at)->toIso8601String(), $d->deleted_by ? optional(\App\Models\User::find($d->deleted_by))->name : null, 'deleted', __('Super Adjustment :r deleted', ['r' => $d->reference]), $d->id, $d->reference);
+            }
+        }
+        // what the log says about those Super Adjustments beyond made / approved / rejected (phase 1 approvals, status changes, refused passwords)
+        if ($all->isNotEmpty()) {
+            $byId = $all->keyBy('id');
+            foreach (\Spatie\Activitylog\Models\Activity::query()->where('subject_type', SuperAdjustment::class)->whereIn('subject_id', $all->pluck('id'))->with('causer:id,name')->orderBy('id')->get() as $a) {
+                $d = (string) $a->description;
+                if (preg_match($generic, $d) || in_array($d, ['Super Adjustment Approved', 'Super Adjustment Rejected'], true) || str_contains($d, 'deleted')) {
+                    continue;
+                }
+                $doc = $byId->get($a->subject_id);
+                $add(optional($a->created_at)->toIso8601String(), optional($a->causer)->name, 'note', ($doc ? $doc->reference . ': ' : '') . $d, $a->subject_id, optional($doc)->reference);
+            }
+        }
+        usort($ev, fn ($x, $y) => strcmp($x['at'], $y['at']));
+
+        return $ev;
     }
 
     /** What the Show page, the print and the PDF all read. */
     private function payload(AdjustmentSession $s): array
     {
-        $s->loadMissing(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name']);
+        $s->loadMissing(['warehouse:id,name,code', 'startedBy:id,name', 'endedBy:id,name', 'haltedBy:id,name', 'haltReleasedBy:id,name']);
         $clearingDoc = $s->clearing_super_adjustment_id ? SuperAdjustment::withoutGlobalScope('mine')->find($s->clearing_super_adjustment_id, ['id', 'reference', 'status']) : null;
         $docs = Svc::documents($s);
         $snap = (array) $s->snapshot;
@@ -126,12 +227,20 @@ class AdjustmentSessionController extends Controller
                 'warehouse' => ['id' => $s->warehouse_id, 'name' => optional($s->warehouse)->name, 'code' => optional($s->warehouse)->code],
                 'started_by' => optional($s->startedBy)->name, 'started_at' => optional($s->started_at)->toIso8601String(),
                 'ended_by' => optional($s->endedBy)->name, 'ended_at' => optional($s->ended_at)->toIso8601String(), 'end_note' => $s->end_note,
+                'halt' => ['active' => $s->isHalting(), 'ever' => $s->halted_at !== null, 'by' => optional($s->haltedBy)->name, 'at' => optional($s->halted_at)->toIso8601String(), 'released_by' => optional($s->haltReleasedBy)->name, 'released_at' => optional($s->halt_released_at)->toIso8601String()],
                 'clearing' => $clearingDoc ? ['id' => $clearingDoc->id, 'reference' => $clearingDoc->reference, 'status' => $clearingDoc->status] : null,
             ],
-            'documents' => $docs->map(fn ($d) => ['id' => $d->id, 'reference' => $d->reference, 'status' => $d->status, 'date' => (string) $d->date, 'by' => optional($d->user)->name, 'items' => (int) $d->items_count, 'created_at' => optional($d->created_at)->toIso8601String(), 'is_clearing' => (int) $s->clearing_super_adjustment_id === (int) $d->id])->values(),
+            'documents' => $docs->map(fn ($d) => [
+                'id' => $d->id, 'reference' => $d->reference, 'status' => $d->status, 'date' => (string) $d->date, 'by' => optional($d->user)->name, 'items' => (int) $d->items_count,
+                'created_at' => optional($d->created_at)->toIso8601String(), 'reason' => $d->reason,
+                'approved_by' => optional($d->approver)->name, 'approved_at' => optional($d->approved_at)->toIso8601String(),
+                'rejected_by' => optional($d->rejecter)->name, 'rejected_at' => optional($d->rejected_at)->toIso8601String(), 'rejection_reason' => $d->rejection_reason,
+                'is_clearing' => (int) $s->clearing_super_adjustment_id === (int) $d->id,
+            ])->values(),
+            'history' => $this->history($s, $docs),
             'pending' => $pending->pluck('reference')->values(),
             'uncounted' => $uncounted->values(),
-            'stats' => ['documents' => $docs->count(), 'counted' => $countedN, 'not_counted' => $notN, 'moved' => $uncounted->where('moved', true)->count(), 'cleared' => (int) ($snap['cleared_count'] ?? 0), 'kept' => (int) ($snap['kept_count'] ?? 0), 'percent' => $stocked > 0 ? round($countedN * 100 / $stocked, 1) : 0],
+            'stats' => ['not_counted_value' => round((float) $uncounted->sum('value'), 2), 'documents' => $docs->count(), 'counted' => $countedN, 'not_counted' => $notN, 'moved' => $uncounted->where('moved', true)->count(), 'cleared' => (int) ($snap['cleared_count'] ?? 0), 'kept' => (int) ($snap['kept_count'] ?? 0), 'percent' => $stocked > 0 ? round($countedN * 100 / $stocked, 1) : 0],
         ];
     }
 
@@ -141,7 +250,7 @@ class AdjustmentSessionController extends Controller
         $user = $request->user();
 
         return Inertia::render('AdjustmentSession/Show', $this->payload($session) + [
-            'can' => ['end' => $user->can('end-adjustment-sessions'), 'clear' => $user->can('end-adjustment-sessions') && $user->can('create-super-adjustments'), 'count' => $user->can('create-super-adjustments'), 'print' => $user->can('print-adjustment-sessions')],
+            'can' => ['end' => $user->can('end-adjustment-sessions'), 'clear' => $user->can('end-adjustment-sessions') && $user->can('create-super-adjustments'), 'count' => $user->can('create-super-adjustments'), 'print' => $user->can('print-adjustment-sessions'), 'stop' => $user->can('stop-stock-movement')],
         ]);
     }
 

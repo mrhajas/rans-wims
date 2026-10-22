@@ -29,6 +29,7 @@ class ItemReportController extends Controller
         return Pdf::loadView('items.report', $data)->setPaper('a4')->download('item-' . preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $data['item']->code) . '-' . now()->format('Ymd-His') . '.pdf');
     }
 
+    /** ?embed=1: the page is loaded in a hidden frame and printed by the page that asked for it, so it must not print itself. */
     private function data(Request $request, int $id, bool $isPdf): array
     {
         abort_unless($request->user() && $request->user()->can('read-items'), 403);
@@ -43,7 +44,7 @@ class ItemReportController extends Controller
         $qty = (float) $stock->sum('quantity');
 
         return [
-            'isPdf' => $isPdf, 'autoPrint' => ! $isPdf, 'companyName' => optional($request->user()->account ?? null)->name,
+            'isPdf' => $isPdf, 'autoPrint' => ! $isPdf && ! $request->boolean('embed'), 'companyName' => optional($request->user()->account ?? null)->name,
             'item' => $item, 'stock' => $stock, 'price' => $price, 'qty' => $qty, 'value' => $qty * $price,
             'printedBy' => $request->user()->name, 'printedAt' => now()->format('d M Y H:i'),
         ];

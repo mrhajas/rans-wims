@@ -23,6 +23,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('acct:scan')->hourly()->withoutOverlapping();
         $schedule->command('subcontracts:scan')->dailyAt('07:30')->withoutOverlapping();
         $schedule->command('travels:remind')->dailyAt('07:20')->withoutOverlapping();
+        $schedule->command('visitor-logs:watch')->everyThirtyMinutes()->withoutOverlapping();
         $schedule->command('subcontracts:sweep')->hourly()->withoutOverlapping();
         $schedule->command('staff-contracts:remind')->dailyAt('06:30')->withoutOverlapping();
         $schedule->command('signatories:seed-mappings --housekeeping')->dailyAt('03:40')->withoutOverlapping();

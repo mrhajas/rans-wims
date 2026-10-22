@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
 
 class CheckoutPortController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['export' => 'read-checkouts', 'import' => 'create-checkouts', 'save' => 'create-checkouts']);
+    }
+
     public function export()
     {
         return (new FastExcel($this->itemGenerator()))->download('items.xlsx');

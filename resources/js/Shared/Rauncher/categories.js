@@ -13,6 +13,9 @@ export const CATEGORY_ALIASES = {
   users: ['user', 'users'],
   'site-meetings': ['site-meeting', 'site-meetings', 'meeting', 'meetings'],
   'transport-records': ['transport', 'transport-record', 'transport-records', 'trip', 'trips', 'route', 'routes'],
+  'visitor-visits': ['visit', 'visits', 'visitor-visit', 'visitor-visits'],
+  visitors: ['visitor', 'visitors'],
+  'incoming-items': ['incoming', 'incoming-item', 'incoming-items', 'parcel', 'parcels', 'letter', 'letters', 'mail'],
   'loading-personnel': ['loading', 'unloading', 'loader', 'loaders', 'personnel', 'loading-personnel'],
 };
 

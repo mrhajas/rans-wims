@@ -80,11 +80,12 @@ export default {
     warehouseItems() {
       const selectedWarehouseId = this.form.from_warehouse_id || this.form.warehouse_id || this.form.to_warehouse_id;
 
-      if (!this.listing?.length || !selectedWarehouseId) {
+      if (!selectedWarehouseId) {
         return [];
       }
 
-      const warehouse = this.listing.find(l => String(l.id) === String(selectedWarehouseId));
+      // the page brings the stock list of the warehouses already chosen; any other is fetched when it is picked (fetchedItems)
+      const warehouse = (this.listing || []).find(l => String(l.id) === String(selectedWarehouseId)) || { items: this.fetchedItems[selectedWarehouseId] || [] };
       if (!warehouse?.items?.length) {
         return [];
       }
@@ -106,12 +107,15 @@ export default {
 
   watch: {
     'form.warehouse_id'() {
+      this.loadWarehouseItems();
       this.syncItemSelection();
     },
     'form.from_warehouse_id'() {
+      this.loadWarehouseItems();
       this.syncItemSelection();
     },
     'form.to_warehouse_id'() {
+      this.loadWarehouseItems();
       this.syncItemSelection();
     },
     'form.category_id'() {
@@ -122,6 +126,7 @@ export default {
   data() {
     const urlParams = new URLSearchParams(window.location.search);
     return {
+      fetchedItems: {},
       form: this.$inertia.form({
         start_date: urlParams.get('start_date'),
         end_date: urlParams.get('end_date'),
@@ -142,9 +147,28 @@ export default {
   },
 
   methods: {
+    // the warehouse's stocked items, when the page did not bring them (a warehouse picked after the page loaded)
+    async loadWarehouseItems() {
+      const id = this.form.from_warehouse_id || this.form.warehouse_id || this.form.to_warehouse_id;
+      if (!id || (this.listing || []).some(l => String(l.id) === String(id)) || this.fetchedItems[id] !== undefined) {
+        return;
+      }
+      this.fetchedItems = { ...this.fetchedItems, [id]: [] };
+      try {
+        const r = await window.axios.get(route('reports.warehouse-items', id));
+        this.fetchedItems = { ...this.fetchedItems, [id]: r.data || [] };
+      } catch (e) {
+        this.fetchedItems = { ...this.fetchedItems, [id]: [] };
+      }
+      this.syncItemSelection();
+    },
     syncItemSelection() {
       if (!this.form.item_id) {
         return;
+      }
+      const picked = this.form.from_warehouse_id || this.form.warehouse_id || this.form.to_warehouse_id;
+      if (picked && !(this.listing || []).some(l => String(l.id) === String(picked)) && !this.fetchedItems[picked]?.length) {
+        return; // that warehouse's items are still being fetched: keep the item until they arrive
       }
 
       const allowedIds = this.warehouseItems.map(item => String(item.id));

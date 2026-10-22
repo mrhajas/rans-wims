@@ -10,7 +10,7 @@
           <header class="lg-card-head"><span class="lg-card-ico" :class="{ withdrawal: 'lg-ico-rose', deposit: 'lg-ico-emerald', opening: 'lg-ico-violet' }[form.kind]"><icons :name="form.kind === 'withdrawal' ? 'out' : form.kind === 'deposit' ? 'in' : 'plus'" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Movement Details') }}</h2><p class="lg-card-sub">{{ $t('Who, where and when') }}</p></div></header>
           <sc-tabs :tabs="kindTabs" :model-value="form.kind" @update:model-value="k => (form.kind = k)" />
           <div class="lg-fields ex-top">
-            <div class="ac-f"><label>{{ $t('External person') }} *</label><acct-select v-model="form.contact_id" :options="people" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('contact_id') }}</span><small class="lg-subtext">{{ $t('Not in the list?') }} <a :href="newPersonUrl" target="_blank" rel="noopener">{{ $t('Add them as a contact in the External Personnel category') }}</a></small></div>
+            <div class="ac-f"><label>{{ $t('External person') }} *</label><acct-select v-model="form.contact_id" :options="peopleAll" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('contact_id') }}</span><div class="ex-addwrap"><small class="lg-subtext">{{ $t('Not in the list? Add them here: they are saved in Contacts as External Personnel.') }}</small><button type="button" class="lg-btn lg-btn-soft ex-addp" @click="personOpen = true"><icons name="plus" class="w-4 h-4" />{{ $t('Add External Personnel') }}</button></div></div>
             <div class="ac-f"><label>{{ $t('Location') }}</label><input :value="personLocation" readonly tabindex="-1" class="ex-ro" :placeholder="form.contact_id ? $t('No location on this contact') : $t('Choose a person first')" /><small class="lg-subtext">{{ $t('Taken from the contact of the External person.') }}</small></div>
             <div class="ac-f"><label>{{ $t('Project(s) / Warehouse(s)') }} <b v-if="!out">*</b></label><acct-select v-model="form.warehouse_id" :options="warehouses" :placeholder="out ? $t('Any warehouse') : $t('Choose...')" clearable /><span class="ac-err">{{ err('warehouse_id') }}</span><small v-if="out" class="lg-subtext">{{ $t('Optional. Leave empty and the stock comes from the warehouse that holds it for this person.') }}</small></div>
             <div class="ac-f"><label>{{ $t('Date') }} *</label><date-picker v-model="form.date" :clearable="false" /><span class="ac-err">{{ err('date') }}</span></div>
@@ -69,10 +69,12 @@
           <div class="lg-actionbar-btns"><Link :href="m ? route('external-stock.show', m.id) : route('external-stock.index')" class="lg-btn t-slate"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</Link><button type="submit" class="lg-btn lg-btn-primary" :disabled="form.processing || !canSave"><icons name="send" class="w-4 h-4" />{{ form.processing ? $t('Saving...') : $t('Save for approval') }}</button></div></div>
       </form>
     </div>
+    <person-modal :show="personOpen" @close="personOpen = false" @saved="personSaved" />
   </admin-layout>
 </template>
 
 <script>
+import PersonModal from './PersonModal.vue';
 import ScTabs from '../Subcontracts/ScTabs.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -87,11 +89,13 @@ import { router } from '@inertiajs/vue3';
 let seq = 0;
 
 export default {
-  components: { ScTabs, AdminLayout, PageHeader, Link, DatePicker, AutoComplete, AcctSelect, AcctDropzone, AcctFileList },
+  components: { ScTabs, AdminLayout, PageHeader, Link, DatePicker, AutoComplete, AcctSelect, AcctDropzone, AcctFileList, PersonModal },
   props: { m: Object, kind: String, kinds: Array, people: Array, warehouses: Array, drivers: Array, vehicles: Array, today: String, newPersonUrl: String, attachments: Array },
   data() {
+    // (personOpen and addedPeople: the person added in the window joins the list at once)
     const m = this.m || {};
     return {
+      personOpen: false, addedPeople: [],
       typeDriver: !!(m.driver_name && !m.driver_contact_id), typeVehicle: !!(m.vehicle_plate && !m.asset_id),
       form: this.$inertia.form({
         kind: m.kind || this.kind, date: m.date || this.today, contact_id: m.contact_id || null, warehouse_id: m.warehouse_id || null, purpose: m.purpose || '',
@@ -106,7 +110,8 @@ export default {
     pageTitle() { return this.m ? this.$t('Edit :r', { r: this.m.reference }) : { withdrawal: this.$t('New Stock Out'), deposit: this.$t('New Stock In'), opening: this.$t('New Opening Stock') }[this.form.kind]; },
     subtitle() { return { withdrawal: this.$t('External Personnel take some of their stock out of a warehouse.'), deposit: this.$t('External Personnel bring more stock into a warehouse.'), opening: this.$t('Stock that External Personnel already have in a warehouse when the module starts.') }[this.form.kind]; },
     kindTabs() { return [{ key: 'withdrawal', label: this.$t('Stock Out'), icon: 'out', tone: 'rose' }, { key: 'deposit', label: this.$t('Stock In'), icon: 'in', tone: 'emerald' }, { key: 'opening', label: this.$t('Opening Stock'), icon: 'plus', tone: 'violet' }]; },
-    personLocation() { const p = this.people.find(x => x.value === this.form.contact_id); return p && p.location ? p.location : ''; },
+    peopleAll() { return [...this.people, ...this.addedPeople.filter(a => !this.people.some(p => p.value === a.value))]; },
+    personLocation() { const p = this.peopleAll.find(x => x.value === this.form.contact_id); return p && p.location ? p.location : ''; },
     canSave() { return this.form.lines.length > 0 && this.form.lines.every(l => Number(l.quantity) > 0 && !this.lineBad(l)); },
   },
   watch: {
@@ -116,6 +121,7 @@ export default {
   },
   mounted() { this.refreshAll(); },
   methods: {
+    personSaved(p) { if (!this.addedPeople.some(a => a.value === p.value)) this.addedPeople.push(p); this.form.contact_id = p.value; this.personOpen = false; },
     err(k) { return (this.$page.props.errors || {})[k]; },
     lineErr(i) { return (this.$page.props.errors || {})['lines.' + i + '.quantity'] || (this.$page.props.errors || {})['lines.' + i + '.item_id'] || ''; },
     qty(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 }); },
@@ -146,6 +152,8 @@ export default {
 </script>
 
 <style scoped>
+.ex-addwrap { display: grid; gap: 8px; justify-items: start; margin-top: 4px; }
+.ex-addp { min-height: 38px; }
 .ex-ro { background: var(--lg-soft, #f1f5f9); color: var(--lg-mute); cursor: default; }
 .ex-top { align-items: start; }
 .ex-top .ac-f > label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

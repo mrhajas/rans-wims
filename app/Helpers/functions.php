@@ -507,6 +507,14 @@ if (! function_exists('transport_settings')) {
             'transport_loading_daily_rate' => '15000',
         ];
 
+        // A transfer list asked for these two settings once per row (50 identical queries a page): kept for two seconds, which covers one page and
+        // can never be stale for long (a long-running queue worker must not keep an old price).
+        static $memo = [];
+        $key = \Illuminate\Support\Facades\DB::getDefaultConnection() . ':' . \Illuminate\Support\Facades\DB::connection()->getDatabaseName() . ':' . $accountId;
+        if (isset($memo[$key]) && $memo[$key][0] > microtime(true)) {
+            return $memo[$key][1];
+        }
+
         $stored = \App\Models\Setting::query()
             ->where('account_id', $accountId)
             ->whereIn('tec_key', array_keys($defaults))
@@ -515,6 +523,7 @@ if (! function_exists('transport_settings')) {
         $merged = array_merge($defaults, $stored->all());
         $merged['transport_default_price'] = (float) $merged['transport_default_price'];
         $merged['transport_loading_daily_rate'] = (float) $merged['transport_loading_daily_rate'];
+        $memo[$key] = [microtime(true) + 2, $merged];
 
         return $merged;
     }

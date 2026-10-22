@@ -79,7 +79,7 @@ class ReturnMaterialController extends Controller
     {
         abort_unless($this->canReturn(), 403);
         abort_if($this->isRestrictedToOwnTransactions() && (int) $issueMaterial->user_id !== (int) auth()->id(), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($issueMaterial->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($issueMaterial->warehouse_id)) {
             return $response;
         }
 
@@ -105,7 +105,7 @@ class ReturnMaterialController extends Controller
     {
         abort_unless($this->canReturn(), 403);
         abort_if($this->isRestrictedToOwnTransactions() && (int) $issueMaterial->user_id !== (int) auth()->id(), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($issueMaterial->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($issueMaterial->warehouse_id)) {
             return $response;
         }
 

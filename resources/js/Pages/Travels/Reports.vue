@@ -33,11 +33,11 @@
       </section>
       <section v-if="report" class="lg-card">
         <div class="ac-split" style="margin-bottom: 8px"><span v-for="(v, k) in report.filters" :key="k">{{ k }}: <b>{{ v }}</b></span></div>
-        <div class="ac-attn" v-if="report.tiles.length > 1"><div v-for="x in report.tiles" :key="x.label" class="ac-tile ac-glow tone-navy"><div><div class="n" :class="{ 'tr-tm': isMoney(x.value) }" style="font-size: 1rem">{{ x.value }}</div><div class="l">{{ x.label }}</div></div></div></div>
+        <div class="ac-attn" v-if="report.tiles.length > 1"><div v-for="x in report.tiles" :key="x.label" class="ac-tile ac-glow tone-navy"><div><div class="n" :class="isMoney(x.value) ? (/^All costs/.test(x.label) ? 'tr-g' : 'tr-tm') : ''" style="font-size: 1rem">{{ x.value }}</div><div class="l">{{ x.label }}</div></div></div></div>
         <div class="lg-table-wrap"><table class="lg-table lg-responsive tr-table tr-wide">
           <thead><tr><th v-for="c in report.columns" :key="c.key" :class="{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no' }">{{ c.label }}</th></tr></thead>
           <tbody>
-            <tr v-for="(row, i) in report.rows" :key="i"><td v-for="c in report.columns" :key="c.key" :data-label="c.label" :class="[{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no' }, tone(c)]">{{ row[c.key] === null || row[c.key] === undefined || row[c.key] === '' ? '-' : row[c.key] }}</td></tr>
+            <tr v-for="(row, i) in report.rows" :key="i"><td v-for="c in report.columns" :key="c.key" :data-label="c.label" :class="[{ 'tr-num': c.align === 'right', 'tr-no': c.key === 'no', 'tr-dates': c.key === 'dates' }, tone(c)]"><span v-if="c.key === 'status' && row._status" class="tr-st" :class="statusTone(row._status)"><i></i>{{ row[c.key] }}</span><template v-else>{{ row[c.key] === null || row[c.key] === undefined || row[c.key] === '' ? '-' : row[c.key] }}</template></td></tr>
             <tr v-if="!report.rows.length" class="lg-empty-row"><td class="lg-empty" :colspan="report.columns.length">{{ t === 'agent_statement' && !f.contact_id ? $t('Choose the ticket agent for this statement.') : $t('Nothing was recorded for this report.') }}</td></tr>
           </tbody></table></div>
         <p v-if="report.truncated" class="lg-sub" style="margin-top: 6px">{{ $t('Showing the first :n of :t rows. Export to get all of them.', { n: report.rows.length, t: report.total_rows }) }}</p>
@@ -75,9 +75,12 @@ export default {
   methods: {
     // amounts wear a colour: maroon = owed / cost, green = paid, orange = balance, pending and TZS equivalents
     // a tile that holds money (a currency and an amount) is a total: maroon
+    // a travel's status as a soft coloured label (the key comes from the server, so it still works when the shown word is translated)
+    statusTone(key) { return { 'Pending Approval': 'tr-st-pending', Approved: 'tr-st-approved', Rejected: 'tr-st-rejected', Cancelled: 'tr-st-cancelled' }[key] || 'tr-st-cancelled'; },
     isMoney(v) { return /^([A-Z]{3} )?-?[\d,]+\.\d{2}$/.test(String(v)); },
     tone(c) {
       if (c.type !== 'money' && c.key !== 'rate') return '';
+      if (c.key === 'all_tzs') return 'tr-g'; // "All costs" is green; every other column keeps its own colour
       if (['balance', 'balance_after', 'total', 'all_tzs'].includes(c.key)) return 'tr-tm';
       if (c.key === 'rate' || ['tzs', 'pending'].includes(c.key)) return 'tr-o';
       if (c.key === 'paid' || (this.t === 'payments' && c.key === 'amount')) return 'tr-g';

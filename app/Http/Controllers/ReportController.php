@@ -37,6 +37,11 @@ use Rap2hpoutre\FastExcel\FastExcel;
 
 class ReportController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(array_fill_keys(['general', 'generalPdf', 'checkin', 'checkout', 'transfer', 'adjustment', 'warehousestock', 'warehouseamounts', 'warehousecheckin', 'mostUsedMaterial', 'warehouseItems'], 'read-reports'));
+    }
+
     public function timelyMaterialUsage(Request $request)
     {
         $user = $request->user();
@@ -1193,7 +1198,7 @@ class ReportController extends Controller
             'users'       => User::ofAccount()->get(),
             'categories'  => Category::ofAccount()->get(),
             'warehouses'  => Warehouse::ofAccount()->active()->visible()->get(),
-            'listing'     => $this->warehouseItemListing(),
+            'listing'     => $this->warehouseItemListing($this->selectedWarehouseIds($filters)),
             'adjustments' => new AdjustmentCollection(
                 $query->paginate()->withQueryString()
             ),
@@ -1247,7 +1252,7 @@ class ReportController extends Controller
             'contacts'   => Contact::ofAccount()->get(),
             'categories' => Category::ofAccount()->get(),
             'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
-            'listing'    => $this->warehouseItemListing(),
+            'listing'    => $this->warehouseItemListing($this->selectedWarehouseIds($filters)),
             'checkins'   => new CheckinCollection(
                 $query->paginate()->withQueryString()
             ),
@@ -1301,7 +1306,7 @@ class ReportController extends Controller
             'contacts'   => Contact::ofAccount()->get(),
             'categories' => Category::ofAccount()->get(),
             'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
-            'listing'    => $this->warehouseItemListing(),
+            'listing'    => $this->warehouseItemListing($this->selectedWarehouseIds($filters)),
             'checkouts'  => new CheckoutCollection(
                 $query->paginate()->withQueryString()
             ),
@@ -1432,7 +1437,7 @@ class ReportController extends Controller
 
         $warehouses = Warehouse::all();
 
-        $listing = $this->warehouseItemListing();
+        $listing = $this->warehouseItemListing($this->selectedWarehouseIds($filters));
 
         $query = Transfer::with(['fromWarehouse', 'toWarehouse', 'user'])
             ->when(!empty($filters['item_id']), function ($query) use ($filters) {
@@ -1533,9 +1538,24 @@ class ReportController extends Controller
         return $pdf->download('general-stock-report-' . now()->format('Ymd-His') . '.pdf');
     }
 
-    private function warehouseItemListing()
+    /** The project / warehouse ids picked in a report's filters (the report page only needs those warehouses' stock lists up front; others are fetched when chosen). */
+    private function selectedWarehouseIds(array $filters): array
     {
-        $warehouses = Warehouse::ofAccount()->active()->visible()->orderBy('name')->get();
+        return array_values(array_unique(array_filter(array_map('intval', array_filter([$filters['warehouse_id'] ?? null, $filters['from_warehouse_id'] ?? null, $filters['to_warehouse_id'] ?? null], fn ($v) => ctype_digit((string) $v))))));
+    }
+
+    /** The stocked items of ONE warehouse for the filter form (loaded when the person picks that warehouse). */
+    public function warehouseItems(Warehouse $warehouse)
+    {
+        abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($warehouse->id)->exists(), 404);
+
+        return response()->json($this->warehouseItemListing([$warehouse->id])->first()['items'] ?? []);
+    }
+
+    /** @param  array<int,int>|null  $onlyIds  only these warehouses (null = all of them) */
+    private function warehouseItemListing(?array $onlyIds = null)
+    {
+        $warehouses = Warehouse::ofAccount()->active()->visible()->when($onlyIds !== null, fn ($q) => $q->whereIn('id', $onlyIds ?: [0]))->orderBy('name')->get();
 
         // One query for the stock of every warehouse (was one query per warehouse), grouped in PHP.
         $stockByWarehouse = Stock::whereIn('warehouse_id', $warehouses->pluck('id'))

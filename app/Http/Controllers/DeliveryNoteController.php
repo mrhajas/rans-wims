@@ -47,6 +47,7 @@ class DeliveryNoteController extends Controller
                 ? ['id' => $note->id, 'reference' => $note->reference, 'url' => route('delivery-notes.show', $note->id)]
                 : null,
             'exists' => (bool) $note,
+            'record_reference' => $record->reference,
             'can_generate' => ! $note && ! $record->draft && $user->can('create-delivery-notes'),
             'generate_url' => match ($sourceType) {
                 DeliveryNote::SOURCE_TRANSFER => route('transfers.delivery-note.store', $record->id),
@@ -129,7 +130,7 @@ class DeliveryNoteController extends Controller
 
         return view('delivery-notes.document', $this->documentData($delivery_note, false) + [
             'pdfUrl' => route('delivery-notes.pdf', $delivery_note->id),
-            'autoPrint' => true,
+            'autoPrint' => ! request()->boolean('embed'), // embed = loaded in a hidden frame and printed by the page that asked for it
         ]);
     }
 

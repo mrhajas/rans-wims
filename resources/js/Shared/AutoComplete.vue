@@ -70,9 +70,11 @@
                     <button
                       type="button"
                       @click="suggestionClick(ri)"
-                      :class="isActive(ri) ? 'bg-blue-600 text-white' : 'bg-white text-gray-900'"
-                      class="w-full text-left flex items-center select-none relative py-2 pl-3 pr-9 hover:bg-blue-600 hover:text-white"
+                      :class="[haltOf(r) ? 'ac-halted' : isActive(ri) ? 'bg-blue-600 text-white' : 'bg-white text-gray-900', haltOf(r) ? '' : 'hover:bg-blue-600 hover:text-white']"
+                      :aria-disabled="haltOf(r) ? 'true' : null"
+                      class="w-full text-left flex items-center select-none relative py-2 pl-3 pr-9"
                     >
+                      <icons v-if="haltOf(r)" name="lock-closed" class-name="w-3.5 h-3.5 flex-none ac-halted-ico" />
                       <span v-if="statusDotClass(r)" class="ac-status-dot flex-none" :class="statusDotClass(r)"></span>
                       <span
                         class="ml-3 block font-normal truncate"
@@ -84,6 +86,7 @@
                       <span v-if="statusDotClass(r) === 'ac-dot-green'" class="ml-2 text-[10px] font-semibold uppercase tracking-wide opacity-80">
                         {{ $t('Completed') }}
                       </span>
+                      <span v-if="haltOf(r)" class="ac-halted-tag">{{ $t('Stock movement halted') }} · {{ haltOf(r).by }}</span>
                     </button>
                   </li>
                 </template>
@@ -104,6 +107,8 @@
         </div>
       </Teleport>
       <tec-input-error v-if="error" :message="error"  class="mt-1" />
+      <!-- a halted warehouse already chosen (for example the one the person is working in): say so at once and name who halted it -->
+      <p v-if="selectedHalt" class="ac-halt-note" role="alert"><icons name="lock-closed" class-name="w-3.5 h-3.5 flex-none" /><span>{{ selectedHalt.message }}</span></p>
     </div>
 
     <!-- Teleported to <body> and positioned via getBoundingClientRect (not a
@@ -174,10 +179,14 @@ export default {
     searchable: { type: Boolean, default: true },
     freeform: { type: Boolean, default: false },
     keepFocus: { type: Boolean, default: false },
+    // a remote (URL) list shows its first choices as soon as the field is clicked, before anything is typed
+    loadOnFocus: { type: Boolean, default: false },
     resetSearch: { type: Boolean, default: false },
     absoluteDropdown: { type: Boolean, default: true },
     // set to false to keep a project / warehouse list flat even when it holds every category
     group: { type: Boolean, default: true },
+    // set on the warehouse pickers of the forms that move stock: a warehouse whose stock movement is halted (Adjustment Session) is shown locked and cannot be chosen
+    stockMove: { type: Boolean, default: false },
   },
 
   watch: {
@@ -243,6 +252,16 @@ export default {
       if (page && page.groupedWarehouseLists === false) return false;
 
       return isFullWarehouseList(this.suggestions);
+    },
+    // id => who halted it, when, which session (shared by the server on every page)
+    haltMap() {
+      const p = this.$page && this.$page.props;
+      return (this.stockMove && p && p.stockHalts) || {};
+    },
+    // the halt of the warehouse that is chosen now (also one that came in as the default value)
+    selectedHalt() {
+      if (!this.stockMove || !Object.keys(this.haltMap).length || this.modelValue === '' || this.modelValue === null || this.modelValue === undefined) return null;
+      return this.haltMap[this.modelValue] || null;
     },
     currentLabel() {
       return this.cLabel(this.selected);
@@ -378,6 +397,13 @@ export default {
       if (!this.selected) {
         this.current = 0;
       }
+      if (this.loadOnFocus && typeof this.suggestions === 'string' && !this.search && (!this.result || !this.result.length)) {
+        this.loading = true;
+        axios
+          .post(this.suggestions, { search: '' })
+          .then(res => (this.result = res.data))
+          .finally(() => (this.loading = false));
+      }
       if (this.absoluteDropdown) {
         this.$nextTick(this.positionDropdown);
       }
@@ -442,7 +468,19 @@ export default {
     isActive(index) {
       return index == this.current;
     },
+    // the halt on this option; only a picker marked stock-move (a warehouse picker of a form that moves stock) looks at it
+    haltOf(r) {
+      if (!this.stockMove || r === null || typeof r !== 'object') return null;
+      return this.haltMap[this.cValue(r)] || null;
+    },
     suggestionClick(index, reset = false) {
+      const halt = index !== undefined ? this.haltOf(this.result && this.result[index]) : null;
+      if (halt) {
+        // refused: the warehouse stays unselected and the person is told who stopped it
+        this.open = false;
+        this.$alert(halt.message);
+        return;
+      }
       if (index !== undefined) {
         this.current = index;
         this.selected = this.result[index];
@@ -514,6 +552,8 @@ export default {
     // the hover text of an option: its full name and, in a sectioned list, its category (the same tooltip idea as the top bar)
     optionTipText(r) {
       const l = this.cLabel(r);
+      const h = this.haltOf(r);
+      if (h) return l + '\n' + h.message;
       if (this.sectioned) return r && r.section ? l + '\n' + r.section : l;
       if (!(this.grouped && r && typeof r === 'object' && r.status)) return l;
       const p = progressOf(r);
@@ -534,6 +574,17 @@ export default {
   background: #10b981;
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
 }
+/* a warehouse whose stock movement is halted: shown locked and greyed, it cannot be chosen */
+.ac-halted { background: #fff7f7; color: #7f1d1d; cursor: not-allowed; opacity: 0.92; }
+.ac-halted-ico { color: #b91c1c; margin-right: 2px; }
+.ac-halted .block { text-decoration: line-through; text-decoration-color: rgba(185, 28, 28, 0.45); }
+.ac-halted { flex-wrap: wrap; }
+.ac-halted-tag { flex: 0 0 100%; margin: 1px 0 0 2.35rem; color: #b91c1c; font-size: 10.5px; font-weight: 800; letter-spacing: 0.01em; line-height: 1.3; }
+html.dark .ac-halted-tag { color: #fca5a5; }
+.ac-halt-note { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 0; padding: 6px 10px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 0.78rem; font-weight: 600; line-height: 1.35; }
+.ac-halt-note svg { margin-top: 2px; }
+html.dark .ac-halted { background: rgba(185, 28, 28, 0.14); color: #fecaca; }
+html.dark .ac-halt-note { background: rgba(185, 28, 28, 0.16); border-color: rgba(248, 113, 113, 0.4); color: #fecaca; }
 /* a project's progress: green = finished, orange = still running */
 .ac-dot-orange {
   background: #f97316;

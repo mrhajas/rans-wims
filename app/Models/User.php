@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\FastPermissionChecks;
 use App\Traits\LogActivity;
 use App\Traits\Paginatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -22,7 +23,12 @@ class User extends Authenticatable
     use HasProfilePhoto {
         profilePhotoUrl as protected jetstreamProfilePhotoUrl;
     }
-    use HasRoles;
+    use HasRoles, FastPermissionChecks {
+        HasRoles::hasPermissionTo as protected spatieHasPermissionTo;
+        HasRoles::checkPermissionTo as protected spatieCheckPermissionTo;
+        FastPermissionChecks::hasPermissionTo insteadof HasRoles;
+        FastPermissionChecks::checkPermissionTo insteadof HasRoles;
+    }
     use LogActivity;
     use Notifiable;
     use Paginatable;

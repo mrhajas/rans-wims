@@ -18,6 +18,7 @@
             <div>
               <auto-complete
                 id="source-warehouse"
+                stock-move
                 :label="$t('Source Warehouse / Site')"
                 :suggestions="warehouses"
                 v-model="form.source_warehouse_id"

@@ -74,6 +74,10 @@
           <label class="lg-btn lg-btn-soft ar-choose" :class="{ 'is-disabled': uploading }"><icons name="upload" class="w-4 h-4" />{{ files.length ? files.length + ' ' + $t('file(s) selected') + ' - ' + $t('add more') : $t('Choose files') }}
             <input type="file" multiple class="sr-only" :accept="accept" :disabled="uploading" @change="onFiles" />
           </label>
+          <button type="button" class="lg-btn lg-btn-soft ar-choose" :disabled="uploading || files.length >= 20" @click="cameraOpen = true"><icons name="camera" class="w-4 h-4" />{{ $t('Take a Photo') }}</button>
+          <camera-capture v-if="cameraOpen" :can-photos="true" :can-videos="false" :photo-left="20 - files.length" :video-left="0" @capture="f => addFiles([f])" @fallback="$refs.nativeCam && $refs.nativeCam.click()" @close="cameraOpen = false" />
+          <!-- the phone's own camera app, used when the live camera cannot start (for example without https) -->
+          <input ref="nativeCam" type="file" class="sr-only" accept="image/*" capture="environment" @change="onFiles" />
           <p class="lg-subtext ar-hint">{{ extensions.join(', ').toUpperCase() }}</p>
           <p v-if="fileError || errors.files" class="ar-err">{{ fileError || errors.files }}</p>
           <p v-for="(msg, key) in fileErrors" :key="key" class="ar-err">{{ msg }}</p>
@@ -101,10 +105,11 @@ import AutoComplete from '@/Shared/AutoComplete.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 import { formatBytes } from '@/Core/archiveFormat';
 import UploadProgress from '@/Shared/UploadProgress.vue';
+import CameraCapture from '@/Shared/SiteDiary/CameraCapture.vue';
 import { makeItem, uploadSequential } from '@/Core/uploadQueue';
 
 export default {
-  components: { AdminLayout, PageHeader, TextInput, AutoComplete, DatePicker, Link, UploadProgress },
+  components: { AdminLayout, PageHeader, TextInput, AutoComplete, DatePicker, Link, UploadProgress, CameraCapture },
 
   props: { record: Object, options: Object, extensions: Array, maxMb: Number },
 
@@ -118,6 +123,7 @@ export default {
       serverErrors: {},
       tagInput: '',
       files: [],
+      cameraOpen: false,
       fileError: null,
       form: {
         title: r.title || '',
@@ -167,9 +173,13 @@ export default {
       this.tagInput = '';
     },
     onFiles(e) {
-      this.fileError = null;
       const incoming = Array.from(e.target.files || []);
       e.target.value = '';
+      this.addFiles(incoming);
+    },
+    // files from the file picker, the phone's camera app or the live camera all pass the same checks
+    addFiles(incoming) {
+      this.fileError = null;
       for (const f of incoming) {
         const ext = (f.name.split('.').pop() || '').toLowerCase();
         if (!this.extensions.includes(ext)) { this.fileError = f.name + ': ' + this.$t('this file type is not allowed.'); continue; }

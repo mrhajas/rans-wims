@@ -112,11 +112,13 @@ class ExplorerController extends Controller
 
     public function print(Request $request)
     {
+        abort_unless($request->user()->can('read-supplier-reports'), 403); // the same permission as the explorer page itself
         return view('reports.pdf', $this->reportData($request, false));
     }
 
     public function pdf(Request $request)
     {
+        abort_unless($request->user()->can('read-supplier-reports'), 403); // the same permission as the explorer page itself
         return Pdf::loadView('reports.pdf', $this->reportData($request, true))
             ->download('supplier-records-explorer-' . now()->format('Ymd-His') . '.pdf');
     }
@@ -128,6 +130,7 @@ class ExplorerController extends Controller
      */
     public function printBalances(Request $request)
     {
+        abort_unless($request->user()->can('read-supplier-reports'), 403); // the same permission as the explorer page itself
         $all = collect($this->allSupplierBalances());
 
         // Distinguishes "no ids param at all" (nothing was ever ticked out —

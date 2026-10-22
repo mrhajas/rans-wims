@@ -1,4 +1,5 @@
 <template>
+  <span v-if="state" class="dn-wrap">
   <a v-if="state && state.note && compact" :href="state.note.url" target="_blank" rel="noopener" class="dn-icon dn-icon-open lg-tip" :data-tip="$t('Delivery Note') + ' ' + state.note.reference" :aria-label="$t('Delivery Note') + ' ' + state.note.reference">
     <icons name="truck" class="w-4 h-4" />
   </a>
@@ -18,9 +19,16 @@
     <icons :name="busy ? 'refresh' : 'truck'" class="w-4 h-4" :class="{ 'animate-spin': busy }" />
     {{ busy ? $t('Generating…') : $t('Generate Delivery Note') }}
   </button>
+  <!-- print: the printer animation, then the browser's print dialog on the note -->
+  <button v-if="state.note && $can('print-delivery-notes')" type="button" class="dn-print lg-tip" :data-tip="$t('Print Delivery Note')" :aria-label="$t('Print Delivery Note')" @click.stop="printNote">
+    <icons name="printer" class="w-4 h-4" />
+  </button>
+  </span>
 </template>
 
 <script>
+import { printWithAnimation, printUrlInFrame, paperworkPrintSheet } from '@/Core/printAnimation';
+
 export default {
   props: {
     state: { type: Object, default: null },
@@ -30,6 +38,9 @@ export default {
     return { busy: false };
   },
   methods: {
+    printNote() {
+      printWithAnimation(paperworkPrintSheet(this, this.state, 'Delivery Note'), () => printUrlInFrame(this.route('delivery-notes.print', this.state.note.id)));
+    },
     generate() {
       if (this.busy) return;
       this.busy = true;
@@ -52,6 +63,9 @@ export default {
   border-radius: 9999px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+.dn-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.dn-print { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 9999px; color: #0f766e; background: #e6f7f5; border: 0; cursor: pointer; transition: transform 0.15s, background 0.15s; }
+.dn-print:hover { background: #d1f0ec; transform: translateY(-1px); }
 .dn-icon:hover { transform: translateY(-1px); }
 .dn-icon-open { background: #dbeefe; color: #1f7fc8; box-shadow: 0 0 0 2px #38a3ee, 0 0 10px 2px rgba(56, 163, 238, 0.55); animation: dn-glow 2.6s ease-in-out infinite; }
 @keyframes dn-glow { 0%, 100% { box-shadow: 0 0 0 2px #38a3ee, 0 0 6px 1px rgba(56, 163, 238, 0.4); } 50% { box-shadow: 0 0 0 2px #38a3ee, 0 0 14px 4px rgba(56, 163, 238, 0.75); } }

@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
 
 class CheckinPortController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['export' => 'read-checkins', 'import' => 'create-checkins', 'save' => 'create-checkins']);
+    }
+
     public function export()
     {
         return (new FastExcel($this->itemGenerator()))->download('items.xlsx');

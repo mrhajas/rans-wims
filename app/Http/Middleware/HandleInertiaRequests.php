@@ -30,6 +30,8 @@ class HandleInertiaRequests extends Middleware
             'languages'        => $langFiles->available,
             // the project / warehouse dropdowns show Main Warehouses, Projects and Others in sections unless this is switched off in Settings
             'groupedWarehouseLists' => fn () => get_settings('grouped_warehouse_lists') !== '0',
+            // warehouses whose stock movement is halted by an open Adjustment Session: id => who, when, which session (the dropdowns mark and refuse them)
+            'stockHalts'       => fn () => $request->user() ? \App\Support\StockHalt::forPages() : (object) [],
             'myWarehouses'     => fn () => $this->managedWarehouses($request),
             'currentWarehouse' => fn () => $this->currentWarehouse($request),
             'enabledFeatures'  => fn () => FeatureManager::enabledMap(),
@@ -56,10 +58,11 @@ class HandleInertiaRequests extends Middleware
             // server-side it stops appearing entirely once the notification
             // is marked read (either from the popup or the bell dropdown).
             'pendingSecurityReminder' => fn () => $this->pendingSecurityReminder($request),
+            // counted from the notification table's JSON, which is slow for a person with thousands of them, so the number is kept for 10 seconds (the bell refreshes itself every 20)
             'materialRequestUnreadCount' => fn () => $request->user()
-                ? $request->user()->unreadNotifications()
+                ? \Illuminate\Support\Facades\Cache::remember('unread-alerts:' . $request->user()->id, 10, fn () => $request->user()->unreadNotifications()
                     ->whereIn('data->module', AppNotification::alertModules())
-                    ->count()
+                    ->count())
                 : 0,
             'sectionVisitCounts' => fn () => $request->user()
                 ? DB::table('user_section_visits')->where('user_id', $request->user()->id)->pluck('visit_count', 'section_key')

@@ -21,6 +21,7 @@ class Warehouse extends Model
                 if ($ids->isNotEmpty()) {
                     $warehouse->users()->syncWithoutDetaching($ids->all());
                 }
+                \App\Support\AllWarehouseRoles::attachNew($warehouse);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('Could not attach the new warehouse to Super Admins', ['warehouse_id' => $warehouse->id, 'error' => $e->getMessage()]);
             }

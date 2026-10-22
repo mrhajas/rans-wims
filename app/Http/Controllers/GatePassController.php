@@ -233,7 +233,7 @@ class GatePassController extends Controller
 
         return view('gate-passes.document', $this->documentData($gate_pass, false) + [
             'pdfUrl' => route('gate-passes.pdf', $gate_pass->id),
-            'autoPrint' => true,
+            'autoPrint' => ! request()->boolean('embed'), // embed = loaded in a hidden frame and printed by the page that asked for it
         ]);
     }
 

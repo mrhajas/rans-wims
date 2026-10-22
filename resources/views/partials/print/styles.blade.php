@@ -6,7 +6,7 @@
     consistent navy/rose accent pair matching the app's own palette.
 --}}
 <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; } /* the browser's print keeps the colours, as the PDF does */
     html { color-scheme: light; background: #ffffff; }
     body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f2937; margin: 24px; background: #ffffff; line-height: 1.45; }
 

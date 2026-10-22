@@ -102,7 +102,7 @@
                   <Link :href="route('checkins.show', checkin.id)" class="txn-icon-btn lg-tip txn-icon-btn-blue" :data-tip="$t('View')" :aria-label="$t('View')">
                     <icons name="doc"></icons>
                   </Link>
-                  <a v-if="$can('print-checkins')" :href="route('checkins.print', checkin.id)" target="_blank" class="txn-icon-btn lg-tip txn-icon-btn-teal" :data-tip="$t('Print')" :aria-label="$t('Print')">
+                  <a v-if="$can('print-checkins')" :href="route('checkins.print', checkin.id)" target="_blank" @click.exact.prevent="printRow(checkin)" class="txn-icon-btn lg-tip txn-icon-btn-teal" :data-tip="$t('Print')" :aria-label="$t('Print')">
                     <icons name="printer"></icons>
                   </a>
                   <a v-if="$can('print-checkins')" :href="route('checkins.pdf', checkin.id)" class="txn-icon-btn lg-tip txn-icon-btn-cyan" :data-tip="$t('Download')" :aria-label="$t('Download')">
@@ -223,6 +223,7 @@
 </template>
 
 <script>
+import { printWithAnimation, printUrlInFrame, stockDocumentPrintSheet } from '@/Core/printAnimation';
 import pickBy from 'lodash/pickBy';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
@@ -344,6 +345,10 @@ export default {
   },
 
   methods: {
+    // the animation first, then the browser's print dialog on this document (a middle click or Ctrl+click still opens the document itself)
+    printRow(row) {
+      printWithAnimation(stockDocumentPrintSheet(this, row, 'Check-in'), () => printUrlInFrame(this.route('checkins.print', row.id)));
+    },
     // Clicking a summary card filters the list to it; clicking the lit card (or the Total card) shows everything again.
     pickTile(tile) {
       this.form.view = tile.view && this.form.view !== tile.view ? tile.view : null;

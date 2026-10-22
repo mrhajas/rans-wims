@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ContactPortController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['import' => 'create-contacts', 'save' => 'create-contacts']);
+    }
+
     public function export()
     {
         return (new FastExcel($this->contactGenerator()))->download('contacts.xlsx');

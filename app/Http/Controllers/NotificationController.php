@@ -75,6 +75,7 @@ class NotificationController extends Controller
 
     public function stock(Request $request)
     {
+        abort_unless($request->user()->can('read-items'), 403);
         if (demo()) {
             return back()->with('error', 'This feature is disabled on demo');
         }

@@ -51,7 +51,7 @@ class TransferController extends Controller
 
     public function destroy(Transfer $transfer)
     {
-        if ($response = $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
             return $response;
         }
         $transfer->load(['items.item', 'items.unit', 'items.variations']);
@@ -66,7 +66,7 @@ class TransferController extends Controller
 
     public function destroyPermanently(Transfer $transfer)
     {
-        if ($response = $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
             return $response;
         }
         $transfer->load(['items.item', 'items.unit', 'items.variations']);
@@ -87,7 +87,7 @@ class TransferController extends Controller
         if ($response = $this->denyExpiredSiteEngineerEdit($transfer)) {
             return $response;
         }
-        if ($response = $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
             return $response;
         }
 
@@ -273,7 +273,7 @@ class TransferController extends Controller
     public function receive(Request $request, Transfer $transfer)
     {
         abort_unless($this->userMayDeliver($request->user(), $transfer), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
             return $response;
         }
         abort_if($transfer->draft, 422, 'A draft transfer cannot be marked received.');
@@ -338,7 +338,7 @@ class TransferController extends Controller
             foreach ($transfers as $transfer) {
                 if (
                     ! $this->userMayDeliver($request->user(), $transfer)
-                    || $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)
+                    || $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id)
                     || $transfer->draft
                     || $transfer->received_at
                 ) {
@@ -387,7 +387,7 @@ class TransferController extends Controller
     public function store(TransferRequest $request)
     {
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($data['from_warehouse_id'] ?? null, $data['to_warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($data['from_warehouse_id'] ?? null, $data['to_warehouse_id'] ?? null)) {
             return $response;
         }
         // A transfer leaving a MAIN warehouse is only released by an approver: whatever the form says, it is stored
@@ -431,7 +431,7 @@ class TransferController extends Controller
     public function approve(Request $request, Transfer $transfer)
     {
         abort_unless($request->user()->can('approve-transfers'), 403);
-        if ($response = $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id)) {
             return $response;
         }
 
@@ -478,7 +478,7 @@ class TransferController extends Controller
         ]);
 
         $warehouse = Warehouse::ofAccount()->findOrFail($request->input('warehouse_id'));
-        if ($response = $this->rejectIfWarehouseCompleted($warehouse->id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($warehouse->id)) {
             return $response;
         }
 
@@ -518,7 +518,7 @@ class TransferController extends Controller
         ]);
 
         $warehouse = Warehouse::ofAccount()->findOrFail($data['warehouse_id']);
-        if ($response = $this->rejectIfWarehouseCompleted($warehouse->id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($warehouse->id)) {
             return $response;
         }
 
@@ -577,7 +577,7 @@ class TransferController extends Controller
             return $response;
         }
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($transfer->from_warehouse_id, $transfer->to_warehouse_id, $data['from_warehouse_id'] ?? null, $data['to_warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($transfer->from_warehouse_id, $transfer->to_warehouse_id, $data['from_warehouse_id'] ?? null, $data['to_warehouse_id'] ?? null)) {
             return $response;
         }
         // the request a transfer was made for cannot be changed by editing; its items still obey what the request left to move

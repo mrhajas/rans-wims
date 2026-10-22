@@ -80,6 +80,12 @@ export default defineConfig({
         globIgnores: ['vendor/**'],
         runtimeCaching: [
           {
+            // the route table (its address carries a version, so a changed table is a new address)
+            urlPattern: ({ url }) => url.pathname === '/ziggy.js',
+            handler: 'CacheFirst',
+            options: { cacheName: 'wims-routes', expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 60 }, cacheableResponse: { statuses: [200] } },
+          },
+          {
             urlPattern: ({ url }) => url.pathname.startsWith('/assets/') && /\.(?:js|css|woff2?|png|svg|jpe?g|webp)$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {

@@ -53,6 +53,7 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DeliveryNoteAction from '@/Shared/DeliveryNoteAction.vue';
 import GatePassAction from '@/Shared/GatePassAction.vue';
 import TransportRouteAction from '@/Shared/TransportRouteAction.vue';
+import { printWithAnimation, printUrlInFrame, transferPrintSheet } from '@/Core/printAnimation';
 
 export default {
   props: { transfer: Object, deliveryNote: Object, gatePass: Object, transportRoute: Object },
@@ -86,7 +87,7 @@ export default {
     print() {
       // Open the redesigned print document when the user may print transfers; otherwise fall back to the page print.
       if (this.$can('print-transfers')) {
-        window.open(this.route('transfers.print', this.transfer.id), '_blank');
+        printWithAnimation(transferPrintSheet(this, this.transfer), () => printUrlInFrame(this.route('transfers.print', this.transfer.id)));
         return;
       }
       window.print();

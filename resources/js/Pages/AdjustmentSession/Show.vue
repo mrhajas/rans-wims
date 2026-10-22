@@ -6,6 +6,8 @@
         <a v-if="can.print" :href="route('adjustment-sessions.print', session.id)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</a>
         <a v-if="can.print" :href="route('adjustment-sessions.pdf', session.id)" class="lg-btn lg-btn-soft"><icons name="download" class="w-4 h-4" />{{ $t('Download') }}</a>
         <Link v-if="isOpen && can.count" :href="route('super-adjustments.create', { warehouse_id: session.warehouse.id })" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" />{{ $t('New Super Adjustment') }}</Link>
+        <button v-if="isOpen && can.stop && !halt.active" type="button" class="lg-btn lg-btn-red" @click="openHalt(true)"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Stop stock movement') }}</button>
+        <button v-if="isOpen && can.stop && halt.active" type="button" class="lg-btn lg-btn-green" @click="openHalt(false)"><icons name="tick" class="w-4 h-4" />{{ $t('Release stock movement') }}</button>
         <button v-if="isOpen && can.end" type="button" class="lg-btn lg-btn-dark" @click="openEnd"><icons name="lock-closed" class="w-4 h-4" />{{ $t('End Session') }}</button>
       </page-header>
 
@@ -28,23 +30,31 @@
 
       <stat-tiles :items="statItems" />
 
+      <div v-if="halt.active" class="lg-note lg-note-red asn-note asn-haltbar" role="status"><icons name="lock-closed" class="w-4 h-4" /><span><b>{{ $t('Stock movement of :w is halted', { w: session.warehouse.name }) }}</b> {{ $t('by :n since :d.', { n: halt.by, d: $datetime(halt.at) }) }} {{ can.stop ? $t('Nobody can check in, check out, transfer, reallocate, issue or return stock to or from it. It is released when the session ends, or by you with the button above.') : $t('Nobody can check in, check out, transfer, reallocate, issue or return stock to or from it. It is released when the session ends.') }}</span></div>
+      <div v-else-if="halt.ever" class="lg-note lg-note-amber asn-note"><icons name="lock-closed" class="w-4 h-4" /><span>{{ $t('Stock movement was halted by :n from :a to :b and released by :r.', { n: halt.by, a: $datetime(halt.at), b: $datetime(halt.released_at), r: halt.released_by || '-' }) }}</span></div>
+
       <div v-if="isOpen" class="lg-note lg-note-amber asn-note"><icons name="clock" class="w-4 h-4" /><span>{{ $t('This session is open. Every Super Adjustment of :w is added to it, and the question "items not in this count" is not asked on them. When the counting is finished, end the session: the items below that were never counted can then be cleared in one Super Adjustment.', { w: session.warehouse.name }) }}</span></div>
 
       <section class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-sky"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Super Adjustments of this session') }}</h2></div></header>
         <div class="lg-table-wrap">
-          <table class="lg-table lg-responsive">
-            <thead><tr><th class="asn-no">{{ $t('No') }}</th><th>{{ $t('Reference') }}</th><th>{{ $t('Date') }}</th><th>{{ $t('By') }}</th><th>{{ $t('Status') }}</th><th class="num">{{ $t('Items') }}</th></tr></thead>
+          <table class="lg-table lg-responsive asn-tab">
+            <thead><tr><th class="asn-no">{{ $t('No') }}</th><th>{{ $t('Reference') }}</th><th class="asn-md-hide">{{ $t('Date') }}</th><th>{{ $t('Made by') }}</th><th>{{ $t('Status') }}</th><th>{{ $t('Approved / rejected by') }}</th><th class="num">{{ $t('Items') }}</th></tr></thead>
             <tbody>
               <tr v-for="(d, i) in documents" :key="d.id" class="is-click" @click="openDoc(d)">
                 <td :data-label="$t('No')" class="asn-no">{{ i + 1 }}</td>
                 <td :data-label="$t('Reference')"><a :href="route('super-adjustments.show', d.id)" target="_blank" rel="noopener" class="asn-link lg-mono" @click.stop>{{ d.reference }}</a><span v-if="d.is_clearing" class="lg-chip lg-chip-violet" style="margin-left: 6px; text-transform: none">{{ $t('clearing count') }}</span></td>
-                <td :data-label="$t('Date')" class="tabular-nums">{{ $date(d.date) }}</td>
-                <td :data-label="$t('By')">{{ d.by }}</td>
+                <td :data-label="$t('Date')" class="tabular-nums asn-md-hide">{{ $date(d.date) }}</td>
+                <td :data-label="$t('Made by')" class="asn-wrap"><div class="asn-cell"><b>{{ d.by }}</b><div class="lg-subtext">{{ $datetime(d.created_at) }}</div></div></td>
                 <td :data-label="$t('Status')"><span class="lg-chip" :class="docChip(d.status)" style="text-transform: none">{{ $t(d.status === 'Draft' ? 'Pending approval' : d.status) }}</span></td>
+                <td :data-label="$t('Approved / rejected by')" class="asn-wrap">
+                  <div v-if="d.approved_by" class="asn-cell"><b>{{ d.approved_by }}</b><div class="lg-subtext">{{ $datetime(d.approved_at) }}</div></div>
+                  <div v-else-if="d.rejected_by" class="asn-cell"><b class="asn-red">{{ d.rejected_by }}</b><div class="lg-subtext">{{ $datetime(d.rejected_at) }}<span v-if="d.rejection_reason"> · {{ d.rejection_reason }}</span></div></div>
+                  <span v-else class="lg-subtext">-</span>
+                </td>
                 <td :data-label="$t('Items')" class="num">{{ d.items }}</td>
               </tr>
-              <tr v-if="!documents.length" class="lg-empty-row"><td class="lg-empty" colspan="6">{{ $t('No Super Adjustment was made in this session yet.') }}</td></tr>
+              <tr v-if="!documents.length" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ $t('No Super Adjustment was made in this session yet.') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -53,13 +63,13 @@
       <section class="lg-card">
         <header class="lg-card-head">
           <span class="lg-card-ico" :class="stats.not_counted ? 'lg-ico-rose' : 'lg-ico-emerald'"><icons :name="stats.not_counted ? 'exclamation' : 'check-double'" class="w-5 h-5" /></span>
-          <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ isOpen ? $t('Not counted yet') : $t('Items that were not counted') }} ({{ stats.not_counted }})</h2><p class="lg-card-sub">{{ isOpen ? $t('Items that still have stock in this Project / Warehouse and are on no Super Adjustment of the session.') : $t('What was left uncounted when the session ended, and what was done with it.') }}</p></div>
+          <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ isOpen ? $t('Not counted yet') : $t('Items that were not counted') }} ({{ stats.not_counted }})</h2><p class="lg-card-sub">{{ isOpen ? $t('Items that still have stock in :w and are on no Super Adjustment of the session.', { w: session.warehouse.name }) : $t('What was left untouched in :w when the session ended (with its stock then), and what was done with it.', { w: session.warehouse.name }) }} <span v-if="stats.not_counted_value">{{ $t('Value of the untouched stock') }}: <b>{{ money(stats.not_counted_value) }} Tsh</b></span></p></div>
           <input v-model="search" class="asn-search" type="search" :placeholder="$t('Search item...')" />
         </header>
         <div v-if="stats.moved && isOpen" class="lg-note lg-note-amber asn-note"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t(':n of these items had stock movements since the session started (received, issued or moved). They were probably handled, so check them before clearing.', { n: stats.moved }) }}</span></div>
         <div class="lg-table-wrap">
-          <table class="lg-table lg-responsive">
-            <thead><tr><th class="asn-no">{{ $t('No') }}</th><th>{{ $t('Code') }}</th><th>{{ $t('Item') }}</th><th class="num">{{ $t('System quantity') }}</th><th>{{ $t('Unit') }}</th><th>{{ isOpen ? $t('Moved since start') : $t('What was done') }}</th></tr></thead>
+          <table class="lg-table lg-responsive asn-unc asn-tab">
+            <thead><tr><th class="asn-no">{{ $t('No') }}</th><th>{{ $t('Code') }}</th><th>{{ $t('Item') }}</th><th class="num">{{ $t('Stock in warehouse') }}</th><th>{{ $t('Unit') }}</th><th class="num">{{ $t('Value') }}</th><th>{{ isOpen ? $t('Moved since start') : $t('What was done') }}</th></tr></thead>
             <tbody>
               <tr v-for="(r, i) in shown" :key="r.item_id">
                 <td :data-label="$t('No')" class="asn-no">{{ i + 1 }}</td>
@@ -67,16 +77,46 @@
                 <td :data-label="$t('Item')" class="asn-wrap"><b>{{ r.name }}</b></td>
                 <td :data-label="$t('System quantity')" class="num tabular-nums">{{ qty(r.quantity) }}</td>
                 <td :data-label="$t('Unit')">{{ r.unit || '-' }}</td>
+                <td :data-label="$t('Value')" class="num tabular-nums">{{ r.value ? money(r.value) : '-' }}</td>
                 <td v-if="isOpen" :data-label="$t('Moved since start')"><span v-if="r.moved" class="lg-chip lg-chip-amber" style="text-transform: none"><icons name="refresh" class="w-3 h-3" /> {{ $t('moved') }} · {{ $datetime(r.last_moved_at) }}</span><span v-else class="lg-subtext">-</span></td>
                 <td v-else :data-label="$t('What was done')"><span class="lg-chip" :class="r.cleared ? 'lg-chip-red' : 'lg-chip-slate'" style="text-transform: none">{{ r.cleared ? $t('Cleared (counted at zero)') : $t('Kept as it is') }}</span></td>
               </tr>
-              <tr v-if="!rows.length" class="lg-empty-row"><td class="lg-empty" colspan="6">{{ isOpen ? $t('Every item with stock is counted so far.') : $t('Every item with stock was counted.') }}</td></tr>
+              <tr v-if="!rows.length" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ isOpen ? $t('Every item with stock is counted so far.') : $t('Every item with stock was counted.') }}</td></tr>
             </tbody>
           </table>
         </div>
         <p v-if="filtered.length > limit" class="asn-more"><button type="button" class="lg-btn lg-btn-soft" @click="limit += 200">{{ $t('Show more') }} ({{ filtered.length - limit }})</button></p>
       </section>
+
+      <section class="lg-card">
+        <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="clock" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('History') }} ({{ history.length }})</h2><p class="lg-card-sub">{{ $t('Who started the session, halted or released stock movement, made, approved, rejected or deleted each Super Adjustment, and ended it. This record is kept.') }}</p></div></header>
+        <ol class="asn-tl">
+          <li v-for="(e, i) in history" :key="i" :class="'is-' + e.kind">
+            <span class="asn-tl__dot"><icons :name="historyIcon(e.kind)" class="w-3 h-3" /></span>
+            <div class="asn-tl__body">
+              <div class="asn-tl__text"><a v-if="e.doc_id" :href="route('super-adjustments.show', e.doc_id)" target="_blank" rel="noopener" class="asn-link">{{ e.text }}</a><span v-else>{{ e.text }}</span></div>
+              <small>{{ $datetime(e.at) }} · {{ e.by }}</small>
+            </div>
+          </li>
+          <li v-if="!history.length" class="asn-tl__empty">{{ $t('Nothing recorded yet.') }}</li>
+        </ol>
+      </section>
     </div>
+
+    <!-- stop / release the stock movement: needs the person's password -->
+    <modal :show="haltOpen" max-width="lg" @close="haltOpen = false">
+      <div class="asn-dlg">
+        <header class="asn-dlg__head" :class="haltTo ? 'is-red' : 'is-green'"><icons :name="haltTo ? 'lock-closed' : 'tick'" class="w-5 h-5" /><div><h3>{{ haltTo ? $t('Stop stock movement') : $t('Release stock movement') }}</h3><p>{{ session.warehouse.name }} · {{ session.reference }}</p></div></header>
+        <div class="asn-dlg__body">
+          <p class="asn-hint">{{ haltTo ? $t('Nobody will be able to check in, check out, transfer, reallocate, issue or return stock to or from this Project / Warehouse, and it will show as locked in the lists, until the session ends or you release it. Your name is shown to everyone who tries.') : $t('Stock will be able to move again in this Project / Warehouse, even though the count is not finished.') }}</p>
+          <div class="ac-f"><label>{{ $t('Your password') }} *</label><input v-model="haltForm.password" type="password" autocomplete="current-password" class="asn-input" :placeholder="$t('Enter your password to confirm')" @keyup.enter="doHalt" /><span class="ac-err">{{ haltForm.errors.password }}</span></div>
+        </div>
+        <footer class="asn-dlg__foot">
+          <button type="button" class="lg-btn lg-btn-soft" :disabled="haltForm.processing" @click="haltOpen = false">{{ $t('Cancel') }}</button>
+          <button type="button" class="lg-btn" :class="haltTo ? 'lg-btn-red' : 'lg-btn-green'" :disabled="haltForm.processing || !haltForm.password" @click="doHalt"><icons :name="haltTo ? 'lock-closed' : 'tick'" class="w-4 h-4" />{{ haltTo ? $t('Stop stock movement') : $t('Release stock movement') }}</button>
+        </footer>
+      </div>
+    </modal>
 
     <!-- end the session: choose what to clear -->
     <modal :show="endOpen" max-width="2xl" @close="endOpen = false">
@@ -122,10 +162,11 @@ import Modal from '@/Jetstream/Modal.vue';
 
 export default {
   components: { AdminLayout, PageHeader, StatTiles, Modal },
-  props: { session: Object, documents: Array, pending: Array, uncounted: Array, stats: Object, can: Object },
-  data() { return { search: '', limit: 200, endOpen: false, picked: {}, pickSearch: '', pickLimit: 200, endNote: '', ending: false, endError: '' }; },
+  props: { session: Object, documents: Array, history: { type: Array, default: () => [] }, pending: Array, uncounted: Array, stats: Object, can: Object },
+  data() { return { haltOpen: false, haltTo: true, haltForm: this.$inertia.form({ halt: true, password: '' }), search: '', limit: 200, endOpen: false, picked: {}, pickSearch: '', pickLimit: 200, endNote: '', ending: false, endError: '' }; },
   computed: {
     isOpen() { return this.session.status === 'Open'; },
+    halt() { return this.session.halt || { active: false, ever: false }; },
     rows() { return this.uncounted || []; },
     filtered() { const q = this.search.trim().toLowerCase(); return q ? this.rows.filter(r => (r.name + ' ' + (r.code || '')).toLowerCase().includes(q)) : this.rows; },
     shown() { return this.filtered.slice(0, this.limit); },
@@ -144,12 +185,19 @@ export default {
     },
   },
   methods: {
+    money(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }); },
+    historyIcon(k) { return { started: 'clock', ended: 'lock-closed', halted: 'lock-closed', released: 'tick', count: 'doc-text', approved: 'check-double', rejected: 'cross', deleted: 'trash', refused: 'exclamation' }[k] || 'info'; },
     qty(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 }); },
     docChip(s) { return { Draft: 'lg-chip-amber', 'Awaiting Phase 2': 'lg-chip-sky', Approved: 'lg-chip-green', Rejected: 'lg-chip-red' }[s] || 'lg-chip-slate'; },
     openDoc(d) { window.open(this.route('super-adjustments.show', d.id), '_blank', 'noopener'); },
     openEnd() {
       this.picked = {}; if (this.can.clear) this.rows.forEach(r => { if (!r.moved) this.picked[r.item_id] = true; }); // what moved since the start is not ticked; a person who cannot clear ticks nothing
       this.pickSearch = ''; this.pickLimit = 200; this.endNote = ''; this.endError = ''; this.endOpen = true;
+    },
+    openHalt(to) { this.haltTo = to; this.haltForm.reset(); this.haltForm.clearErrors(); this.haltOpen = true; },
+    doHalt() {
+      if (this.haltForm.processing || !this.haltForm.password) return;
+      this.haltForm.transform(d => ({ halt: this.haltTo, password: d.password })).post(this.route('adjustment-sessions.halt', this.session.id), { preserveScroll: true, onSuccess: () => { this.haltOpen = false; }, onFinish: () => { this.haltForm.password = ''; } });
     },
     tickAll(on) { const p = {}; if (on) this.rows.forEach(r => { p[r.item_id] = true; }); this.picked = p; },
     async doEnd() {
@@ -181,7 +229,20 @@ export default {
 @media (prefers-reduced-motion: reduce) { .asn-pill.is-open { animation: none; } }
 .asn-link { font-weight: 800; color: #0369a1; text-decoration: none; } .asn-link:hover { text-decoration: underline; }
 .asn-note { margin: 4px 0 10px; }
-.asn-no { width: 1%; white-space: nowrap; font-weight: 700; color: var(--lg-mute, #64748b); } .asn-wrap { white-space: normal; min-width: 140px; }
+.asn-red { color: #b91c1c; }
+.asn-tl { list-style: none; margin: 0; padding: 4px 4px 4px 6px; display: grid; gap: 0; }
+.asn-tl li { position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 0 0 14px; }
+.asn-tl li:not(:last-child)::before { content: ''; position: absolute; left: 12px; top: 26px; bottom: 0; width: 2px; background: var(--lg-line, #e2e8f0); }
+.asn-tl__dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: #64748b; flex: none; }
+.asn-tl .is-started .asn-tl__dot, .asn-tl .is-count .asn-tl__dot { background: #2563eb; } .asn-tl .is-approved .asn-tl__dot, .asn-tl .is-released .asn-tl__dot { background: #15803d; }
+.asn-tl .is-halted .asn-tl__dot, .asn-tl .is-ended .asn-tl__dot { background: #c2410c; } .asn-tl .is-rejected .asn-tl__dot, .asn-tl .is-deleted .asn-tl__dot, .asn-tl .is-refused .asn-tl__dot { background: #b91c1c; }
+.asn-tl__body { min-width: 0; line-height: 1.35; } .asn-tl__text { font-weight: 700; font-size: 0.86rem; overflow-wrap: anywhere; } .asn-tl__body small { color: var(--lg-mute, #64748b); font-size: 0.74rem; }
+.asn-tl__empty { display: block !important; color: var(--lg-mute, #64748b); font-size: 0.85rem; }
+.asn-haltbar { border-width: 2px; }
+.asn-dlg__head.is-red { background: linear-gradient(135deg, #dc2626, #7f1d1d); } .asn-dlg__head.is-green { background: linear-gradient(135deg, #16a34a, #14532d); }
+.asn-input { width: 100%; border-radius: 12px; border: 1px solid var(--lg-line); background: transparent; padding: 10px 12px; color: inherit; }
+.ac-err { color: #b91c1c; font-size: 0.78rem; font-weight: 700; }
+.asn-no { width: 1%; white-space: nowrap; font-weight: 700; color: var(--lg-mute, #64748b); } .asn-wrap { white-space: normal; min-width: 140px; } .asn-cell { min-width: 0; } @media (min-width: 768px) and (max-width: 1099px) { .asn-md-hide { display: none; } .lg-table.asn-tab th, .lg-table.asn-tab td { padding-left: 8px; padding-right: 8px; } .lg-table.asn-tab .asn-wrap { min-width: 110px; } .lg-table.asn-tab .lg-chip { white-space: normal; text-align: left; } } @media (max-width: 767.98px) { .lg-table.asn-unc tbody tr:not(.lg-empty-row) td.asn-no { display: none !important; } .asn-wrap { min-width: 0; } .asn-cell { flex: 1 1 auto; text-align: right; } }
 .asn-search { min-width: 180px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--lg-line, #d1d5db); background: transparent; color: inherit; font-size: 0.85rem; }
 .asn-more { text-align: center; margin: 10px 0 0; }
 .asn-dlg { width: 100%; --lg-card: #ffffff; --lg-line: #e6ebf3; --lg-soft: #f6f8fc; --lg-ink: #0f172a; --lg-mute: #64748b; background: var(--lg-card); color: var(--lg-ink); border-radius: 0.5rem; overflow: hidden; }

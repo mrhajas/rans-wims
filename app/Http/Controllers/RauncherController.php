@@ -375,6 +375,57 @@ class RauncherController extends Controller
                 'title' => fn ($m) => $m->name,
                 'subtitle' => fn ($m) => trim(($m->category ?: '') . ' ' . ($m->phone ? '· ' . $m->phone : '')),
             ],
+            // Visitor Logs: visits the person may see, visitors of the directory, and incoming items (a confidential item shows no sender or subject to people who may not see them).
+            'visitor-visits' => [
+                'label' => 'Visitor Visits',
+                'icon' => 'users',
+                'permission' => 'read-visitor-logs',
+                'route' => 'visitor-logs.visits.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\VisitorVisit::query()->visibleTo($u)
+                        ->where(fn ($q) => $q->where('reference', 'like', $like)->orWhere('host_name', 'like', $like)->orWhereHas('visitor', fn ($v) => $v->where('full_name', 'like', $like)->orWhere('company', 'like', $like)))
+                        ->when(! \App\Services\FeatureManager::canAccess('visitor_register', $u), fn ($q) => $q->whereRaw('1 = 0'))->with('visitor:id,full_name,company')->orderByDesc('check_in_at');
+                },
+                'title' => fn ($m) => $m->reference . ' - ' . optional($m->visitor)->full_name,
+                'subtitle' => fn ($m) => trim(($m->host_name ? __('to see') . ' ' . $m->host_name . ' · ' : '') . $m->check_in_at->format('d M Y H:i') . ' · ' . __($m->status)),
+            ],
+            'visitors' => [
+                'label' => 'Visitors',
+                'icon' => 'user',
+                'permission' => 'read-visitors',
+                'route' => 'visitor-logs.visitors.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\Visitor::query()->where(fn ($q) => $q->where('full_name', 'like', $like)->orWhere('company', 'like', $like)->orWhere('phone', 'like', $like)->orWhere('reference', 'like', $like))
+                        ->when(! \App\Services\FeatureManager::canAccess('visitor_directory', $u), fn ($q) => $q->whereRaw('1 = 0'))->orderBy('full_name');
+                },
+                'title' => fn ($m) => $m->full_name,
+                'subtitle' => fn ($m) => trim($m->reference . ' ' . ($m->company ? '· ' . $m->company : '') . ($m->phone ? ' · ' . $m->phone : '')),
+            ],
+            'incoming-items' => [
+                'label' => 'Incoming Items',
+                'icon' => 'email',
+                'permission' => 'read-incoming-items',
+                'route' => 'visitor-logs.items.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    // sender / subject are searched only for items the person may read
+                    return \App\Models\VisitorIncomingItem::query()
+                        ->where(fn ($q) => $q->where('reference', 'like', $like)->orWhere('recipient_name', 'like', $like)->orWhere('tracking_number', 'like', $like)
+                            ->orWhere(fn ($x) => $x->where(fn ($y) => $y->where('sender_name', 'like', $like)->orWhere('sender_company', 'like', $like)->orWhere('subject', 'like', $like))
+                                ->when(! ($u->hasRole('Super Admin') || $u->can('view-confidential-incoming-items')), fn ($y) => $y->where(fn ($c) => $c->where('is_confidential', false)->orWhere('recipient_user_id', $u->id)->orWhere('received_by_user_id', $u->id)))))
+                        ->when(! \App\Services\FeatureManager::canAccess('visitor_incoming', $u), fn ($q) => $q->whereRaw('1 = 0'))->orderByDesc('received_at');
+                },
+                'title' => fn ($m) => $m->reference . ' - ' . $m->item_type,
+                'subtitle' => fn ($m) => trim(__('for') . ' ' . $m->recipient_name . ' · ' . $m->received_at->format('d M Y H:i') . ' · ' . $m->status),
+            ],
             // Administration: the weekly documents the person may see (their own, or all for people who approve or authorize), only while the module is on.
             'administration' => [
                 'label' => 'Administration',

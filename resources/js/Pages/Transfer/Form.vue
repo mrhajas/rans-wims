@@ -29,7 +29,7 @@
             <div class="lg-card-title">{{ $t('Transaction Documents') }}</div>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <a v-if="$can('print-transfers')" :href="route('transfers.print', edit.id)" target="_blank" class="lg-btn lg-btn-soft">
+            <a v-if="$can('print-transfers')" :href="route('transfers.print', edit.id)" target="_blank" @click.exact.prevent="printThis" class="lg-btn lg-btn-soft">
               <icons name="printer" class="w-4 h-4" /> {{ $t('Print') }}
             </a>
             <a v-if="$can('print-transfers')" :href="route('transfers.pdf', edit.id)" class="lg-btn lg-btn-soft">
@@ -115,6 +115,7 @@
             <div>
               <auto-complete
                 id="from_warehouse"
+                stock-move
                 :suggestions="userWarehouses"
                 :label="$t('From Warehouse')"
                 v-model="form.from_warehouse_id"
@@ -124,6 +125,7 @@
             <div>
               <auto-complete
                 id="to_warehouse"
+                stock-move
                 :suggestions="warehouses"
                 :label="$t('To Warehouse')"
                 :disable="form.from_warehouse_id"
@@ -651,6 +653,7 @@
 </template>
 
 <script>
+import { printWithAnimation, printUrlInFrame, transferPrintSheet } from '@/Core/printAnimation';
 import _isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
@@ -875,6 +878,10 @@ export default {
   },
 
   methods: {
+    // the animation first, then the browser's print dialog on this document
+    printThis() {
+      printWithAnimation(transferPrintSheet(this, this.edit), () => printUrlInFrame(this.route('transfers.print', this.edit.id)));
+    },
     approveThis() {
       this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: this.edit.reference, from: (this.edit.from_warehouse || {}).name || '', to: (this.edit.to_warehouse || {}).name || '' })).then(ok => {
         if (ok) this.$inertia.post(this.route('transfers.approve', this.edit.id), {}, { preserveScroll: true });

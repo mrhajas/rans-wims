@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Storage;
 
 class CategoryPortController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['export' => 'read-categories', 'import' => 'create-categories', 'save' => 'create-categories']);
+    }
+
     public function export()
     {
         return (new FastExcel($this->categoryGenerator()))->download('categories.xlsx');

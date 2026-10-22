@@ -234,6 +234,7 @@ class UserController extends Controller
         $user = User::create($data);
         $user->assignRole($this->guardedRoles($request->input('roles')));
         $user->warehouses()->sync($request->input('warehouses', []));
+        \App\Support\AllWarehouseRoles::apply($user); // a role with "All warehouses" means every warehouse
         UserNotifier::fire('created', $user, __('User Created'), $user->name . ' (' . $user->username . ') was created.');
 
         return redirect()->route('users.index')->with('message', __choice('action_text', ['record' => 'User', 'action' => 'created']));
@@ -267,6 +268,7 @@ class UserController extends Controller
         $user->update($data);
         $user->syncRoles($this->guardedRoles($request->input('roles')));
         $user->warehouses()->sync($request->input('warehouses', []));
+        \App\Support\AllWarehouseRoles::apply($user); // a role with "All warehouses" means every warehouse
         UserNotifier::fire('updated', $user, __('User Edited'), $user->name . ' (' . $user->username . ') was edited.');
         if ($request->filled('password')) {
             UserNotifier::fire('password_set_by_admin', $user, __('Password Set by an Administrator'), 'A new password was set for ' . $user->name . ' (' . $user->username . ') by ' . (auth()->user()?->name ?? 'an administrator') . '.');

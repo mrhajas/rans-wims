@@ -25,6 +25,7 @@ class WeatherController extends WeatherBaseController
         $projects = WeatherAccess::projects($user)->whereNull('warehouses.deleted_at')->orderBy('warehouses.name')->get();
         $conf = $this->manager->configuration((int) $user->account_id);
         $prefs = WeatherSettings::get((int) $user->account_id);
+        $this->presenter->warm($projects);
 
         return Inertia::render('Weather/Index', [
             'cards' => $projects->map(fn (Warehouse $w) => $this->presenter->card($w, $user))->values(),

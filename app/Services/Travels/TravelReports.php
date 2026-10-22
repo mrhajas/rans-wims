@@ -57,7 +57,19 @@ class TravelReports
             $o = [];
             foreach ($cols as $c) {
                 $v = $r[$c['key']] ?? '';
-                $o[$c['key']] = ($c['type'] ?? '') === 'money' && $v !== '' && $v !== null ? TravelLedger::fmt($v) : $v;
+                if (! empty($c['dual']) && is_numeric($v) && ! empty($r['currency'])) {
+                    // the amount in its own currency and, for another currency, the TZS it comes to at the rate (amount x rate) on a second line
+                    $cur = strtoupper((string) $r['currency']);
+                    $rate = (float) ($r['rate_n'] ?? 0);
+                    $note = ! empty($c['rate_note']) && $cur !== 'TZS' && $rate > 0 ? ' (@ ' . rtrim(rtrim(number_format($rate, 4, '.', ','), '0'), '.') . ')' : ''; // the agreed rate sits beside the TZS figure
+                    $o[$c['key']] = $cur . ' ' . TravelLedger::fmt($v) . ($cur !== 'TZS' && $rate > 0 ? "\nTZS " . TravelLedger::fmt(round((float) $v * $rate, 2)) . $note : '');
+                } else {
+                    $o[$c['key']] = ($c['type'] ?? '') === 'money' && $v !== '' && $v !== null ? TravelLedger::fmt($v) : $v;
+                }
+            }
+
+            if (isset($r['status_key'])) {
+                $o['_status'] = $r['status_key']; // the pages colour the status from this (the shown text can be translated)
             }
 
             return $o;
@@ -142,10 +154,11 @@ class TravelReports
     private static function register(array $f, $user): array
     {
         $ts = self::travels($f, $user)->orderBy('depart_date')->orderBy('id')->limit(self::LIMIT + 1)->get();
-        $rows = $ts->map(fn ($t) => ['reference' => $t->reference, 'depart' => $t->depart_date->toDateString(), 'return' => $t->return_date ? $t->return_date->toDateString() : '', 'travellers' => $t->travellerNames(), 'from' => $t->from_place, 'to' => $t->to_place, 'country' => $t->to_country, 'scope' => __($t->scopeLabel()), 'flight' => self::flight($t),
-            'agent' => optional($t->ticketAgent)->name, 'visa' => $t->has_visa ? (optional($t->visaAgent)->name ?: __('Yes')) : '', 'currency' => $t->currency, 'rate' => $t->currency === 'TZS' ? '' : rtrim(rtrim(number_format((float) $t->exchange_rate, 6, '.', ''), '0'), '.'), 'ticket' => (float) $t->ticket_amount, 'visa_amount' => (float) $t->visa_amount, 'total' => (float) $t->total_amount, 'other_tzs' => $t->itemsTotalTzs(), 'all_tzs' => round($t->travelTotalTzs() + $t->itemsTotalTzs(), 2), 'status' => __($t->status)])->all();
-        $cols = [['key' => 'reference', 'label' => __('Reference')], ['key' => 'depart', 'label' => __('Departs')], ['key' => 'return', 'label' => __('Returns')], ['key' => 'travellers', 'label' => __('Traveller(s)')], ['key' => 'from', 'label' => __('From')], ['key' => 'to', 'label' => __('To')], ['key' => 'country', 'label' => __('Country')], ['key' => 'scope', 'label' => __('Local / international')], ['key' => 'flight', 'label' => __('Flight')],
-            ['key' => 'agent', 'label' => __('Ticket agent')], ['key' => 'visa', 'label' => __('Visa issuer')], ['key' => 'currency', 'label' => __('Cur.')], ['key' => 'rate', 'label' => __('Rate agreed'), 'type' => 'num'], ['key' => 'ticket', 'label' => __('Ticket'), 'type' => 'money'], ['key' => 'visa_amount', 'label' => __('Visa'), 'type' => 'money'], ['key' => 'total', 'label' => __('Ticket + visa'), 'type' => 'money'], ['key' => 'other_tzs', 'label' => __('Other costs (TZS)'), 'type' => 'money'], ['key' => 'all_tzs', 'label' => __('All costs (TZS)'), 'type' => 'money'], ['key' => 'status', 'label' => __('Status')]];
+        $rows = $ts->map(fn ($t) => ['reference' => $t->reference, 'dates' => $t->depart_date->toDateString() . ($t->return_date ? "\n" . $t->return_date->toDateString() : ''), 'travellers' => $t->travellerNames(), 'from' => $t->from_place, 'to' => $t->to_place, 'country' => $t->to_country, 'flight' => self::flight($t),
+            'agent' => optional($t->ticketAgent)->name, 'visa' => $t->has_visa ? (optional($t->visaAgent)->name ?: __('Yes')) : '', 'currency' => $t->currency, 'rate_n' => (float) $t->exchange_rate, 'ticket' => (float) $t->ticket_amount, 'visa_amount' => (float) $t->visa_amount, 'total' => (float) $t->total_amount, 'other_tzs' => $t->itemsTotalTzs(), 'all_tzs' => round($t->travelTotalTzs() + $t->itemsTotalTzs(), 2), 'status' => __($t->status), 'status_key' => $t->status])->all();
+        // Departs and Returns are one column (Dates); the rate sits in the Ticket cell; the Local / international column is gone but its filter still narrows the list (self::travels())
+        $cols = [['key' => 'reference', 'label' => __('Reference')], ['key' => 'dates', 'label' => __('Dates')], ['key' => 'travellers', 'label' => __('Traveller(s)')], ['key' => 'from', 'label' => __('From')], ['key' => 'to', 'label' => __('To')], ['key' => 'country', 'label' => __('Country')], ['key' => 'flight', 'label' => __('Flight')],
+            ['key' => 'agent', 'label' => __('Ticket agent')], ['key' => 'visa', 'label' => __('Visa issuer')], ['key' => 'currency', 'label' => __('Cur.')], ['key' => 'ticket', 'label' => __('Ticket'), 'type' => 'money', 'dual' => true, 'rate_note' => true], ['key' => 'visa_amount', 'label' => __('Visa'), 'type' => 'money', 'dual' => true], ['key' => 'total', 'label' => __('Ticket + visa'), 'type' => 'money', 'dual' => true], ['key' => 'other_tzs', 'label' => __('Other costs (TZS)'), 'type' => 'money'], ['key' => 'all_tzs', 'label' => __('All costs (TZS)'), 'type' => 'money'], ['key' => 'status', 'label' => __('Status')]];
 
         return [$cols, $rows, __('Travel register'), __('Every travel in the period.'), self::moneyTiles($ts->where('status', Travel::APPROVED), __('Approved'))];
     }
@@ -185,7 +198,7 @@ class TravelReports
                 $lines[] = $base + ['section' => 'agents', 'category' => __('Visa'), 'description' => trim(($t->visa_type ?: '') . ' ' . ($t->visa_country ?: '')), 'agent_id' => $t->visa_agent_contact_id, 'agent' => optional($t->visaAgent)->name, 'currency' => $t->currency, 'rate' => $rate, 'amount' => (float) $t->visa_amount, 'tzs' => round((float) $t->visa_amount * $rate, 2)];
             }
             foreach ($t->items as $i) {
-                $lines[] = $base + ['section' => $i->contact_id ? 'agents' : 'extras', 'category' => $i->category, 'description' => (string) $i->description, 'agent_id' => $i->contact_id, 'agent' => optional($i->contact)->name, 'currency' => strtoupper($i->currency), 'rate' => (float) $i->exchange_rate, 'amount' => (float) $i->amount, 'tzs' => (float) $i->amount_tzs];
+                $lines[] = $base + ['section' => $i->contact_id ? 'agents' : 'extras', 'category' => $i->category, 'description' => (string) $i->description, 'agent_id' => $i->contact_id, 'agent' => optional($i->contact)->name, 'currency' => strtoupper($i->currency), 'rate' => (float) $i->exchange_rate, 'amount' => (float) $i->amount, 'tzs' => strtoupper((string) $i->currency) === 'TZS' || ! (float) $i->exchange_rate ? ((float) $i->amount_tzs ?: (float) $i->amount) : round((float) $i->amount * (float) $i->exchange_rate, 2)];
             }
         }
         $lines = array_values(array_filter($lines, fn ($l) => (! $f['section'] || $l['section'] === $f['section']) && (! $f['currency'] || $l['currency'] === $f['currency'])
@@ -208,9 +221,9 @@ class TravelReports
     {
         $lines = self::costLines($f, $user);
         $rows = array_map(fn ($l) => ['reference' => $l['reference'], 'depart' => $l['depart'], 'travellers' => $l['travellers'], 'to' => $l['to'], 'section' => $l['section'] === 'agents' ? __('Owed to agent') : __('Company expense'), 'category' => $l['category'], 'description' => $l['description'], 'agent' => $l['agent'],
-            'currency' => $l['currency'], 'rate' => $l['currency'] === 'TZS' ? '' : rtrim(rtrim(number_format($l['rate'], 6, '.', ''), '0'), '.'), 'amount' => $l['amount'], 'tzs' => $l['tzs'], 'status' => $l['status']], $lines);
+            'currency' => $l['currency'], 'rate_n' => (float) $l['rate'], 'rate' => $l['currency'] === 'TZS' ? '' : rtrim(rtrim(number_format($l['rate'], 6, '.', ''), '0'), '.'), 'amount' => $l['amount'], 'tzs' => $l['tzs'], 'status' => $l['status']], $lines);
         $cols = [['key' => 'reference', 'label' => __('Travel')], ['key' => 'depart', 'label' => __('Departs')], ['key' => 'travellers', 'label' => __('Traveller(s)')], ['key' => 'to', 'label' => __('To')], ['key' => 'section', 'label' => __('Section')], ['key' => 'category', 'label' => __('Type of cost')], ['key' => 'description', 'label' => __('Description')], ['key' => 'agent', 'label' => __('Agent')],
-            ['key' => 'currency', 'label' => __('Cur.')], ['key' => 'rate', 'label' => __('Rate'), 'type' => 'num'], ['key' => 'amount', 'label' => __('Amount'), 'type' => 'money'], ['key' => 'tzs', 'label' => __('In TZS'), 'type' => 'money'], ['key' => 'status', 'label' => __('Status')]];
+            ['key' => 'currency', 'label' => __('Cur.')], ['key' => 'rate', 'label' => __('Rate'), 'type' => 'num'], ['key' => 'amount', 'label' => __('Amount'), 'type' => 'money', 'dual' => true], ['key' => 'tzs', 'label' => __('In TZS (amount x rate)'), 'type' => 'money'], ['key' => 'status', 'label' => __('Status')]];
 
         return [$cols, $rows, __('Travel costs'), __('Every cost line of the travels.'), self::sectionTiles($lines)];
     }

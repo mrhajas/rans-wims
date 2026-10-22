@@ -489,7 +489,7 @@ import mapValues from 'lodash/mapValues';
 import ItemDetails from './Details.vue';
 import Dialog from '@/Shared/Dialog.vue';
 import Modal from '@/Jetstream/Modal.vue';
-import { printWithAnimation, itemPrintSheet } from '@/Core/printAnimation';
+import { printWithAnimation, itemPrintSheet, printUrlInFrame } from '@/Core/printAnimation';
 import TecButton from '@/Jetstream/Button.vue';
 import Pagination from '@/Shared/Pagination.vue';
 import SelectInput from '@/Shared/SelectInput.vue';
@@ -781,7 +781,7 @@ export default {
       this.details = false;
     },
     startPrint() {
-      printWithAnimation(itemPrintSheet(this, this.item), () => window.open(this.route('items.report.print', this.item.id), '_blank'));
+      printWithAnimation(itemPrintSheet(this, this.item), () => printUrlInFrame(this.route('items.report.print', this.item.id)));
     },
     print() {
       document.body.classList.add('printing-details');

@@ -20,6 +20,8 @@
         </div>
       </section>
 
+      <div v-if="halt" class="lg-note lg-note-red" role="alert"><icons name="lock-closed" class="w-4 h-4" /><span>{{ halt.message }}</span></div>
+
       <form @submit.prevent="submit">
         <section class="lg-card">
           <header class="lg-card-head">
@@ -146,6 +148,13 @@ export default {
   },
   props: {
     issue: Object,
+  },
+  computed: {
+    // stock movement halted by an Adjustment Session: the return would be refused, so say why before the person fills it in
+    halt() {
+      const id = this.issue.warehouse_id || (this.issue.warehouse && this.issue.warehouse.id);
+      return (this.$page.props.stockHalts || {})[id] || null;
+    },
   },
   data() {
     const currentUserName = this.$page.props.auth?.user?.name || '';

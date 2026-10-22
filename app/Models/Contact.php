@@ -11,8 +11,11 @@ class Contact extends Model
     public const CATEGORIES = [
         'Engineers', 'Technicians', 'Suppliers', 'Foreman', 'SubContractors', 'Workers', 'General',
         'Drivers', 'Dispatchers', 'Movers', 'Logistics', 'Consultants', 'Architects', 'Surveyors', 'Security', 'Equipment Rental',
-        'Clients', 'Loading & UnLoading', 'External Personnel', 'Ticket Agent', 'Visa Agent',
+        'Clients', 'Loading & UnLoading', 'External Personnel', 'Ticket Agent', 'Visa Agent', 'Visitors',
     ];
+
+    /** Visitors (Visitor Logs) and the senders of incoming mail are Contacts in this category. */
+    public const VISITORS_CATEGORY = 'Visitors';
 
     /** Contacts in this category hold stock in our warehouses (External Stock module). */
     public const EXTERNAL_CATEGORY = 'External Personnel';

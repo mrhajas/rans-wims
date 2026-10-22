@@ -216,7 +216,7 @@
               <div class="ms-alloc-wh">
                 <select-input v-model="destination.warehouse_id" class="w-full">
                   <option :value="null">{{ $t('Select Main Warehouse') }}</option>
-                  <option v-for="wh in mainWarehouses" :key="wh.id" :value="wh.id">{{ wh.name }}</option>
+                  <option v-for="wh in mainWarehouses" :key="wh.id" :value="wh.id" :disabled="!!$page.props.stockHalts?.[wh.id]">{{ wh.name }}{{ $page.props.stockHalts?.[wh.id] ? ' - ' + $t('stock movement halted by :n', { n: $page.props.stockHalts[wh.id].by }) : '' }}</option>
                 </select-input>
               </div>
               <div class="ms-alloc-qty">

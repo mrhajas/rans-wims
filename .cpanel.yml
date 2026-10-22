@@ -10,4 +10,7 @@ deployment:
     - for f in public/*; do if [ "$f" != "public/index.php" ]; then cp -a "$f" /home/ranscoco/wims.ransco.co.tz/public/ || exit 1; fi; done >> /home/ranscoco/deploy-log.txt 2>&1
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan migrate --force >> /home/ranscoco/deploy-log.txt 2>&1
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan optimize:clear >> /home/ranscoco/deploy-log.txt 2>&1
+    # rebuild the route table and the compiled pages once per deploy, so no visitor pays for it (config is NOT cached: the program still reads some settings straight from .env)
+    - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan route:cache >> /home/ranscoco/deploy-log.txt 2>&1 || true
+    - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan view:cache >> /home/ranscoco/deploy-log.txt 2>&1 || true
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan simulation:sync >> /home/ranscoco/deploy-log.txt 2>&1 || true

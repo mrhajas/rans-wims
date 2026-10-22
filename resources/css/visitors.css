@@ -1,0 +1,15 @@
+/* Visitor Logs: a softer look for the table headings (the shared module look uses strong blues). Three pale shades of one blue that repeat, dark blue text. */
+.vl-ui .lg-table.tr-table thead th:not(.sc-hd) { color: #1e3a8a; font-weight: 800; box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.7); }
+.vl-ui .lg-table.tr-table thead th:not(.sc-hd) * { color: inherit; }
+.vl-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+1) { --hd-bg: #dbeafe; background: #dbeafe; }
+.vl-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+2) { --hd-bg: #e6f0ff; background: #e6f0ff; }
+.vl-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+3) { --hd-bg: #cfe0fb; background: #cfe0fb; }
+.vl-ui .lg-table.tr-table thead th:not(.sc-hd) { --hd-fg: #1e3a8a; }
+html.dark .vl-ui .lg-table.tr-table thead th:not(.sc-hd) { color: #dbeafe; --hd-fg: #dbeafe; }
+html.dark .vl-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+1) { background: #1e3a6e; }
+html.dark .vl-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+2) { background: #22427d; }
+html.dark .vl-ui .lg-table.tr-table thead th:not(.sc-hd):nth-child(3n+3) { background: #1b335f; }
+/* the visitor and item cards on phones keep their own look */
+/* the registers have many columns: a little less padding on laptops so they fit without sideways scrolling */
+@media (min-width: 1240px) { .vl-ui .lg-table.tr-table th, .vl-ui .lg-table.tr-table td { padding-left: 8px; padding-right: 8px; } .vl-ui .lg-table.tr-table { font-size: 0.84rem; } .vl-ui .lg-table.tr-table .lg-btn { padding-left: 10px; padding-right: 10px; } }
+@media (min-width: 1240px) { .vl-ui .tr-table td.tr-nw { white-space: normal !important; min-width: 84px; } .vl-ui .tr-table th.tr-nw { white-space: normal !important; } }

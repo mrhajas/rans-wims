@@ -56,6 +56,8 @@ class ContactController extends Controller
         return Inertia::render('Contact/Form', [
             'edit'       => new ContactResource($contact),
             'categories' => Contact::categoryOptions(),
+            // what belongs to this contact, by its category (visiting logs, agent statement, attendance, trips...)
+            'panels'     => \App\Support\ContactPanels::for($contact, auth()->user()),
         ]);
     }
 

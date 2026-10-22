@@ -22,6 +22,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DeliveryNoteAction from '@/Shared/DeliveryNoteAction.vue';
 import GatePassAction from '@/Shared/GatePassAction.vue';
+import { printWithAnimation, printUrlInFrame, stockDocumentPrintSheet } from '@/Core/printAnimation';
 
 export default {
   props: { checkin: Object, deliveryNote: Object, gatePass: Object },
@@ -30,7 +31,7 @@ export default {
     print() {
       // Open the redesigned print document when the user may print checkins; otherwise fall back to the page print.
       if (this.$can('print-checkins')) {
-        window.open(this.route('checkins.print', this.checkin.id), '_blank');
+        printWithAnimation(stockDocumentPrintSheet(this, this.checkin, 'Check-in'), () => printUrlInFrame(this.route('checkins.print', this.checkin.id)));
         return;
       }
       window.print();

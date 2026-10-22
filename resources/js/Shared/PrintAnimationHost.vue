@@ -1,5 +1,5 @@
 <template>
-  <print-animation :show="state.show" :title="state.sheet.title" :code="state.sheet.code" :rows="state.sheet.rows" :footer="state.sheet.footer" @done="done" @cancel="cancel" />
+  <print-animation :show="state.show" :title="state.sheet.title" :report="state.sheet.report" :code="state.sheet.code" :rows="state.sheet.rows" :footer="state.sheet.footer" @done="done" @cancel="cancel" />
 </template>
 
 <script>

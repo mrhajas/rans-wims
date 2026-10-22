@@ -107,9 +107,9 @@
       background-color: rgb(17 24 39 / var(--tw-bg-opacity));
     }
 
-    /* ===== Loading screen: a glowing HUD ring, the percentage in its centre, a glowing progress bar underneath ===== */
+    /* ===== Loading screen: five blue squares hop in a wave and light up with the progress; the four corner brackets stay ===== */
     .app-loading { overflow: hidden; background: radial-gradient(120% 90% at 50% 38%, #e6f0ff 0%, #f5f9ff 48%, #ffffff 100%); font-family: Nunito, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
-    .wl-pct, .wl-wims, .wl-status, .wl-footer { font-family: Nunito, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    .wl-pct, .wl-wims, .wl-status, .wl-lab, .wl-lab span, .wl-footer { font-family: Nunito, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important; }
     .app-loading.bg-gray-50 { background: radial-gradient(120% 90% at 50% 38%, #e6f0ff 0%, #f5f9ff 48%, #ffffff 100%); }
     .wl-grid { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.07) 1px, transparent 1px); background-size: 34px 34px; -webkit-mask-image: radial-gradient(60% 55% at 50% 45%, #000 10%, transparent 75%); mask-image: radial-gradient(60% 55% at 50% 45%, #000 10%, transparent 75%); }
     .wl-corner { position: absolute; width: 46px; height: 46px; border: 0 solid rgba(37, 99, 235, 0.7); filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.6)); }
@@ -117,37 +117,38 @@
     .wl-tr { top: 9%; right: 8%; border-top-width: 2px; border-right-width: 2px; border-top-right-radius: 4px; }
     .wl-bl { bottom: 9%; left: 8%; border-bottom-width: 2px; border-left-width: 2px; border-bottom-left-radius: 4px; }
     .wl-br { bottom: 9%; right: 8%; border-bottom-width: 2px; border-right-width: 2px; border-bottom-right-radius: 4px; }
-    .wl-hud { position: relative; width: 248px; height: 248px; display: grid; place-items: center; }
-    .wl-glow { position: absolute; inset: -60px; z-index: 0; border-radius: 50%; background: radial-gradient(circle, rgba(59, 130, 246, 0.38) 0%, rgba(96, 165, 250, 0.16) 42%, rgba(96, 165, 250, 0) 70%); animation: wl-pulse 2.6s ease-in-out infinite; }
-    @keyframes wl-pulse { 0%, 100% { transform: scale(0.92); opacity: 0.65; } 50% { transform: scale(1.1); opacity: 1; } }
-    .wl-ring { position: relative; z-index: 1; width: 100%; height: 100%; overflow: visible; }
-    .wl-ring circle { fill: none; transform-box: fill-box; transform-origin: 50% 50%; } /* every circle is centred on the same point: spin about its own centre, the same in every browser (an iPad drew px origins off the ring and the circles slid over each other) */
-    .wl-ticks { stroke: rgba(37, 99, 235, 0.55); stroke-width: 7; stroke-dasharray: 1.4 9.6; animation: wl-spin 40s linear infinite; }
-    .wl-track { stroke: rgba(37, 99, 235, 0.16); stroke-width: 9; stroke-dasharray: 15 6; }
-    .wl-arc { stroke: url(#wl-grad); stroke-width: 9; stroke-dasharray: 15 6; filter: drop-shadow(0 0 5px rgba(37, 99, 235, 0.75)) drop-shadow(0 0 12px rgba(56, 189, 248, 0.55)); }
-    .wl-mask { stroke: #fff; stroke-width: 24; transition: stroke-dasharray 0.25s linear; }
-    .wl-dots { stroke: rgba(37, 99, 235, 0.7); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 0.1 6.2; animation: wl-spin 28s linear infinite reverse; }
-    .wl-inner { stroke: rgba(37, 99, 235, 0.22); stroke-width: 1.2; }
-    @keyframes wl-spin { to { transform: rotate(360deg); } }
     .app-loading:not(.wl-font) .wl-center, .app-loading:not(.wl-font) .wl-status, .app-loading:not(.wl-font) .wl-footer { visibility: hidden; }
-    .wl-center { position: absolute; z-index: 2; display: grid; justify-items: center; gap: 2px; text-align: center; }
-    .wl-wims { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.32em; padding-left: 0.32em; color: #3b6fd6; opacity: 0.85; }
-    .wl-pct { font-size: 2.35rem; font-weight: 700; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #1d4ed8; text-shadow: 0 0 22px rgba(59, 130, 246, 0.6), 0 0 4px rgba(147, 197, 253, 0.9); }
-    .wl-status { position: relative; z-index: 1; margin-top: 30px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; color: #2f5fc4; }
+    .wl-stage { position: relative; z-index: 1; display: grid; place-items: center; width: min(420px, 90vw); height: 120px; }
+    .wl-flare { position: absolute; left: -6%; right: -6%; top: -20%; bottom: -20%; z-index: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, rgba(59, 130, 246, 0.16) 0%, rgba(96, 197, 250, 0.08) 42%, rgba(96, 197, 250, 0) 72%); animation: wl-breathe 3.2s ease-in-out infinite; }
+    @keyframes wl-breathe { 0%, 100% { opacity: 0.7; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1.04); } }
+    /* five rounded squares in a row, deep blue to light blue: they hop one after another in a wave, and light up (20% each) as WIMS loads */
+    .wl-sqs { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 16px; height: 100%; }
+    .wl-sqs i { display: block; width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(145deg, var(--c1), var(--c2)); box-shadow: 0 12px 18px -10px var(--c2), inset 0 1px 0 rgba(255, 255, 255, 0.45); opacity: 0.22; transform: translateY(0) scale(0.9); animation: wl-hop 1.6s cubic-bezier(0.45, 0, 0.35, 1) infinite; animation-delay: calc(var(--i) * 0.13s); transition: opacity 0.25s linear; }
+    .wl-sqs i:nth-child(1) { --c1: #2f7bf3; --c2: #3b82f6; } .wl-sqs i:nth-child(2) { --c1: #3b8cf5; --c2: #4a93f7; } .wl-sqs i:nth-child(3) { --c1: #4a9df7; --c2: #55a5f8; } .wl-sqs i:nth-child(4) { --c1: #57b0f9; --c2: #5fb6f9; } .wl-sqs i:nth-child(5) { --c1: #64c0fa; --c2: #6cc8fb; }
+    @keyframes wl-hop { 0%, 55%, 100% { transform: translateY(0) scale(0.9); } 25% { transform: translateY(-16px) scale(1.08); } }
+    @media (max-width: 420px) { .wl-sqs { gap: 11px; } .wl-sqs i { width: 30px; height: 30px; border-radius: 8px; } }
+    .wl-meta { position: relative; z-index: 2; display: grid; justify-items: center; gap: 2px; margin-top: 4px; }
+    .wl-wims { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.32em; padding-left: 0.32em; color: #3b6fd6; opacity: 0.85; }
+    .wl-pct { font-size: 2.585rem; font-weight: 400; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #1d4ed8; text-shadow: 0 0 22px rgba(59, 130, 246, 0.5), 0 0 16px rgba(251, 191, 36, 0.35), 0 0 4px rgba(147, 197, 253, 0.9); }
+    .wl-status { position: relative; z-index: 1; margin-top: 14px; font-size: 0.88rem; font-weight: 700; letter-spacing: 0.04em; color: #2f5fc4; }
     .wl-status i { font-style: normal; display: inline-block; width: 1.4em; overflow: hidden; vertical-align: bottom; text-align: left; animation: wl-dots 1.3s steps(4, end) infinite; }
     @keyframes wl-dots { from { width: 0; } to { width: 1.4em; } }
-    .wl-bar { position: relative; z-index: 1; width: min(220px, 62vw); height: 14px; margin-top: 10px; padding: 2px; border-radius: 999px; background: rgba(37, 99, 235, 0.07); box-shadow: inset 0 0 0 1.5px rgba(37, 99, 235, 0.4), 0 0 14px rgba(59, 130, 246, 0.22); }
-    .wl-bar span { display: block; width: 0%; height: 100%; min-width: 10px; border-radius: 999px; background: linear-gradient(90deg, #1d4ed8, #3b82f6 55%, #67e8f9); box-shadow: 0 0 10px rgba(56, 189, 248, 0.85), 0 0 22px rgba(59, 130, 246, 0.5); transition: width 0.25s linear; }
+      background: linear-gradient(180deg, #ffe08a 0%, #f5b83d 45%, #d98e12 100%); box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.55), inset 0 -3px 4px rgba(120, 60, 0, 0.35); }
+    /* the status text: each message is written letter by letter, rising into place with a small tilt, and the old one lifts away in the same way */
+    .wl-status { min-height: 1.5em; }
+    .wl-labwrap { position: relative; height: 1.5em; width: min(380px, 80vw); margin: 0 auto; overflow: hidden; }
+    .wl-lab { position: absolute; left: 0; right: 0; top: 0; text-align: center; white-space: nowrap; font-weight: 600; }
+    .wl-lab span { display: inline-block; opacity: 0; transform: translateY(115%) rotate(9deg); animation: wl-char-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.25) forwards; animation-delay: calc(var(--i) * 32ms); }
+    .wl-lab.wl-leave span { animation: wl-char-out 0.38s ease-in forwards; animation-delay: calc(var(--i) * 14ms); }
+    @keyframes wl-char-in { to { opacity: 1; transform: none; } }
+    @keyframes wl-char-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-115%) rotate(-7deg); } }
 
     /* dark theme: the same HUD on deep navy */
     .dark .app-loading, html.dark .app-loading { background: radial-gradient(120% 90% at 50% 38%, #0b2260 0%, #050b22 55%, #02050f 100%) !important; }
     .dark .wl-grid { background-image: linear-gradient(rgba(96, 165, 250, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.1) 1px, transparent 1px); }
     .dark .wl-corner { border-color: rgba(96, 200, 255, 0.85); }
-    .dark .wl-glow { background: radial-gradient(circle, rgba(37, 99, 235, 0.55) 0%, rgba(37, 99, 235, 0.2) 42%, rgba(37, 99, 235, 0) 70%); }
-    .dark .wl-ticks { stroke: rgba(125, 180, 255, 0.6); } .dark .wl-track { stroke: rgba(96, 165, 250, 0.2); } .dark .wl-dots { stroke: rgba(147, 197, 253, 0.85); } .dark .wl-inner { stroke: rgba(147, 197, 253, 0.25); }
     .dark .wl-wims { color: #8fc2ff; } .dark .wl-pct { color: #cfe6ff; text-shadow: 0 0 20px rgba(56, 189, 248, 0.9), 0 0 4px rgba(191, 227, 255, 0.9); } .dark .wl-status { color: #7dd3fc; }
-    .dark .wl-bar { background: rgba(8, 18, 48, 0.8); box-shadow: inset 0 0 0 1.5px rgba(125, 180, 255, 0.5), 0 0 16px rgba(56, 189, 248, 0.25); }
-    @media (prefers-reduced-motion: reduce) { .wl-ticks, .wl-dots, .wl-glow, .wl-status i { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .wl-flare, .wl-sqs i, .wl-status i, .wl-lab span { animation: none; transform: none; } }
     /* footer label, the same wording as the dashboard footer */
     .wl-footer { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 1; padding: 0 14px; text-align: center; font-size: 12px; line-height: 1.5; color: #9ca3af; }
     .wl-footer p { margin: 0; }
@@ -161,7 +162,7 @@
     @media (min-width: 640px) { .wl-footer .wl-short { display: none; } }
     @media (prefers-reduced-motion: reduce) { .wl-footer .wl-lic, .wl-footer .wl-credit { animation: none; } }
   </style>
-  @routes
+  {!! \App\Support\ZiggyScript::tag() !!}
   @vite('resources/js/app.js', '')
   {!! \App\Support\Typography::styleHtml() !!}
   @inertiaHead
@@ -171,29 +172,12 @@
   <div id="app-loading" class="app-loading bg-gray-50 dark:bg-gray-900">
     <div class="wl-grid"></div>
     <span class="wl-corner wl-tl"></span><span class="wl-corner wl-tr"></span><span class="wl-corner wl-bl"></span><span class="wl-corner wl-br"></span>
-    <div class="wl-hud">
-      <div class="wl-glow"></div>
-      <svg class="wl-ring" viewBox="0 0 240 240" aria-hidden="true">
-        <defs>
-          <linearGradient id="wl-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#67e8f9" /><stop offset="0.5" stop-color="#3b82f6" /><stop offset="1" stop-color="#1d4ed8" /></linearGradient>
-          <mask id="wl-reveal"><circle id="wims-loader-mask" class="wl-mask" cx="120" cy="120" r="96" pathLength="100" stroke-dasharray="0 100" /></mask>
-        </defs>
-        <circle class="wl-ticks" cx="120" cy="120" r="113" />
-        <!-- the rotation lives on a group with an explicit centre (not on a CSS origin), so the track, the arc and the mask start at 12 o'clock and stay concentric in every browser -->
-        <g transform="rotate(-90 120 120)">
-          <circle class="wl-track" cx="120" cy="120" r="96" />
-          <circle class="wl-arc" cx="120" cy="120" r="96" mask="url(#wl-reveal)" />
-        </g>
-        <circle class="wl-dots" cx="120" cy="120" r="80" />
-        <circle class="wl-inner" cx="120" cy="120" r="70" />
-      </svg>
-      <div class="wl-center">
-        <div class="wl-wims">WIMS</div>
-        <div class="wl-pct" id="wims-loader-percent">0%</div>
-      </div>
+    <div class="wl-stage" aria-hidden="true">
+      <div class="wl-flare"></div>
+      <div class="wl-sqs" id="wl-sqs"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i><i style="--i: 3"></i><i style="--i: 4"></i></div>
     </div>
-    <div class="wl-status">Loading<i id="wl-dots">...</i></div>
-    <div class="wl-bar"><span id="wl-bar-fill"></span></div>
+    <div class="wl-meta"><div class="wl-wims">WIMS</div><div class="wl-pct" id="wims-loader-percent">0%</div></div>
+    <div class="wl-status"><div class="wl-labwrap" id="wl-labwrap" aria-live="polite"></div></div>
     @php($wlSettings = $page['props']['settings'] ?? [])
     @php($wlName = $wlSettings['app_name'] ?? 'RANS Workflow Integrated Management System')
     @php($wlVersion = $wlSettings['version_label'] ?? 'V7.0')
@@ -217,17 +201,40 @@
         var wrap = document.getElementById('app-loading');
         var show = function () { if (wrap) wrap.classList.add('wl-font'); };
         if (document.fonts && document.fonts.load) {
-          Promise.all([document.fonts.load('700 38px Nunito'), document.fonts.load('600 12px Nunito')]).then(show, show);
+          Promise.all([document.fonts.load('400 38px Nunito'), document.fonts.load('600 12px Nunito')]).then(show, show);
           setTimeout(show, 1500);
         } else { show(); }
       })();
-      var maskEl = document.getElementById('wims-loader-mask');
-      var barEl = document.getElementById('wl-bar-fill');
+      // three messages that take turns for as long as WIMS is still loading, then start again from the first; each is written letter by letter
+      var labels = ['Loading WIMS Modules...', 'Loading WIMS Data...', 'Checking Your Access...'];
+      var labelIdx = 0;
+      var labelWrap = document.getElementById('wl-labwrap');
+      function showLabel(text) {
+        if (!labelWrap) return;
+        var old = labelWrap.querySelector('.wl-lab:not(.wl-leave)');
+        if (old) { old.classList.add('wl-leave'); setTimeout(function () { if (old.parentNode) old.parentNode.removeChild(old); }, 900); }
+        var el = document.createElement('b');
+        el.className = 'wl-lab';
+        for (var i = 0; i < text.length; i++) {
+          var c = document.createElement('span');
+          c.style.setProperty('--i', i);
+          c.textContent = text.charAt(i) === ' ' ? '\u00a0' : text.charAt(i);
+          el.appendChild(c);
+        }
+        labelWrap.appendChild(el);
+      }
+      showLabel(labels[0]);
+      var labelTimer = setInterval(function () {
+        labelIdx = (labelIdx + 1) % labels.length;
+        showLabel(labels[labelIdx]);
+      }, 2300);
+      var sqEls = Array.prototype.slice.call(document.querySelectorAll('#wl-sqs i'));
       var percentEl = document.getElementById('wims-loader-percent');
-
+      var finishSpin = function () {};
+      // each square lights up as its fifth of the progress is reached (the one being filled glows partly)
       function render() {
-        if (maskEl) maskEl.style.strokeDasharray = percent + ' 100';
-        if (barEl) barEl.style.width = percent + '%';
+        var p = Math.min(percent, 100) / 20;
+        sqEls.forEach(function (el, i) { el.style.opacity = (0.22 + 0.78 * Math.max(0, Math.min(1, p - i))).toFixed(2); });
         if (percentEl) percentEl.textContent = Math.round(percent) + '%';
       }
 
@@ -273,6 +280,8 @@
       window.__wimsFinishLoading = function () {
         if (finished) return;
         finished = true;
+        finishSpin();
+        clearInterval(labelTimer);
         if (rafId != null) {
           cancelAnimationFrame(rafId);
           rafId = null;

@@ -23,6 +23,17 @@ Route::prefix('wimshow')->name('wimshow.')
         Route::get('/{slug}', [Controllers\WimshowController::class, 'show'])->where('slug', '[a-z0-9-]+')->name('show');
     });
 
+// The route table for the browser (route('name') in the pages), a plain cacheable script: no Inertia, no licence or lock-down redirects, so the browser and any cache can keep it for a year per version
+Route::get('ziggy.js', fn () => response(\App\Support\ZiggyScript::body(), 200, ['Content-Type' => 'application/javascript; charset=UTF-8', 'Cache-Control' => 'public, max-age=31536000, immutable']))
+    ->withoutMiddleware([
+        \App\Http\Middleware\HandleInertiaRequests::class,
+        \App\Http\Middleware\SystemLockdown::class,
+        \App\Http\Middleware\EnforceLicence::class,
+        \App\Http\Middleware\ImpersonationGuard::class,
+        \App\Http\Middleware\LogDownloadPrintActions::class,
+        \App\Http\Middleware\Language::class,
+    ])->name('ziggy.script');
+
 // Simulation WIMS accounts, managed from PRODUCTION by Super Admins (never reachable from inside the simulation)
 Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'not.simulation'])->prefix('simulation')->name('simulation.')->group(function () {
     $sa = Controllers\Simulation\SimulationAccountsController::class;
@@ -435,6 +446,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::get('create', [$mv, 'create'])->name('create');
         Route::get('availability', [$mv, 'availability'])->middleware('throttle:240,1,external-stock.availability')->name('availability');
         Route::post('/', [$mv, 'store'])->middleware('throttle:60,1,external-stock.store')->name('store');
+        Route::post('people', [$mv, 'storePerson'])->middleware('throttle:60,1,external-stock.people.store')->name('people.store');
         Route::get('reports', [$rp, 'index'])->name('reports.index');
         Route::get('reports/print', [$rp, 'print'])->middleware('throttle:30,1,external-stock.reports.print')->name('reports.print');
         Route::get('reports/pdf', [$rp, 'pdf'])->middleware('throttle:20,1,external-stock.reports.pdf')->name('reports.pdf');
@@ -542,6 +554,65 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('{travel}/files', [$tr, 'attach'])->whereNumber('travel')->middleware('throttle:60,1,travels.attach')->name('attach');
         Route::get('{travel}/files/{file}', [$tr, 'download'])->whereNumber(['travel', 'file'])->middleware('throttle:120,1,travels.download')->name('download');
         Route::delete('{travel}/files/{file}', [$tr, 'removeFile'])->whereNumber(['travel', 'file'])->middleware('throttle:60,1,travels.remove-file')->name('remove-file');
+    });
+
+    // Visitor Logs: reception. Visitors (directory), visits (check-in / check-out), incoming mail & deliveries, reports, settings. Names all start "visitor-logs." so Global Feature Control covers them
+    // (the Notification page is "visitor-logs.workflow", registered with the other module workflows above).
+    Route::prefix('visitor-logs')->name('visitor-logs.')->group(function () {
+        $dash = Controllers\VisitorLogs\DashboardController::class;
+        $look = Controllers\VisitorLogs\LookupController::class;
+        $vis = Controllers\VisitorLogs\VisitController::class;
+        $dir = Controllers\VisitorLogs\VisitorController::class;
+        $itm = Controllers\VisitorLogs\ItemController::class;
+        $rep = Controllers\VisitorLogs\ReportController::class;
+        $set = Controllers\VisitorLogs\SettingsController::class;
+        Route::get('/', [$dash, 'index'])->name('dashboard');
+        Route::post('lookup/people', [$look, 'people'])->middleware('throttle:240,1,visitor-logs.lookup.people')->name('lookup.people');
+        Route::post('lookup/visitors', [$look, 'visitors'])->middleware('throttle:240,1,visitor-logs.lookup.visitors')->name('lookup.visitors');
+        Route::post('lookup/contacts', [$look, 'contacts'])->middleware('throttle:240,1,visitor-logs.lookup.contacts')->name('lookup.contacts');
+        Route::post('lookup/contacts/store', [$look, 'storeContact'])->middleware('throttle:60,1,visitor-logs.lookup.contacts.store')->name('lookup.contacts.store');
+        // visits
+        Route::get('visits', [$vis, 'index'])->name('visits.index');
+        Route::get('visits/create', [$vis, 'create'])->name('visits.create');
+        Route::post('visits', [$vis, 'store'])->middleware('throttle:60,1,visitor-logs.visits.store')->name('visits.store');
+        Route::get('visits/{visit}', [$vis, 'show'])->whereNumber('visit')->name('visits.show');
+        Route::get('visits/{visit}/edit', [$vis, 'edit'])->whereNumber('visit')->name('visits.edit');
+        Route::put('visits/{visit}', [$vis, 'update'])->whereNumber('visit')->middleware('throttle:60,1,visitor-logs.visits.update')->name('visits.update');
+        Route::post('visits/{visit}/checkout', [$vis, 'checkout'])->whereNumber('visit')->middleware('throttle:120,1,visitor-logs.visits.checkout')->name('visits.checkout');
+        Route::post('visits/{visit}/correct', [$vis, 'correct'])->whereNumber('visit')->middleware('throttle:30,1,visitor-logs.visits.correct')->name('visits.correct');
+        Route::post('visits/{visit}/cancel', [$vis, 'cancel'])->whereNumber('visit')->middleware('throttle:30,1,visitor-logs.visits.cancel')->name('visits.cancel');
+        Route::post('visits/{visit}/files', [$vis, 'attach'])->whereNumber('visit')->middleware('throttle:60,1,visitor-logs.visits.attach')->name('visits.attach');
+        Route::get('visits/{visit}/files/{file}', [$vis, 'download'])->whereNumber(['visit', 'file'])->middleware('throttle:120,1,visitor-logs.visits.download')->name('visits.download');
+        // visitor directory
+        Route::get('visitors', [$dir, 'index'])->name('visitors.index');
+        Route::post('visitors', [$dir, 'store'])->middleware('throttle:60,1,visitor-logs.visitors.store')->name('visitors.store');
+        Route::get('visitors/{visitor}', [$dir, 'show'])->whereNumber('visitor')->name('visitors.show');
+        Route::put('visitors/{visitor}', [$dir, 'update'])->whereNumber('visitor')->middleware('throttle:60,1,visitor-logs.visitors.update')->name('visitors.update');
+        Route::post('visitors/{visitor}/toggle', [$dir, 'toggle'])->whereNumber('visitor')->middleware('throttle:30,1,visitor-logs.visitors.toggle')->name('visitors.toggle');
+        // incoming mail and deliveries
+        Route::get('items', [$itm, 'index'])->name('items.index');
+        Route::get('items/create', [$itm, 'create'])->name('items.create');
+        Route::post('items', [$itm, 'store'])->middleware('throttle:60,1,visitor-logs.items.store')->name('items.store');
+        Route::get('items/{item}', [$itm, 'show'])->whereNumber('item')->name('items.show');
+        Route::get('items/{item}/edit', [$itm, 'edit'])->whereNumber('item')->name('items.edit');
+        Route::put('items/{item}', [$itm, 'update'])->whereNumber('item')->middleware('throttle:60,1,visitor-logs.items.update')->name('items.update');
+        Route::post('items/{item}/status', [$itm, 'status'])->whereNumber('item')->middleware('throttle:120,1,visitor-logs.items.status')->name('items.status');
+        Route::post('items/{item}/handover', [$itm, 'handover'])->whereNumber('item')->middleware('throttle:60,1,visitor-logs.items.handover')->name('items.handover');
+        Route::post('items/{item}/correct', [$itm, 'correct'])->whereNumber('item')->middleware('throttle:30,1,visitor-logs.items.correct')->name('items.correct');
+        Route::post('items/{item}/files', [$itm, 'attach'])->whereNumber('item')->middleware('throttle:60,1,visitor-logs.items.attach')->name('items.attach');
+        Route::get('items/{item}/files/{file}', [$itm, 'download'])->whereNumber(['item', 'file'])->middleware('throttle:120,1,visitor-logs.items.download')->name('items.download');
+        // reports
+        Route::get('reports', [$rep, 'index'])->name('reports.index');
+        Route::get('reports/print', [$rep, 'print'])->middleware('throttle:30,1,visitor-logs.reports.print')->name('reports.print');
+        Route::get('reports/pdf', [$rep, 'pdf'])->middleware('throttle:20,1,visitor-logs.reports.pdf')->name('reports.pdf');
+        Route::get('reports/csv', [$rep, 'csv'])->middleware('throttle:20,1,visitor-logs.reports.csv')->name('reports.csv');
+        Route::get('reports/xlsx', [$rep, 'xlsx'])->middleware('throttle:20,1,visitor-logs.reports.xlsx')->name('reports.xlsx');
+        // settings
+        Route::get('settings', [$set, 'index'])->name('settings');
+        Route::put('settings', [$set, 'update'])->middleware('throttle:30,1,visitor-logs.settings.update')->name('settings.update');
+        Route::post('settings/options', [$set, 'storeOption'])->middleware('throttle:60,1,visitor-logs.settings.options.store')->name('settings.options.store');
+        Route::put('settings/options/{option}', [$set, 'updateOption'])->whereNumber('option')->middleware('throttle:60,1,visitor-logs.settings.options.update')->name('settings.options.update');
+        Route::post('settings/options/reorder', [$set, 'reorderOptions'])->middleware('throttle:60,1,visitor-logs.settings.options.reorder')->name('settings.options.reorder');
     });
 
     // Subcontractor Management: subcontractors (Contacts), agreements, work schedules, variations, payment requests (paid only through Payment Vouchers), statements, import, reports.
@@ -1784,6 +1855,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('super-adjustments/sessions', [Controllers\AdjustmentSessionController::class, 'store'])->middleware('throttle:20,1')->name('adjustment-sessions.store');
     Route::get('super-adjustments/sessions/{session}', [Controllers\AdjustmentSessionController::class, 'show'])->name('adjustment-sessions.show')->whereNumber('session');
     Route::post('super-adjustments/sessions/{session}/end', [Controllers\AdjustmentSessionController::class, 'end'])->middleware('throttle:20,1')->name('adjustment-sessions.end')->whereNumber('session');
+    Route::post('super-adjustments/sessions/{session}/halt', [Controllers\AdjustmentSessionController::class, 'halt'])->middleware('throttle:20,1')->name('adjustment-sessions.halt')->whereNumber('session');
     Route::get('super-adjustments/sessions/{session}/print', [Controllers\AdjustmentSessionController::class, 'print'])->name('adjustment-sessions.print')->whereNumber('session');
     Route::get('super-adjustments/sessions/{session}/pdf', [Controllers\AdjustmentSessionController::class, 'pdf'])->name('adjustment-sessions.pdf')->whereNumber('session');
     Route::get('super-adjustments/item-stock', [Controllers\SuperAdjustmentController::class, 'itemStock'])
@@ -1897,6 +1969,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('reports', [Controllers\ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/general', [Controllers\ReportController::class, 'general'])->name('reports.general');
     Route::get('reports/general/pdf', [Controllers\ReportController::class, 'generalPdf'])->name('reports.general.pdf');
+    Route::get('reports/warehouse-items/{warehouse}', [Controllers\ReportController::class, 'warehouseItems'])->whereNumber('warehouse')->name('reports.warehouse-items');
     Route::match(['GET', 'POST'], 'reports/checkin', [Controllers\ReportController::class, 'checkin'])->name('reports.checkin');
     Route::match(['GET', 'POST'], 'reports/checkout', [Controllers\ReportController::class, 'checkout'])->name('reports.checkout');
     Route::match(['GET', 'POST'], 'reports/transfer', [Controllers\ReportController::class, 'transfer'])->name('reports.transfer');

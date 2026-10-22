@@ -27,6 +27,11 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    public function __construct()
+    {
+        $this->requirePermissions(['activity' => 'read-activity']);
+    }
+
     /**
      * Presence ping from the browser. Every signed-in user sends it (not only attendance users), but only while the tab
      * is visible and they have touched the page in the last few minutes — so an abandoned tab drifts to Idle instead of
@@ -448,14 +453,20 @@ class DashboardController extends Controller
     {
         $warehouses = Warehouse::visible()->get();
 
-        // Lean queries (no Eloquent hydration, no per-warehouse query): ~20k stock rows are summarised in PHP.
-        $stocks = Stock::query()->whereIn('warehouse_id', $warehouses->pluck('id'))
+        // Lean queries (no Eloquent hydration, no per-warehouse query). The value of each warehouse is summed by the database over every stock line
+        // (so it still counts all of them), and only the lines with stock on hand are brought over to be listed: about a fifth of the ~25k rows.
+        $ids = $warehouses->pluck('id');
+        $stocks = Stock::query()->whereIn('warehouse_id', $ids)->where('quantity', '>', 0)
             ->select('warehouse_id', 'item_id', 'quantity')->toBase()->get()->groupBy('warehouse_id');
+        $amounts = \Illuminate\Support\Facades\DB::table('stocks')
+            ->leftJoin('items', fn ($j) => $j->on('items.id', '=', 'stocks.item_id')->whereNull('items.deleted_at'))
+            ->whereNull('stocks.deleted_at')->where('stocks.account_id', getAccountId())->whereIn('stocks.warehouse_id', $ids)->where('stocks.quantity', '<>', 0) // an empty line adds nothing
+            ->selectRaw('stocks.warehouse_id, SUM(stocks.quantity * COALESCE(items.price, 0)) AS amount')->groupBy('stocks.warehouse_id')->pluck('amount', 'warehouse_id');
         $itemRows = \App\Models\Item::query()->select('id', 'name', 'code', 'price', 'unit_id')->toBase()->get()->keyBy('id');
         $units = \App\Models\Unit::query()->select('id', 'code', 'name')->toBase()->get()->keyBy('id');
 
         // highest stock value first (the dashboard then groups them and keeps this order inside each group)
-        return $warehouses->map(function ($warehouse) use ($stocks, $itemRows, $units) {
+        return $warehouses->map(function ($warehouse) use ($stocks, $amounts, $itemRows, $units) {
             $items = ($stocks->get($warehouse->id) ?? collect())->map(function ($row) use ($itemRows, $units) {
                 $it = $itemRows->get($row->item_id);
                 $unit = $it ? $units->get($it->unit_id) : null;
@@ -480,11 +491,10 @@ class DashboardController extends Controller
                 'name' => $warehouse->name,
                 'status' => $warehouse->status,
                 'group' => $group,
-                'amount' => $items->sum('total_amount'),
+                'amount' => (float) ($amounts[$warehouse->id] ?? 0), // the sum of every stock line, done by the database
                 'completion_percentage' => $warehouse->completion_percentage,
-                // The dashboard only lists lines with stock on hand (most of a warehouse's catalogue lines are empty);
-                // 'amount' above still sums every line.
-                'items' => $items->filter(fn ($line) => $line['quantity'] > 0)->values(),
+                // only lines with stock on hand are listed (most of a warehouse's catalogue lines are empty)
+                'items' => $items,
             ];
         })->sortByDesc(fn ($row) => (float) $row['amount'])->values();
     }

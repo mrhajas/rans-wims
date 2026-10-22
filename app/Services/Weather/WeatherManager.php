@@ -81,6 +81,35 @@ class WeatherManager
     // ------------------------------------------------------------------------------------------------------------------ reading
 
     /** What WIMS knows about a project's weather right now, from saved snapshots only (no provider call). */
+    /** @var array<string,\Illuminate\Support\Collection> the snapshots that count, per location, loaded for a whole page at once by warm() */
+    private array $snapMemo = [];
+
+    /** @var array<string,string|null> the newest manual refresh per location */
+    private array $coolMemo = [];
+
+    /** Loads the snapshots and refresh times of many projects in three queries instead of three per project (the Weather page shows every project). */
+    public function warm(\Illuminate\Support\Collection $projects, int $accountId): void
+    {
+        $conf = $this->configuration($accountId);
+        $keys = $projects->map(fn (Warehouse $w) => self::coordinates($w)['key'] ?? null)->filter()->unique()->values()->all();
+        if (! $keys || ! $conf['ok']) {
+            return;
+        }
+        $ids = WeatherSnapshot::query()->where('account_id', $accountId)->whereIn('location_key', $keys)->where('provider', $conf['provider'])
+            ->where('fetched_at', '>=', now()->subDays(3))->selectRaw('MAX(id) as id')->groupBy('location_key', 'kind', 'status')->pluck('id');
+        $rows = $ids->isEmpty() ? collect() : WeatherSnapshot::query()->whereIn('id', $ids)->orderByDesc('fetched_at')->orderByDesc('id')->get();
+        $this->snapMemo = array_fill_keys($keys, collect());
+        foreach ($rows->groupBy('location_key') as $key => $group) {
+            $this->snapMemo[$key] = $group->values();
+        }
+        $minutes = max(1, (int) $this->prefs($accountId)['manual_refresh_min']);
+        $this->coolMemo = array_fill_keys($keys, null);
+        foreach (WeatherSnapshot::query()->where('account_id', $accountId)->whereIn('location_key', $keys)->where('trigger', 'manual')->where('fetched_at', '>', now()->subMinutes($minutes))
+            ->selectRaw('location_key, MAX(fetched_at) as last')->groupBy('location_key')->get() as $r) {
+            $this->coolMemo[$r->location_key] = $r->last;
+        }
+    }
+
     public function state(Warehouse $w): array
     {
         $accountId = (int) ($w->account_id ?: 1);
@@ -99,8 +128,15 @@ class WeatherManager
         }
 
         $prefs = $this->prefs($accountId);
-        $rows = WeatherSnapshot::query()->where('account_id', $accountId)->where('location_key', $loc['key'])->where('provider', $conf['provider'])
-            ->where('fetched_at', '>=', now()->subDays(3))->orderByDesc('fetched_at')->orderByDesc('id')->get();
+        // only the newest row of each kind and outcome is ever used below: find their ids from the index alone, then read just those few rows
+        // (reading every row of the last three days, each with its large forecast, took about 25 ms per project)
+        if (isset($this->snapMemo[$loc['key']])) {
+            $rows = $this->snapMemo[$loc['key']]; // loaded for the whole page by warm()
+        } else {
+            $ids = WeatherSnapshot::query()->where('account_id', $accountId)->where('location_key', $loc['key'])->where('provider', $conf['provider'])
+                ->where('fetched_at', '>=', now()->subDays(3))->selectRaw('MAX(id) as id')->groupBy('kind', 'status')->pluck('id');
+            $rows = $ids->isEmpty() ? collect() : WeatherSnapshot::query()->whereIn('id', $ids)->orderByDesc('fetched_at')->orderByDesc('id')->get();
+        }
         $latest = fn (string $kind) => $rows->firstWhere('kind', $kind);
         $latestOk = fn (string $kind) => $rows->first(fn ($r) => $r->kind === $kind && $r->status === 'ok');
 
@@ -173,7 +209,7 @@ class WeatherManager
         }
         $accountId = (int) ($w->account_id ?: 1);
         $minutes = max(1, (int) $this->prefs($accountId)['manual_refresh_min']);
-        $last = WeatherSnapshot::query()->where('account_id', $accountId)->where('location_key', $loc['key'])->where('trigger', 'manual')
+        $last = array_key_exists($loc['key'], $this->coolMemo) ? $this->coolMemo[$loc['key']] : WeatherSnapshot::query()->where('account_id', $accountId)->where('location_key', $loc['key'])->where('trigger', 'manual')
             ->where('fetched_at', '>', now()->subMinutes($minutes))->max('fetched_at');
 
         return $last ? max(1, $minutes * 60 - (int) CarbonImmutable::parse($last)->diffInSeconds(now())) : 0;

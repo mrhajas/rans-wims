@@ -471,6 +471,7 @@ import SelectInput from '@/Shared/SelectInput.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import SimpleAutocomplete from '@/Shared/SimpleAutocomplete.vue';
+import { printWithAnimation, printUrlInFrame, materialRequestPrintSheet } from '@/Core/printAnimation';
 
 export default {
   components: {
@@ -1075,7 +1076,7 @@ export default {
       });
     },
     printReport() {
-      window.open(route('material-requests.print', this.materialRequest.id), '_blank');
+      printWithAnimation(materialRequestPrintSheet(this, this.materialRequest), () => printUrlInFrame(route('material-requests.print', this.materialRequest.id)));
     },
     downloadPdf() {
       window.open(route('material-requests.pdf', this.materialRequest.id), '_blank');

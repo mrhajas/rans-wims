@@ -34,7 +34,7 @@ class AdjustmentSessionService
     /** Every Super Adjustment of the session (whoever made it), newest last. */
     public static function documents(AdjustmentSession $s): Collection
     {
-        return SuperAdjustment::withoutGlobalScope('mine')->where('adjustment_session_id', $s->id)->with('user:id,name')->withCount('items')->orderBy('id')->get();
+        return SuperAdjustment::withoutGlobalScope('mine')->where('adjustment_session_id', $s->id)->with(['user:id,name', 'approver:id,name', 'rejecter:id,name'])->withCount('items')->orderBy('id')->get();
     }
 
     /** @return array<int,int> item ids that are on a counting Super Adjustment of the session */
@@ -57,11 +57,11 @@ class AdjustmentSessionService
         $countedIds ??= self::countedItemIds(self::documents($s));
 
         return Stock::main()->ofWarehouse($s->warehouse_id)->where('quantity', '!=', 0)->whereNotIn('item_id', $countedIds)
-            ->with(['item:id,name,code,unit_id', 'item.unit:id,name,code'])->get()
+            ->with(['item:id,name,code,unit_id,price', 'item.unit:id,name,code'])->get()
             ->filter(fn ($st) => $st->item)
             ->map(fn ($st) => [
                 'item_id' => (int) $st->item_id, 'name' => $st->item->name, 'code' => $st->item->code, 'unit' => optional($st->item->unit)->name,
-                'quantity' => (float) $st->quantity, 'moved' => $s->started_at && $st->updated_at && $st->updated_at->gte($s->started_at),
+                'quantity' => (float) $st->quantity, 'price' => (float) ($st->item->price ?? 0), 'value' => round((float) $st->quantity * (float) ($st->item->price ?? 0), 2), 'moved' => $s->started_at && $st->updated_at && $st->updated_at->gte($s->started_at),
                 'last_moved_at' => optional($st->updated_at)->toDateTimeString(),
             ])->sortBy(fn ($r) => mb_strtolower($r['name']))->values();
     }
@@ -72,7 +72,7 @@ class AdjustmentSessionService
         return (int) Stock::main()->ofWarehouse($warehouseId)->where('quantity', '!=', 0)->count();
     }
 
-    public static function start(User $user, int $warehouseId, ?string $name, ?string $note): AdjustmentSession
+    public static function start(User $user, int $warehouseId, ?string $name, ?string $note, bool $haltStock = false): AdjustmentSession
     {
         if (AdjustmentSession::openFor($warehouseId)) {
             throw ValidationException::withMessages(['warehouse_id' => __('This Project / Warehouse already has an open Adjustment Session. End it first.')]);
@@ -83,7 +83,7 @@ class AdjustmentSessionService
                 return DB::transaction(fn () => AdjustmentSession::create([
                     'reference' => self::nextReference(), 'warehouse_id' => $warehouseId, 'name' => $name ? mb_substr(trim($name), 0, 190) : null, 'note' => $note ? trim($note) : null,
                     'status' => AdjustmentSession::STATUS_OPEN, 'open_warehouse_id' => $warehouseId, 'started_by_user_id' => $user->id, 'started_at' => now(),
-                ]));
+                ] + ($haltStock ? ['halt_stock' => true, 'halted_by_user_id' => $user->id, 'halted_at' => now()] : [])));
             } catch (QueryException $e) {
                 if (AdjustmentSession::openFor($warehouseId)) {
                     throw ValidationException::withMessages(['warehouse_id' => __('This Project / Warehouse already has an open Adjustment Session. End it first.')]);
@@ -136,10 +136,43 @@ class AdjustmentSessionService
             $s->forceFill([
                 'status' => AdjustmentSession::STATUS_ENDED, 'open_warehouse_id' => null, 'ended_by_user_id' => $user->id, 'ended_at' => now(), 'end_note' => $note ? trim($note) : null,
                 'clearing_super_adjustment_id' => optional($clearing)->id, 'snapshot' => $snapshot,
-            ])->save();
+            ] + ($s->halt_stock ? ['halt_stock' => false, 'halt_released_by_user_id' => $user->id, 'halt_released_at' => now()] : []))->save(); // ending the session lifts the halt
         });
+        \App\Support\StockHalt::forget();
 
         return [$s->fresh(), $clearing];
+    }
+
+    /** Halts the stock movement of the session's warehouse. Returns false when it is already halted or the session is not open. */
+    public static function halt(User $user, AdjustmentSession $s): bool
+    {
+        return DB::transaction(function () use ($user, $s) {
+            $locked = AdjustmentSession::query()->whereKey($s->id)->lockForUpdate()->first();
+            if (! $locked || ! $locked->isOpen() || $locked->halt_stock) {
+                return false;
+            }
+            $locked->forceFill(['halt_stock' => true, 'halted_by_user_id' => $user->id, 'halted_at' => now(), 'halt_released_by_user_id' => null, 'halt_released_at' => null])->save();
+            $s->setRawAttributes($locked->getAttributes(), true);
+            \App\Support\StockHalt::forget();
+
+            return true;
+        });
+    }
+
+    /** Lifts the halt while the session stays open. Returns false when it was not halted or the session is not open. */
+    public static function release(User $user, AdjustmentSession $s): bool
+    {
+        return DB::transaction(function () use ($user, $s) {
+            $locked = AdjustmentSession::query()->whereKey($s->id)->lockForUpdate()->first();
+            if (! $locked || ! $locked->isOpen() || ! $locked->halt_stock) {
+                return false;
+            }
+            $locked->forceFill(['halt_stock' => false, 'halt_released_by_user_id' => $user->id, 'halt_released_at' => now()])->save();
+            $s->setRawAttributes($locked->getAttributes(), true);
+            \App\Support\StockHalt::forget();
+
+            return true;
+        });
     }
 
     /** One line for the notices: "120 counted, 8 not counted, 8 cleared". */

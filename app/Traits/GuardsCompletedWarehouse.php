@@ -48,4 +48,24 @@ trait GuardsCompletedWarehouse
             abort(403, $this->completedWarehouseMessage());
         }
     }
+
+    /**
+     * Stock movement halted by an Adjustment Session (see App\Support\StockHalt). Unlike "completed" this holds for everybody, a Super Admin too.
+     * Flash message names the person who halted it.
+     */
+    protected function rejectIfStockHalted(...$warehouseIds)
+    {
+        $halt = \App\Support\StockHalt::blocking(...$warehouseIds);
+        if (! $halt) {
+            return null;
+        }
+
+        return back()->with('error', \App\Support\StockHalt::message($halt));
+    }
+
+    /** For the actions that move stock: a completed project (read-only) or a warehouse whose stock movement is halted. */
+    protected function rejectIfWarehouseBlocked(...$warehouseIds)
+    {
+        return $this->rejectIfWarehouseCompleted(...$warehouseIds) ?? $this->rejectIfStockHalted(...$warehouseIds);
+    }
 }

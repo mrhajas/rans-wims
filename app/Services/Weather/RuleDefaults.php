@@ -46,8 +46,15 @@ class RuleDefaults
     }
 
     /** Make sure an account has its five starting rules (never touches a rule that exists). Returns the number added. */
+    /** @var array<int,bool> accounts already checked in this process (the check cost one query per rule, per project card) */
+    private static array $ensured = [];
+
     public static function ensure(int $accountId): int
     {
+        if (isset(self::$ensured[$accountId])) {
+            return 0;
+        }
+        self::$ensured[$accountId] = true;
         $added = 0;
         foreach (self::all() as $key => $r) {
             if (WeatherRiskRule::query()->where('account_id', $accountId)->where('activity_key', $key)->exists()) {

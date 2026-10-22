@@ -22,6 +22,7 @@ class ItemController extends Controller
 {
     public function barcodes(Request $request)
     {
+        abort_unless($request->user()->can('read-items'), 403);
         $ids = collect(explode(',', (string) $request->input('ids')))->filter()->values();
 
         $query = Item::query()->orderBy('name');
@@ -86,6 +87,7 @@ class ItemController extends Controller
 
     public function destroyPhoto(Item $item)
     {
+        abort_unless(auth()->user()->can('update-items'), 403);
         if ($item->photo && Storage::disk('assets')->delete($item->photo)) {
             $item->update(['photo' => null]);
 
@@ -381,6 +383,7 @@ class ItemController extends Controller
 
     public function trail(Item $item)
     {
+        abort_unless(auth()->user()->can('read-items'), 403);
         $subjectRouteMap = [
             \App\Models\CheckinItem::class => ['relation' => 'checkin', 'route' => 'checkins.show'],
             \App\Models\CheckoutItem::class => ['relation' => 'checkout', 'route' => 'checkouts.show'],

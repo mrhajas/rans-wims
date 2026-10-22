@@ -43,6 +43,7 @@
             <div>
               <auto-complete
                 id="warehouse"
+                stock-move
                 :label="$t('Warehouse')"
                 :suggestions="userWarehouses"
                 v-model="form.warehouse_id"

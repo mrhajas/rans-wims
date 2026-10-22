@@ -34,7 +34,7 @@ class CheckinController extends Controller
 
     public function destroy(Checkin $checkin)
     {
-        if ($response = $this->rejectIfWarehouseCompleted($checkin->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($checkin->warehouse_id)) {
             return $response;
         }
         $checkin->load(['items.item', 'items.unit', 'items.variations']);
@@ -49,7 +49,7 @@ class CheckinController extends Controller
 
     public function destroyPermanently(Checkin $checkin)
     {
-        if ($response = $this->rejectIfWarehouseCompleted($checkin->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($checkin->warehouse_id)) {
             return $response;
         }
         $checkin->load(['items.item', 'items.unit', 'items.variations']);
@@ -67,7 +67,7 @@ class CheckinController extends Controller
     public function edit(Checkin $checkin)
     {
         $this->authorize('update', $checkin);
-        if ($response = $this->rejectIfWarehouseCompleted($checkin->warehouse_id)) {
+        if ($response = $this->rejectIfWarehouseBlocked($checkin->warehouse_id)) {
             return $response;
         }
         if ($response = $this->denyExpiredSiteEngineerEdit($checkin)) {
@@ -201,7 +201,7 @@ class CheckinController extends Controller
     public function store(CheckinRequest $request)
     {
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($data['warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($data['warehouse_id'] ?? null)) {
             return $response;
         }
         // Signatories: a completed (not draft) record is the final step; refuse it when a required signature is missing (inert until an administrator switches it on).
@@ -233,7 +233,7 @@ class CheckinController extends Controller
             return $response;
         }
         $data = $request->validated();
-        if ($response = $this->rejectIfWarehouseCompleted($checkin->warehouse_id, $data['warehouse_id'] ?? null)) {
+        if ($response = $this->rejectIfWarehouseBlocked($checkin->warehouse_id, $data['warehouse_id'] ?? null)) {
             return $response;
         }
         // Signatories: finishing a draft is the final step (see store()). Saving an already completed record again changes nothing here.
