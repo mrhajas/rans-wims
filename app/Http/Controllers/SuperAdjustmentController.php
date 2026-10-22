@@ -111,6 +111,7 @@ class SuperAdjustmentController extends Controller
             'today' => now()->format('Y-m-d'),
             'responsibleUser' => $request->user()->only(['id', 'name']),
             'openSessions' => $this->openSessions(),
+            'requiredApprovals' => SuperAdjustment::requiredApprovals(),
             'preselectWarehouseId' => ctype_digit((string) $request->query('warehouse_id', '')) ? (int) $request->query('warehouse_id') : null,
         ]);
     }
@@ -928,7 +929,7 @@ class SuperAdjustmentController extends Controller
         return Stock::main()->ofWarehouse($data['warehouse_id'])
             ->where('quantity', '!=', 0)
             ->whereNotIn('item_id', $data['item_ids'] ?? [])
-            ->with(['item:id,name,code,unit_id', 'item.unit:id,name,code'])
+            ->with(['item:id,name,code,unit_id', 'item.unit:id,name,code', 'item.categories:id,name'])
             ->get()
             ->filter(fn ($stock) => $stock->item)
             ->map(fn ($stock) => [
@@ -938,6 +939,7 @@ class SuperAdjustmentController extends Controller
                 'unit_id' => $stock->item->unit_id,
                 'unit_name' => optional($stock->item->unit)->name,
                 'system_quantity' => (float) $stock->quantity,
+                'category' => $stock->item->categories->pluck('name')->implode(', '),
             ])
             ->values();
     }
@@ -953,8 +955,9 @@ class SuperAdjustmentController extends Controller
         $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id']);
         abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($data['warehouse_id'])->exists(), 403, __('You cannot use this Project / Warehouse.'));
 
-        return Stock::main()->ofWarehouse($data['warehouse_id'])
-            ->where('quantity', '!=', 0)
+        // the items that are in the warehouse: the ones with stock (positive, or negative as a mistake to correct). Every item also has an empty
+        // (0) stock record in every warehouse, which does not mean it is there; this is the same set the Warehouses page lists and Import by Category adds.
+        return Stock::main()->ofWarehouse($data['warehouse_id'])->where('quantity', '!=', 0)
             ->with(['item:id,name,code,unit_id', 'item.unit:id,name,code'])
             ->get()
             ->filter(fn ($stock) => $stock->item)
@@ -999,7 +1002,7 @@ class SuperAdjustmentController extends Controller
         $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id']);
         abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($data['warehouse_id'])->exists(), 403, __('You cannot use this Project / Warehouse.'));
 
-        $itemIds = Stock::main()->ofWarehouse($data['warehouse_id'])->pluck('item_id')->unique()->values();
+        $itemIds = Stock::main()->ofWarehouse($data['warehouse_id'])->where('quantity', '!=', 0)->pluck('item_id')->unique()->values();
         $cats = \App\Models\Category::query()->get(['id', 'name', 'parent_id'])->keyBy('id');
         // item ids per category (an item can be in several categories), only the items of this warehouse
         $byCat = \Illuminate\Support\Facades\DB::table('categorizables')->where('categorizable_type', \App\Models\Item::class)->whereIn('categorizable_id', $itemIds)->get(['category_id', 'categorizable_id'])
@@ -1023,7 +1026,7 @@ class SuperAdjustmentController extends Controller
             return implode(' > ', $parts);
         };
 
-        $qty = Stock::main()->ofWarehouse($data['warehouse_id'])->pluck('quantity', 'item_id');
+        $qty = Stock::main()->ofWarehouse($data['warehouse_id'])->where('quantity', '!=', 0)->pluck('quantity', 'item_id');
         $depth = function (int $id) use ($cats): int {
             $d = 0;
             for ($c = $cats[$id] ?? null; $c && $c->parent_id && $d < 8; $c = $cats[$c->parent_id] ?? null) {
@@ -1046,17 +1049,23 @@ class SuperAdjustmentController extends Controller
         })->filter(fn ($r) => $r['items'] > 0)->sortBy(fn ($r) => mb_strtolower($r['label']))->values();
     }
 
-    /** "Import by Category": every item of the category (and its sub-categories) that has a stock record in the warehouse, whatever its quantity (positive, negative or zero). */
+    /** "Import by Category": every item of the chosen categories (and their sub-categories) that is in the warehouse, i.e. has stock there (positive, or negative as a mistake to correct). */
     public function categoryStock(Request $request)
     {
         abort_unless($request->user()->can('create-super-adjustments'), 403);
-        $data = $request->validate(['warehouse_id' => 'required|integer|exists:warehouses,id', 'category_id' => 'required|integer|exists:categories,id']);
+        $data = $request->validate([
+            'warehouse_id' => 'required|integer|exists:warehouses,id',
+            'category_id' => 'required_without:category_ids|integer|exists:categories,id',
+            'category_ids' => 'required_without:category_id|array|min:1|max:1000',
+            'category_ids.*' => 'integer|exists:categories,id',
+        ]);
         abort_unless(Warehouse::ofAccount()->active()->visible()->whereKey($data['warehouse_id'])->exists(), 403, __('You cannot use this Project / Warehouse.'));
 
-        $catIds = $this->categoryWithDescendants((int) $data['category_id']);
+        // one or several categories, each with its sub-categories; an item in more than one of them comes once
+        $catIds = collect($data['category_ids'] ?? [$data['category_id']])->flatMap(fn ($id) => $this->categoryWithDescendants((int) $id))->unique()->values()->all();
         $itemIds = \Illuminate\Support\Facades\DB::table('categorizables')->where('categorizable_type', Item::class)->whereIn('category_id', $catIds)->pluck('categorizable_id')->unique();
 
-        return Stock::main()->ofWarehouse($data['warehouse_id'])->whereIn('item_id', $itemIds)
+        return Stock::main()->ofWarehouse($data['warehouse_id'])->where('quantity', '!=', 0)->whereIn('item_id', $itemIds)
             ->with(['item:id,name,code,unit_id', 'item.unit:id,name,code'])
             ->get()
             ->filter(fn ($stock) => $stock->item)

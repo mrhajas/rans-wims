@@ -98,6 +98,14 @@
                     <icons :name="importing === 'all' ? 'cog' : 'download'" class="w-4 h-4" :class="{ 'animate-spin': importing === 'all' }" />
                     <span>{{ importing === 'all' ? $t('Importing…') : $t('Import from Warehouse') }}</span>
                   </button>
+                  <button v-if="form.items.length" type="button" class="lg-btn lg-btn-soft sa-import sa-import--zero" :disabled="importing" @click="resetItems">
+                    <icons name="cog" class="w-4 h-4" />
+                    <span>{{ $t('Reset') }}</span>
+                  </button>
+                  <button v-if="zeroCount" type="button" class="lg-btn lg-btn-soft sa-import sa-import--zero" :disabled="importing" @click="removeZeroItems">
+                    <icons name="trash" class="w-4 h-4" />
+                    <span>{{ $t('Remove Zero Quantity Items') }} ({{ zeroCount }})</span>
+                  </button>
                   <button type="button" class="lg-btn lg-btn-soft sa-import" :disabled="importing" @click="openCategoryImport">
                     <icons :name="importing === 'category' ? 'cog' : 'collection'" class="w-4 h-4" :class="{ 'animate-spin': importing === 'category' }" />
                     <span>{{ importing === 'category' ? $t('Importing…') : $t('Import by Category') }}</span>
@@ -105,16 +113,20 @@
                 </div>
               </div>
               <div v-if="importNote" class="sa-import-note" :class="{ 'is-err': importErr }" role="status"><icons :name="importErr ? 'exclamation' : 'tick'" class="w-4 h-4" /><span>{{ importNote }}</span></div>
-              <div class="lg-scan">
-                <auto-complete
-                  json
-                  keep-focus
-                  reset-search
-                  id="add-item"
-                  @update:model-value="itemSelected"
-                  :suggestions="route('items.search')"
-                  :placeholder="$t('Search items to count…')"
-                />
+              <div class="sa-scanrow">
+                <div class="lg-scan">
+                  <auto-complete
+                    json
+                    keep-focus
+                    reset-search
+                    id="add-item"
+                    @update:model-value="itemSelected"
+                    :suggestions="route('items.search')"
+                    :placeholder="$t('Search items to count…')"
+                  />
+                </div>
+                <!-- jumps to the Physical Count of the last item added, with the cursor ready to type -->
+                <button v-if="form.items.length" type="button" class="sa-jump lg-tip" :data-tip="$t('Go to the last item added')" :aria-label="$t('Go to the last item added')" @click="goToLastCount"><icons name="down" class="w-5 h-5" /></button>
               </div>
             </div>
 
@@ -130,6 +142,7 @@
               <table class="lg-table lg-responsive">
                 <thead>
                   <tr>
+                    <th class="sa-no-th">{{ $t('No') }}</th>
                     <th>{{ $t('Item') }}</th>
                     <th>{{ $t('Unit') }}</th>
                     <th class="num">{{ $t('System Stock') }}</th>
@@ -141,11 +154,12 @@
                       </label>
                     </th>
                     <th class="num">{{ $t('Variance') }}</th>
-                    <th></th>
+                    <th class="sa-act-th"></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row, ri) in form.items" :key="row.item_id" class="sa-row">
+                    <td class="sa-no-td" :data-label="$t('No')">{{ ri + 1 }}</td>
                     <td :data-label="$t('Item')">
                       <span class="lg-main">{{ row.name }}</span> <span class="sa-code">({{ row.code }})</span>
                       <span
@@ -167,7 +181,9 @@
                       <span v-else class="tabular-nums">{{ $number(row.system_quantity) }}</span>
                     </td>
                     <td class="num" :data-label="$t('Physical Count')">
-                      <input type="number" step="0.0001" min="0" v-model="row.physical_quantity" class="sa-qty-input" :disabled="!!row.auto_cleared" />
+                      <span class="sa-qtywrap">
+                        <input type="number" step="0.0001" min="0" v-model="row.physical_quantity" class="sa-qty-input" :disabled="!!row.auto_cleared" />
+                      </span>
                     </td>
                     <td class="sa-clear-td" :data-label="$t('Clear From Stock')">
                       <label class="sa-clear-lbl" :class="{ 'is-on': row.auto_cleared }">
@@ -181,14 +197,16 @@
                         {{ varianceLabel(row) }}
                       </span>
                     </td>
-                    <td class="lg-sticky-end" :data-label="$t('Actions')">
-                      <div class="lg-actions">
+                    <td class="lg-sticky-end sa-act-td" :data-label="$t('Actions')">
+                      <div class="lg-actions sa-actions">
+                        <!-- on the last item added: back to the search field, cursor ready to type (sits beside the delete icon; the delete icons stay in one centred line) -->
+                        <button v-if="ri === form.items.length - 1" type="button" class="sa-jump sa-jump--act lg-tip" :data-tip="$t('Back to the item search')" :aria-label="$t('Back to the item search')" @click="goToSearch"><icons name="up" class="w-4 h-4" /></button>
                         <button type="button" @click="form.items.splice(ri, 1)" class="lg-icon-btn is-red lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')"><icons name="trash" /></button>
                       </div>
                     </td>
                   </tr>
                   <tr v-if="!form.items.length" class="lg-empty-row">
-                    <td class="lg-empty" colspan="7">{{ $t('No items added yet.') }}</td>
+                    <td class="lg-empty" colspan="8">{{ $t('No items added yet.') }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -252,7 +270,7 @@
         <div class="lg-actionbar print:hidden">
           <div class="lg-actionbar-note">
             {{ form.items.length }} {{ $t('Items') }}
-            <span v-if="!edit && $super" class="sa-auto-note">&middot; {{ $t('As Super Admin your count is approved on submit and stock is updated.') }}</span>
+            <span v-if="!edit && $super" class="sa-auto-note">&middot; {{ requiredApprovals === 2 ? $t('Two different Super Admins must approve this count before the stock changes.') : $t('As Super Admin your count is approved on submit and stock is updated.') }}</span>
           </div>
           <div class="lg-actionbar-btns">
             <Link :href="route('super-adjustments.index')" class="lg-btn lg-btn-soft">
@@ -261,7 +279,7 @@
             </Link>
             <loading-button type="submit" :loading="form.processing || checkingUncounted" :disabled="form.processing || checkingUncounted || !form.items.length" class="lg-btn lg-btn-green sa-submit">
               <icons v-if="!form.processing && !checkingUncounted" name="tick" class="w-4 h-4 inline-flex mr-1.5" />
-              {{ $t(edit ? 'Save' : $super ? 'Submit & Approve' : 'Submit for Review') }}
+              {{ $t(edit ? 'Save' : $super && requiredApprovals !== 2 ? 'Submit & Approve' : $super ? 'Submit for Approval' : 'Submit for Review') }}
             </loading-button>
           </div>
         </div>
@@ -274,7 +292,7 @@
             <span class="sa-cat__ico"><icons name="collection" class="w-6 h-6" /></span>
             <div class="sa-cat__title">
               <h3>{{ $t('Import by Category') }}</h3>
-              <p>{{ $t('Add every item of one category to the count: positive, negative and zero stock alike.') }}</p>
+              <p>{{ $t('Tick one or more categories: every item of them that is in this Project / Warehouse is added to the count.') }}</p>
             </div>
             <span class="sa-cat__wh"><icons name="building" class="w-4 h-4" />{{ warehouseName }}</span>
             <button type="button" class="sa-cat__x" :aria-label="$t('Close')" @click="catOpen = false"><icons name="cross" class="w-4 h-4" /></button>
@@ -285,14 +303,19 @@
               <label class="sa-cat__search"><icons name="search" class="w-4 h-4" /><input v-model="catSearch" type="search" :placeholder="$t('Search category…')" :disabled="catLoading" /></label>
               <span v-if="!catLoading && catList.length" class="sa-cat__count">{{ catShown.length }} {{ $t('of') }} {{ catList.length }} {{ $t('categories') }}</span>
             </div>
+            <div v-if="!catLoading && catList.length" class="sa-cat__bulk">
+              <button type="button" class="lg-btn lg-btn-soft" :disabled="!catShown.length || allShownPicked" @click="pickAllCategories"><icons name="tick" class="w-4 h-4" />{{ $t('Select All') }}</button>
+              <button type="button" class="lg-btn lg-btn-soft" :disabled="!catPicked.length" @click="clearCategories"><icons name="cross" class="w-4 h-4" />{{ $t('Deselect All') }}</button>
+              <span v-if="catPicked.length" class="sa-cat__picked">{{ catPicked.length }} {{ $t('selected') }}</span>
+            </div>
 
             <div v-if="catLoading" class="sa-cat__skeleton" role="status"><div v-for="n in 5" :key="n"><i></i><i></i></div></div>
             <p v-else-if="catError" class="sa-cat__err"><icons name="exclamation" class="w-4 h-4" />{{ catError }}</p>
             <p v-else-if="!catList.length" class="sa-cat__empty"><icons name="info" class="w-5 h-5" />{{ $t('No item of this Project / Warehouse has a category.') }}</p>
 
             <ul v-else class="sa-cat__list" role="listbox">
-              <li v-for="c in catShown" :key="c.id" role="option" :aria-selected="catPicked === c.id" :class="{ 'is-on': catPicked === c.id, 'is-sub': c.depth > 0 }" :style="{ '--d': Math.min(c.depth, 3) }" @click="pickCategory(c)">
-                <span class="sa-cat__badge" :class="c.has_sub ? 'is-parent' : 'is-leaf'"><icons :name="catPicked === c.id ? 'tick' : (c.has_sub ? 'folder' : 'collection')" class="w-4 h-4" /></span>
+              <li v-for="c in catShown" :key="c.id" role="option" :aria-selected="catPicked.includes(c.id)" :class="{ 'is-on': catPicked.includes(c.id), 'is-sub': c.depth > 0 }" :style="{ '--d': Math.min(c.depth, 3) }" @click="pickCategory(c)">
+                <span class="sa-cat__badge" :class="c.has_sub ? 'is-parent' : 'is-leaf'"><icons :name="catPicked.includes(c.id) ? 'tick' : (c.has_sub ? 'folder' : 'collection')" class="w-4 h-4" /></span>
                 <span class="sa-cat__name">
                   <b>{{ c.name }}</b>
                   <small v-if="c.depth > 0">{{ c.label }}</small>
@@ -310,9 +333,9 @@
           </div>
 
           <!-- what will happen with the chosen category -->
-          <section class="sa-cat__sum" :class="{ 'is-empty': !catPicked }" aria-live="polite">
-            <template v-if="!catPicked"><icons name="info" class="w-5 h-5" /><span>{{ $t('Choose a category to see what will be added.') }}</span></template>
-            <template v-else-if="catPreview.loading"><icons name="cog" class="w-5 h-5 animate-spin" /><span>{{ $t('Checking the items of this category…') }}</span></template>
+          <section class="sa-cat__sum" :class="{ 'is-empty': !catPicked.length }" aria-live="polite">
+            <template v-if="!catPicked.length"><icons name="info" class="w-5 h-5" /><span>{{ $t('Choose one or more categories to see what will be added.') }}</span></template>
+            <template v-else-if="catPreview.loading"><icons name="cog" class="w-5 h-5 animate-spin" /><span>{{ $t('Checking the items of the chosen categories…') }}</span></template>
             <template v-else-if="catPreview.error"><icons name="exclamation" class="w-5 h-5" /><span>{{ catPreview.error }}</span></template>
             <template v-else>
               <span class="sa-cat__sumico"><icons name="download" class="w-5 h-5" /></span>
@@ -330,8 +353,8 @@
 
           <footer class="sa-cat__foot">
             <button type="button" class="lg-btn lg-btn-soft" @click="catOpen = false">{{ $t('Cancel') }}</button>
-            <button type="button" class="lg-btn lg-btn-primary sa-cat__go" :disabled="!catPicked || catLoading || catPreview.loading || !!catPreview.error || !catPreview.data.length" @click="importCategory">
-              <icons name="download" class="w-4 h-4" />{{ catPicked && !catPreview.loading && catPreview.data.length ? $t('Import :n item(s)', { n: catPreview.add }) : $t('Import') }}
+            <button type="button" class="lg-btn lg-btn-primary sa-cat__go" :disabled="!catPicked.length || catLoading || catPreview.loading || !!catPreview.error || !catPreview.data.length" @click="importCategory">
+              <icons name="download" class="w-4 h-4" />{{ catPicked.length && !catPreview.loading && catPreview.data.length ? $t('Import :n item(s)', { n: catPreview.add }) : $t('Import') }}
             </button>
           </footer>
         </div>
@@ -341,7 +364,7 @@
            weren't added to the physical count. Surfaced only when the check
            (fired right before submit) finds any — see checkUncountedThenSubmit(). -->
       <div v-if="uncountedModal.open" class="sa-modal-overlay" @click.self="uncountedModal.open = false">
-        <div class="sa-modal-card">
+        <div class="sa-modal-card sa-um-card">
           <div class="flex items-start gap-3 mb-4">
             <span class="lg-card-ico lg-ico-amber"><icons name="exclamation" class="w-5 h-5 inline-flex" /></span>
             <div>
@@ -352,11 +375,30 @@
             </div>
           </div>
 
-          <div class="sa-modal-list">
-            <div v-for="u in uncountedModal.items" :key="u.item_id" class="sa-modal-row">
-              <span class="truncate">{{ u.name }} <span class="sa-code">({{ u.code }})</span></span>
-              <span class="tabular-nums sa-muted flex-none">{{ $number(u.system_quantity) }} {{ u.unit_name }}</span>
-            </div>
+          <!-- find, filter, sort, print and download the list (Preserve and Clear below always apply to the whole list) -->
+          <div class="sa-um-bar">
+            <div class="sa-um-search"><icons name="search" class="w-4 h-4" /><input v-model="uncountedModal.search" type="search" :placeholder="$t('Search by item, code or category')" :aria-label="$t('Search the list')" autocomplete="off" /></div>
+            <acct-select v-model="uncountedModal.category" class="sa-um-cat" :options="uncountedCategories" :placeholder="$t('All categories')" clearable />
+            <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')" :disabled="!uncountedShown.length" @click="printUncounted"><icons name="printer" class="w-4 h-4" /></button>
+            <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Download')" :aria-label="$t('Download')" :disabled="!uncountedShown.length" @click="downloadUncounted"><icons name="download" class="w-4 h-4" /></button>
+          </div>
+          <p v-if="uncountedShown.length !== uncountedModal.items.length" class="sa-um-note">{{ $t('Showing :n of :t. Preserve and Clear apply to all :t items.', { n: uncountedShown.length, t: uncountedModal.items.length }) }}</p>
+          <div class="sa-modal-list sa-um-list">
+            <table class="sa-um-table">
+              <thead><tr>
+                <th><button type="button" @click="sortUncounted('name')">{{ $t('Item') }}<i>{{ umArrow('name') }}</i></button></th>
+                <th><button type="button" @click="sortUncounted('category')">{{ $t('Category') }}<i>{{ umArrow('category') }}</i></button></th>
+                <th class="num"><button type="button" @click="sortUncounted('system_quantity')">{{ $t('Stock') }}<i>{{ umArrow('system_quantity') }}</i></button></th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="u in uncountedShown" :key="u.item_id">
+                  <td>{{ u.name }} <span class="sa-code">({{ u.code }})</span></td>
+                  <td class="sa-muted">{{ u.category || '-' }}</td>
+                  <td class="num tabular-nums sa-muted">{{ $number(u.system_quantity) }} {{ u.unit_name }}</td>
+                </tr>
+                <tr v-if="!uncountedShown.length"><td colspan="3" class="sa-um-empty">{{ $t('No item matches.') }}</td></tr>
+              </tbody>
+            </table>
           </div>
 
           <div class="flex flex-col sm:flex-row justify-end gap-2 mt-5">
@@ -396,6 +438,7 @@
 </template>
 
 <script>
+import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TecLabel from '@/Jetstream/Label.vue';
@@ -407,7 +450,8 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 
 export default {
-  components: { Link, AdminLayout, TecLabel, TextInput, InputError, AutoComplete, LoadingButton, PageHeader, StatTiles },
+  components: {
+    AcctSelect, Link, AdminLayout, TecLabel, TextInput, InputError, AutoComplete, LoadingButton, PageHeader, StatTiles },
 
   props: {
     edit: Object,
@@ -417,6 +461,7 @@ export default {
     existingItems: { type: Array, default: () => [] },
     existingAttachments: { type: Array, default: () => [] },
     openSessions: { type: Object, default: () => ({}) },
+    requiredApprovals: { type: Number, default: 1 },
     preselectWarehouseId: { type: Number, default: null },
   },
 
@@ -458,13 +503,13 @@ export default {
       catLoading: false,
       catList: [],
       catSearch: '',
-      catPicked: null,
+      catPicked: [],
       catPreview: { loading: false, error: '', data: [], add: 0, already: 0, zero: 0, negative: 0, names: [] },
       catError: '',
       importNote: '',
       importErr: false,
       checkingUncounted: false,
-      uncountedModal: { open: false, items: [] },
+      uncountedModal: { open: false, items: [], search: '', category: '', sort: 'name', dir: 'asc' },
       tooltip: { visible: false, text: '', top: 0, left: 0, arrowLeft: 0, width: 260, placement: 'above' },
     };
   },
@@ -482,7 +527,24 @@ export default {
   },
 
   computed: {
+    // the not-counted list as the person sees it: searched, filtered by category and sorted
+    uncountedCategories() {
+      const names = new Set();
+      this.uncountedModal.items.forEach(u => (u.category || '').split(', ').filter(Boolean).forEach(c => names.add(c)));
+      return [...names].sort((a, b) => a.localeCompare(b)).map(c => ({ value: c, label: c }));
+    },
+    uncountedShown() {
+      const m = this.uncountedModal;
+      const q = (m.search || '').trim().toLowerCase();
+      let rows = m.items.filter(u => (!q || [u.name, u.code, u.category].some(x => (x || '').toLowerCase().includes(q))) && (!m.category || (u.category || '').split(', ').includes(m.category)));
+      const dir = m.dir === 'asc' ? 1 : -1;
+      rows = [...rows].sort((a, b) => (m.sort === 'system_quantity' ? a.system_quantity - b.system_quantity : String(a[m.sort] || '').localeCompare(String(b[m.sort] || ''), undefined, { numeric: true, sensitivity: 'base' })) * dir);
+      return rows;
+    },
     warehouseName() { const w = (this.warehouses || []).find(x => Number(x.value ?? x.id) === Number(this.form.warehouse_id)); return w ? (w.label || w.name) : ''; },
+    // rows whose system stock is exactly 0 (items added from a warehouse or a category with no stock)
+    zeroCount() { return this.form.items.filter(i => !i.loadingStock && Number(i.system_quantity) === 0).length; },
+    allShownPicked() { return this.catShown.length > 0 && this.catShown.every(c => this.catPicked.includes(c.id)); },
     catShown() { const q = this.catSearch.trim().toLowerCase(); return q ? this.catList.filter(c => c.label.toLowerCase().includes(q)) : this.catList; },
     // the open Adjustment Session of the chosen Project / Warehouse, if there is one
     openSession() { return this.form.warehouse_id ? (this.openSessions || {})[this.form.warehouse_id] || null : null; },
@@ -508,16 +570,15 @@ export default {
   },
 
   watch: {
-    // Warehouse is only locked once editing an existing Super Adjustment
-    // (:disable="!!edit") — while creating, a user can add items under one
-    // warehouse, then switch warehouses, and every already-added row's
-    // system_quantity/variance preview was left showing the stale,
-    // previous warehouse's stock. persist() on the backend already
-    // recomputes fresh at submit time either way, but the on-screen
-    // preview the user reviews before submitting should match it.
+    // The warehouse is locked only when editing. While creating, switching it must not leave the previous warehouse's items (or its import) in the list.
     'form.warehouse_id'() {
       if (this.edit) return;
-      this.form.items.forEach(row => this.refreshStock(row));
+      // The list belongs to one Project / Warehouse: a different one starts a new, empty list (never the old one's items), and what an import had loaded is dropped.
+      const had = this.form.items.length;
+      this.form.items = [];
+      this.catOpen = false; this.catList = []; this.catPicked = []; this.resetPreview();
+      this.importNote = had ? this.$t('The Project / Warehouse was changed, so the list was cleared. Use the import buttons to load the stock of the new one.') : '';
+      this.importErr = false;
     },
   },
 
@@ -548,6 +609,47 @@ export default {
     },
     hideTooltip() {
       this.tooltip.visible = false;
+    },
+    sortUncounted(key) { const m = this.uncountedModal; m.dir = m.sort === key && m.dir === 'asc' ? 'desc' : 'asc'; m.sort = key; },
+    umArrow(key) { const m = this.uncountedModal; return m.sort === key ? (m.dir === 'asc' ? ' ▲' : ' ▼') : ''; },
+    // Print and Download carry exactly the rows on the screen (the search, the category and the sort)
+    uncountedTitle() { return this.$t('Items not counted') + ' - ' + (this.warehouseName || ''); },
+    downloadUncounted() {
+      const esc = v => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+      const head = [this.$t('No'), this.$t('Item'), this.$t('Code'), this.$t('Category'), this.$t('Stock'), this.$t('Unit')];
+      const lines = [head.map(esc).join(',')].concat(this.uncountedShown.map((u, i) => [i + 1, u.name, u.code, u.category, u.system_quantity, u.unit_name].map(esc).join(',')));
+      const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'items-not-counted-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    },
+    printUncounted() {
+      const h = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const user = (this.$page.props.auth && this.$page.props.auth.user && this.$page.props.auth.user.name) || '';
+      const rows = this.uncountedShown.map((u, i) => '<tr><td>' + (i + 1) + '</td><td>' + h(u.name) + ' <span class="c">(' + h(u.code) + ')</span></td><td>' + h(u.category || '-') + '</td><td class="n">' + h(this.$number(u.system_quantity)) + ' ' + h(u.unit_name) + '</td></tr>').join('');
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + h(this.uncountedTitle()) + '</title><style>body{font:13px Nunito,Arial,sans-serif;color:#0f2540;margin:24px}h1{font-size:18px;margin:0 0 4px}p{margin:0 0 14px;color:#64748b}table{border-collapse:collapse;width:100%}th{background:#dbeafe;color:#1e3a8a;text-align:left;padding:7px 9px}td{padding:6px 9px;border-bottom:1px solid #e3e9f2}.n{text-align:right}.c{color:#64748b}</style></head><body><h1>' + h(this.uncountedTitle()) + '</h1><p>' + h(this.$t('Stocked items that were not added to the physical count')) + ' - ' + this.uncountedShown.length + ' - ' + h(new Date().toLocaleString()) + (user ? ' - ' + h(user) : '') + '</p><table><thead><tr><th>#</th><th>' + h(this.$t('Item')) + '</th><th>' + h(this.$t('Category')) + '</th><th class="n">' + h(this.$t('Stock')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>');
+      w.document.close();
+      w.focus();
+      setTimeout(() => w.print(), 300);
+    },
+    // Arrow Down: the Physical Count of the last item in the list (the last one added), selected so the number can be typed straight away
+    goToLastCount() {
+      const inputs = Array.from(document.querySelectorAll('.sa-qty-input'));
+      const target = inputs[inputs.length - 1] && !inputs[inputs.length - 1].disabled ? inputs[inputs.length - 1] : inputs.filter(i => !i.disabled).pop();
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { target.focus({ preventScroll: true }); target.select(); }, 250);
+    },
+    // Arrow Up: back to the item search, with the cursor inside it
+    goToSearch() {
+      const box = document.getElementById('add-item');
+      if (!box) return;
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { box.focus({ preventScroll: true }); box.select && box.select(); }, 250);
     },
     async itemSelected(v) {
       if (this.form.items.find(i => i.item_id === v.id)) {
@@ -610,7 +712,7 @@ export default {
     // (positive, negative and zero stock alike), the ones already in the list are skipped, so categories can be imported one after another.
     async openCategoryImport() {
       if (!this.form.warehouse_id || this.importing) return;
-      this.catOpen = true; this.catLoading = true; this.catError = ''; this.catList = []; this.catSearch = ''; this.catPicked = null; this.resetPreview();
+      this.catOpen = true; this.catLoading = true; this.catError = ''; this.catList = []; this.catSearch = ''; this.catPicked = []; this.resetPreview();
       const warehouseId = this.form.warehouse_id;
       try {
         const [{ data }] = await Promise.all([axios.get(this.route('super-adjustments.warehouse-categories'), { params: { warehouse_id: warehouseId } }), new Promise(r => setTimeout(r, 350))]);
@@ -624,12 +726,46 @@ export default {
     resetPreview() { this.catPreview = { loading: false, error: '', data: [], add: 0, already: 0, zero: 0, negative: 0, names: [] }; },
     // choosing a category loads its items at once, so the person sees exactly what will be added before importing
     async pickCategory(c) {
-      if (this.catPicked === c.id && !this.catPreview.error) return;
-      this.catPicked = c.id; this.resetPreview(); this.catPreview.loading = true;
+      const i = this.catPicked.indexOf(c.id);
+      if (i >= 0) this.catPicked.splice(i, 1); else this.catPicked.push(c.id);
+      this.loadPreview();
+    },
+    // Reset: the table goes back to empty (no items, nothing counted) so the count can start again, from a search or an import.
+    async resetItems() {
+      const n = this.form.items.length;
+      if (!n) return;
+      const ok = await this.$confirm(this.$t('Reset the table? All :n item(s) and the counts you entered will be removed.', { n }), { variant: 'danger', confirmText: this.$t('Reset') });
+      if (!ok) return;
+      this.form.items = [];
+      this.importErr = false;
+      this.importNote = '';
+    },
+    // Takes every item with a system stock of 0 out of the table (a count is usually about what is on the shelves); the items can be added again by search or import.
+    async removeZeroItems() {
+      const n = this.zeroCount;
+      if (!n) return;
+      const ok = await this.$confirm(this.$t('Remove the :n item(s) with zero stock from the list below? You can add them again by search or import.', { n }), { variant: 'danger', confirmText: this.$t('Remove') });
+      if (!ok) return;
+      this.form.items = this.form.items.filter(i => i.loadingStock || Number(i.system_quantity) !== 0);
+      this.importErr = false;
+      this.importNote = this.$t(':n item(s) with zero stock were removed from the list.', { n });
+    },
+    // Select All ticks every category in view (the search narrows it); Deselect All empties the choice
+    pickAllCategories() {
+      this.catShown.forEach(c => { if (!this.catPicked.includes(c.id)) this.catPicked.push(c.id); });
+      this.loadPreview();
+    },
+    clearCategories() { this.catPicked = []; this.resetPreview(); },
+    async loadPreview() {
+      this.resetPreview();
+      if (!this.catPicked.length) return;
+      const picked = [...this.catPicked];
+      const key = picked.join(',');
+      this.catPreview.loading = true;
       const warehouseId = this.form.warehouse_id;
       try {
-        const { data } = await axios.get(this.route('super-adjustments.category-stock'), { params: { warehouse_id: warehouseId, category_id: c.id } });
-        if (this.catPicked !== c.id || warehouseId !== this.form.warehouse_id) return; // another category was chosen meanwhile
+        const { data } = await axios.get(this.route('super-adjustments.category-stock'), { params: { warehouse_id: warehouseId, category_ids: picked } });
+        if (this.catPicked.join(',') !== key || warehouseId !== this.form.warehouse_id) return; // the choice changed meanwhile
         const have = new Set(this.form.items.map(i => i.item_id));
         const fresh = data.filter(u => !have.has(u.item_id));
         this.catPreview = {
@@ -637,16 +773,16 @@ export default {
           zero: fresh.filter(u => u.system_quantity === 0).length, negative: fresh.filter(u => u.system_quantity < 0).length, names: fresh.slice(0, 6).map(u => u.name),
         };
       } catch (e) {
-        if (this.catPicked === c.id) this.catPreview = { ...this.catPreview, loading: false, error: (e.response && e.response.data && e.response.data.message) || this.$t('Could not load this category. Please try again.') };
+        if (this.catPicked.join(',') === key) this.catPreview = { ...this.catPreview, loading: false, error: (e.response && e.response.data && e.response.data.message) || this.$t('Could not load these categories. Please try again.') };
       }
     },
     async importCategory() {
-      if (!this.catPicked || !this.form.warehouse_id || this.importing || this.catPreview.loading || this.catPreview.error) return;
-      const cat = this.catList.find(c => c.id === this.catPicked);
+      if (!this.catPicked.length || !this.form.warehouse_id || this.importing || this.catPreview.loading || this.catPreview.error) return;
+      const label = this.catList.filter(c => this.catPicked.includes(c.id)).map(c => c.name).join(', ');
       const warehouseId = this.form.warehouse_id;
       const data = this.catPreview.data;
       this.catOpen = false;
-      this.importing = 'category'; this.importLabel = cat ? cat.label : ''; this.importNote = ''; this.importErr = false;
+      this.importing = 'category'; this.importLabel = label; this.importNote = ''; this.importErr = false;
       try {
         await new Promise(r => setTimeout(r, 700)); // the animation is seen even though the items are already loaded
         if (warehouseId !== this.form.warehouse_id) return;
@@ -755,7 +891,7 @@ export default {
           item_ids: this.form.items.map(i => i.item_id),
         });
         if (data.length) {
-          this.uncountedModal = { open: true, items: data };
+          this.uncountedModal = { open: true, items: data, search: '', category: '', sort: 'name', dir: 'asc' };
         } else {
           this.doSubmit();
         }
@@ -783,9 +919,15 @@ export default {
       this.doSubmit();
     },
     async doSubmit() {
-      // A Super Admin's own count is approved the moment it is submitted, which changes real stock — say so first.
       if (this.$super && !this.edit) {
-        const ok = await this.$confirm(this.$t('Submit and approve this Super Adjustment now? Stock will be updated straight away.'), { confirmText: this.$t('Submit & Approve') });
+        // With two approvals nothing is approved on submit: the count waits for two different Super Admins. With one, the Super Admin's own count is approved at once and changes real stock.
+        const two = this.requiredApprovals === 2;
+        const ok = await this.$confirm(
+          two
+            ? this.$t('Submit this Super Adjustment for approval? It needs two different Super Admins, each with their password. The stock does not change until the second approval.')
+            : this.$t('Submit and approve this Super Adjustment now? Stock will be updated straight away.'),
+          { confirmText: this.$t(two ? 'Submit' : 'Submit & Approve') },
+        );
         if (!ok) return;
       }
       this.form
@@ -805,7 +947,11 @@ export default {
 <style scoped>
 .sa-auto-note { color: var(--lg-faint); font-weight: 600; }
 .sa-muted { color: var(--lg-mute); }
+.sa-import--zero { color: #b91c1c; }
+.sa-cat__bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
+.sa-cat__picked { margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #0369a1; }
 .sa-code { color: var(--lg-faint); font-weight: 500; }
+.sa-no-th, .sa-no-td { width: 3rem; text-align: center; color: var(--lg-faint); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* Field styling (labels + rounded inputs), dark-mode safe */
 .sa-fields :deep(label) {
@@ -871,7 +1017,8 @@ html.dark .sa-cat { --lg-card: #1e293b; --lg-line: rgba(255, 255, 255, 0.1); --l
 .sa-cat__ico { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 15px; background: rgba(255, 255, 255, 0.2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
 .sa-cat__title { min-width: 0; flex: 1; } .sa-cat__title h3 { margin: 0; font-size: 1.1rem; font-weight: 800; } .sa-cat__title p { margin: 0.15rem 0 0; font-size: 0.8rem; opacity: 0.95; line-height: 1.35; }
 .sa-cat__wh { display: inline-flex; align-items: center; gap: 6px; max-width: 200px; padding: 5px 11px; border-radius: 999px; font-size: 0.74rem; font-weight: 800; background: rgba(255, 255, 255, 0.2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sa-cat__x { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, 0.2); cursor: pointer; } .sa-cat__x:hover { background: rgba(255, 255, 255, 0.32); }
+.sa-cat__x { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 32px; height: 32px; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; flex: none; border: 0; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, 0.2); cursor: pointer; } .sa-cat__x:hover { background: rgba(255, 255, 255, 0.32); }
+.sa-cat__x > div { flex: none; width: 16px; height: 16px; margin: 0; }
 .sa-cat__body { display: flex; flex-direction: column; gap: 0.7rem; padding: 0.9rem 1.2rem 0.4rem; min-height: 0; overflow-y: auto; }
 .sa-cat__tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .sa-cat__search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 14px; border: 1.5px solid var(--lg-line); background: var(--lg-soft); color: var(--lg-mute); } .sa-cat__search:focus-within { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15); }
@@ -1087,4 +1234,34 @@ html.dark .sa-modal-card { background: #0f172a; }
   .sa-file-row { animation: none; }
 }
 .sa-session { margin-bottom: 10px; } .sa-session-link { font-weight: 800; text-decoration: underline; }
+.sa-scanrow { display: flex; align-items: center; gap: 10px; }
+.sa-scanrow > .lg-scan { flex: 1 1 auto; min-width: 0; }
+.sa-jump { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 14px; cursor: pointer; color: #0369a1; background: var(--lg-card, #fff); box-shadow: 0 0 0 1px var(--lg-line, #e3e9f2), 0 10px 16px -10px rgba(3, 105, 161, 0.55); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.sa-jump:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px #0369a1, 0 14px 20px -10px rgba(3, 105, 161, 0.65); }
+.sa-jump:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+.sa-jump--act { position: absolute; top: 50%; right: calc(50% + 26px); width: 32px; height: 32px; border-radius: 10px; transform: translateY(-50%); }
+.sa-jump--act:hover { transform: translateY(calc(-50% - 1px)); }
+.sa-actions { position: relative; justify-content: center; }
+.sa-act-th, .sa-act-td { width: 6.5rem; text-align: center; }
+.sa-qtywrap { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+@media (prefers-reduced-motion: reduce) { .sa-jump { transition: none; } .sa-jump:hover { transform: none; } }
+.sa-um-card { max-width: 46rem; }
+.sa-um-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.sa-um-search { flex: 1 1 220px; position: relative; display: flex; align-items: center; min-width: 0; }
+.sa-um-search > div { position: absolute; left: 12px; color: var(--lg-mute); pointer-events: none; }
+.sa-um-search input { width: 100%; height: 2.5rem; padding: 0 12px 0 36px; border-radius: 12px; border: 1px solid var(--lg-line); background: var(--lg-card); color: inherit; }
+.sa-um-cat { flex: 1 1 200px; min-width: 0; max-width: 260px; }
+.sa-um-cat :deep(.mb-2) { margin-bottom: 0; }
+.sa-um-cat :deep(input) { height: 2.5rem; }
+.sa-um-note { margin: 0 0 8px; font-size: 0.78rem; color: var(--lg-mute); }
+.sa-um-list { max-height: 20rem; }
+.sa-um-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.sa-um-table th { position: sticky; top: 0; z-index: 1; background: #dbeafe; color: #1e3a8a; text-align: left; padding: 0.5rem 0.85rem; font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; }
+html.dark .sa-um-table th { background: #1e3a6e; color: #dbeafe; }
+.sa-um-table th button { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; white-space: nowrap; }
+.sa-um-table th button i { font-style: normal; font-size: 0.8em; }
+.sa-um-table th.num, .sa-um-table td.num { text-align: right; white-space: nowrap; }
+.sa-um-table td { padding: 0.5rem 0.85rem; border-top: 1px solid var(--lg-line); vertical-align: top; }
+.sa-um-empty { text-align: center; color: var(--lg-mute); padding: 1rem; }
+@media (max-width: 560px) { .sa-um-cat { max-width: none; flex-basis: 100%; } }
 </style>
