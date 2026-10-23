@@ -66,6 +66,24 @@ class FundAllocation extends Model
         return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
+    /** Every payer of the sheet (assigned_to_user_id is the first, main one). */
+    public function payers()
+    {
+        return $this->belongsToMany(User::class, 'fund_allocation_payers', 'fund_allocation_id', 'user_id')->withTimestamps();
+    }
+
+    public function hasPayer(?int $userId): bool
+    {
+        if (! $userId) {
+            return false;
+        }
+        if ((int) $this->assigned_to_user_id === $userId) {
+            return true;
+        }
+
+        return $this->relationLoaded('payers') ? $this->payers->contains('id', $userId) : $this->payers()->where('users.id', $userId)->exists();
+    }
+
     public function completedBy()
     {
         return $this->belongsTo(User::class, 'completed_by_user_id');
@@ -110,6 +128,6 @@ class FundAllocation extends Model
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($filters['from'] ?? null, fn ($q, $d) => $q->whereDate('allocation_date', '>=', $d))
             ->when($filters['to'] ?? null, fn ($q, $d) => $q->whereDate('allocation_date', '<=', $d))
-            ->when($filters['payer'] ?? null, fn ($q, $u) => $q->where('assigned_to_user_id', $u));
+            ->when($filters['payer'] ?? null, fn ($q, $u) => $q->where(fn ($w) => $w->where('assigned_to_user_id', $u)->orWhereHas('payers', fn ($p) => $p->where('users.id', $u))));
     }
 }

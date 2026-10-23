@@ -36,7 +36,7 @@
             <span v-else class="ft-one">1</span>
           </div>
           <div class="ft-c ft-c-val"><span class="ft-ml">{{ $t('Value in TZS') }}</span><b :class="b.currency === 'TZS' ? 'ft-green' : 'ft-blue'">{{ money(balanceTzs(b)) }}</b></div>
-          <div v-if="can.update" class="ft-c ft-c-x"><button type="button" class="ft-ib is-red" :aria-label="$t('Remove')" @click="form.balances.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button></div>
+          <div v-if="can.update" class="ft-c ft-c-x"><button type="button" class="ft-ib is-red" :aria-label="$t('Remove')" :data-tip="$t('Remove')" @click="form.balances.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button></div>
         </div>
         <button v-if="can.update" type="button" class="ft-add" @click="addBalance"><icons name="plus" class="w-4 h-4" />{{ $t('Add balance') }}</button>
 
@@ -48,24 +48,35 @@
         </div>
       </section>
 
+      <!-- opens or closes every category section below -->
+      <div v-if="form.sections.length" class="ft-foldbar">
+        <span class="ft-foldbar__t"><icons name="collection" class="w-4 h-4" />{{ form.sections.length }} {{ $t('sections') }}</span>
+        <button type="button" class="lg-btn tone" style="--tone: #2563eb" :disabled="allExpanded" @click="setAll(false)"><span class="tone-ico"><icons name="chevron-down" class="w-4 h-4" /></span>{{ $t('Expand All') }}</button>
+        <button type="button" class="lg-btn tone" style="--tone: #e11d48" :disabled="allCollapsed" @click="setAll(true)"><span class="tone-ico"><icons name="chevron-up" class="w-4 h-4" /></span>{{ $t('Collapse All') }}</button>
+      </div>
+
       <!-- the sections (categories) -->
-      <section v-for="(s, si) in form.sections" :key="s._key" class="lg-card ft-card ft-sec">
+      <section v-for="(s, si) in form.sections" :key="s._key" class="lg-card ft-card ft-sec" :class="{ 'is-collapsed': s._collapsed }" :style="sectionStyle(s)">
         <header class="ft-sec__head">
-          <span class="ft-letter">{{ letter(si) }}</span>
+          <button type="button" class="ft-letter" :aria-expanded="!s._collapsed" :aria-label="s._collapsed ? $t('Expand') : $t('Collapse')" :data-tip="s._collapsed ? $t('Expand') : $t('Collapse')" @click="toggleSection(s, $event)">{{ letter(si) }}</button>
           <div class="ft-sec__cat">
             <auto-complete v-if="can.update" :id="'ft-cat-' + s._key" :suggestions="categoryOptionsFor(s)" :model-value="s.category_id" :placeholder="$t('Search or choose a category')" @update:modelValue="v => (s.category_id = v || s.category_id)" />
             <b v-else>{{ categoryName(s.category_id) }}</b>
           </div>
           <span class="ft-cnt">{{ s.items.length }} {{ $t('rows') }}</span>
-          <span class="ft-subtot"><small>{{ $t('Request') }}</small>{{ money(sum(s, 'request')) }}</span>
-          <span class="ft-subtot"><small>{{ $t('Allocation') }}</small><b>{{ money(sum(s, 'allocation')) }}</b></span>
-          <span v-if="can.update" class="ft-sec__tools">
-            <button type="button" class="ft-ib" :disabled="si === 0" :aria-label="$t('Move up')" @click="moveSection(si, -1)"><icons name="chevron-down" class="w-4 h-4 rotate-180" /></button>
-            <button type="button" class="ft-ib" :disabled="si === form.sections.length - 1" :aria-label="$t('Move down')" @click="moveSection(si, 1)"><icons name="chevron-down" class="w-4 h-4" /></button>
-            <button type="button" class="ft-ib is-red" :aria-label="$t('Remove this section')" @click="removeSection(si)"><icons name="trash" class="w-4 h-4" /></button>
+          <span class="ft-subtot ft-subtot--req"><small>{{ $t('Request') }}</small><b>{{ money(sum(s, 'request')) }}</b></span>
+          <span class="ft-subtot ft-subtot--alloc"><small>{{ $t('Allocation') }}</small><b>{{ money(sum(s, 'allocation')) }}</b></span>
+          <span class="ft-sec__tools">
+            <button type="button" class="ft-ib ft-ib--fold" :aria-label="s._collapsed ? $t('Expand') : $t('Collapse')" :data-tip="s._collapsed ? $t('Expand') : $t('Collapse')" @click="toggleSection(s, $event)"><icons :name="s._collapsed ? 'chevron-down' : 'chevron-up'" class="w-4 h-4" /></button>
+            <template v-if="can.update">
+              <button type="button" class="ft-ib" :disabled="si === 0" :aria-label="$t('Move up')" :data-tip="$t('Move up')" @click="moveSection(si, -1)"><icons name="up" class="w-4 h-4" /></button>
+              <button type="button" class="ft-ib" :disabled="si === form.sections.length - 1" :aria-label="$t('Move down')" :data-tip="$t('Move down')" @click="moveSection(si, 1)"><icons name="down" class="w-4 h-4" /></button>
+              <button type="button" class="ft-ib is-red" :aria-label="$t('Remove this section')" :data-tip="$t('Remove this section')" @click="removeSection(si)"><icons name="trash" class="w-4 h-4" /></button>
+            </template>
           </span>
         </header>
 
+        <template v-if="!s._collapsed">
         <div v-for="(it, ii) in s.items" :key="it._key" class="ft-item" :class="{ 'ft-warn': splitOff(it) }">
           <div class="ft-line1">
             <span class="ft-sn">{{ ii + 1 }}</span>
@@ -74,9 +85,9 @@
               <beneficiary-select :contacts="contacts" :users="users" :projects="projects" :warehouse-id="it.beneficiary_warehouse_id" :contact-id="it.contact_id" :user-id="it.beneficiary_user_id" :legacy="it.beneficiary || ''" :placeholder="$t('Search contacts, users or projects')" @select="v => onBeneficiary(it, v)" />
             </div>
             <div v-if="can.update" class="ft-tools">
-              <button type="button" class="ft-ib" :disabled="ii === 0" :aria-label="$t('Move up')" @click="moveItem(s, ii, -1)"><icons name="chevron-down" class="w-3.5 h-3.5 rotate-180" /></button>
-              <button type="button" class="ft-ib" :disabled="ii === s.items.length - 1" :aria-label="$t('Move down')" @click="moveItem(s, ii, 1)"><icons name="chevron-down" class="w-3.5 h-3.5" /></button>
-              <button type="button" class="ft-ib is-red" :aria-label="$t('Remove item')" @click="s.items.splice(ii, 1)"><icons name="trash" class="w-3.5 h-3.5" /></button>
+              <button type="button" class="ft-ib" :disabled="ii === 0" :aria-label="$t('Move up')" :data-tip="$t('Move up')" @click="moveItem(s, ii, -1)"><icons name="chevron-down" class="w-3.5 h-3.5 rotate-180" /></button>
+              <button type="button" class="ft-ib" :disabled="ii === s.items.length - 1" :aria-label="$t('Move down')" :data-tip="$t('Move down')" @click="moveItem(s, ii, 1)"><icons name="chevron-down" class="w-3.5 h-3.5" /></button>
+              <button type="button" class="ft-ib is-red" :aria-label="$t('Remove item')" :data-tip="$t('Remove item')" @click="s.items.splice(ii, 1)"><icons name="trash" class="w-3.5 h-3.5" /></button>
             </div>
           </div>
           <div class="ft-line2">
@@ -97,7 +108,7 @@
               <div v-for="(l, li) in it.extra_lines" :key="l._key" class="ft-extra__row">
                 <auto-complete :id="'ft-m-' + l._key" :suggestions="otherMethodOptions" :model-value="l.fund_payment_method_id" :placeholder="$t('Search a payment method')" @update:modelValue="v => (l.fund_payment_method_id = v || null)" />
                 <amount-input v-model="l.amount" :decimals="2" :disabled="!can.update" />
-                <button v-if="can.update" type="button" class="ft-ib is-red" :aria-label="$t('Remove')" @click="it.extra_lines.splice(li, 1)"><icons name="cross" class="w-3.5 h-3.5" /></button>
+                <button v-if="can.update" type="button" class="ft-ib is-red" :aria-label="$t('Remove')" :data-tip="$t('Remove')" @click="it.extra_lines.splice(li, 1)"><icons name="cross" class="w-3.5 h-3.5" /></button>
               </div>
               <button v-if="can.update && otherMethodOptions.length" type="button" class="ft-add ft-add--sm" @click="it.extra_lines.push({ _key: key(), fund_payment_method_id: null, amount: 0 })"><icons name="plus" class="w-3.5 h-3.5" />{{ $t('Add a payment method') }}</button>
             </div>
@@ -106,8 +117,9 @@
 
         <div class="ft-sec__foot">
           <button v-if="can.update" type="button" class="ft-add" @click="s.items.push(blankItem())"><icons name="plus" class="w-4 h-4" />{{ $t('Add item') }}</button>
-          <span class="ft-sec__sum"><small>TT</small>{{ money(sum(s, 'tt')) }}<small>{{ $t('Cash') }}</small>{{ money(sum(s, 'cash')) }}<small>USD</small>{{ money(sum(s, 'usd')) }}</span>
+          <span class="ft-sec__sum"><small>TT</small><b class="ft-sum-tt">{{ money(sum(s, 'tt')) }}</b><small>{{ $t('Cash') }}</small><b class="ft-sum-cash">{{ money(sum(s, 'cash')) }}</b><small>USD</small><b class="ft-sum-usd">{{ money(sum(s, 'usd')) }}</b></span>
         </div>
+        </template>
       </section>
 
       <section v-if="can.update" class="lg-card ft-card ft-newsec">
@@ -118,8 +130,8 @@
 
       <section class="lg-card ft-card ft-grand">
         <div class="ft-grand__row">
-          <span><small>{{ $t('Request') }}</small>{{ money(grand('request')) }}</span>
-          <span><small>{{ $t('Allocation') }}</small><b>{{ money(grand('allocation')) }}</b></span>
+          <span class="ft-subtot--req"><small>{{ $t('Request') }}</small><b>{{ money(grand('request')) }}</b></span>
+          <span class="ft-subtot--alloc"><small>{{ $t('Allocation') }}</small><b>{{ money(grand('allocation')) }}</b></span>
           <span><small>TT</small>{{ money(grand('tt')) }}</span>
           <span class="ft-green"><small>{{ $t('Cash') }} (TZS)</small>{{ money(grand('cash')) }}</span>
           <span class="ft-blue"><small>{{ $t('Cash') }} (USD)</small>{{ money(grand('usd')) }}</span>
@@ -152,12 +164,14 @@ export default {
     f.balances = (f.balances || []).map(b => ({ _key: key(), ...b, amount: Number(b.amount) || 0, exchange_rate: Number(b.exchange_rate) || (b.currency === 'TZS' ? 1 : f.usd_rate) }));
     f.usd_rate = Number(f.usd_rate) || 1;
     f.sections = f.sections.map(s => ({
-      _key: key(), ...s,
+      _key: key(), _collapsed: false, ...s,
       items: s.items.map(i => ({ _key: key(), _open: false, ...i, ...['request', 'allocation', 'tt', 'cash', 'usd'].reduce((o, k) => ({ ...o, [k]: Number(i[k]) || 0 }), {}), beneficiary: i.beneficiary || '', extra_lines: (i.extra_lines || []).map(l => ({ _key: key(), ...l })) })),
     }));
     return { form: f, saved: '', busy: false, newCategory: null };
   },
   computed: {
+    allCollapsed() { return this.form.sections.length > 0 && this.form.sections.every(s => s._collapsed); },
+    allExpanded() { return this.form.sections.every(s => !s._collapsed); },
     dirty() { return this.snapshot() !== this.saved; },
     accountOptions() { return this.accounts.map(a => ({ id: a.id, label: this.accountLabel(a) })); },
     warehouseOptions() { return this.warehouses.map(w => ({ id: w.id, label: w.name })); },
@@ -175,6 +189,25 @@ export default {
     snapshot() { return JSON.stringify(this.payload()); },
     letter(i) { return String.fromCharCode(65 + (i % 26)); },
     accountLabel(a) { return a.account_number ? a.name + ' (' + a.account_number + ')' : a.name; },
+    // each category keeps its own colour (by its place in the category list), so Administration is always the same colour, Procurement another
+    sectionStyle(s) {
+      const palette = [['#3b82f6', '#1d4ed8'], ['#10b981', '#047857'], ['#f59e0b', '#b45309'], ['#f43f5e', '#be123c'], ['#8b5cf6', '#6d28d9'], ['#14b8a6', '#0f766e'], ['#f97316', '#c2410c'], ['#0ea5e9', '#0369a1'], ['#d946ef', '#a21caf'], ['#84cc16', '#4d7c0f']];
+      const at = this.categories.findIndex(x => x.id === s.category_id);
+      const [a, b] = palette[(at < 0 ? 0 : at) % palette.length];
+      return { '--sc-a': a, '--sc-b': b };
+    },
+    // Opens or closes a section and brings it to the middle of the screen (a section taller than the screen starts at the top instead, so its first rows are seen).
+    toggleSection(s, event) {
+      const sec = event.currentTarget.closest('.ft-sec');
+      s._collapsed = !s._collapsed;
+      this.$nextTick(() => {
+        if (!sec) return;
+        const tall = sec.getBoundingClientRect().height > window.innerHeight * 0.8;
+        sec.style.scrollMarginTop = tall ? '110px' : ''; // clear of the fixed top bar when the section starts at the top
+        sec.scrollIntoView({ behavior: 'smooth', block: tall ? 'start' : 'center' });
+      });
+    },
+    setAll(collapsed) { this.form.sections.forEach(s => { s._collapsed = collapsed; }); },
     categoryName(id) { const c = this.categories.find(x => x.id === id); return c ? c.name : ''; },
     categoryOptionsFor(s) { const used = new Set(this.form.sections.filter(x => x !== s).map(x => x.category_id)); return this.categories.filter(c => !used.has(c.id)).map(c => ({ id: c.id, label: c.name })); },
     methodLabel(short) { const m = this.methods.find(x => String(x.short_label).toUpperCase() === short); return m ? m.short_label : short; },
@@ -207,11 +240,11 @@ export default {
       if (s.items.length && !(await this.$confirm(this.$t('Remove this whole section with its :n rows?', { n: s.items.length })))) return;
       this.form.sections.splice(i, 1);
     },
-    addSection() { if (!this.newCategory) return; this.form.sections.push({ _key: key(), category_id: this.newCategory, category: this.categoryName(this.newCategory), items: [this.blankItem()] }); this.newCategory = null; },
+    addSection() { if (!this.newCategory) return; this.form.sections.push({ _key: key(), _collapsed: false, category_id: this.newCategory, category: this.categoryName(this.newCategory), items: [this.blankItem()] }); this.newCategory = null; },
     payload() {
       const f = JSON.parse(JSON.stringify(this.form));
       f.balances = f.balances.map(({ _key, ...b }) => b);
-      f.sections = f.sections.map(({ _key, ...s }) => ({ ...s, items: s.items.filter(i => String(i.description || '').trim() !== '').map(({ _key, _open, ...i }) => ({ ...i, extra_lines: (i.extra_lines || []).filter(l => l.fund_payment_method_id).map(({ _key, ...l }) => l) })) }));
+      f.sections = f.sections.map(({ _key, _collapsed, ...s }) => ({ ...s, items: s.items.filter(i => String(i.description || '').trim() !== '').map(({ _key, _open, ...i }) => ({ ...i, extra_lines: (i.extra_lines || []).filter(l => l.fund_payment_method_id).map(({ _key, ...l }) => l) })) }));
       return f;
     },
     save() {
@@ -258,8 +291,12 @@ export default {
 .ft-tot--tzs { background: #f0fdf4; box-shadow: inset 0 0 0 1px #bbf7d0; } .ft-tot--tzs b { color: #15803d; } .ft-tot--usd { background: #eff6ff; box-shadow: inset 0 0 0 1px #bfdbfe; } .ft-tot--usd b { color: #1d4ed8; } .ft-tot--after { background: #fff1f2; box-shadow: inset 0 0 0 1px #fecdd3; } .ft-tot--after b { color: #be123c; }
 
 /* sections and rows */
-.ft-sec__head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.7rem; } .ft-sec__cat { flex: 1 1 260px; min-width: 220px; max-width: 420px; } .ft-sec__cat :deep(.relative) { margin-bottom: 0; } .ft-sec__cat b { font-size: 1rem; }
-.ft-letter { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; font-weight: 800; color: #fff; background: linear-gradient(145deg, #3b82f6, #1d4ed8); box-shadow: 0 8px 14px -8px #1d4ed8; }
+.ft-sec__head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.7rem; padding: 0.55rem 0.7rem; border-radius: 16px; background: color-mix(in srgb, var(--sc-a, #3b82f6) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sc-a, #3b82f6) 22%, transparent); } .ft-sec.is-collapsed .ft-sec__head { margin-bottom: 0; } .ft-sec__cat { flex: 1 1 260px; min-width: 220px; max-width: 420px; } .ft-sec__cat :deep(.relative) { margin-bottom: 0; } .ft-sec__cat b { font-size: 1rem; }
+.ft-letter { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 34px; height: 34px; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0; border-radius: 11px; font-weight: 800; color: #fff; cursor: pointer; background: linear-gradient(145deg, var(--sc-a, #3b82f6), var(--sc-b, #1d4ed8)); box-shadow: 0 8px 14px -8px var(--sc-b, #1d4ed8); transition: transform 0.15s ease; } .ft-letter:hover { transform: translateY(-1px); } .ft-letter:focus-visible { outline: 2px solid var(--sc-b, #1d4ed8); outline-offset: 2px; }
+.ft-subtot--req b { color: #15803d; font-weight: 800; } .ft-subtot--alloc b { color: #800000; font-weight: 800; }
+.ft-sec__head .ft-subtot b { font-size: 1.02rem; }
+html.dark .ft-subtot--req b { color: #4ade80; } html.dark .ft-subtot--alloc b { color: #fca5a5; }
+.ft-ib.ft-ib--fold { color: var(--sc-b, #1d4ed8); background: color-mix(in srgb, var(--sc-a, #3b82f6) 16%, transparent); }
 .ft-cnt { padding: 1px 10px; border-radius: 99px; font-size: 0.74rem; font-weight: 800; background: rgba(100, 116, 139, 0.16); }
 .ft-subtot { font-size: 0.86rem; font-variant-numeric: tabular-nums; } .ft-subtot small { display: block; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #94a3b8; } .ft-sec__tools { margin-left: auto; display: flex; gap: 0.3rem; }
 .ft-item { margin-bottom: 0.55rem; padding: 0.65rem 0.7rem; border-radius: 16px; background: var(--lg-soft, #f8fafc); box-shadow: inset 0 0 0 1px var(--lg-line, #e2e8f0); transition: box-shadow 0.18s ease, transform 0.18s ease; } .ft-item:hover { box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.4); }
@@ -270,11 +307,32 @@ export default {
 .ft-more-box { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0.6rem 0.8rem; margin: 0.6rem 0 0 42px; padding: 0.7rem; border-radius: 14px; background: rgba(59, 130, 246, 0.06); } .ft-extra { grid-column: 1 / -1; }
 .ft-extra__row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; margin-bottom: 0.3rem; } .ft-extra__row :deep(.relative) { margin-bottom: 0; }
 .ft-sec__foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; } .ft-sec__sum { font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums; } .ft-sec__sum small { margin: 0 0.4rem 0 0.9rem; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #94a3b8; }
-.ft-ib { display: inline-grid; place-items: center; width: 30px; height: 30px; min-height: 0 !important; border: 0; border-radius: 9px; color: #475569; background: #f1f5f9; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; } .ft-ib:hover:not(:disabled) { background: #e2e8f0; transform: translateY(-1px); } .ft-ib:disabled { opacity: 0.35; cursor: default; } .ft-ib.is-red { color: #be123c; background: #fff1f2; }
+.ft-ib { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 30px; height: 30px; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0; border-radius: 9px; color: #475569; background: #f1f5f9; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; } .ft-ib:hover:not(:disabled) { background: #e2e8f0; transform: translateY(-1px); } .ft-ib:disabled { opacity: 0.35; cursor: default; } .ft-ib.is-red { color: #be123c; background: #fff1f2; }
+.ft-ib > div { flex: none; margin: 0; }
 .ft-add { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.3rem; min-height: 0 !important; padding: 0.45rem 0.85rem; border: 0; border-radius: 10px; font-size: 0.82rem; font-weight: 800; color: #1d4ed8; background: #eff6ff; cursor: pointer; } .ft-add:hover { background: #dbeafe; } .ft-add--sm { padding: 0.3rem 0.65rem; font-size: 0.76rem; }
 .ft-newsec { display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem; } .ft-newsec__t { display: flex; align-items: center; gap: 0.5rem; color: #1d4ed8; } .ft-newsec__pick { flex: 1 1 260px; max-width: 420px; } .ft-newsec__pick :deep(.relative) { margin-bottom: 0; }
 .ft-grand__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; margin-bottom: 0.8rem; } .ft-grand__row span { padding: 0.6rem 0.8rem; border-radius: 14px; background: #eef3fa; font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; color: #1c3f66; } .ft-grand__row small { display: block; font-size: 0.64rem; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; } .ft-grand__row span.ft-green { background: #f0fdf4; } .ft-grand__row span.ft-blue { background: #eff6ff; }
 .ft-help { display: flex; gap: 0.5rem; margin: 0.8rem 0 0; font-size: 0.78rem; color: #92400e; }
-@media (max-width: 1000px) { .ft-bal { grid-template-columns: 54px minmax(0, 1fr) minmax(0, 1fr) 36px; } .ft-line2 { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 0; } .ft-more-box { margin-left: 0; grid-template-columns: 1fr; } .ft-line1 { grid-template-columns: 34px minmax(0, 1fr) auto; } .ft-ben { grid-column: 2 / 4; } }
+@media (max-width: 1000px) { .ft-bal { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: 'cur . . x' 'acc acc lab lab' 'cu amt rate val'; row-gap: 0.5rem; } .ft-line2 { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 0; } .ft-more-box { margin-left: 0; grid-template-columns: 1fr; } .ft-line1 { grid-template-columns: 34px minmax(0, 1fr) auto; } .ft-ben { grid-column: 2 / 4; } }
 html.dark .ft-in { background: #0f172a; color: #f1f5f9; box-shadow: inset 0 0 0 1.5px #334155; } html.dark .ft-tot { background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1); } html.dark .ft-grand__row span { background: rgba(255, 255, 255, 0.06); color: #e2e8f0; } html.dark .ft-ib { background: rgba(255, 255, 255, 0.07); color: #cbd5e1; }
+
+/* the balance rows on narrow screens: a tidy block of named areas instead of one long row squeezed into four columns (the fields used to overlap) */
+@media (max-width: 1000px) { .ft-bal .ft-cur { grid-area: cur; justify-self: start; width: 54px; } .ft-bal .ft-c-acc { grid-area: acc; } .ft-bal .ft-c-lab { grid-area: lab; } .ft-bal .ft-c-cur { grid-area: cu; } .ft-bal .ft-c-amt { grid-area: amt; } .ft-bal .ft-c-rate { grid-area: rate; } .ft-bal .ft-c-val { grid-area: val; } .ft-bal .ft-c-x { grid-area: x; justify-self: end; } }
+@media (max-width: 1000px) { .ft-bal .ft-c-val b { padding: 0.3rem 0; } }
+@media (max-width: 640px) { .ft-bal { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: 'cur x' 'acc acc' 'lab cu' 'amt rate' 'val val'; } .ft-bal .ft-c-x { align-self: center; } }
+
+.ft-foldbar { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin: 0.2rem 0 0.9rem; } .ft-foldbar__t { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: auto; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #64748b; }
+.ft-sec__sum { font-size: 0.95rem; } .ft-sec__sum b { font-weight: 800; } .ft-sum-tt { color: #6d28d9; } .ft-sum-cash { color: #15803d; } .ft-sum-usd { color: #1d4ed8; }
+html.dark .ft-sum-tt { color: #c4b5fd; } html.dark .ft-sum-cash { color: #4ade80; } html.dark .ft-sum-usd { color: #93c5fd; }
+
+/* CSS tooltips on the icon buttons: centred above the icon, anchored to the edge for the buttons that sit at the right (or left) of a card so they never leave the screen; on touch screens a tap shows them */
+.ft-ib[data-tip], .ft-letter[data-tip] { position: relative; }
+.ft-ib[data-tip]::after, .ft-letter[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 80; width: max-content; max-width: min(220px, 58vw); padding: 5px 9px; border-radius: 9px; font-size: 0.72rem; font-weight: 700; line-height: 1.35; text-align: center; white-space: normal; letter-spacing: 0; text-transform: none; color: #fff; background: #0f172a; box-shadow: 0 12px 24px -10px rgba(15, 23, 42, 0.6); opacity: 0; transform: translate(-50%, 4px); pointer-events: none; transition: opacity 0.14s ease, transform 0.14s ease; }
+.ft-ib[data-tip]:hover::after, .ft-ib[data-tip]:focus-visible::after, .ft-letter[data-tip]:hover::after, .ft-letter[data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+.ft-sec__tools .ft-ib::after, .ft-tools .ft-ib::after, .ft-c-x .ft-ib::after, .ft-extra__row .ft-ib::after { left: auto; right: 0; transform: translate(0, 4px); }
+.ft-sec__tools .ft-ib:hover::after, .ft-sec__tools .ft-ib:focus-visible::after, .ft-tools .ft-ib:hover::after, .ft-tools .ft-ib:focus-visible::after, .ft-c-x .ft-ib:hover::after, .ft-c-x .ft-ib:focus-visible::after, .ft-extra__row .ft-ib:hover::after, .ft-extra__row .ft-ib:focus-visible::after { transform: translate(0, 0); }
+.ft-letter[data-tip]::after { left: 0; transform: translate(0, 4px); } .ft-letter[data-tip]:hover::after, .ft-letter[data-tip]:focus-visible::after { transform: translate(0, 0); }
+@media (hover: none) { .ft-ib[data-tip]:focus::after, .ft-letter[data-tip]:focus::after { opacity: 1; } }
+html.dark .ft-ib[data-tip]::after, html.dark .ft-letter[data-tip]::after { background: #1b2342; color: #eef0fa; box-shadow: 0 14px 30px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12); }
+@media (prefers-reduced-motion: reduce) { .ft-ib[data-tip]::after, .ft-letter[data-tip]::after { transition: none; } }
 </style>

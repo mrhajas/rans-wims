@@ -2,10 +2,10 @@
   <admin-layout :title="$t('Funds Allocation')">
     <div class="lg-page px-4 md:px-0 fx-page">
       <page-header icon="cash" :title="$t('Funds Allocation')" :subtitle="$t('Dated sheets of what is paid out, by category and payment method.')">
-        <Link v-if="can.reports" :href="route('fund-allocations.reports')" class="lg-btn lg-btn-soft"><icons name="chart-bar" class="w-4 h-4" />{{ $t('Reports') }}</Link>
-        <Link v-if="can.settings" :href="route('fund-allocations.settings')" class="lg-btn lg-btn-soft"><icons name="cog" class="w-4 h-4" />{{ $t('Settings') }}</Link>
-        <Link v-if="can.template" :href="route('fund-allocations.template')" class="lg-btn lg-btn-soft"><icons name="doc-text" class="w-4 h-4" />{{ $t('Template') }}</Link>
-        <Link v-if="can.create" :href="route('fund-allocations.create')" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" />{{ $t('New Allocation Sheet') }}</Link>
+        <Link v-if="can.reports" :href="route('fund-allocations.reports')" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="chart-bar" class="w-4 h-4" /></span>{{ $t('Reports') }}</Link>
+        <Link v-if="can.settings" :href="route('fund-allocations.settings')" class="lg-btn tone" style="--tone: #d97706"><span class="tone-ico"><icons name="cog" class="w-4 h-4" /></span>{{ $t('Settings') }}</Link>
+        <Link v-if="can.template" :href="route('fund-allocations.template')" class="lg-btn tone" style="--tone: #0891b2"><span class="tone-ico"><icons name="doc-text" class="w-4 h-4" /></span>{{ $t('Template') }}</Link>
+        <Link v-if="can.create" :href="route('fund-allocations.create')" class="lg-btn tone tone-solid" style="--tone: #059669"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('New Allocation Sheet') }}</Link>
       </page-header>
 
       <stat-tiles v-if="stats" class="fx-tiles" :items="statTiles" @select="pickStatus" />
@@ -64,7 +64,7 @@
               <td :data-label="$t('People')">
                 <div class="lg-subtext fx-people"><b>{{ $t('Prepared') }}:</b> {{ a.prepared_by ? a.prepared_by.name : '-' }}</div>
                 <div v-if="a.approved_by" class="lg-subtext fx-people"><b>{{ $t('Approved') }}:</b> {{ a.approved_by.name }}</div>
-                <div v-if="a.assigned_to" class="lg-subtext fx-people"><b>{{ $t('Payer') }}:</b> {{ a.assigned_to.name }}</div>
+                <div v-if="a.assigned_to" class="lg-subtext fx-people"><b>{{ a.payers && a.payers.length > 1 ? $t('Payers') : $t('Payer') }}:</b> {{ a.payers && a.payers.length ? a.payers.map(p => p.name).join(', ') : a.assigned_to.name }}</div>
                 <div v-if="a.cleared_by" class="lg-subtext fx-people fx-cleared"><b>{{ $t('Cleared by') }}:</b> {{ a.cleared_by.name }}</div>
               </td>
               <td class="lg-sticky-end" :data-label="$t('Actions')" @click.stop>

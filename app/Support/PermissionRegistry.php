@@ -1381,6 +1381,7 @@ class PermissionRegistry
                     'read-fund-allocations' => __('View Funds Allocation Sheets'),
                     'create-fund-allocations' => __('Prepare Funds Allocation Sheets'),
                     'update-fund-allocations' => __('Edit a Draft / Rejected Allocation'),
+                    'edit-pending-fund-allocations' => __('Edit an Allocation that is Pending Approval'),
                     'delete-fund-allocations' => __('Delete Funds Allocation Sheets'),
                     'approve-fund-allocations' => __('Approve / Reject Allocation and Assign the Payer'),
                     'pay-fund-allocations' => __('Execute Payments (tick each payment off)'),

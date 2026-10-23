@@ -60,6 +60,7 @@
     <connection-status-banner />
     <quick-access-menu />
     <wims-chat-launcher />
+    <scroll-jump />
     <rauncher :show="rauncherOpen" @close="rauncherOpen = false" />
     <prayer-layer v-if="$page.props.prayer" />
     <gate-reveal :show="!!$page.props.flash.just_logged_in" />
@@ -85,6 +86,7 @@ import { DEFAULT_SHORTCUT, matchesShortcut } from '@/Shared/Rauncher/shortcut';
 import QuickAccessMenu from '@/Shared/QuickAccessMenu/QuickAccessMenu.vue';
 import QrRecordButton from '@/Shared/Qr/QrRecordButton.vue';
 import WimsChatLauncher from '@/Shared/WimsChat/WimsChatLauncher.vue';
+import ScrollJump from '@/Shared/ScrollJump.vue';
 import GateReveal from '@/Shared/GateReveal.vue';
 import ImpersonationBanner from '@/Shared/Administration/ImpersonationBanner.vue';
 import SimulationBadge from '@/Shared/SimulationBadge.vue';
@@ -131,6 +133,7 @@ export default {
     QuickAccessMenu,
     QrRecordButton,
     WimsChatLauncher,
+    ScrollJump,
     GateReveal,
     ImpersonationBanner,
     SimulationBadge,

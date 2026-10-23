@@ -69,7 +69,7 @@ class FundAllocationController extends Controller
             ->withSum('balances as available_total', 'amount_tzs')
             ->withSum('items as allocated_total', 'allocated_amount')
             ->withCount('items as items_total')
-            ->with(['preparedBy:id,name', 'approvedBy:id,name', 'assignedTo:id,name', 'clearedBy:id,name'])
+            ->with(['preparedBy:id,name', 'approvedBy:id,name', 'assignedTo:id,name', 'payers:id,name', 'clearedBy:id,name'])
             ->filter($filters)
             ->orderByDesc('reference')->orderByDesc('id')
             ->paginate(15)
@@ -96,6 +96,7 @@ class FundAllocationController extends Controller
                     'prepared_by' => $this->person($a->preparedBy),
                     'approved_by' => $this->person($a->approvedBy),
                     'assigned_to' => $this->person($a->assignedTo),
+                    'payers' => $a->payers->sortBy(fn ($p) => [(int) $p->id !== (int) $a->assigned_to_user_id, $p->name])->map(fn ($p) => $this->person($p))->values()->all(),
                     'cleared_by' => $this->person($a->clearedBy),
                     'can_edit' => $this->canEditNow($request->user(), $a) && $this->mayEdit($request->user(), $a),
                 ];
@@ -285,10 +286,11 @@ class FundAllocationController extends Controller
             if (! $this->canEditNow($user, $locked)) {
                 $this->fail(__('Only a Draft or Rejected sheet can be edited.'));
             }
-            $post = ! $locked->isEditable();
+            $pending = $locked->status === FundAllocation::STATUS_PENDING;
+            $post = ! $locked->isEditable() && ! $pending;
             $locked->update(['allocation_date' => $data['allocation_date'], 'title' => $data['title'], 'notes' => $data['notes']]);
             $this->syncChildren($locked, $data);
-            log_activity($post ? __('Allocation sheet edited by Super Admin after approval (:status).', ['status' => $locked->status]) : __('Allocation sheet updated.'), ['reference' => $locked->reference, 'items' => count($data['items']), 'status' => $locked->status], $locked, self::LOG);
+            log_activity($post ? __('Allocation sheet edited by Super Admin after approval (:status).', ['status' => $locked->status]) : ($pending ? __('Allocation sheet edited while pending approval.') : __('Allocation sheet updated.')), ['reference' => $locked->reference, 'items' => count($data['items']), 'status' => $locked->status], $locked, self::LOG);
             if ($post && $this->refreshProgress($locked->fresh(), $user)) {
                 $this->guardSignatures($locked->id, ['cleared']); // Signatories finalisation guard: editing a paid sheet can complete it
             }
@@ -360,10 +362,10 @@ class FundAllocationController extends Controller
         $a = $this->resolve($fund_allocation);
         abort_unless($user->can('approve-fund-allocations') && $this->canSee($user, $a), 403);
 
-        $data = $request->validate(['assigned_to_user_id' => ['required', 'integer', 'exists:users,id']]);
-        $payer = $this->eligiblePayer((int) $data['assigned_to_user_id']);
+        $payers = $this->requestedPayers($request);
+        $names = $payers->pluck('name')->implode(', ');
 
-        DB::transaction(function () use ($a, $user, $payer) {
+        DB::transaction(function () use ($a, $user, $payers, $names) {
             $locked = $this->lock($a->id);
             if ($locked->status !== FundAllocation::STATUS_PENDING) {
                 $this->fail(__('Only a sheet that is pending approval can be approved.'));
@@ -372,18 +374,19 @@ class FundAllocationController extends Controller
                 'status' => FundAllocation::STATUS_APPROVED,
                 'approved_by_user_id' => $user->id,
                 'approved_at' => now(),
-                'assigned_to_user_id' => $payer->id,
+                'assigned_to_user_id' => $payers->first()->id,
                 'rejection_reason' => null,
             ]);
-            log_activity(__('Allocation sheet approved. Payer: :name.', ['name' => $payer->name]), ['reference' => $locked->reference, 'payer' => $payer->name, 'payer_id' => $payer->id], $locked, self::LOG);
+            $locked->payers()->sync($payers->pluck('id')->all());
+            log_activity(__('Allocation sheet approved. Payer: :name.', ['name' => $names]), ['reference' => $locked->reference, 'payer' => $names, 'payer_ids' => $payers->pluck('id')->all()], $locked, self::LOG);
         });
 
         $a->refresh();
-        $this->fire('pay', $user, __('Allocation to pay'), $a->reference.': '.__('approved by :name, you are the payer.', ['name' => $user->name]), $a, [$payer]);
-        // the preparer is not told twice when he or she is also the payer
-        $this->fire('approved', $user, __('Allocation approved'), $a->reference.': '.__('approved by :name. Payer: :payer.', ['name' => $user->name, 'payer' => $payer->name]), $a, (int) $a->prepared_by_user_id === (int) $payer->id ? [] : [$a->prepared_by_user_id]);
+        $this->fire('pay', $user, __('Allocation to pay'), $a->reference.': '.__('approved by :name, you are the payer.', ['name' => $user->name]), $a, $payers->all());
+        // the preparer is not told twice when he or she is also a payer
+        $this->fire('approved', $user, __('Allocation approved'), $a->reference.': '.__('approved by :name. Payer: :payer.', ['name' => $user->name, 'payer' => $names]), $a, $payers->contains('id', (int) $a->prepared_by_user_id) ? [] : [$a->prepared_by_user_id]);
 
-        return back()->with('message', __('Allocation sheet :ref approved. Payer: :name.', ['ref' => $a->reference, 'name' => $payer->name]));
+        return back()->with('message', __('Allocation sheet :ref approved. Payer: :name.', ['ref' => $a->reference, 'name' => $names]));
     }
 
     public function reject(Request $request, FundAllocation $fund_allocation)
@@ -415,28 +418,33 @@ class FundAllocationController extends Controller
         $a = $this->resolve($fund_allocation);
         abort_unless(($user->can('approve-fund-allocations') || $user->hasRole('Super Admin')) && $this->canSee($user, $a), 403);
 
-        $data = $request->validate(['assigned_to_user_id' => ['required', 'integer', 'exists:users,id']]);
-        $payer = $this->eligiblePayer((int) $data['assigned_to_user_id']);
+        $payers = $this->requestedPayers($request);
+        $names = $payers->pluck('name')->implode(', ');
 
-        $old = null;
-        DB::transaction(function () use ($a, $payer, &$old, $user) {
+        $old = collect();
+        DB::transaction(function () use ($a, $payers, $names, &$old, $user) {
             $locked = $this->lock($a->id);
             $reopen = in_array($locked->status, [FundAllocation::STATUS_COMPLETED, FundAllocation::STATUS_CLEARED], true) && $user->hasRole('Super Admin');
             if (! $locked->isPayable() && ! $reopen) {
                 $this->fail(__('The payer can only be changed while the sheet is Approved or In Progress.'));
             }
-            $old = $locked->assignedTo;
-            $locked->update(['assigned_to_user_id' => $payer->id] + ($locked->status === FundAllocation::STATUS_CLEARED ? ['status' => FundAllocation::STATUS_COMPLETED, 'cleared_by_user_id' => null, 'cleared_at' => null] : []));
-            log_activity(__('Payer reassigned to :name.', ['name' => $payer->name]), ['reference' => $locked->reference, 'from' => optional($old)->name, 'to' => $payer->name], $locked, self::LOG);
+            $old = $locked->payers()->get(['users.id', 'users.name']);
+            if ($old->isEmpty() && $locked->assignedTo) {
+                $old = collect([$locked->assignedTo]);
+            }
+            $locked->update(['assigned_to_user_id' => $payers->first()->id] + ($locked->status === FundAllocation::STATUS_CLEARED ? ['status' => FundAllocation::STATUS_COMPLETED, 'cleared_by_user_id' => null, 'cleared_at' => null] : []));
+            $locked->payers()->sync($payers->pluck('id')->all());
+            log_activity(__('Payer reassigned to :name.', ['name' => $names]), ['reference' => $locked->reference, 'from' => $old->pluck('name')->implode(', '), 'to' => $names], $locked, self::LOG);
         });
 
         $a->refresh();
-        $this->fire('pay', $user, __('Allocation to pay'), $a->reference.': '.__('you were assigned as the payer by :name.', ['name' => $user->name]), $a, [$payer]);
-        if ($old) {
-            $this->fire('reassigned', $user, __('Allocation reassigned'), $a->reference.': '.__('you are no longer the payer.'), $a, [$old]);
+        $this->fire('pay', $user, __('Allocation to pay'), $a->reference.': '.__('you were assigned as the payer by :name.', ['name' => $user->name]), $a, $payers->all());
+        $dropped = $old->reject(fn ($o) => $payers->contains('id', $o->id))->values();
+        if ($dropped->isNotEmpty()) {
+            $this->fire('reassigned', $user, __('Allocation reassigned'), $a->reference.': '.__('you are no longer the payer.'), $a, $dropped->all());
         }
 
-        return back()->with('message', __('Payer changed to :name.', ['name' => $payer->name]));
+        return back()->with('message', __('Payer changed to :name.', ['name' => $names]));
     }
 
     public function cancel(Request $request, FundAllocation $fund_allocation)
@@ -462,7 +470,7 @@ class FundAllocationController extends Controller
         });
 
         $a->refresh();
-        $this->fire('cancelled', $user, __('Allocation cancelled'), $a->reference.': '.$data['reason'], $a, [$a->prepared_by_user_id, $a->assigned_to_user_id], ['remarks' => $data['reason']]);
+        $this->fire('cancelled', $user, __('Allocation cancelled'), $a->reference.': '.$data['reason'], $a, array_merge([$a->prepared_by_user_id], $a->payers()->pluck('users.id')->all(), [$a->assigned_to_user_id]), ['remarks' => $data['reason']]);
 
         return back()->with('message', __('Allocation sheet :ref cancelled.', ['ref' => $a->reference]));
     }
@@ -511,6 +519,7 @@ class FundAllocationController extends Controller
                 'rejection_reason' => null, 'cancel_reason' => null, 'cancelled_by_user_id' => null, 'cancelled_at' => null,
                 'submitted_at' => null, 'approved_by_user_id' => null, 'approved_at' => null, 'assigned_to_user_id' => null, 'completed_at' => null,
             ]);
+            $locked->payers()->detach();
             log_activity(__('Allocation sheet reopened as a draft.'), ['reference' => $locked->reference, 'was' => $was], $locked, self::LOG);
         });
 
@@ -852,7 +861,7 @@ class FundAllocationController extends Controller
             return true;
         }
 
-        return $u->can('pay-fund-allocations') && (int) $a->assigned_to_user_id === (int) $u->id;
+        return $u->can('pay-fund-allocations') && $a->hasPayer((int) $u->id);
     }
 
     private function mayEdit(User $u, FundAllocation $a): bool
@@ -861,7 +870,7 @@ class FundAllocationController extends Controller
             return false;
         }
 
-        return $this->isAdmin($u) || $u->can('update-fund-allocations') || ($u->can('create-fund-allocations') && (int) $a->prepared_by_user_id === (int) $u->id);
+        return $this->isAdmin($u) || $u->can('update-fund-allocations') || ($a->status === FundAllocation::STATUS_PENDING && $u->can('edit-pending-fund-allocations')) || ($u->can('create-fund-allocations') && (int) $a->prepared_by_user_id === (int) $u->id);
     }
 
     private function maySubmit(User $u, FundAllocation $a): bool
@@ -874,11 +883,14 @@ class FundAllocationController extends Controller
     }
 
     /** Tick / untick: pay permission AND (the assigned payer OR Super Admin/Admin). */
-    /** Draft/Rejected sheets for anyone allowed to edit; the Super Admin may also edit a sheet that is approved, paid or cleared. */
+    /** Draft/Rejected sheets for anyone allowed to edit; while it waits for approval, anyone who holds the "Edit an Allocation that is Pending Approval" permission (the Super Admin for now); the Super Admin may also edit a sheet that is approved, paid or cleared. */
     private function canEditNow(User $u, FundAllocation $a): bool
     {
         if ($a->isEditable()) {
             return true;
+        }
+        if ($a->status === FundAllocation::STATUS_PENDING) {
+            return $u->hasRole('Super Admin') || $u->can('edit-pending-fund-allocations');
         }
 
         return $u->hasRole('Super Admin') && in_array($a->status, [FundAllocation::STATUS_APPROVED, FundAllocation::STATUS_IN_PROGRESS, FundAllocation::STATUS_COMPLETED, FundAllocation::STATUS_CLEARED], true);
@@ -888,7 +900,7 @@ class FundAllocationController extends Controller
     private function hideBalances(User $u, FundAllocation $a): bool
     {
         return ! in_array($a->status, [FundAllocation::STATUS_DRAFT, FundAllocation::STATUS_PENDING, FundAllocation::STATUS_REJECTED], true)
-            && (int) $a->assigned_to_user_id === (int) $u->id
+            && $a->hasPayer((int) $u->id)
             && ! $this->isAdmin($u)
             && ! $u->can('approve-fund-allocations')
             && (int) $a->prepared_by_user_id !== (int) $u->id;
@@ -908,7 +920,7 @@ class FundAllocationController extends Controller
 
     private function mayTick(User $u, FundAllocation $a): bool
     {
-        return $u->can('pay-fund-allocations') && ($this->isAdmin($u) || (int) $a->assigned_to_user_id === (int) $u->id);
+        return $u->can('pay-fund-allocations') && ($this->isAdmin($u) || $a->hasPayer((int) $u->id));
     }
 
     private function visible($query, User $u)
@@ -920,7 +932,7 @@ class FundAllocationController extends Controller
         return $query->where(function ($w) use ($u) {
             $w->where('prepared_by_user_id', $u->id);
             if ($u->can('pay-fund-allocations')) {
-                $w->orWhere('assigned_to_user_id', $u->id);
+                $w->orWhere('assigned_to_user_id', $u->id)->orWhereHas('payers', fn ($p) => $p->where('users.id', $u->id));
             }
         });
     }
@@ -984,6 +996,19 @@ class FundAllocationController extends Controller
             'roles' => $u->roles->pluck('name')->values()->all(),
             'can_pay' => $canPay->has($u->id),
         ])->all();
+    }
+
+    /** The payers chosen in the request: payer_ids (one or more), or the old single assigned_to_user_id. The first one is the main payer. */
+    private function requestedPayers(Request $request)
+    {
+        $data = $request->validate([
+            'payer_ids' => ['required_without:assigned_to_user_id', 'array', 'min:1', 'max:30'],
+            'payer_ids.*' => ['integer', 'exists:users,id'],
+            'assigned_to_user_id' => ['required_without:payer_ids', 'integer', 'exists:users,id'],
+        ]);
+        $ids = collect($data['payer_ids'] ?? [$data['assigned_to_user_id']])->map(fn ($i) => (int) $i)->unique()->values();
+
+        return $ids->map(fn ($id) => $this->eligiblePayer($id));
     }
 
     private function eligiblePayer(int $id): User
@@ -1064,7 +1089,7 @@ class FundAllocationController extends Controller
     private function present(FundAllocation $a): array
     {
         $a->load([
-            'preparedBy:id,name', 'approvedBy:id,name', 'assignedTo:id,name', 'completedBy:id,name', 'clearedBy:id,name',
+            'preparedBy:id,name', 'approvedBy:id,name', 'assignedTo:id,name', 'payers:id,name', 'completedBy:id,name', 'clearedBy:id,name',
             'balances',
             'items.category', 'items.lines.method', 'items.lines.paidBy:id,name',
             'items.contact:id,name', 'items.beneficiaryUser:id,name', 'items.beneficiaryWarehouse:id,name', 'items.staff:id,name', 'items.warehouse:id,name',
@@ -1083,6 +1108,7 @@ class FundAllocationController extends Controller
             'prepared_by' => $this->person($a->preparedBy),
             'approved_by' => $this->person($a->approvedBy),
             'assigned_to' => $this->person($a->assignedTo),
+            'payers' => $a->payers->sortBy(fn ($p) => [(int) $p->id !== (int) $a->assigned_to_user_id, $p->name])->map(fn ($p) => $this->person($p))->values()->all(),
             'submitted_at' => optional($a->submitted_at)->toDateTimeString(),
             'approved_at' => optional($a->approved_at)->toDateTimeString(),
             'completed_at' => optional($a->completed_at)->toDateTimeString(),

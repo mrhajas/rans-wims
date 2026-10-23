@@ -92,7 +92,7 @@
           <ul class="fx-people">
             <li><span>{{ $t('Prepared by') }}</span><b>{{ personName(allocation.prepared_by) }}</b><small v-if="allocation.submitted_at">{{ $datetime(allocation.submitted_at) }}</small></li>
             <li><span>{{ $t('Approved by') }}</span><b>{{ personName(allocation.approved_by) }}</b><small v-if="allocation.approved_at">{{ $datetime(allocation.approved_at) }}</small></li>
-            <li><span>{{ $t('Payer') }}</span><b>{{ personName(allocation.assigned_to) }}</b></li>
+            <li><span>{{ allocation.payers && allocation.payers.length > 1 ? $t('Payers') : $t('Payer') }}</span><b>{{ payerNames }}</b></li>
             <li v-if="allocation.paid_by"><span>{{ $t('Paid by') }}</span><b>{{ personName(allocation.paid_by) }}</b><small v-if="allocation.completed_at">{{ $datetime(allocation.completed_at) }}</small></li>
             <li v-if="allocation.cleared_by"><span>{{ $t('Cleared by') }}</span><b>{{ personName(allocation.cleared_by) }}</b><small v-if="allocation.cleared_at">{{ $datetime(allocation.cleared_at) }}</small></li>
           </ul>
@@ -428,10 +428,15 @@
           <template v-if="modal === 'approve' || modal === 'reassign'">
             <div class="fx-pm-head">
               <span class="fx-pm-ico"><icons name="users" class="w-5 h-5" /></span>
-              <p class="fx-modal-help">{{ modal === 'approve' ? $t('Choose who will make the payments. They will tick each payment as they pay it.') : $t('Choose the new payer. Ticks already made are kept.') }}</p>
+              <p class="fx-modal-help">{{ modal === 'approve' ? $t('Choose who will make the payments. You can choose more than one person; each of them can tick the payments as they pay them.') : $t('Choose the payers. You can choose more than one person. Ticks already made are kept.') }}</p>
             </div>
             <div v-if="allocation.assigned_to && modal === 'reassign'" class="fx-pm-current">
-              <span>{{ $t('Current payer') }}</span><b>{{ allocation.assigned_to.name }}</b>
+              <span>{{ allocation.payers && allocation.payers.length > 1 ? $t('Current payers') : $t('Current payer') }}</span><b>{{ payerNames }}</b>
+            </div>
+            <div class="fx-pm-bar">
+              <span class="fx-pm-count" :class="{ 'is-on': modalForm.payers.length }">{{ modalForm.payers.length }} {{ $t('selected') }}</span>
+              <button type="button" class="fx-pm-link" :disabled="!filteredPayers.length" @click="selectAllPayers"><icons name="tick" class="w-3.5 h-3.5" />{{ $t('Select All') }}</button>
+              <button type="button" class="fx-pm-link is-red" :disabled="!modalForm.payers.length" @click="modalForm.payers = []"><icons name="cross" class="w-3.5 h-3.5" />{{ $t('Deselect All') }}</button>
             </div>
             <div class="fx-vm-search">
               <icons name="search" class="w-4 h-4" />
@@ -442,29 +447,30 @@
                 v-for="p in filteredPayers"
                 :key="p.id"
                 class="fx-pcard"
-                :class="{ 'is-on': modalForm.payer === p.id }"
-                role="button"
+                :class="{ 'is-on': modalForm.payers.includes(p.id) }"
+                role="checkbox"
+                :aria-checked="modalForm.payers.includes(p.id)"
                 tabindex="0"
-                @click="modalForm.payer = p.id"
-                @keydown.enter.prevent="modalForm.payer = p.id"
-                @keydown.space.prevent="modalForm.payer = p.id"
+                @click="togglePayer(p.id)"
+                @keydown.enter.prevent="togglePayer(p.id)"
+                @keydown.space.prevent="togglePayer(p.id)"
               >
                 <span class="fx-pav" :style="{ background: avatarBg(p.id) }">{{ initials(p.name) }}</span>
                 <div class="min-w-0 flex-1">
-                  <div class="fx-pname">{{ p.name }}<span v-if="allocation.assigned_to && allocation.assigned_to.id === p.id" class="fx-ptag is-blue">{{ $t('Current') }}</span></div>
+                  <div class="fx-pname">{{ p.name }}<span v-if="isCurrentPayer(p.id)" class="fx-ptag is-blue">{{ $t('Current') }}</span></div>
                   <div class="fx-pmeta">
                     <span v-if="p.username" class="fx-num">@{{ p.username }}</span>
                     <span v-for="r in p.roles.slice(0, 2)" :key="r" class="fx-ptag">{{ r }}</span>
                     <span v-if="!p.can_pay" class="fx-ptag is-amber">{{ $t('No pay permission yet') }}</span>
                   </div>
                 </div>
-                <span class="fx-pradio"><icons v-if="modalForm.payer === p.id" name="tick" class="w-3.5 h-3.5" /></span>
+                <span class="fx-pradio is-check"><icons v-if="modalForm.payers.includes(p.id)" name="tick" class="w-3.5 h-3.5" /></span>
               </li>
               <li v-if="!filteredPayers.length" class="fx-vempty"><b>{{ $t('No users found.') }}</b></li>
             </ul>
-            <div v-if="selectedPayer && !selectedPayer.can_pay" class="lg-note lg-note-amber mt-3">
+            <div v-if="payersWithoutPermission.length" class="lg-note lg-note-amber mt-3">
               <icons name="exclamation" class="w-4 h-4" />
-              <span>{{ $t('This user cannot tick payments until they are given the "Funds Payer" role.') }}</span>
+              <span>{{ payersWithoutPermission.map(p => p.name).join(', ') }}: {{ $t(payersWithoutPermission.length > 1 ? 'These users cannot tick payments until they are given the "Funds Payer" role.' : 'This user cannot tick payments until they are given the "Funds Payer" role.') }}</span>
             </div>
           </template>
           <template v-else>
@@ -576,7 +582,7 @@ export default {
       busy: {},
       busyAction: false,
       modal: null,
-      modalForm: { payer: null, reason: '' },
+      modalForm: { payers: [], reason: '' },
       payerQuery: '',
       modalBusy: false,
       modalError: '',
@@ -701,8 +707,12 @@ export default {
       if (!q) return this.payers;
       return this.payers.filter(p => [p.name, p.username, ...(p.roles || [])].join(' ').toLowerCase().includes(q));
     },
-    selectedPayer() {
-      return this.payers.find(p => p.id === this.modalForm.payer) || null;
+    payersWithoutPermission() {
+      return this.payers.filter(p => this.modalForm.payers.includes(p.id) && !p.can_pay);
+    },
+    payerNames() {
+      const list = (this.allocation.payers && this.allocation.payers.length ? this.allocation.payers : (this.allocation.assigned_to ? [this.allocation.assigned_to] : []));
+      return list.length ? list.map(p => p.name).join(', ') : this.personName(null);
     },
     modalTitle() {
       return { approve: this.$t('Approve and assign the payer'), reject: this.$t('Reject this sheet'), cancel: this.$t('Cancel this sheet'), reassign: ['Completed', 'Cleared'].includes(this.allocation.status) ? this.$t('Assign the payer again') : this.$t('Change the payer') }[this.modal] || '';
@@ -711,7 +721,7 @@ export default {
       return { approve: this.$t('Approve'), reject: this.$t('Reject'), cancel: this.$t('Cancel sheet'), reassign: this.$t('Change payer') }[this.modal] || '';
     },
     modalValid() {
-      if (this.modal === 'approve' || this.modal === 'reassign') return !!this.modalForm.payer;
+      if (this.modal === 'approve' || this.modal === 'reassign') return this.modalForm.payers.length > 0;
       return (this.modalForm.reason || '').trim().length > 0;
     },
   },
@@ -867,10 +877,21 @@ export default {
       this.modal = kind;
       this.modalError = '';
       this.modalForm = {
-        payer: kind === 'approve' || kind === 'reassign' ? (this.allocation.assigned_to && this.payers.some(p => p.id === this.allocation.assigned_to.id) ? this.allocation.assigned_to.id : null) : null,
+        payers: kind === 'approve' || kind === 'reassign' ? this.currentPayerIds().filter(id => this.payers.some(p => p.id === id)) : [],
         reason: '',
       };
     },
+    currentPayerIds() {
+      const list = this.allocation.payers && this.allocation.payers.length ? this.allocation.payers : (this.allocation.assigned_to ? [this.allocation.assigned_to] : []);
+      return list.map(p => p.id);
+    },
+    isCurrentPayer(id) { return this.currentPayerIds().includes(id); },
+    togglePayer(id) {
+      const i = this.modalForm.payers.indexOf(id);
+      if (i >= 0) this.modalForm.payers.splice(i, 1); else this.modalForm.payers.push(id);
+    },
+    // ticks everyone in the list (the search narrows it)
+    selectAllPayers() { this.filteredPayers.forEach(p => { if (!this.modalForm.payers.includes(p.id)) this.modalForm.payers.push(p.id); }); },
     closeModal() {
       this.modal = null;
       this.voucherItem = null;
@@ -878,7 +899,7 @@ export default {
     confirmModal() {
       const kind = this.modal;
       const id = this.allocation.id;
-      const data = kind === 'approve' || kind === 'reassign' ? { assigned_to_user_id: this.modalForm.payer } : { reason: this.modalForm.reason.trim() };
+      const data = kind === 'approve' || kind === 'reassign' ? { payer_ids: this.modalForm.payers } : { reason: this.modalForm.reason.trim() };
       this.modalBusy = true;
       this.modalError = '';
       this.$inertia.patch(this.route('fund-allocations.' + kind, id), data, {
@@ -990,8 +1011,8 @@ html.dark .fx-cat-row td { color: #bfdbfe; }
 .fx-tot-row td.fx-tot-val { color: #7f1d1d; font-weight: 800; }
 html.dark .fx-tot-row td.fx-tot-val { color: #fca5a5; }
 .fx-paid-row td { background: rgba(16, 185, 129, 0.05); }
-.fx-letter { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-right: 6px; border-radius: 8px; background: var(--lg-navy); color: #fff; font-size: 0.75rem; font-weight: 800; }
-.fx-letter-sm { width: 20px; height: 20px; font-size: 0.66rem; border-radius: 6px; }
+.fx-letter { display: inline-flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; min-width: 24px; min-height: 24px; width: 24px; height: 24px; margin-right: 6px; border-radius: 8px; background: var(--lg-navy); color: #fff; font-size: 0.75rem; font-weight: 800; }
+.fx-letter-sm { min-width: 20px; min-height: 20px; width: 20px; height: 20px; font-size: 0.66rem; border-radius: 6px; }
 .fx-line { padding: 3px 0; }
 .fx-line-amt { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; font-variant-numeric: tabular-nums; }
 .fx-paid-line { margin-top: 4px; }
@@ -1165,6 +1186,10 @@ html.dark .fx-sheet tbody.fx-z0 .fx-lg-main, html.dark .fx-sheet tbody tr:not(.f
 .fx-ptag.is-amber { background: #fef3c7; color: #b45309; }
 .fx-pradio { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; border-radius: 9999px; border: 2px solid #cbd5e1; color: #fff; }
 .fx-pcard.is-on .fx-pradio { background: #3b82f6; border-color: #3b82f6; }
+.fx-pradio.is-check { border-radius: 7px; }
+.fx-pm-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.fx-pm-count { margin-right: auto; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 800; color: #64748b; background: #f1f5f9; } .fx-pm-count.is-on { color: #1d4ed8; background: #dbeafe; }
+.fx-pm-link { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 0; border-radius: 999px; font-size: 0.78rem; font-weight: 800; color: #1d4ed8; background: #eff6ff; cursor: pointer; } .fx-pm-link:hover:not(:disabled) { background: #dbeafe; } .fx-pm-link.is-red { color: #b91c1c; background: #fef2f2; } .fx-pm-link.is-red:hover:not(:disabled) { background: #fee2e2; } .fx-pm-link:disabled { opacity: 0.45; cursor: not-allowed; }
 .fx-modal-foot .lg-btn { box-shadow: 0 10px 18px -8px rgba(15, 37, 64, 0.5), 0 2px 4px rgba(15, 37, 64, 0.12); }
 
 
@@ -1275,6 +1300,8 @@ html.dark .fx-hbtn.is-slate { color: #bfdbfe; background: var(--lg-card); border
 .fx-unrec { margin: 4px 0 0 16px; list-style: disc; }
 .fx-unpaid { margin-top: 16px; }
 .fx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-chips { min-width: 0; } .fx-chips .lg-chip { max-width: 100%; white-space: normal !important; border-radius: 14px; overflow-wrap: anywhere; line-height: 1.3; text-align: left; }
+.fx-mcat-head { min-width: 0; } .fx-mcat-head b { min-width: 0; overflow-wrap: anywhere; }
 
 /* timeline */
 .fx-timeline { list-style: none; margin: 0; padding: 0 0 0 6px; }

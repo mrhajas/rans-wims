@@ -314,7 +314,7 @@ class PaymentVoucherController extends Controller
             return true;
         }
 
-        if ($user->can('pay-fund-allocations') && (int) $allocation->assigned_to_user_id === (int) $user->id) {
+        if ($user->can('pay-fund-allocations') && $allocation->hasPayer((int) $user->id)) {
             return true;
         }
 
