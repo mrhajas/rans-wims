@@ -4,16 +4,16 @@
       <page-header icon="adjustments" :title="superAdjustment.reference" :subtitle="$t('Super Adjustments')">
         <span class="lg-chip" :class="statusTone"><icons v-if="superAdjustment.status === 'Approved'" name="tick" class="w-3.5 h-3.5 inline-flex" />{{ statusText }}</span>
         <Link v-if="session && session.can_open" :href="session.url" class="lg-chip lg-chip-orange" style="text-transform: none; text-decoration: none"><icons name="clock" class="w-3.5 h-3.5 inline-flex" />{{ $t('Session') }} {{ session.reference }}</Link>
-        <Link :href="route('super-adjustments.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" />{{ $t('Super Adjustments') }}</Link>
-        <a v-if="superAdjustment.can_print" :href="route('super-adjustments.print', superAdjustment.id)" target="_blank" class="lg-btn lg-btn-soft">
-          <icons name="printer" class="w-4 h-4" />{{ $t('Print') }}
+        <Link :href="route('super-adjustments.index')" class="lg-btn tone" style="--tone: #4f46e5"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span>{{ $t('Super Adjustments') }}</Link>
+        <a v-if="superAdjustment.can_print" :href="sortedRoute('super-adjustments.print')" target="_blank" class="lg-btn tone" style="--tone: #2563eb">
+          <span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span>{{ $t('Print') }}
         </a>
-        <a v-if="superAdjustment.can_print" :href="route('super-adjustments.pdf', superAdjustment.id)" class="lg-btn lg-btn-soft">
-          <icons name="download" class="w-4 h-4" />{{ $t('Download') }}
+        <a v-if="superAdjustment.can_print" :href="sortedRoute('super-adjustments.pdf')" class="lg-btn tone" style="--tone: #dc2626">
+          <span class="tone-ico"><icons name="download" class="w-4 h-4" /></span>{{ $t('Download') }}
         </a>
         <change-status :adjustment="superAdjustment" route-prefix="super-adjustments" />
-        <button v-if="superAdjustment.can_edit" type="button" class="lg-btn lg-btn-soft" @click="goEdit">
-          <icons name="edit" class="w-4 h-4" />{{ $t('Edit') }}
+        <button v-if="superAdjustment.can_edit" type="button" class="lg-btn tone" style="--tone: #059669" @click="goEdit">
+          <span class="tone-ico"><icons name="edit" class="w-4 h-4" /></span>{{ $t('Edit') }}
         </button>
         <approval-actions :adjustment="superAdjustment" route-prefix="super-adjustments" />
       </page-header>
@@ -75,15 +75,7 @@
           <div class="min-w-0 flex-1">
             <h2 class="lg-card-title">{{ $t('Details') }}</h2>
           </div>
-          <a
-            v-if="superAdjustment.warehouse_id"
-            :href="route('reports.warehousestock', { warehouseId: superAdjustment.warehouse_id })"
-            target="_blank"
-            rel="noopener"
-            class="lg-btn lg-btn-soft"
-          >
-            <icons name="collection" class="w-4 h-4" /> {{ $t('Live Stock') }}
-          </a>
+
         </header>
         <div class="sa-kv">
           <div><span class="sa-k">{{ $t('Reason') }}</span><span class="sa-v">{{ superAdjustment.reason }}</span></div>
@@ -114,7 +106,11 @@
             <h2 class="lg-card-title">{{ $t('Physical Stock Count') }}</h2>
             <p class="lg-card-sub">{{ sortedItems.length }} / {{ items.length }} {{ $t('items') }}</p>
           </div>
-          <button type="button" class="lg-btn tone tone-solid" style="--tone: #4f46e5" :disabled="!items.length" @click="reportOpen = true"><span class="tone-ico"><icons name="calculator" class="w-4 h-4" /></span>{{ $t('Value Report') }}</button>
+          <div class="sa-tools">
+            <sort-menu v-model="preset" :disabled="!items.length" />
+            <a v-if="superAdjustment.warehouse_id" :href="route('reports.warehousestock', { warehouseId: superAdjustment.warehouse_id })" target="_blank" rel="noopener" class="lg-btn tone tone-solid sa-live" style="--tone: #0d9488"><span class="tone-ico"><icons name="collection" class="w-4 h-4" /></span>{{ $t('Live Stock') }}</a>
+            <button type="button" class="lg-btn tone tone-solid" style="--tone: #4f46e5" :disabled="!items.length" @click="reportOpen = true"><span class="tone-ico"><icons name="calculator" class="w-4 h-4" /></span>{{ $t('Value Report') }}</button>
+          </div>
         </header>
 
         <div class="sa-search">
@@ -208,8 +204,8 @@
 
       <value-report
         :show="reportOpen" :title="$t('Value report') + ' - ' + superAdjustment.reference" :subtitle="(superAdjustment.warehouse && superAdjustment.warehouse.name) || ''"
-        :report="valueReport" :print-url="$can('print-super-adjustments') ? route('super-adjustments.value-report.print', superAdjustment.id) : null"
-        :pdf-url="$can('print-super-adjustments') ? route('super-adjustments.value-report.pdf', superAdjustment.id) : null" :excel-url="$can('print-super-adjustments') ? route('super-adjustments.value-report.export', superAdjustment.id) : null" @close="reportOpen = false"
+        :report="valueReport" :sort="preset" :print-url="$can('print-super-adjustments') ? sortedRoute('super-adjustments.value-report.print') : null"
+        :pdf-url="$can('print-super-adjustments') ? sortedRoute('super-adjustments.value-report.pdf') : null" :excel-url="$can('print-super-adjustments') ? sortedRoute('super-adjustments.value-report.export') : null" @close="reportOpen = false"
       />
 
       <section class="lg-card" v-if="attachments.length">
@@ -277,10 +273,12 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import ChangeStatus from '@/Shared/Adjustment/ChangeStatus.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import ValueReport from '@/Shared/Adjustment/ValueReport.vue';
+import SortMenu from '@/Shared/Adjustment/SortMenu.vue';
+import { sortLines } from '@/Core/itemSort';
 import ApprovalActions from '@/Shared/Adjustment/ApprovalActions.vue';
 
 export default {
-  components: { AdminLayout, TecDialogModal, PageHeader, StatTiles, ChangeStatus, ApprovalActions, ValueReport },
+  components: { AdminLayout, TecDialogModal, PageHeader, StatTiles, ChangeStatus, ApprovalActions, ValueReport, SortMenu },
 
   props: {
     valueReport: { type: Object, default: null },
@@ -299,6 +297,7 @@ export default {
       rejectForm: this.$inertia.form({ rejection_reason: '' }),
       tooltip: { visible: false, text: '', top: 0, left: 0, arrowLeft: 0, width: 260, placement: 'above' },
       itemsSearch: '',
+      preset: null,
       itemsSort: null,
       itemsSortDirection: 'asc',
     };
@@ -341,6 +340,10 @@ export default {
       return this.items.filter(row => (row.name ?? '').toLowerCase().includes(query) || (row.code ?? '').toLowerCase().includes(query));
     },
     sortedItems() {
+      // the dropdown (A-Z, categories, high - low, low - high) wins over a clicked column header
+      if (this.preset) {
+        return sortLines(this.filteredItems, this.preset);
+      }
       if (!this.itemsSort) {
         return this.filteredItems;
       }
@@ -426,7 +429,12 @@ export default {
     hideTooltip() {
       this.tooltip.visible = false;
     },
+    // the page's own links (print, PDF, value report) carry the chosen order, so they come out in the order shown on screen
+    sortedRoute(name) {
+      return this.preset ? this.route(name, { super_adjustment: this.superAdjustment.id, sort: this.preset }) : this.route(name, this.superAdjustment.id);
+    },
     setItemsSort(column) {
+      this.preset = null;
       if (this.itemsSort === column) {
         this.itemsSortDirection = this.itemsSortDirection === 'asc' ? 'desc' : 'asc';
       } else {
@@ -593,6 +601,13 @@ html.dark .sa-link { color: #93c5fd; }
 .sa-items-search-icon { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: var(--lg-faint); pointer-events: none; }
 .sa-items-search-input { width: 100%; padding: 8px 12px 8px 2.3rem; border-radius: 9999px; font-size: 0.82rem; color: var(--lg-ink); background: var(--lg-soft); border: 1px solid var(--lg-line); transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 .sa-items-search-input:focus { outline: none; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18); }
+.sa-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.sa-live { position: relative; animation: sa-glow 2.4s ease-in-out infinite; }
+@keyframes sa-glow {
+  0%, 100% { filter: brightness(0.82) saturate(0.9); box-shadow: 0 6px 12px -10px rgba(13, 148, 136, 0.5); }
+  50% { filter: brightness(1.12) saturate(1.2); box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.35), 0 0 22px 4px rgba(45, 212, 191, 0.65), 0 14px 22px -12px #0d9488; }
+}
+@media (prefers-reduced-motion: reduce) { .sa-live { animation: none; } }
 .sa-sort-indicator { display: inline-block; width: 0.7rem; font-size: 0.65rem; color: #6366f1; }
 
 .lg-table tr.is-shifted td { background: rgba(245, 158, 11, 0.07); }

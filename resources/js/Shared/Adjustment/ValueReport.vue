@@ -32,9 +32,9 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(r, i) in report.rows" :key="i">
+              <tr v-for="(r, i) in rows" :key="i">
                 <td class="idx" :data-label="$t('No')">{{ i + 1 }}</td>
-                <td class="l item" :data-label="$t('Item')"><b>{{ r.name }}</b> <span class="vr-code" v-if="r.code">({{ r.code }})</span></td>
+                <td class="l item" :data-label="$t('Item')"><b>{{ r.name }}</b> <span class="vr-code" v-if="r.code">({{ r.code }})</span><span v-if="sort === 'category' && r.category" class="vr-cat">{{ r.category }}</span></td>
                 <td class="l" :data-label="$t('Unit')">{{ r.unit || '-' }}</td>
                 <td class="n" :data-label="$t('Unit price')">{{ money(r.price) }}</td>
                 <td class="n is-before" :data-label="report.labels.before">{{ qty(r.before) }}</td><td class="n is-before" :data-label="report.labels.before_total">{{ money(r.before_total) }}</td>
@@ -71,14 +71,17 @@
 </template>
 
 <script>
+import { sortLines } from '@/Core/itemSort';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 
 // Every figure comes from the server (App\Services\ValueReport): this window only shows it, so the page, the print, the PDF and the Excel always agree.
 export default {
   components: { TecDialogModal },
   emits: ['close'],
-  props: { show: { type: Boolean, default: false }, title: { type: String, default: '' }, subtitle: { type: String, default: '' }, report: { type: Object, default: null }, printUrl: String, pdfUrl: String, excelUrl: String },
+  props: { show: { type: Boolean, default: false }, title: { type: String, default: '' }, subtitle: { type: String, default: '' }, report: { type: Object, default: null }, sort: { type: String, default: null }, printUrl: String, pdfUrl: String, excelUrl: String },
   computed: {
+    // the order chosen on the page (the print, PDF and Excel come out in the same order)
+    rows() { return this.report ? sortLines(this.report.rows, this.sort, { qty: r => r.after }) : []; },
     t() { return this.report ? this.report.totals : {}; },
     statusChip() { return { Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Draft: 'lg-chip-amber', Pending: 'lg-chip-amber' }[this.report && this.report.status] || 'lg-chip-sky'; },
   },
@@ -104,6 +107,7 @@ export default {
 .vr-table td { padding: 7px 6px; border-bottom: 1px solid #eef2f7; text-align: right; font-variant-numeric: tabular-nums; } .vr-table td.item { min-width: 11rem; } .vr-table tbody tr:nth-child(even) { background: #fafcff; }
 .vr-table th.is-before, .vr-table td.is-before { background-color: rgba(2, 132, 199, 0.06); } .vr-table th.is-before { color: #075985; background: #bae6fd; } .vr-table th.is-after, .vr-table td.is-after { background-color: rgba(124, 58, 237, 0.06); } .vr-table th.is-after { color: #5b21b6; background: #ddd6fe; }
 .vr-table tfoot td { padding: 9px 8px; font-weight: 800; background: #e2e8f0; border-top: 2px solid #94a3b8; } .vr-table tfoot td.tot { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: #334155; }
+.vr-cat { display: block; margin-top: 1px; font-size: 0.68rem; font-weight: 700; color: #7c3aed; }
 .vr-code { color: #94a3b8; font-weight: 500; } .vr-empty { text-align: center !important; padding: 26px; color: #64748b; }
 .vr-d { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 800; white-space: nowrap; } .vr-d.is-up { color: #166534; background: #dcfce7; } .vr-d.is-down { color: #991b1b; background: #fee2e2; } .vr-d.is-same { color: #475569; background: #e2e8f0; }
 .vr-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }

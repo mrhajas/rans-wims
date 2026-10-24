@@ -79,7 +79,7 @@
                 <td :data-label="$t('Unit')">{{ r.unit || '-' }}</td>
                 <td :data-label="$t('Value')" class="num tabular-nums">{{ r.value ? money(r.value) : '-' }}</td>
                 <td v-if="isOpen" :data-label="$t('Moved since start')"><span v-if="r.moved" class="lg-chip lg-chip-amber" style="text-transform: none"><icons name="refresh" class="w-3 h-3" /> {{ $t('moved') }} · {{ $datetime(r.last_moved_at) }}</span><span v-else class="lg-subtext">-</span></td>
-                <td v-else :data-label="$t('What was done')"><span class="lg-chip" :class="r.cleared ? 'lg-chip-red' : 'lg-chip-slate'" style="text-transform: none">{{ r.cleared ? $t('Cleared (counted at zero)') : $t('Kept as it is') }}</span></td>
+                <td v-else :data-label="$t('What was done')"><span class="lg-chip" :class="r.cleared ? 'lg-chip-red' : r.wanted ? 'lg-chip-amber' : 'lg-chip-slate'" style="text-transform: none">{{ r.cleared ? $t('Cleared (counted at zero)') : r.wanted ? $t('Chosen to clear, not cleared') : $t('Kept as it is') }}</span></td>
               </tr>
               <tr v-if="!rows.length" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ isOpen ? $t('Every item with stock is counted so far.') : $t('Every item with stock was counted.') }}</td></tr>
             </tbody>
@@ -119,34 +119,51 @@
     </modal>
 
     <!-- end the session: choose what to clear -->
-    <modal :show="endOpen" max-width="2xl" @close="endOpen = false">
-      <div class="asn-dlg">
-        <header class="asn-dlg__head"><icons name="lock-closed" class="w-5 h-5" /><div><h3>{{ $t('End Adjustment Session') }} {{ session.reference }}</h3><p>{{ $t('Decide what to do with the items nobody counted.') }}</p></div></header>
+    <modal :show="endOpen" max-width="3xl" @close="endOpen = false">
+      <div class="asn-dlg asn-end">
+        <header class="asn-dlg__head asn-end__head">
+          <span class="asn-end__badge"><icons name="lock-closed" class="w-6 h-6" /></span>
+          <div class="min-w-0 flex-1"><h3>{{ $t('End Adjustment Session') }} {{ session.reference }}</h3><p>{{ session.warehouse.name }} · {{ $t('Decide what to do with the items nobody counted.') }}</p></div>
+          <button type="button" class="asn-end__x" :aria-label="$t('Close')" :disabled="ending" @click="endOpen = false"><icons name="cross" class="w-4 h-4" /></button>
+        </header>
         <div class="asn-dlg__body">
           <div v-if="pending.length" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('These Super Adjustments of the session are still waiting for approval: :r. Approve or reject them first, then end the session.', { r: pending.join(', ') }) }}</span></div>
           <template v-if="rows.length">
+            <div class="asn-end__stats">
+              <div class="is-slate"><b>{{ rows.length }}</b><span>{{ $t('Not counted') }}</span></div>
+              <div class="is-red"><b>{{ ticked.length }}</b><span>{{ $t('Chosen to clear') }}</span></div>
+              <div class="is-green"><b>{{ rows.length - ticked.length }}</b><span>{{ $t('Kept as they are') }}</span></div>
+              <div class="is-amber"><b>{{ movedCount }}</b><span>{{ $t('Moved since start') }}</span></div>
+            </div>
             <div class="asn-pick__bar">
-              <label class="asn-chk"><input type="checkbox" :checked="allTicked" :disabled="!can.clear" @change="tickAll($event.target.checked)" /> {{ $t('Clear all') }}</label>
-              <span class="asn-hint">{{ ticked.length }} {{ $t('of') }} {{ rows.length }} {{ $t('items will be cleared') }}</span>
+              <label class="asn-chk"><input type="checkbox" :checked="allTicked" :disabled="!can.clear" @change="tickAll($event.target.checked)" /> {{ $t('Choose all') }}</label>
               <input v-model="pickSearch" class="asn-search" type="search" :placeholder="$t('Search item...')" />
             </div>
             <div v-if="!can.clear" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('You can end the session, but clearing items needs the permission to create Super Adjustments.') }}</span></div>
             <ul class="asn-pick">
               <li v-for="r in pickShown" :key="r.item_id" :class="{ 'is-on': picked[r.item_id] }">
-                <label><input type="checkbox" :checked="!!picked[r.item_id]" :disabled="!can.clear" @change="picked[r.item_id] = $event.target.checked" /><span class="asn-pick__name"><b>{{ r.name }}</b><small>{{ r.code }}</small></span><span class="asn-pick__qty">{{ qty(r.quantity) }} {{ r.unit }}</span><span v-if="r.moved" class="lg-chip lg-chip-amber" style="text-transform: none">{{ $t('moved') }}</span></label>
+                <label><input type="checkbox" :checked="!!picked[r.item_id]" :disabled="!can.clear" @change="picked[r.item_id] = $event.target.checked" /><span class="asn-pick__name"><b>{{ r.name }}</b><small>{{ r.code }}</small></span><span class="asn-pick__qty">{{ qty(r.quantity) }} {{ r.unit }}</span><span v-if="r.moved" class="lg-chip lg-chip-amber" style="text-transform: none"><icons name="refresh" class="w-3 h-3" /> {{ $t('moved') }}</span></label>
               </li>
+              <li v-if="!pickShown.length" class="asn-pick__none">{{ $t('No item matches your search.') }}</li>
             </ul>
             <p v-if="pickFiltered.length > pickLimit" class="asn-hint"><button type="button" class="lg-btn lg-btn-soft" @click="pickLimit += 200">{{ $t('Show more') }} ({{ pickFiltered.length - pickLimit }})</button></p>
-            <p class="asn-hint">{{ $t('Items that moved since the session started are not ticked: check them first. Clearing makes ONE normal Super Adjustment that counts the ticked items at zero. It follows the usual approvals, so the stock changes only when it is approved.') }}</p>
+            <div class="asn-end__how">
+              <p><span class="is-red"><icons name="trash" class="w-3.5 h-3.5" /></span><span><b>{{ $t('End and clear') }}</b> {{ $t('makes ONE normal Super Adjustment that counts the chosen items at zero. It follows the usual approvals, so the stock changes only when it is approved.') }}</span></p>
+              <p><span class="is-slate"><icons name="clock" class="w-3.5 h-3.5" /></span><span><b>{{ $t('End without clearing') }}</b> {{ $t('closes the session and changes no stock. The items you chose stay in the history as "chosen to clear, not cleared".') }}</span></p>
+              <p><span class="is-amber"><icons name="refresh" class="w-3.5 h-3.5" /></span><span>{{ $t('Items that moved since the session started are not chosen: check them first.') }}</span></p>
+            </div>
           </template>
           <p v-else class="asn-hint">{{ $t('Every item with stock was counted. Nothing needs to be cleared.') }}</p>
-          <div class="ac-f"><label>{{ $t('Note (optional)') }}</label><textarea v-model="endNote" rows="2" maxlength="1000"></textarea></div>
+          <div class="ac-f"><label>{{ $t('Note (optional)') }}</label><textarea v-model="endNote" rows="2" maxlength="1000" :placeholder="$t('Why the session is ended this way')"></textarea></div>
           <p v-if="endError" class="asn-err">{{ endError }}</p>
         </div>
         <footer class="asn-dlg__foot">
-          <button type="button" class="lg-btn lg-btn-soft" :disabled="ending" @click="endOpen = false">{{ $t('Cancel') }}</button>
-          <button type="button" class="lg-btn" :class="ticked.length ? 'lg-btn-red' : 'lg-btn-dark'" :disabled="ending || pending.length > 0" @click="doEnd">
-            <icons name="lock-closed" class="w-4 h-4" />{{ ending ? $t('Ending...') : ticked.length ? $t('End session and clear :n item(s)', { n: ticked.length }) : $t('End session without clearing') }}
+          <button type="button" class="lg-btn lg-btn-soft" :disabled="ending" @click="endOpen = false"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button>
+          <button type="button" class="lg-btn asn-end__btn is-slate" :disabled="ending || pending.length > 0" @click="doEnd(true)">
+            <icons name="lock-closed" class="w-4 h-4" />{{ ending && endMode === 'keep' ? $t('Ending...') : $t('End without clearing') }}
+          </button>
+          <button v-if="ticked.length" type="button" class="lg-btn asn-end__btn is-red" :disabled="ending || pending.length > 0" @click="doEnd(false)">
+            <icons name="trash" class="w-4 h-4" />{{ ending && endMode === 'clear' ? $t('Ending...') : $t('End session and clear :n item(s)', { n: ticked.length }) }}
           </button>
         </footer>
       </div>
@@ -163,7 +180,7 @@ import Modal from '@/Jetstream/Modal.vue';
 export default {
   components: { AdminLayout, PageHeader, StatTiles, Modal },
   props: { session: Object, documents: Array, history: { type: Array, default: () => [] }, pending: Array, uncounted: Array, stats: Object, can: Object },
-  data() { return { haltOpen: false, haltTo: true, haltForm: this.$inertia.form({ halt: true, password: '' }), search: '', limit: 200, endOpen: false, picked: {}, pickSearch: '', pickLimit: 200, endNote: '', ending: false, endError: '' }; },
+  data() { return { haltOpen: false, haltTo: true, haltForm: this.$inertia.form({ halt: true, password: '' }), search: '', limit: 200, endOpen: false, picked: {}, pickSearch: '', pickLimit: 200, endNote: '', ending: false, endMode: '', endError: '' }; },
   computed: {
     isOpen() { return this.session.status === 'Open'; },
     halt() { return this.session.halt || { active: false, ever: false }; },
@@ -173,6 +190,7 @@ export default {
     pickFiltered() { const q = this.pickSearch.trim().toLowerCase(); return q ? this.rows.filter(r => (r.name + ' ' + (r.code || '')).toLowerCase().includes(q)) : this.rows; },
     pickShown() { return this.pickFiltered.slice(0, this.pickLimit); },
     ticked() { return this.rows.filter(r => this.picked[r.item_id]).map(r => r.item_id); },
+    movedCount() { return this.rows.filter(r => r.moved).length; },
     allTicked() { return this.rows.length > 0 && this.ticked.length === this.rows.length; },
     statItems() {
       const s = this.stats;
@@ -200,11 +218,13 @@ export default {
       this.haltForm.transform(d => ({ halt: this.haltTo, password: d.password })).post(this.route('adjustment-sessions.halt', this.session.id), { preserveScroll: true, onSuccess: () => { this.haltOpen = false; }, onFinish: () => { this.haltForm.password = ''; } });
     },
     tickAll(on) { const p = {}; if (on) this.rows.forEach(r => { p[r.item_id] = true; }); this.picked = p; },
-    async doEnd() {
+    // without = true: end the session and change no stock; the items that were chosen stay in the history as chosen but not cleared
+    async doEnd(without = false) {
       if (this.ending || this.pending.length) return;
-      if (this.ticked.length && !await this.$confirm(this.$t('Clear :n item(s)? One Super Adjustment will be made that counts them at zero. It follows the usual approvals before the stock changes.', { n: this.ticked.length }), { confirmText: this.$t('End and clear') })) return;
-      this.ending = true; this.endError = '';
-      this.$inertia.post(this.route('adjustment-sessions.end', this.session.id), { clear_item_ids: this.ticked, note: this.endNote }, {
+      if (!without && this.ticked.length && !await this.$confirm(this.$t('Clear :n item(s)? One Super Adjustment will be made that counts them at zero. It follows the usual approvals before the stock changes.', { n: this.ticked.length }), { confirmText: this.$t('End and clear') })) return;
+      if (without && !await this.$confirm(this.ticked.length ? this.$t('End the session WITHOUT clearing? No stock changes. The :n chosen item(s) stay in the history as chosen to clear but not cleared.', { n: this.ticked.length }) : this.$t('End the session without clearing anything? No stock changes.'), { confirmText: this.$t('End without clearing') })) return;
+      this.ending = true; this.endMode = without ? 'keep' : 'clear'; this.endError = '';
+      this.$inertia.post(this.route('adjustment-sessions.end', this.session.id), { clear_item_ids: this.ticked, without_clearing: without, note: this.endNote }, {
         preserveScroll: true,
         onSuccess: () => { this.endOpen = false; },
         onError: e => { const m = Object.values(e || {})[0]; this.endError = (Array.isArray(m) ? m[0] : m) || this.$t('Could not end the session.'); },
@@ -255,6 +275,20 @@ html.dark .asn-dlg { --lg-card: #1e293b; --lg-line: rgba(255, 255, 255, 0.1); --
 .asn-pick li { border-radius: 8px; } .asn-pick li:nth-child(odd) { background: var(--lg-soft); } .asn-pick li.is-on { box-shadow: inset 0 0 0 1.5px rgba(185, 28, 28, 0.45); }
 .asn-pick label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 6px 8px; cursor: pointer; }
 .asn-pick__name { display: grid; min-width: 0; line-height: 1.25; } .asn-pick__name small { color: var(--lg-mute); font-size: 0.72rem; } .asn-pick__qty { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.82rem; white-space: nowrap; }
+.asn-end__head { padding: 1.05rem 1.2rem; background: linear-gradient(135deg, #334155 0%, #1e293b 55%, #4f46e5 140%); }
+.asn-end__badge { display: inline-flex; align-items: center; justify-content: center; width: 2.8rem; height: 2.8rem; flex: none; border-radius: 1rem; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 8px 18px -8px rgba(0, 0, 0, 0.6); }
+.asn-end__x { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; flex: none; border: 0; border-radius: 9999px; color: #fff; background: rgba(255, 255, 255, 0.16); cursor: pointer; } .asn-end__x:hover { background: rgba(255, 255, 255, 0.3); }
+.asn-end__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.asn-end__stats > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--lg-line); background: var(--lg-soft); } .asn-end__stats b { font-size: 1.35rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; } .asn-end__stats span { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--lg-mute); }
+.asn-end__stats .is-red { border-color: rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.07); } .asn-end__stats .is-red b { color: #dc2626; } .asn-end__stats .is-green { border-color: rgba(22, 163, 74, 0.35); background: rgba(22, 163, 74, 0.07); } .asn-end__stats .is-green b { color: #16a34a; } .asn-end__stats .is-amber { border-color: rgba(217, 119, 6, 0.35); background: rgba(217, 119, 6, 0.07); } .asn-end__stats .is-amber b { color: #d97706; }
+.asn-end .asn-pick { max-height: 340px; gap: 6px; padding: 8px; background: var(--lg-card); } .asn-end .asn-pick li { border: 1px solid var(--lg-line); background: var(--lg-soft); transition: border-color 0.15s ease, background 0.15s ease; } .asn-end .asn-pick li:hover { border-color: rgba(79, 70, 229, 0.5); } .asn-end .asn-pick li.is-on { border-color: rgba(220, 38, 38, 0.55); background: rgba(220, 38, 38, 0.06); box-shadow: none; }
+.asn-end .asn-pick__name b { font-size: 0.86rem; font-weight: 700; } .asn-end .asn-pick__qty { padding: 3px 10px; border-radius: 9999px; background: rgba(79, 70, 229, 0.1); color: #4338ca; } html.dark .asn-end .asn-pick__qty { color: #a5b4fc; }
+.asn-pick__none { padding: 14px; text-align: center; color: var(--lg-mute); font-size: 0.85rem; }
+.asn-end__how { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--lg-line); background: var(--lg-soft); } .asn-end__how p { display: flex; gap: 10px; align-items: flex-start; margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--lg-mute); } .asn-end__how b { color: var(--lg-ink); }
+.asn-end__how > p > span:first-child { display: inline-flex; align-items: center; justify-content: center; width: 1.45rem; height: 1.45rem; flex: none; border-radius: 9999px; color: #fff; } .asn-end__how .is-red { background: #dc2626; } .asn-end__how .is-slate { background: #475569; } .asn-end__how .is-amber { background: #d97706; }
+.asn-end__btn { border: 0 !important; color: #fff !important; font-weight: 800; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25); transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease; } .asn-end__btn:hover:not(:disabled) { transform: translateY(-2px); filter: saturate(1.1); } .asn-end__btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.asn-end__btn.is-slate { background: linear-gradient(145deg, #64748b, #334155) !important; box-shadow: 0 12px 22px -10px rgba(51, 65, 85, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.asn-end__btn.is-red { background: linear-gradient(145deg, #f87171, #dc2626 55%, #991b1b) !important; box-shadow: 0 12px 22px -10px rgba(220, 38, 38, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
 .asn-dlg__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; padding: 0.8rem 1.1rem 1rem; border-top: 1px solid var(--lg-line); }
 @media (max-width: 560px) { .asn-dlg__foot .lg-btn { flex: 1 1 100%; justify-content: center; } .asn-pick label { grid-template-columns: auto minmax(0, 1fr) auto; } .asn-pick label .lg-chip { grid-column: 2 / -1; justify-self: start; } .asn-pick__bar .asn-search { margin-left: 0; width: 100%; } }
 </style>

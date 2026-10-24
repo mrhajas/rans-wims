@@ -86,7 +86,7 @@
             @forelse($uncounted as $i => $r)
                 <tr>
                     <td class="no">{{ $i + 1 }}</td><td>{{ $r['code'] }}</td><td>{{ strtoupper($r['name']) }}</td><td class="num">{{ rtrim(rtrim(number_format((float) $r['quantity'], 4, '.', ','), '0'), '.') }}</td><td>{{ $r['unit'] }}</td><td class="num">{{ !empty($r['value']) ? number_format((float) $r['value'], 2) : '-' }}</td>
-                    @if(! $open)<td>{{ ! empty($r['cleared']) ? 'Cleared (counted at zero)' : 'Kept as it is' }}</td>@else<td>{{ ! empty($r['moved']) ? 'Yes' : '-' }}</td>@endif
+                    @if(! $open)<td>{{ ! empty($r['cleared']) ? 'Cleared (counted at zero)' : (! empty($r['wanted']) ? 'Chosen to clear, not cleared' : 'Kept as it is') }}</td>@else<td>{{ ! empty($r['moved']) ? 'Yes' : '-' }}</td>@endif
                 </tr>
             @empty
                 <tr><td colspan="7" style="text-align:center">Every item with stock was counted.</td></tr>

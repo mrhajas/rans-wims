@@ -240,7 +240,7 @@ class AdjustmentSessionController extends Controller
             'history' => $this->history($s, $docs),
             'pending' => $pending->pluck('reference')->values(),
             'uncounted' => $uncounted->values(),
-            'stats' => ['not_counted_value' => round((float) $uncounted->sum('value'), 2), 'documents' => $docs->count(), 'counted' => $countedN, 'not_counted' => $notN, 'moved' => $uncounted->where('moved', true)->count(), 'cleared' => (int) ($snap['cleared_count'] ?? 0), 'kept' => (int) ($snap['kept_count'] ?? 0), 'percent' => $stocked > 0 ? round($countedN * 100 / $stocked, 1) : 0],
+            'stats' => ['not_counted_value' => round((float) $uncounted->sum('value'), 2), 'documents' => $docs->count(), 'counted' => $countedN, 'not_counted' => $notN, 'moved' => $uncounted->where('moved', true)->count(), 'cleared' => (int) ($snap['cleared_count'] ?? 0), 'kept' => (int) ($snap['kept_count'] ?? 0), 'wanted' => (int) ($snap['wanted_count'] ?? 0), 'percent' => $stocked > 0 ? round($countedN * 100 / $stocked, 1) : 0],
         ];
     }
 
@@ -258,9 +258,10 @@ class AdjustmentSessionController extends Controller
     {
         $this->need('end-adjustment-sessions');
         $this->authorizeSession($session);
-        $data = $request->validate(['clear_item_ids' => 'nullable|array|max:20000', 'clear_item_ids.*' => 'integer', 'note' => 'nullable|string|max:1000']);
+        $data = $request->validate(['clear_item_ids' => 'nullable|array|max:20000', 'clear_item_ids.*' => 'integer', 'without_clearing' => 'nullable|boolean', 'note' => 'nullable|string|max:1000']);
+        $without = (bool) ($data['without_clearing'] ?? false);
         $clear = array_values(array_unique(array_map('intval', $data['clear_item_ids'] ?? [])));
-        if ($clear) {
+        if ($clear && ! $without) {
             $this->need('create-super-adjustments');
             if ($response = $this->rejectIfWarehouseCompleted($session->warehouse_id)) {
                 return $response;
@@ -274,7 +275,7 @@ class AdjustmentSessionController extends Controller
         }
         try {
             // ONE transaction: the session row is locked, so a count being saved at the same moment waits and then finds the session ended; if anything fails nothing is left half done
-            [$ended, $clearing] = \Illuminate\Support\Facades\DB::transaction(function () use ($session, $request, $clear, $data) {
+            [$ended, $clearing] = \Illuminate\Support\Facades\DB::transaction(function () use ($session, $request, $clear, $data, $without) {
                 $locked = AdjustmentSession::query()->whereKey($session->id)->lockForUpdate()->first();
                 abort_unless($locked && $locked->isOpen(), 422, __('This Adjustment Session has already ended.'));
 
@@ -284,13 +285,13 @@ class AdjustmentSessionController extends Controller
                     $sac->submitCount($request, $d, null, $locked);
 
                     return $sac->submitted;
-                });
+                }, $without);
             });
         } finally {
             $lock->release();
         }
 
-        log_activity('Adjustment Session ' . $ended->reference . ' ended', ['counted' => $ended->snapshot['counted_items'] ?? 0, 'cleared' => $ended->snapshot['cleared_count'] ?? 0, 'kept' => $ended->snapshot['kept_count'] ?? 0, 'clearing' => optional($clearing)->reference], $ended, 'Adjustment Session');
+        log_activity('Adjustment Session ' . $ended->reference . ' ended', ['counted' => $ended->snapshot['counted_items'] ?? 0, 'cleared' => $ended->snapshot['cleared_count'] ?? 0, 'kept' => $ended->snapshot['kept_count'] ?? 0, 'wanted_not_cleared' => $ended->snapshot['wanted_count'] ?? 0, 'clearing' => optional($clearing)->reference], $ended, 'Adjustment Session');
         $this->alert('session_ended', $ended, $request->user(), __('Adjustment Session Ended'), $ended->reference . ' for ' . optional($ended->warehouse)->name . ' was ended by ' . $request->user()->name . '. ' . Svc::summary($ended), ['values' => ['summary' => Svc::summary($ended)]]);
 
         return redirect()->route('adjustment-sessions.show', $ended->id)->with('message', __('Adjustment Session :r ended.', ['r' => $ended->reference]) . ' ' . Svc::summary($ended) . ($clearing ? ' ' . __('The clearing count :c was made and follows the normal approvals.', ['c' => $clearing->reference]) : ''));

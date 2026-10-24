@@ -100,7 +100,7 @@ class AdjustmentSessionService
      *
      * @param  callable  $submit  fn(array $data): ?SuperAdjustment, saves and submits the clearing count the normal way
      */
-    public static function end(User $user, AdjustmentSession $s, array $clearItemIds, ?string $note, callable $submit): array
+    public static function end(User $user, AdjustmentSession $s, array $clearItemIds, ?string $note, callable $submit, bool $withoutClearing = false): array
     {
         $docs = self::documents($s);
         $pending = $docs->filter(fn ($d) => $d->isOpen());
@@ -110,7 +110,10 @@ class AdjustmentSessionService
 
         $counted = self::countedItemIds($docs);
         $uncounted = self::uncounted($s, $counted);
-        $clearSet = collect($clearItemIds)->map(fn ($i) => (int) $i)->intersect($uncounted->pluck('item_id'))->values();
+        $chosen = collect($clearItemIds)->map(fn ($i) => (int) $i)->intersect($uncounted->pluck('item_id'))->values();
+        // ending without clearing keeps the choice in the history (the items that were wanted cleared but were left as they are)
+        $clearSet = $withoutClearing ? collect() : $chosen;
+        $wantedSet = $withoutClearing ? $chosen : collect();
 
         $clearing = null;
         if ($clearSet->isNotEmpty()) {
@@ -127,8 +130,10 @@ class AdjustmentSessionService
         $snapshot = [
             'documents' => $docs->map(fn ($d) => ['id' => $d->id, 'reference' => $d->reference, 'status' => $d->status, 'items' => (int) $d->items_count, 'by' => optional($d->user)->name])->values()->all(),
             'counted_items' => count($counted),
-            'uncounted' => $uncounted->map(fn ($r) => $r + ['cleared' => $clearSet->contains($r['item_id'])])->values()->all(),
+            'uncounted' => $uncounted->map(fn ($r) => $r + ['cleared' => $clearSet->contains($r['item_id']), 'wanted' => $wantedSet->contains($r['item_id'])])->values()->all(),
             'cleared_count' => $clearSet->count(),
+            'wanted_count' => $wantedSet->count(),
+            'ended_without_clearing' => $withoutClearing,
             'kept_count' => $uncounted->count() - $clearSet->count(),
         ];
 
@@ -180,6 +185,6 @@ class AdjustmentSessionService
     {
         $x = (array) $s->snapshot;
 
-        return ((int) ($x['counted_items'] ?? 0)) . ' ' . __('counted') . ', ' . (((int) ($x['cleared_count'] ?? 0)) + ((int) ($x['kept_count'] ?? 0))) . ' ' . __('not counted') . ', ' . ((int) ($x['cleared_count'] ?? 0)) . ' ' . __('cleared') . '.';
+        return ((int) ($x['counted_items'] ?? 0)) . ' ' . __('counted') . ', ' . (((int) ($x['cleared_count'] ?? 0)) + ((int) ($x['kept_count'] ?? 0))) . ' ' . __('not counted') . ', ' . ((int) ($x['cleared_count'] ?? 0)) . ' ' . __('cleared') . (! empty($x['wanted_count']) ? ', ' . ((int) $x['wanted_count']) . ' ' . __('chosen to clear but left as they are') : '') . '.';
     }
 }

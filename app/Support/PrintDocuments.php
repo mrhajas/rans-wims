@@ -188,7 +188,7 @@ class PrintDocuments
         $rows = [];
         foreach ($r['rows'] as $row) {
             $rows[] = [
-                ['v' => $row['name'] . (! empty($row['code']) ? ' (' . $row['code'] . ')' : '') . (! empty($row['cleared']) ? ' - cleared' : ''), 'a' => 'l'], ['v' => $row['unit'] ?: '-', 'a' => 'l'], ['v' => $m($row['price'])],
+                ['v' => $row['name'] . (! empty($row['code']) ? ' (' . $row['code'] . ')' : '') . (! empty($row['cleared']) ? ' - cleared' : '') . (($r['sort'] ?? null) === 'category' && ! empty($row['category']) ? ' [' . $row['category'] . ']' : ''), 'a' => 'l'], ['v' => $row['unit'] ?: '-', 'a' => 'l'], ['v' => $m($row['price'])],
                 ['v' => $q($row['before'])], ['v' => $m($row['before_total'])], ['v' => $q($row['after'])], ['v' => $m($row['after_total'])],
                 ['v' => $s($row['diff'], $q), 'tone' => $row['diff'] <=> 0], ['v' => $s($row['diff_value'], $m), 'tone' => $row['diff_value'] <=> 0, 'b' => true],
             ];
@@ -219,7 +219,7 @@ class PrintDocuments
                 ['title' => 'Authorisation', 'icon' => 'user', 'rows' => [['Prepared By', $submittedBy ?: '-'], ['Approved By', $approvedBy ?: '-'], ['Report By', optional($by)->name ?: '-']]],
             ],
             'table' => [
-                'title' => 'Items and values', 'note' => $r['basis'] . ' ' . 'The difference of a line is its value after minus its value before; the totals are the sum of the lines.' . ($t['no_price'] ? ' ' . $t['no_price'] . ' item(s) have no unit price in the Items module, so their value is 0.' : ''),
+                'title' => 'Items and values', 'note' => (! empty($r['sort']) ? 'Sorted ' . ['az' => 'by item name A-Z', 'category' => 'by category', 'high' => 'by physical count, high to low', 'low' => 'by physical count, low to high'][$r['sort']] . '. ' : '') . $r['basis'] . ' ' . 'The difference of a line is its value after minus its value before; the totals are the sum of the lines.' . ($t['no_price'] ? ' ' . $t['no_price'] . ' item(s) have no unit price in the Items module, so their value is 0.' : ''),
                 'cols' => [
                     ['label' => 'Item', 'a' => 'l'], ['label' => 'Unit', 'a' => 'l'], ['label' => 'Unit Price'],
                     ['label' => $L['before']], ['label' => $L['before_total']], ['label' => $L['after']], ['label' => $L['after_total']], ['label' => 'Difference'], ['label' => 'Difference in Value'],

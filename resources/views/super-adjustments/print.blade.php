@@ -106,7 +106,7 @@
         </table>
     </div>
 
-    <div class="card-title" style="margin-top:2px;">Physical Stock Count</div>
+    <div class="card-title" style="margin-top:2px;">Physical Stock Count @if($superAdjustment->print_sort) <span style="font-weight:400;color:#64748b;font-size:10px;">(sorted {{ ['az' => 'by item name A-Z', 'category' => 'by category', 'high' => 'by physical count, high to low', 'low' => 'by physical count, low to high'][$superAdjustment->print_sort] }})</span>@endif</div>
     <table class="items">
         <thead>
             <tr>
@@ -128,7 +128,7 @@
                 @if($shifted) @php($anyShifted = true) @endif
                 <tr>
                     <td>
-                        {{ optional($line->item)->name ?? '-' }}{{ optional($line->item)->code ? ' ('.$line->item->code.')' : '' }}
+                        {{ optional($line->item)->name ?? '-' }}{{ optional($line->item)->code ? ' ('.$line->item->code.')' : '' }}@if($superAdjustment->print_sort === 'category' && optional(optional($line->item)->categories->first())->name)<br><span style="color:#64748b;font-size:9px;">{{ $line->item->categories->first()->name }}</span>@endif
                         @if($line->auto_cleared)
                             <span class="status-pill status-danger" style="margin-left:4px; padding:1px 6px; font-size:7.5px;">CLEARED</span>
                         @endif

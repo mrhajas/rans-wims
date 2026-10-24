@@ -255,6 +255,7 @@ class SuperAdjustmentController extends Controller
             'approver:id,name',
             'rejecter:id,name',
             'items.item:id,name,code,price',
+            'items.item.categories:categories.id,categories.name',
             'items.unit:id,name,code',
             'attachments',
             'additionAdjustment:id,reference',
@@ -278,6 +279,7 @@ class SuperAdjustmentController extends Controller
                 'item_id' => $i->item_id,
                 'name' => optional($i->item)->name ?? __('(Item removed)'),
                 'code' => optional($i->item)->code,
+                'category' => optional(optional($i->item)->categories->first())->name,
                 'price' => (float) (optional($i->item)->price ?? 0),
                 'unit' => optional($i->unit)->name,
                 'system_quantity_at_submission' => (float) $i->system_quantity_at_submission,
@@ -351,7 +353,7 @@ class SuperAdjustmentController extends Controller
     public function print(SuperAdjustment $super_adjustment)
     {
         $this->authorize('print-super-adjustments');
-        $this->loadForPrint($super_adjustment);
+        $this->loadForPrint($super_adjustment, request('sort'));
 
         return view('super-adjustments.print', $this->printData($super_adjustment, false));
     }
@@ -359,17 +361,18 @@ class SuperAdjustmentController extends Controller
     public function pdf(SuperAdjustment $super_adjustment)
     {
         $this->authorize('print-super-adjustments');
-        $this->loadForPrint($super_adjustment);
+        $this->loadForPrint($super_adjustment, request('sort'));
 
         return Pdf::loadView('super-adjustments.print', $this->printData($super_adjustment, true))
             ->setPaper('a4')
             ->download('super-adjustment-' . $super_adjustment->reference . '.pdf');
     }
 
-    private function loadForPrint(SuperAdjustment $super_adjustment): void
+    private function loadForPrint(SuperAdjustment $super_adjustment, ?string $sort = null): void
     {
         $super_adjustment->load([
             'items.item:id,code,name',
+            'items.item.categories:categories.id,categories.name',
             'items.unit:id,code,name',
             'warehouse',
             'user:id,name',
@@ -379,6 +382,11 @@ class SuperAdjustmentController extends Controller
             'subtractionAdjustment:id,reference',
             'approvals.user:id,name',
         ]);
+
+        // the order chosen on the page (A-Z, categories, high to low, low to high) is the order of the print and the PDF
+        $sort = \App\Support\ItemSort::key($sort);
+        $super_adjustment->setRelation('items', \App\Support\ItemSort::apply($super_adjustment->items, $sort, fn ($l) => optional($l->item)->name, fn ($l) => optional(optional($l->item)->categories->first())->name, fn ($l) => $l->physical_quantity));
+        $super_adjustment->setAttribute('print_sort', $sort);
     }
 
     private function printData(SuperAdjustment $super_adjustment, bool $isPdf): array

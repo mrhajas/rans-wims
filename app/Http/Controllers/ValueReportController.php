@@ -58,7 +58,7 @@ class ValueReportController extends Controller
     {
         abort_unless($request->user()->can('read-super-adjustments') && $request->user()->can('print-super-adjustments'), 403);
 
-        return ValueReport::forSuperAdjustment($sa);
+        return ValueReport::forSuperAdjustment($sa, $request->query('sort'));
     }
 
     private function adjustmentReport(Request $request, Adjustment $a): array

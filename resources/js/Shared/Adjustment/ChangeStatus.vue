@@ -3,7 +3,7 @@
     <button v-if="compact" type="button" class="lg-icon-btn lg-tip cs-ico" :data-tip="$t('Change status')" :aria-label="$t('Change status')" @click.stop="open = true">
       <icons name="refresh" class="w-4 h-4" />
     </button>
-    <button v-else type="button" class="lg-btn lg-btn-soft" @click="open = true"><icons name="refresh" class="w-4 h-4" />{{ $t('Change status') }}</button>
+    <button v-else type="button" class="lg-btn tone" style="--tone: #d97706" @click="open = true"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Change status') }}</button>
 
     <tec-dialog-modal :show="open" max-width="md" @close="close">
       <template #title>
