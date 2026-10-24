@@ -419,6 +419,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('items/bulk-consumable', [Controllers\ItemController::class, 'bulkConsumable'])->middleware('throttle:10,1,items.bulk-consumable')->name('items.bulk-consumable');
     Route::post('items/{item}/create-used', [Controllers\ItemController::class, 'createUsed'])->name('items.create-used');
     Route::delete('items/{item}/photo', [Controllers\ItemController::class, 'destroyPhoto'])->name('items.deletePhoto');
+    Route::delete('items/{item}/photos/{photo}', [Controllers\ItemController::class, 'destroyGalleryPhoto'])->name('items.photos.destroy');
+    Route::post('items/{item}/photos/{photo}/main', [Controllers\ItemController::class, 'makeGalleryPhotoMain'])->name('items.photos.main');
     Route::post('items/fetch-photo-download', [Controllers\ItemController::class, 'fetchPhotoDownload'])->name('items.fetchPhotoDownload');
 
     // Multi Transfer: items from several warehouses to one destination (an ordinary transfer per source, all held for approval). Literal paths first.

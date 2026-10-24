@@ -34,7 +34,7 @@
           <span class="hidden sm:inline-block">{{ $t('Browse') }}</span>
         </button>
       </div>
-      <input :id="id" ref="file" type="file" :accept="accept" class="hidden" @change="change" />
+      <input :id="id" ref="file" type="file" :accept="accept" :multiple="multiple" class="hidden" @change="change" />
     </div>
 
     <!-- <div class="form-input p-0" :class="{ error: errors.length }">
@@ -62,7 +62,7 @@ import TecLabel from '@/Jetstream/Label.vue';
 import TecInput from '@/Jetstream/Input.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
 export default {
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'files'],
 
   components: { TecLabel, TecInput, TecInputError },
 
@@ -70,6 +70,9 @@ export default {
     label: String,
     error: String,
     accept: String,
+    // let several files be picked at once (they come back together in the "files" event; the model still holds the first one)
+    multiple: Boolean,
+    maxFiles: { type: Number, default: 3 },
     modelValue: File,
     id: {
       type: String,
@@ -102,7 +105,9 @@ export default {
       this.$refs.file.click();
     },
     change(e) {
-      this.$emit('update:modelValue', e.target.files[0]);
+      const files = Array.from(e.target.files || []).slice(0, this.multiple ? this.maxFiles : 1);
+      this.$emit('update:modelValue', files[0]);
+      if (this.multiple) this.$emit('files', files);
     },
     remove() {
       this.$emit('update:modelValue', null);

@@ -82,6 +82,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\EnforcePrayerLock::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\LogDownloadPrintActions::class,
+            \App\Http\Middleware\NumberPrintTables::class,
             \Tecdiary\Installer\Http\Middleware\RedirectIfNotInstalled::class,
             \App\Http\Middleware\Language::class,
         ],

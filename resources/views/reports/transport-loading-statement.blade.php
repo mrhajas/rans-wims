@@ -32,7 +32,7 @@
         <table class="grid">
             <tr>
                 <td class="label">Name</td><td class="value">{{ $worker->name }}</td>
-                <td class="label">Phone</td><td class="value">{{ $worker->phone ?: '-' }}</td>
+                <td class="label">@include('print.icon', ['name' => 'phone', 'color' => '#475569', 'size' => 10, 'style' => 'margin-right:4px;'])Phone</td><td class="value">{{ $worker->phone ?: '-' }}</td>
             </tr>
             <tr>
                 <td class="label">Period</td><td class="value">{{ $from ?: 'Beginning' }} to {{ $to ?: 'Today' }}</td>

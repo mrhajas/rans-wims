@@ -22,7 +22,7 @@
     .letterhead .company-name { font-size: 16px; font-weight: bold; color: #1c3f66; margin: 0 0 3px; }
     .letterhead .tagline { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; margin-bottom: 5px; }
     .contact-row { display: inline-block; }
-    .contact-item { display: inline-block; font-size: 8.7px; color: #475569; margin-left: 10px; white-space: nowrap; }
+    .contact-item { display: inline; font-size: 8.7px; color: #475569; margin-left: 10px; white-space: nowrap; }
     .contact-item .ic { display: inline-block; width: 9px; height: 9px; vertical-align: -1px; margin-right: 3px; }
 
     .band { height: 6px; border-radius: 3px; background: #1c3f66; margin: 10px 0 14px; }

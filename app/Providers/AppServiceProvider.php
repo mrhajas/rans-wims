@@ -12,6 +12,9 @@ class AppServiceProvider extends ServiceProvider
     {
         app()->useLangPath(base_path('lang'));
 
+        // every PDF gets a No column in its data tables (the package registered its own wrapper first; this one replaces it)
+        $this->app->bind('dompdf.wrapper', fn ($app) => new \App\Support\NumberedPdf($app['dompdf'], $app['config'], $app['files'], $app['view']));
+
         // a logout frees the device slot at once
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Logout::class, function () {
             try {

@@ -20,16 +20,16 @@
             <div class="tagline">Building &amp; Civil Contractors</div>
             <div class="contact-row">
                 <span class="contact-item">
-                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#1c3f66" stroke-width="2.5"><path d="M4 5c0 8 7 15 15 15l2-4-6-2-2 2c-2-1-4-3-5-5l2-2-2-6-4 2z"/></svg>+255 777 700615
+                    @include('print.icon', ['name' => 'phone', 'color' => '#1c3f66', 'size' => 10, 'style' => 'margin-right:3px;'])+255 777 700615
                 </span>
                 <span class="contact-item">
-                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#1c3f66" stroke-width="2.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>finance@rans.co.tz
+                    @include('print.icon', ['name' => 'mail', 'color' => '#1c3f66', 'size' => 10, 'style' => 'margin-right:3px;'])info@rans.co.tz
                 </span>
                 <span class="contact-item">
-                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#1c3f66" stroke-width="2.5"><path d="M12 21s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Fumba Road, Zanzibar
+                    @include('print.icon', ['name' => 'map-pin', 'color' => '#1c3f66', 'size' => 10, 'style' => 'margin-right:3px;'])Fumba Road, Zanzibar
                 </span>
                 <span class="contact-item">
-                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#1c3f66" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18 15 15 0 010-18z"/></svg>www.rans.co.tz
+                    @include('print.icon', ['name' => 'globe', 'color' => '#1c3f66', 'size' => 10, 'style' => 'margin-right:3px;'])www.rans.co.tz
                 </span>
             </div>
         </td>

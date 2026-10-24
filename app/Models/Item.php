@@ -37,6 +37,11 @@ class Item extends Model
         $this->attributes['name'] = $value === null ? null : mb_strtoupper($value);
     }
 
+    public function photos()
+    {
+        return $this->hasMany(ItemPhoto::class)->orderBy('position')->orderBy('id');
+    }
+
     public function allStock()
     {
         return $this->hasMany(Stock::class);

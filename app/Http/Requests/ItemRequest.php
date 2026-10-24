@@ -29,6 +29,8 @@ class ItemRequest extends FormRequest
             'unit_id'           => 'nullable|exists:units,id',
             'child_category_id' => 'nullable|exists:categories,id',
             'photo'             => 'nullable|image|mimes:png,jpg,jpeg,svg',
+            'extra_photos'      => 'nullable|array|max:3',
+            'extra_photos.*'    => 'image|mimes:png,jpg,jpeg|max:10240',
             'sku'               => 'nullable|max:50|unique:items,sku,' . optional($this->route('item'))->id,
 
             'name'        => 'required|string',
@@ -45,6 +47,7 @@ class ItemRequest extends FormRequest
     public function validated($key = null, $default = null)
     {
         $data = $this->validator->validated();
+        unset($data['extra_photos']); // stored by the controller (ItemPhotoGallery), not an items column
 
         if ($this->file('photo')) {
             $data['photo'] = $this->file('photo')->store('items', 'assets');

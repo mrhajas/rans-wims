@@ -104,9 +104,9 @@
             <div class="card">
                 <div class="card-title">Contact Details</div>
                 <table class="grid">
-                    <tr><td class="label" style="width:92px;">Mobile</td><td class="value">{{ $staff['mobile_no'] ?? '-' }}</td></tr>
-                    <tr><td class="label">Email</td><td class="value">{{ $staff['personal_email'] ?? '-' }}</td></tr>
-                    <tr><td class="label">Address</td><td class="value">{{ $staff['address'] ?? '-' }}</td></tr>
+                    <tr><td class="label" style="width:92px;">@include('print.icon', ['name' => 'phone', 'color' => '#475569', 'size' => 10, 'style' => 'margin-right:4px;'])Mobile</td><td class="value">{{ $staff['mobile_no'] ?? '-' }}</td></tr>
+                    <tr><td class="label">@include('print.icon', ['name' => 'mail', 'color' => '#475569', 'size' => 10, 'style' => 'margin-right:4px;'])Email</td><td class="value">{{ $staff['personal_email'] ?? '-' }}</td></tr>
+                    <tr><td class="label">@include('print.icon', ['name' => 'map-pin', 'color' => '#475569', 'size' => 10, 'style' => 'margin-right:4px;'])Address</td><td class="value">{{ $staff['address'] ?? '-' }}</td></tr>
                     <tr><td class="label">Next of kin</td><td class="value">{{ $staff['father_name'] ?? '-' }}@if(!empty($staff['father_contact_no'])) ({{ $staff['father_contact_no'] }})@endif</td></tr>
                 </table>
             </div>

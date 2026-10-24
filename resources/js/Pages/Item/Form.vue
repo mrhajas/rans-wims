@@ -116,18 +116,53 @@
                 <icons name="cross" class="w-3 h-3" />
               </button>
             </div>
-            <div v-else class="fx-photo-thumb fx-photo-empty"><icons name="image" class="w-6 h-6" /></div>
+            <div v-else class="fx-photo-thumb fx-photo-empty is-click" role="button" tabindex="0" :aria-label="$t('Select photos')" @click="$refs.fileInput && $refs.fileInput.browse()" @keyup.enter="$refs.fileInput && $refs.fileInput.browse()"><icons name="image" class="w-6 h-6" /></div>
             <div class="fx-photo-body">
-              <file-input v-model="form.photo" accept="image/png,image/jpeg,image/svg+xml" :error="$page.props.errors.photo" :label="$t('Photo')" />
+              <file-input ref="fileInput" v-model="form.photo" multiple :max-files="3" @files="onPickedFiles" accept="image/png,image/jpeg,image/svg+xml" :error="$page.props.errors.photo" :label="$t('Photo')" />
               <button
                 type="button"
-                class="lg-btn lg-btn-soft lg-tip tip-left fx-fetch-btn"
+                class="lg-btn lg-tip tip-left fx-fetch-btn fx-btn-blue"
                 :data-tip="$t('Attach a photo from an image URL')"
                 @click="openPhotoUrlModal"
               >
                 <icons name="sparkles" class="w-3.5 h-3.5" />
                 {{ photoPreviewUrl ? $t('Fetch Photo Again') : $t('Fetch Photo') }}
               </button>
+              <button
+                type="button"
+                class="lg-btn lg-tip tip-left fx-fetch-btn fx-btn-green"
+                :data-tip="$t('Open the camera and attach up to 3 photos of this item')"
+                :disabled="photosLeft <= 0"
+                @click="cameraOpen = true"
+              >
+                <icons name="camera" class="w-3.5 h-3.5" />
+                {{ $t('Take Photo') }}
+              </button>
+              <camera-capture
+                v-if="cameraOpen"
+                :can-photos="true"
+                :can-videos="false"
+                :photo-left="photosLeft"
+                :video-left="0"
+                @capture="addCaptured"
+                @fallback="$refs.nativeCam && $refs.nativeCam.click()"
+                @close="cameraOpen = false"
+              />
+              <!-- the phone's own camera app, used when the live camera cannot start (for example without https) -->
+              <input ref="nativeCam" type="file" accept="image/*" capture="environment" class="hidden" @change="e => { addCaptured(e.target.files[0]); e.target.value = ''; }" />
+              <div v-if="gallery.length || pendingPhotos.length" class="fx-gal">
+                <div v-for="g in gallery" :key="'g' + g.id" class="fx-gal-item">
+                  <img :src="g.url" alt="" @click="galleryView = g.url" />
+                  <button type="button" class="fx-gal-x lg-tip" :data-tip="$t('Remove')" @click="removeGallery(g)"><icons name="cross" class="w-3 h-3" /></button>
+                  <button type="button" class="fx-gal-face lg-tip" :data-tip="$t('Make this the face of the item')" :aria-label="$t('Make this the face of the item')" @click="makeMainGallery(g)"><icons name="star" class="w-3 h-3" /></button>
+                </div>
+                <div v-for="(p, i) in pendingPhotos" :key="'p' + i" class="fx-gal-item is-new">
+                  <img :src="p.url" alt="" @click="galleryView = p.url" />
+                  <button type="button" class="fx-gal-x lg-tip" :data-tip="$t('Remove')" @click="removePending(i)"><icons name="cross" class="w-3 h-3" /></button>
+                  <button type="button" class="fx-gal-face lg-tip" :data-tip="$t('Make this the face of the item')" :aria-label="$t('Make this the face of the item')" @click="makeMainPending(i)"><icons name="star" class="w-3 h-3" /></button>
+                </div>
+                <span class="fx-gal-count">{{ gallery.length + pendingPhotos.length }}/3 · {{ $t('Save the item to keep new photos.') }}</span>
+              </div>
             </div>
           </div>
         </section>
@@ -327,6 +362,10 @@
       :content="$t('Are you sure you want to restore the record?')"
     />
 
+    <modal :show="!!galleryView" max-width="2xl" :closeable="true" @close="galleryView = null">
+      <div class="p-3"><img v-if="galleryView" :src="galleryView" alt="" class="w-full h-auto rounded-md" /></div>
+    </modal>
+
     <!-- Photo Preview Modal -->
     <modal :show="imagePreviewOpen" max-width="2xl" :closeable="true" @close="imagePreviewOpen = false">
       <div class="p-4">
@@ -350,7 +389,7 @@
           <span class="fp-header-icon"><icons name="sparkles" class="w-5 h-5" /></span>
           <div class="min-w-0 flex-1">
             <div class="fp-title">{{ $t('Fetch Photo') }}</div>
-            <div class="fp-subtitle">{{ $t('Paste an image URL and we\'ll download, compress, and attach it.') }}</div>
+            <div class="fp-subtitle">{{ $t('Paste one image URL, or up to 3 separated by a space. We\'ll download, compress, and attach them.') }}</div>
           </div>
           <button v-if="!fetchingPhotoUrl" type="button" class="fp-close-btn lg-tip" :data-tip="$t('Close')" @click="closePhotoUrlModal" :aria-label="$t('Close')">
             <icons name="cross" class="w-4 h-4" />
@@ -362,10 +401,13 @@
           <div class="fp-url-field" :class="{ 'fp-url-field-disabled': fetchingPhotoUrl }">
             <icons name="link" class="w-4 h-4 fp-url-field-icon" />
             <input
+              ref="photoUrlField"
               v-model="photoUrlInput"
               type="text"
               class="fp-url-input"
-              placeholder="https://example.com/photo.jpg"
+              autofocus
+              autocomplete="off"
+              :placeholder="$t('https://example.com/photo.jpg (add up to 3 links separated by a space)')"
               :disabled="fetchingPhotoUrl"
               @keyup.enter="submitPhotoUrl"
             />
@@ -388,6 +430,7 @@
 import Dialog from '@/Shared/Dialog.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
+import CameraCapture from '@/Shared/SiteDiary/CameraCapture.vue';
 import FileInput from '@/Shared/FileInput.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import SelectInput from '@/Shared/SelectInput.vue';
@@ -416,6 +459,7 @@ export default {
     AutoComplete,
     PageHeader,
     TextareaInput,
+    CameraCapture,
     TecDialogModal,
     TecDangerButton,
     TrashedMessage,
@@ -427,6 +471,9 @@ export default {
   data() {
     return {
       photo: false,
+      cameraOpen: false,
+      galleryView: null,
+      pendingPhotos: [],
       creatingUsed: false,
       photoObjectUrl: null,
       photoLoadError: false,
@@ -448,6 +495,7 @@ export default {
       form: this.$inertia.form({
         price: this.edit ? this.edit.price : 0,
         photo: null,
+        extra_photos: [],
         _method: this.edit ? 'put' : 'post',
         sku: this.edit ? this.edit.sku : null,
         name: this.edit ? this.edit.name : null,
@@ -472,6 +520,12 @@ export default {
   },
 
   computed: {
+    gallery() {
+      return (this.edit && this.edit.photos) || [];
+    },
+    photosLeft() {
+      return Math.max(0, 3 - this.gallery.length - this.pendingPhotos.length);
+    },
     parents() {
       return this.categories.filter(c => !c.parent_id);
     },
@@ -513,6 +567,38 @@ export default {
       this.creatingUsed = true;
       this.$inertia.post(this.route('items.create-used', this.edit.id), {}, { onFinish: () => (this.creatingUsed = false) });
     },
+    addCaptured(file) {
+      if (!file || this.photosLeft <= 0) return;
+      this.pendingPhotos.push({ file, url: URL.createObjectURL(file) });
+      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+    },
+    // several files picked at once: the first is the main photo (already set by the field), the others join the extra photos (three photos at most)
+    onPickedFiles(files) {
+      (files || []).slice(1).forEach(f => this.addCaptured(f));
+    },
+    makeMainGallery(g) {
+      if (this.form.photo && !confirm(this.$t('The photo you just picked as the main photo has not been saved yet and will be dropped. Continue?'))) return;
+      this.form.photo = null;
+      this.$inertia.post(this.route('items.photos.main', [this.edit.id, g.id]), {}, { preserveScroll: true, preserveState: true });
+    },
+    // an unsaved photo becomes the main photo; an unsaved main photo that was already picked goes back among the extra photos
+    makeMainPending(i) {
+      const [picked] = this.pendingPhotos.splice(i, 1);
+      if (!picked) return;
+      const previous = this.form.photo;
+      this.form.photo = picked.file;
+      URL.revokeObjectURL(picked.url);
+      if (previous instanceof File) this.pendingPhotos.splice(i, 0, { file: previous, url: URL.createObjectURL(previous) });
+      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+    },
+    removePending(i) {
+      const [gone] = this.pendingPhotos.splice(i, 1);
+      if (gone) URL.revokeObjectURL(gone.url);
+      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+    },
+    removeGallery(g) {
+      this.$inertia.delete(this.route('items.photos.destroy', [this.edit.id, g.id]), { preserveScroll: true, preserveState: true });
+    },
     removePhoto() {
       if (this.form.photo) {
         this.form.photo = null;
@@ -523,45 +609,71 @@ export default {
     openPhotoUrlModal() {
       this.photoUrlInput = '';
       this.showPhotoUrlModal = true;
+      // the field takes the cursor as soon as the dialog is open (after its opening transition)
+      let tries = 0;
+      const tick = () => {
+        const el = this.$refs.photoUrlField;
+        if (el && el.offsetParent !== null) {
+          el.focus();
+          if (document.activeElement === el) return;
+        }
+        if (this.showPhotoUrlModal && ++tries < 25) setTimeout(tick, 60);
+      };
+      this.$nextTick(tick);
     },
     closePhotoUrlModal() {
       if (this.fetchingPhotoUrl) return;
       this.showPhotoUrlModal = false;
       this.photoUrlInput = '';
     },
-    submitPhotoUrl() {
+    // one URL, or two or three separated by a space: the first becomes the main photo, the others join the extra photos (three at most)
+    async submitPhotoUrl() {
       if (this.fetchingPhotoUrl || !this.photoUrlInput) return;
+      const urls = [...new Set(this.photoUrlInput.split(/[\s,]+/).filter(Boolean))].slice(0, 3);
+      if (!urls.length) return;
 
       this.fetchingPhotoUrl = true;
-      axios
-        .post(this.route('items.fetchPhotoDownload'), { url: this.photoUrlInput, name: this.form.name }, { responseType: 'blob' })
-        .then(res => {
-          const file = new File([res.data], `${this.form.name || 'item'}-photo.jpg`, { type: res.data.type || 'image/jpeg' });
-          this.form.photo = file;
-          this.showPhotoUrlModal = false;
-          this.photoUrlInput = '';
-          this.$page.props.flash.message = this.$t('Photo attached. Save the item to keep it.');
-        })
-        .catch(async err => {
-          let message = this.$t('Failed to download that photo. Check the URL and try again.');
+      let attached = 0;
+      let failed = 0;
+      let message = this.$t('Failed to download that photo. Check the URL and try again.');
+      for (const url of urls) {
+        const asMain = attached === 0;
+        if (!asMain && this.photosLeft <= 0) break;
+        try {
+          const res = await axios.post(this.route('items.fetchPhotoDownload'), { url, name: this.form.name }, { responseType: 'blob' });
+          const file = new File([res.data], `${this.form.name || 'item'}-photo-${attached + 1}.jpg`, { type: res.data.type || 'image/jpeg' });
+          if (asMain) this.form.photo = file;
+          else this.addCaptured(file);
+          attached++;
+        } catch (err) {
+          failed++;
           if (err.response?.data instanceof Blob) {
             try {
-              const parsed = JSON.parse(await err.response.data.text());
-              message = parsed.message || message;
+              message = JSON.parse(await err.response.data.text()).message || message;
             } catch (e) {
               // keep default message
             }
           }
-          this.$page.props.flash.error = message;
-        })
-        .finally(() => {
-          this.fetchingPhotoUrl = false;
-        });
+        }
+      }
+      this.fetchingPhotoUrl = false;
+      if (attached) {
+        this.showPhotoUrlModal = false;
+        this.photoUrlInput = '';
+        this.$page.props.flash.message = this.$t('Photo attached. Save the item to keep it.') + (failed ? ` ${failed} ` + this.$t('link(s) could not be fetched.') : '');
+      } else {
+        this.$page.props.flash.error = message;
+      }
     },
     update(list) {
       // this.form.post(this.route('items.update', this.edit.id) + (list ? '?listing=yes' : ''), {
       this.form.post(this.edit ? this.route('items.update', this.edit.id) : this.route('items.store'), {
         preserveScroll: true,
+        onSuccess: () => {
+          this.pendingPhotos.forEach(p => URL.revokeObjectURL(p.url));
+          this.pendingPhotos = [];
+          this.form.extra_photos = [];
+        },
         // onFinish: () => {
         //   if (list) {
         //     this.$inertia.visit(route('items.index'), { preserveState: true, preserveScroll: true });
@@ -652,6 +764,14 @@ html.dark .fx-used-btn { box-shadow: 0 12px 22px -10px rgba(245, 158, 11, 0.55),
   border-color: #38bdf8 !important;
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
 }
+.fx-form :deep(.fx-photo-body button.bg-gray-600) {
+  background: linear-gradient(145deg, #fb923c 0%, #f97316 55%, #ea580c 100%) !important;
+  font-weight: 800;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 18px -10px rgba(234, 88, 12, 0.9), 0 3px 6px rgba(234, 88, 12, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: filter 0.18s ease, box-shadow 0.18s ease;
+}
+.fx-form :deep(.fx-photo-body button.bg-gray-600:hover) { filter: saturate(1.15) brightness(1.05); }
 .fx-form :deep(.fx-photo-body .rounded-r-md) {
   border-radius: 0 0.85rem 0.85rem 0 !important;
 }
@@ -661,10 +781,21 @@ html.dark .fx-used-btn { box-shadow: 0 12px 22px -10px rgba(245, 158, 11, 0.55),
 .fx-photo-body { flex: 1 1 260px; min-width: 0; }
 .fx-photo-thumb { position: relative; flex: none; width: 84px; height: 84px; }
 .fx-photo-img { width: 84px; height: 84px; object-fit: cover; border-radius: 16px; border: 1px solid var(--lg-line); cursor: pointer; box-shadow: var(--lg-shadow); }
+.fx-photo-empty.is-click { cursor: pointer; transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease; }
+.fx-photo-empty.is-click:hover { border-color: #2563eb; background: rgba(37, 99, 235, 0.08); color: #2563eb; transform: translateY(-1px); }
 .fx-photo-empty { display: flex; align-items: center; justify-content: center; border-radius: 16px; border: 2px dashed var(--lg-line); color: var(--lg-faint); background: var(--lg-soft); }
 .fx-photo-remove { top: -8px; right: -8px; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; min-height: 0; padding: 0; border-radius: 9999px; color: #fff; background: #dc2626; box-shadow: 0 4px 10px -2px rgba(220, 38, 38, 0.6); }
 .fx-photo-remove:hover { background: #b91c1c; }
 .fx-fetch-btn { margin-top: 10px; }
+.fx-btn-blue, .fx-btn-green { border: 0 !important; color: #fff !important; font-weight: 800; letter-spacing: 0.01em; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25); transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease; }
+.fx-btn-blue { background: linear-gradient(145deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%) !important; box-shadow: 0 12px 22px -10px rgba(37, 99, 235, 0.85), 0 3px 6px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.fx-btn-green { background: linear-gradient(145deg, #34d399 0%, #10b981 55%, #059669 100%) !important; box-shadow: 0 12px 22px -10px rgba(5, 150, 105, 0.85), 0 3px 6px rgba(5, 150, 105, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.fx-btn-blue:hover:not(:disabled), .fx-btn-green:hover:not(:disabled) { transform: translateY(-2px); filter: saturate(1.1); }
+.fx-btn-blue:hover:not(:disabled) { box-shadow: 0 16px 26px -10px rgba(37, 99, 235, 0.95), 0 4px 8px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+.fx-btn-green:hover:not(:disabled) { box-shadow: 0 16px 26px -10px rgba(5, 150, 105, 0.95), 0 4px 8px rgba(5, 150, 105, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+.fx-btn-blue:active:not(:disabled), .fx-btn-green:active:not(:disabled) { transform: translateY(0); }
+.fx-btn-blue:disabled, .fx-btn-green:disabled { opacity: 0.55; cursor: not-allowed; }
+.fx-fetch-btn + .fx-fetch-btn, .fx-fetch-btn + .cc + .fx-fetch-btn { margin-left: 8px; }
 
 /* options */
 .fx-opts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
@@ -684,6 +815,16 @@ html.dark .fx-used-btn { box-shadow: 0 12px 22px -10px rgba(245, 158, 11, 0.55),
 .fx-step-dark { background: linear-gradient(145deg, #64748b, #334155); padding: 11px 14px; }
 .fx-step-l { border-radius: 9999px 0 0 9999px; border-right: 1px solid rgba(255, 255, 255, 0.25); }
 .fx-step-r { border-radius: 0 9999px 9999px 0; }
+
+/* photos taken for the item */
+.fx-gal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.fx-gal-item { position: relative; width: 64px; height: 64px; border-radius: 0.75rem; overflow: visible; }
+.fx-gal-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.75rem; cursor: zoom-in; border: 1px solid var(--lg-line); }
+.fx-gal-item.is-new img { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); }
+.fx-gal-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 9999px; background: #dc2626; color: #fff; cursor: pointer; }
+.fx-gal-face { position: absolute; bottom: -6px; right: -6px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 9999px; background: linear-gradient(145deg, #fbbf24, #d97706); color: #fff; cursor: pointer; box-shadow: 0 4px 10px -2px rgba(217, 119, 6, 0.7); }
+.fx-gal-face:hover { filter: brightness(1.1); transform: scale(1.1); }
+.fx-gal-count { font-size: 0.72rem; font-weight: 600; color: var(--lg-mute); }
 
 /* Fetch Photo dialog */
 .fp-panel {

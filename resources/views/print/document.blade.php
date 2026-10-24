@@ -275,7 +275,8 @@
                     <div class="party-head">@include('print.icon', ['name' => $party['icon'], 'color' => $AD, 'size' => 12]) &nbsp;{{ $party['title'] }}</div>
                     <table class="party-rows">
                         @foreach($party['rows'] as $row)
-                            <tr><td class="k">{{ $row[0] }}</td><td class="v">{{ $row[1] }}</td></tr>
+                            @php($ci = \App\Support\PrintIcons::forLabel($row[0]))
+                            <tr><td class="k">@if($ci)@include('print.icon', ['name' => $ci, 'color' => $AD, 'size' => 10, 'style' => 'margin-right:4px;'])@endif{{ $row[0] }}</td><td class="v">{{ $row[1] }}</td></tr>
                         @endforeach
                     </table>
                 </div></td>

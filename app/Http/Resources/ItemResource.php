@@ -30,6 +30,7 @@ class ItemResource extends JsonResource
             'track_quantity'   => $this->track_quantity == 1 ? true : false,
             'is_used'          => $this->is_used == 1 ? true : false,
             'photo'            => $this->photo ? Storage::disk('assets')->url($this->photo) : null,
+            'photos'           => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($p) => ['id' => $p->id, 'url' => Storage::disk('assets')->url($p->path)])->values()),
             'user'             => $this->whenLoaded('user'),
             'unit'             => $this->whenLoaded('unit'),
             'stock'            => $this->whenLoaded('stock'),

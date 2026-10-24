@@ -19,7 +19,7 @@ function flatten(list) {
         if (sm.hidden || !sm.route) continue;
         // a child is only reachable when its group is: carry the group's feature, role and permission limits down so the Launcher
         // never lists a destination the sidebar would not show.
-        out.push({ ...sm, parentFeature: menu.feature || null, parentRoles: menu.roles || null, parentPermissions: menu.permissions || null });
+        out.push({ ...sm, parentFeature: menu.feature || null, parentRoles: menu.roles || null, parentPermissions: menu.permissions || null, parentEntry: { lang: menu.lang, name: menu.name } });
       }
     } else if (menu.route && !menu.sub_menu) {
       out.push(menu);
@@ -84,11 +84,15 @@ export function searchMenu(query, ctx) {
     const haystack = title.toLowerCase();
     if (!haystack.includes(q)) continue;
 
+    // a page that lives in a module shows the module in brackets, so the many "... Report" pages can be told apart
+    const module = entry.parentEntry ? labelFor(entry.parentEntry, ctx.t) : '';
+    const shown = module && module.toLowerCase() !== title.toLowerCase() ? `${title} (${module})` : title;
+
     results.push({
       category: 'page',
       label: 'Pages',
       icon: entry.icon || 'link',
-      title,
+      title: shown,
       subtitle: '',
       url: ctx.route(entry.route),
       rank: haystack.startsWith(q) ? 0 : 1,
@@ -129,5 +133,5 @@ export function searchMenu(query, ctx) {
   }
 
   results.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title));
-  return results.slice(0, 8);
+  return results.slice(0, 14);
 }

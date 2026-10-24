@@ -97,6 +97,33 @@ class ItemController extends Controller
         return back()->with('error', __('The record can not be deleted.'));
     }
 
+    public function destroyGalleryPhoto(Item $item, \App\Models\ItemPhoto $photo)
+    {
+        abort_unless(auth()->user()->can('update-items') && $photo->item_id === $item->id, 403);
+        Storage::disk('assets')->delete($photo->path);
+        $photo->delete();
+
+        return back()->with('message', __choice('action_text', ['record' => 'Item photo', 'action' => 'deleted']));
+    }
+
+    /** Makes one of the extra photos the face of the item: it swaps places with the current main photo. */
+    public function makeGalleryPhotoMain(Item $item, \App\Models\ItemPhoto $photo)
+    {
+        abort_unless(auth()->user()->can('update-items') && $photo->item_id === $item->id, 403);
+
+        DB::transaction(function () use ($item, $photo) {
+            $old = $item->photo;
+            $item->update(['photo' => $photo->path]);
+            if ($old && Storage::disk('assets')->exists($old)) {
+                $photo->update(['path' => $old]);
+            } else {
+                $photo->delete();
+            }
+        });
+
+        return back()->with('message', __('The photo is now the face of the item.'));
+    }
+
     /**
      * "fetchPhotoDownload" isn't in Authorizable's default ability map, so
      * callAction() derives no ability for it and never calls authorize()
@@ -123,7 +150,7 @@ class ItemController extends Controller
 
     public function edit(Item $item)
     {
-        $item->load('categories:id,code,name');
+        $item->load('categories:id,code,name', 'photos');
 
         return Inertia::render('Item/Form', [
             'edit'       => new ItemResource($item),
@@ -238,6 +265,7 @@ class ItemController extends Controller
 
             $created = Item::create($data);
             $created->addVariations()->saveRelations($data);
+            \App\Support\ItemPhotoGallery::add($created, $request->file('extra_photos', []));
         });
         if ($created) {
             \App\Services\ItemNotifier::fire('created', __('Item Added'), \App\Services\ItemNotifier::label($created) . ' was added' . \App\Services\ItemNotifier::by() . '.', $created, ['skip_actor' => true]);
@@ -446,6 +474,7 @@ class ItemController extends Controller
         $data = $request->validated();
         $item->update($data);
         $item->addVariations()->saveRelations($data);
+        \App\Support\ItemPhotoGallery::add($item, $request->file('extra_photos', []));
         \App\Services\ItemNotifier::fire('updated', __('Item Edited'), \App\Services\ItemNotifier::label($item) . ' was edited' . \App\Services\ItemNotifier::by() . '.', $item, ['skip_actor' => true]);
         session()->flash('message', __choice('action_text', ['record' => 'Item', 'action' => 'updated']));
 

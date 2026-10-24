@@ -24,6 +24,7 @@ import { initOfflineSync } from '@/Core/offlineSync';
 import { trackSectionVisit } from '@/Core/quickMenuTracking';
 import tooltipDirective from '@/Core/tooltipDirective';
 import { initFieldErrors } from '@/Core/fieldErrors';
+import { initAutoNumber, setPagination } from '@/Core/autoNumber';
 
 import { useI18n } from 'vue-i18n';
 import { createApp, h } from 'vue';
@@ -210,6 +211,10 @@ createInertiaApp({
       window.location.reload();
     });
     initFieldErrors(router);
+    // every data table gets a No column; the numbers of a paginated list continue from page to page (props of each visit tell where a page starts)
+    initAutoNumber();
+    setPagination(props && props.initialPage ? props.initialPage.props : null);
+    router.on('navigate', event => setPagination(event.detail.page.props));
     router.on('invalid', event => {
       event.preventDefault();
       alertDialog(i18n.global.t('Your session or connection needs a refresh, reloading…')).then(() => {

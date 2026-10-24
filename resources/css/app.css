@@ -3163,3 +3163,9 @@ html.dark .sdy-type-chip:not(.is-on) .sdy-type-mark { background: #b91c1c; }
 .pvb-status.pv-st-rejected { background: linear-gradient(135deg, #9f1239, #6b0f1a); --pv-glow: rgba(127, 29, 29, 0.75); }
 .pvb-status.pv-st-cancelled { background: linear-gradient(135deg, #78716c, #44403c); --pv-glow: rgba(68, 64, 60, 0.7); }
 .pvb-status.pv-st-mixed { background: linear-gradient(135deg, #14b8a6, #0f766e); --pv-glow: rgba(15, 118, 110, 0.7); }
+
+/* the automatic No column of every table (resources/js/Core/autoNumber.js) */
+.autono-th, .autono-td { width: 2.6rem; min-width: 2.6rem; text-align: center !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.autono-td { color: var(--lg-faint, #94a3b8); font-weight: 700; font-size: 0.82em; }
+.lg-responsive td.autono-td { text-align: right !important; }
+@media print { .autono-th, .autono-td { width: 2rem; min-width: 2rem; } }
