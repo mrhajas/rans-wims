@@ -17,6 +17,8 @@ export const offlineState = reactive({
 });
 
 const POLL_INTERVAL_MS = 60000;
+const QUIET_BEFORE_PROBE_MS = 100000;
+let lastAnswerAt = 0;
 // A slow connection is not an offline one. The health call is given a long time to answer, a late or failed answer
 // is retried a few times, and WIMS only switches to Read Mode when the browser itself says it has no network, or
 // when several attempts in a row could not reach the server at all.
@@ -112,6 +114,17 @@ function installAxiosOfflineHeader() {
     }
     return config;
   });
+  // any answer from the server (even an error page) proves the connection, so the separate health check below is only needed when the page has been quiet
+  axios.interceptors.response.use(
+    response => {
+      lastAnswerAt = Date.now();
+      return response;
+    },
+    error => {
+      if (error && error.response) lastAnswerAt = Date.now();
+      return Promise.reject(error);
+    },
+  );
 }
 
 export function initOfflineStatus() {
@@ -120,7 +133,7 @@ export function initOfflineStatus() {
   probe();
   // Only look while the tab is on screen: a background tab does not need to know, and it spares the connection.
   pollTimerId = setInterval(() => {
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === 'visible' && Date.now() - lastAnswerAt > QUIET_BEFORE_PROBE_MS) {
       probe();
     }
   }, POLL_INTERVAL_MS);

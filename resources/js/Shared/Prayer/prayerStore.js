@@ -92,7 +92,7 @@ function refreshPrayer() {
 }
 function startPolling() {
   if (pollTimer || typeof window === 'undefined') return;
-  pollTimer = setInterval(refreshPrayer, 60000);
+  pollTimer = setInterval(refreshPrayer, 300000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPrayer(); });
 }
 

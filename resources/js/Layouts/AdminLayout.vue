@@ -45,7 +45,6 @@
             scroll-region
           >
             <div class="app-canvas p-4 md:p-6 print:bg-white print:border-0 print:shadow-none print:rounded-none">
-              <flash-messages class="print:hidden"></flash-messages>
               <qr-record-button v-if="$page.props.qrRecord" :key="$page.props.qrRecord.type + $page.props.qrRecord.id" class="print:hidden" />
               <slot />
             </div>
@@ -72,7 +71,6 @@
 import TopBar from '@/Shared/Top/Navbar.vue';
 import AppFooter from '@/Shared/AppFooter.vue';
 import PrintAnimationHost from '@/Shared/PrintAnimationHost.vue';
-import FlashMessages from '@/Shared/FlashMessages.vue';
 import FullMainMenu from '@/Shared/Sidebar/FullMainMenu.vue';
 import MiniMainMenu from '@/Shared/Sidebar/MiniMainMenu.vue';
 import InstallPwaBanner from '@/Shared/InstallPwaBanner.vue';
@@ -105,7 +103,7 @@ let heartbeatTimer = null;
 let lastActivityAt = Date.now();
 let lastPingAt = 0;
 const PRESENCE_ACTIVE_MS = 3 * 60 * 1000;
-const PRESENCE_PING_MS = 60 * 1000;
+const PRESENCE_PING_MS = 100 * 1000; // the server counts a person as online for 3 minutes after the last heartbeat
 const sendPresence = () => {
   if (document.hidden || Date.now() - lastActivityAt > PRESENCE_ACTIVE_MS || Date.now() - lastPingAt < PRESENCE_PING_MS - 2000) {
     return;
@@ -123,7 +121,6 @@ export default {
     AppFooter,
     FullMainMenu,
     MiniMainMenu,
-    FlashMessages,
     InstallPwaBanner,
     UpdateAvailableBanner,
     ConnectionStatusBanner,

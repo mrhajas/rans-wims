@@ -232,6 +232,7 @@
 
 <script>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { beginTask, endTask } from '@/Core/saveProgress';
 import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 
@@ -384,9 +385,12 @@ export default {
 
       this.downloadProcessing = true;
       try {
+        beginTask(this.$t('Preparing backup'), this.$t('Downloaded'), 'backup');
         await this.downloadViaFetch(this.route('backup.download'), this.downloadPassword, `${this.database}-backup.sql`);
+        endTask(true, `${this.database}-backup.sql`);
         this.closeDownloadConfirm();
       } catch (error) {
+        endTask(false, error.message);
         this.downloadError = error.message;
         this.actionError = error.message;
         this.downloadProcessing = false;
@@ -414,6 +418,7 @@ export default {
       this.systemBackupProcessing = true;
       this.$inertia.post(this.route('backup.system.create'), {}, {
         preserveScroll: true,
+        headers: { 'X-Progress-Label': this.$t('Creating system backup'), 'X-Progress-Done': this.$t('Backup created'), 'X-Progress-Long': '1', 'X-Progress-Anim': 'backup' },
         onError: () => {
           this.actionError = this.$t('Could not create system backup.');
         },
@@ -438,13 +443,16 @@ export default {
 
       if (this.autoActionType === 'download') {
         try {
+          beginTask(this.$t('Preparing backup'), this.$t('Downloaded'), 'backup');
           await this.downloadViaFetch(
             this.route('backup.download.auto', this.autoConfirmActivity.id),
             this.autoActionPassword,
             this.autoConfirmActivity.filename || 'auto-backup.sql'
           );
+          endTask(true, this.autoConfirmActivity.filename || 'auto-backup.sql');
           this.closeAutoConfirm();
         } catch (error) {
+          endTask(false, error.message);
           this.autoProcessing = false;
           this.autoActionError = error.message;
           this.actionError = error.message;
@@ -460,6 +468,7 @@ export default {
         },
         {
           preserveScroll: true,
+          headers: { 'X-Progress-Label': this.$t('Restoring database'), 'X-Progress-Done': this.$t('Restored'), 'X-Progress-Long': '1', 'X-Progress-Anim': 'restore' },
           onSuccess: () => this.closeAutoConfirm(),
           onFinish: () => (this.autoProcessing = false),
         }
@@ -483,6 +492,7 @@ export default {
       this.form.post(this.route('backup.restore'), {
         forceFormData: true,
         preserveScroll: true,
+        headers: { 'X-Progress-Label': this.$t('Restoring database'), 'X-Progress-Done': this.$t('Restored'), 'X-Progress-Long': '1', 'X-Progress-Anim': 'restore' },
         onSuccess: () => {
           this.confirm = false;
           this.form.file = null;

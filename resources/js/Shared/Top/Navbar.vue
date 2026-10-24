@@ -641,7 +641,7 @@ export default {
     document.addEventListener('inertia:navigate', this.onPageScroll);
     if (this.$can('read-digital-attendance')) {
       this.fetchAttendanceWidget();
-      this.attendancePollTimer = setInterval(this.fetchAttendanceWidget, 60000);
+      this.attendancePollTimer = setInterval(() => !document.hidden && this.fetchAttendanceWidget(), 180000);
       this.attendanceTickTimer = setInterval(() => (this.attendanceNow = new Date()), 1000);
       // Clock in/out can also happen from MyAttendance.vue's own buttons —
       // a separate page component, not a child of this persistent layout —

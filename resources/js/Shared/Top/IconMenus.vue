@@ -80,6 +80,10 @@
 import AlertsModal from './AlertsModal.vue';
 import AnsModal from './AnsModal.vue';
 import ConstructionToolbox from '../ConstructionToolbox/ConstructionToolbox.vue';
+import { reactive } from 'vue';
+
+// The bell is on the page up to three times (top bar, full menu, mini menu): they share ONE poll and one count, so the server is asked once, not three times.
+const bell = reactive({ at: 0, count: null });
 
 export default {
   components: { AlertsModal, AnsModal, ConstructionToolbox },
@@ -94,6 +98,7 @@ export default {
       previousUnreadCount: Number(this.$page.props.materialRequestUnreadCount || 0),
       pollTimer: null,
       audioContext: null,
+      bell,
     };
   },
 
@@ -113,6 +118,12 @@ export default {
   },
 
   watch: {
+    'bell.count'(value) {
+      if (value !== null) {
+        this.localUnreadCount = value;
+        this.previousUnreadCount = value;
+      }
+    },
     '$page.props.materialRequestUnreadCount'(value) {
       this.localUnreadCount = Number(value || 0);
     },
@@ -156,7 +167,7 @@ export default {
     startPolling() {
       this.pollTimer = setInterval(() => {
         this.pollAlerts();
-      }, 20000);
+      }, 45000); // the bell: a new alert may take up to 45 seconds; coming back to the tab refreshes it at once
     },
 
     stopPolling() {
@@ -177,6 +188,11 @@ export default {
       if (document.hidden || this.$connection.status === 'offline') {
         return;
       }
+      // another copy of the bell asked a moment ago (all copies hear the answer)
+      if (Date.now() - bell.at < 20000) {
+        return;
+      }
+      bell.at = Date.now();
       axios
         .get('/alerts', { params: { light: 1 } })
         .then(res => {
@@ -188,6 +204,7 @@ export default {
 
           this.previousUnreadCount = count;
           this.localUnreadCount = count;
+          bell.count = count;
         })
         .catch(() => {});
     },

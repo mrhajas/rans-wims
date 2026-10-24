@@ -117,26 +117,68 @@ class DatabaseBackup
 
             fwrite($out, "-- Data for `{$table}` ({$count} rows)\n");
 
-            DB::table($table)->orderByRaw('1')->chunk(500, function ($rows) use ($out, $table, $pdo) {
+            $write = function ($rows) use ($out, $table, $pdo) {
                 $first = (array) $rows->first();
                 $columns = array_keys($first);
                 $cols = '(' . implode(',', array_map(fn ($c) => "`{$c}`", $columns)) . ')';
 
+                // several rows per INSERT (up to 100 rows or about 512 KB): a smaller file and far fewer statements to run when it is restored.
+                // Each statement still sits on ONE line, which is what the restore reads.
+                $batch = [];
+                $size = 0;
+                $flush = function () use (&$batch, &$size, $out, $table, $cols) {
+                    if ($batch) {
+                        fwrite($out, "INSERT INTO `{$table}` {$cols} VALUES " . implode(',', $batch) . ";\n");
+                    }
+                    $batch = [];
+                    $size = 0;
+                };
                 foreach ($rows as $row) {
-                    $row = (array) $row;
                     $values = array_map(function ($v) use ($pdo) {
                         if ($v === null) return 'NULL';
                         if (is_int($v) || is_float($v)) return (string) $v;
                         if (is_bool($v)) return $v ? '1' : '0';
                         return $pdo->quote((string) $v);
-                    }, array_values($row));
-                    fwrite($out, "INSERT INTO `{$table}` {$cols} VALUES (" . implode(',', $values) . ");\n");
+                    }, array_values((array) $row));
+                    $tuple = '(' . implode(',', $values) . ')';
+                    $batch[] = $tuple;
+                    $size += strlen($tuple);
+                    if (count($batch) >= 100 || $size >= 524288) {
+                        $flush();
+                    }
                 }
-            });
+                $flush();
+            };
+
+            // Walk the table by its primary key when it has a single one (one pass, however large the table), not by OFFSET paging, which gets slower with every page
+            // (the activity log alone took 15 of 20 seconds that way).
+            $pk = $this->singlePrimaryKey($table);
+            if ($pk) {
+                DB::table($table)->chunkById(500, $write, $pk);
+            } else {
+                DB::table($table)->orderByRaw('1')->chunk(500, $write);
+            }
 
             fwrite($out, "\n");
         }
 
         fwrite($out, "SET FOREIGN_KEY_CHECKS=1;\n");
+    }
+
+    /** The name of the primary key column when the table has exactly one (and it is a whole number), else null. */
+    private function singlePrimaryKey(string $table): ?string
+    {
+        try {
+            $keys = DB::select("SHOW KEYS FROM `{$table}` WHERE Key_name = 'PRIMARY'");
+            if (count($keys) !== 1) {
+                return null;
+            }
+            $column = $keys[0]->Column_name;
+            $info = DB::select("SHOW COLUMNS FROM `{$table}` WHERE Field = ?", [$column]);
+
+            return $info && preg_match('/int/i', (string) $info[0]->Type) ? $column : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

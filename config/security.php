@@ -18,10 +18,10 @@ return [
     'rate_limit_enabled' => env('RATE_LIMITS', true),
     'rate_limits' => [
         'per_user_minute' => (int) env('RL_USER_MINUTE', 900),
-        'per_guest_minute' => (int) env('RL_GUEST_MINUTE', 240),
+        'per_guest_minute' => (int) env('RL_GUEST_MINUTE', 600),
         'writes_per_minute' => (int) env('RL_WRITES_MINUTE', 240),
-        'auth_per_ip_minute' => (int) env('RL_AUTH_IP_MINUTE', 30),
-        'auth_per_ip_hour' => (int) env('RL_AUTH_IP_HOUR', 200),
+        'auth_per_ip_minute' => (int) env('RL_AUTH_IP_MINUTE', 120),
+        'auth_per_ip_hour' => (int) env('RL_AUTH_IP_HOUR', 1200),
         'password_checks_per_10_min' => (int) env('RL_PASSWORD_CHECKS', 12),
     ],
 
@@ -36,7 +36,7 @@ return [
 
     'login' => [
         'enabled' => (bool) env('LOGIN_BLOCK', true),
-        'max_failures' => (int) env('LOGIN_BLOCK_FAILURES', 10),
+        'max_failures' => (int) env('LOGIN_BLOCK_FAILURES', 25),
         'window_seconds' => (int) env('LOGIN_BLOCK_WINDOW', 180),
         'block_minutes' => [10, 20, 60, 1440],
         'forget_after_hours' => (int) env('LOGIN_BLOCK_FORGET_HOURS', 24),

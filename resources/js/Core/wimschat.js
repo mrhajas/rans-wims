@@ -145,7 +145,8 @@ export async function start() {
 
 function interval() {
   const c = chat.config || {};
-  return workspaceVisible() ? c.poll_open_ms || 3500 : c.poll_idle_ms || 30000;
+  // while the chat is closed only the unread badge is looked at: never more often than once a minute (every open tab asks, so this is what keeps the server light)
+  return workspaceVisible() ? c.poll_open_ms || 3500 : Math.max(60000, c.poll_idle_ms || 60000);
 }
 
 function schedule(ms) {

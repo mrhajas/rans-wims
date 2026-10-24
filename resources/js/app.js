@@ -25,6 +25,8 @@ import { trackSectionVisit } from '@/Core/quickMenuTracking';
 import tooltipDirective from '@/Core/tooltipDirective';
 import { initFieldErrors } from '@/Core/fieldErrors';
 import { initAutoNumber, setPagination } from '@/Core/autoNumber';
+import { initSaveProgress } from '@/Core/saveProgress';
+import SaveProgress from '@/Shared/SaveProgress.vue';
 
 import { useI18n } from 'vue-i18n';
 import { createApp, h } from 'vue';
@@ -100,6 +102,14 @@ const mountIdleLogoutModal = () => {
 // $confirm/$alert/$prompt (registered as global properties below) work
 // from any component without that component owning any modal markup of
 // its own.
+// the small centred indicator for saves, updates, adds and deletes (and the notice that replaces the old corner message)
+const mountSaveProgress = () => {
+  const el = document.createElement('div');
+  el.id = 'save-progress-root';
+  document.body.appendChild(el);
+  createApp(SaveProgress).use(i18n).mount(el);
+};
+
 const mountGlobalDialog = () => {
   const el = document.createElement('div');
   el.id = 'global-dialog-root';
@@ -191,6 +201,8 @@ createInertiaApp({
     applyTheme(props.initialPage);
     mountIdleLogoutModal();
     mountGlobalDialog();
+    mountSaveProgress();
+    initSaveProgress(router);
 
     // Global safety net for a failed/non-Inertia navigation — until now,
     // Inertia's own default behavior for both of these was a full,

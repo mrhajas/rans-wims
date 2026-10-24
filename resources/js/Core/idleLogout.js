@@ -238,7 +238,7 @@ export function initIdleLogout(initialPage) {
   });
 
   state.checkId = setInterval(check, CHECK_EVERY_MS);
-  state.pingId = setInterval(keepAlive, PING_EVERY_MS);
+  // no separate keep-alive timer: every request the browser makes carries X-Idle-Ms, and the presence heartbeat, the bell and the unread badge already run in the background
   check();
 
   // Manual trigger for testing: open devtools console and run window.triggerIdleLogoutWarning()
