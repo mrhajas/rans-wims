@@ -97,6 +97,12 @@
                   <span class="lg-meta-k">{{ $t('User') }}</span>
                   <span>{{ adjustment.user?.name }}</span>
                 </div>
+                <div v-if="adjustment.items_count" class="lg-meta">
+                  <span class="lg-meta-k">{{ $t('Items') }}</span>
+                  <span>{{ adjustment.items_count }}
+                    <span class="adj-delta" :class="adjustment.type === 'Addition' ? 'is-up' : 'is-down'" :title="rowStatus(adjustment) === 'Approved' ? $t('How much the stock changed') : $t('How much the stock will change if approved')">{{ adjustment.type === 'Addition' ? '+' : '-' }}{{ $number(adjustment.qty_total) }}</span>
+                  </span>
+                </div>
                 <div v-if="adjustment.status === 'Approved' && adjustment.approver" class="lg-meta">
                   <span class="lg-meta-k">{{ $t('Approved By') }}</span>
                   <span>{{ adjustment.approver.name }}<span v-if="adjustment.approved_by_role" class="adj-role">{{ adjustment.approved_by_role }}</span></span>
@@ -703,4 +709,5 @@ html.dark .txn-table-shell :deep(th) {
     width: 2.4rem;
   }
 }
+.adj-delta { display: inline-block; margin-left: 6px; padding: 1px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 800; font-variant-numeric: tabular-nums; } .adj-delta.is-up { color: #166534; background: #dcfce7; } .adj-delta.is-down { color: #991b1b; background: #fee2e2; }
 </style>

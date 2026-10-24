@@ -15,7 +15,7 @@
         <Link v-if="$can('update-adjustments') && (adjustment.status !== 'Rejected' || $super)" :href="route('adjustments.edit', adjustment.id)" class="lg-btn lg-btn-primary"><icons name="edit" class="w-4 h-4" />{{ $t('Edit') }}</Link>
       </page-header>
 
-      <adjustment-details v-if="adjustment" :adjustment="adjustment" />
+      <adjustment-details v-if="adjustment" :adjustment="adjustment" :differences="differences" :value-report="valueReport" />
     </div>
   </admin-layout>
 </template>
@@ -29,7 +29,7 @@ import ChangeStatus from '@/Shared/Adjustment/ChangeStatus.vue';
 import { adjustmentStatusMethods } from '@/Shared/Adjustment/status';
 
 export default {
-  props: { adjustment: Object },
+  props: { adjustment: Object, differences: { type: Object, default: null }, valueReport: { type: Object, default: null } },
   components: { AdminLayout, AdjustmentDetails, PageHeader, ApprovalActions, ChangeStatus },
   methods: {
     ...adjustmentStatusMethods,

@@ -2,7 +2,8 @@
   <admin-layout :title="$t('Travels')">
     <div class="lg-page ac sc-ui tr-ui px-4 md:px-0">
       <page-header icon="plane" :title="$t('Travels')" :subtitle="$t('The travels of staff and users: where they go, the flight, the ticket and the visa, and what each cost. Every travel needs approval before the ticket agent is owed for it.')">
-        <Link v-if="can.create" :href="route('travels.create')" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" /><span>{{ $t('New Travel') }}</span></Link>
+        <Link v-if="can.create" :href="route('travels.create')" class="lg-btn tone tone-solid" style="--tone: #059669"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span><span>{{ $t('New Travel Request') }}</span></Link>
+        <Link v-if="can.packages" :href="route('travels.packages.index')" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="collection" class="w-4 h-4" /></span><span>{{ $t('Travel Packages') }}</span></Link>
         <Link v-if="can.agents" :href="route('travels.agents.index')" class="lg-btn lg-btn-soft"><icons name="cash" class="w-4 h-4" /><span>{{ $t('Ticket Agents') }}</span></Link>
         <Link :href="route('travels.reports.index')" class="lg-btn lg-btn-soft"><icons name="chart-bar" class="w-4 h-4" /><span>{{ $t('Reports') }}</span></Link>
         <travel-export type="register" :params="exportParams" />
@@ -10,7 +11,7 @@
 
       <div class="tr-stats">
         <button type="button" class="tr-stat" :class="{ 'is-on': f.when === 'upcoming' }" @click="toggleUpcoming"><icons name="plane" class="w-5 h-5" /><span><b>{{ stats.upcoming }}</b>{{ $t('Upcoming') }}</span></button>
-        <button type="button" class="tr-stat is-amber" :class="{ 'is-on': f.status === 'Pending Approval' }" @click="setStatus('Pending Approval')"><icons name="clock" class="w-5 h-5" /><span><b>{{ stats.pending }}</b>{{ $t('Waiting for approval') }}</span></button>
+        <button type="button" class="tr-stat is-amber" :class="{ 'is-on': f.status === 'Travel Request' }" @click="setStatus('Travel Request')"><icons name="clock" class="w-5 h-5" /><span><b>{{ stats.pending }}</b>{{ $t('Travel Requests') }}</span></button>
         <button type="button" class="tr-stat is-green" :class="{ 'is-on': f.status === 'Approved' }" @click="setStatus('Approved')"><icons name="tick" class="w-5 h-5" /><span><b>{{ stats.approved }}</b>{{ $t('Approved') }}</span></button>
       </div>
 
@@ -39,7 +40,7 @@
           <tbody>
             <tr v-for="(r, n) in rows.data" :key="r.id" class="is-click" @click="$inertia.visit(route('travels.show', r.id))">
               <td :data-label="$t('No')" class="tr-no">{{ (rows.from || 1) + n }}</td>
-              <td :data-label="$t('Travel')" class="tr-head"><span class="tr-ci tc-b"><icons name="plane" class="w-4 h-4" /></span><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="lg-chip" :class="statusChip(r.status)" style="text-transform: none">{{ r.status_label }}</span></div><small v-if="r.days_left !== null && ['Pending Approval', 'Approved'].includes(r.status)" class="tr-days" :class="{ 'is-soon': r.days_left <= 7 }">{{ r.days_left === 0 ? $t('leaves today') : $t('leaves in :n day(s)', { n: r.days_left }) }}</small></div></td>
+              <td :data-label="$t('Travel')" class="tr-head"><span class="tr-ci tc-b"><icons name="plane" class="w-4 h-4" /></span><div class="tr-cell"><b class="lg-main">{{ r.reference }}</b><div class="tr-line"><span class="lg-chip" :class="statusChip(r.status)" style="text-transform: none">{{ r.status_label }}</span></div><small v-if="r.days_left !== null && ['Travel Request', 'Approved'].includes(r.status)" class="tr-days" :class="{ 'is-soon': r.days_left <= 7 }">{{ r.days_left === 0 ? $t('leaves today') : $t('leaves in :n day(s)', { n: r.days_left }) }}</small></div></td>
               <td :data-label="$t('Traveller(s)')" class="tr-wrap"><div class="tr-names"><span v-for="p in r.travellers" :key="p.id"><b>{{ p.name }}</b><small v-if="p.ticket_number" class="lg-subtext"> · {{ p.ticket_number }}</small></span></div></td>
               <td :data-label="$t('Trip')" class="tr-wrap"><div class="tr-cell"><b>{{ r.to_place }}<template v-if="r.to_country">, {{ r.to_country }}</template></b><small>{{ $t('from') }} {{ [r.from_place, r.from_country].filter(Boolean).join(', ') || '-' }}</small><div class="tr-line"><span class="lg-chip" :class="r.scope === 'international' ? 'lg-chip-violet' : 'lg-chip-slate'" style="text-transform: none">{{ r.scope_label }}</span><small v-if="r.travel_type">{{ r.travel_type }}</small></div></div></td>
               <td :data-label="$t('Dates')" class="tr-nw"><div class="tr-cell"><span>{{ $t('Departs') }} <b>{{ $date(r.depart_date) }}</b></span><span v-if="r.trip_type === 'return'">{{ $t('Returns') }} <b>{{ r.return_date ? $date(r.return_date) : '-' }}</b></span><small v-else>{{ $t('One way') }}</small><small>{{ $t('Booked') }} {{ r.booking_date ? $date(r.booking_date) : '-' }}</small></div></td>
@@ -76,7 +77,7 @@ export default {
   computed: {
     tabs() {
       const s = this.stats;
-      return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.total }, { key: 'Pending Approval', label: this.$t('Waiting'), icon: 'clock', tone: 'amber', count: s.pending }, { key: 'Approved', label: this.$t('Approved'), icon: 'tick', tone: 'emerald', count: s.approved },
+      return [{ key: '', label: this.$t('All'), icon: 'collection', tone: 'navy', count: s.total }, { key: 'Travel Request', label: this.$t('Waiting'), icon: 'clock', tone: 'amber', count: s.pending }, { key: 'Approved', label: this.$t('Approved'), icon: 'tick', tone: 'emerald', count: s.approved },
         { key: 'Rejected', label: this.$t('Rejected'), icon: 'x-circle', tone: 'rose', count: s.rejected }, { key: 'Cancelled', label: this.$t('Cancelled'), icon: 'x-circle', tone: 'slate', count: s.cancelled }];
     },
     hasFilters() { return Object.keys(this.f).some(k => this.f[k]); },
@@ -87,7 +88,7 @@ export default {
     moneyFmt(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     rate(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 6 }); },
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
-    statusChip(s) { return { 'Pending Approval': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
+    statusChip(s) { return { 'Travel Request': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     // the list follows every change by itself: typing waits a moment so it does not search on every key
     queue() { clearTimeout(this.timer); this.busy = true; this.timer = setTimeout(this.go, 380); },
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('travels.index'), q, { preserveState: true, preserveScroll: true, replace: true, onFinish: () => (this.busy = false) }); },

@@ -167,8 +167,8 @@ export default {
     };
   },
   computed: {
-    pageTitle() { return this.t ? this.$t('Edit :r', { r: this.t.reference }) : this.$t('New Travel'); },
-    subtitle() { return this.t ? this.$t('Change the details.') : this.$t('Record a travel. It is held for approval; the ticket agent is owed for it once it is approved.'); },
+    pageTitle() { return this.t ? this.$t('Edit :r', { r: this.t.reference }) : this.$t('New Travel Request'); },
+    subtitle() { return this.t ? this.$t('Change the details.') : this.$t('Make a Travel Request. It waits for approval; the ticket agent is owed for it once it is approved.'); },
     tripTabs() { return [{ key: 'return', label: this.$t('Return trip'), icon: 'refresh', tone: 'sky' }, { key: 'one_way', label: this.$t('One way'), icon: 'forward', tone: 'indigo' }]; },
     allCountries() { return [...new Set([this.homeCountry, ...(this.countries || [])].filter(Boolean))]; },
     international() { const c = (this.form.to_country || '').trim().toLowerCase(); return c !== '' && c !== (this.homeCountry || '').toLowerCase(); },

@@ -29,6 +29,8 @@ class AdjustmentResource extends JsonResource
             'can_change_status' => ! $this->deleted_at && (bool) optional($request->user())->hasRole('Super Admin'),
             'can_approve'  => $this->resource->isPending() && ! $this->deleted_at && Adjustment::userCanApprove($request->user()),
             'reference'    => $this->reference,
+            'items_count'  => $this->when(isset($this->items_count), fn () => (int) $this->items_count),
+            'qty_total'    => $this->when(isset($this->qty_total), fn () => (float) $this->qty_total),
             'warehouse_id' => $this->warehouse_id,
             'extra_attributes' => $this->extra_attributes,
             'created_at'   => $this->created_at,

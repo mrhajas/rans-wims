@@ -17,7 +17,7 @@
     @include('partials.print.watermark')
     @include('partials.print.letterhead')
 
-    @php($statusClass = $t->status === 'Approved' ? 'active' : ($t->status === 'Pending Approval' ? 'warn' : 'inactive'))
+    @php($statusClass = $t->status === 'Approved' ? 'active' : ($t->status === 'Travel Request' ? 'warn' : 'inactive'))
     @php($money = fn ($v) => number_format((float) $v, 2, '.', ','))
     @php($flight = trim(($t->airline ?: '') . ' ' . ($t->flight_number ?: '')))
     @php($retFlight = trim(($t->return_airline ?: $t->airline ?: '') . ' ' . ($t->return_flight_number ?: '')))

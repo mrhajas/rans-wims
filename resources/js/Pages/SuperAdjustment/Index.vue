@@ -65,6 +65,7 @@
               <th>{{ $t('Status') }}</th>
               <th>{{ $t('Project / Warehouse') }}</th>
               <th>{{ $t('Submitted By') }}</th>
+              <th>{{ $t('Difference') }}</th>
               <th>{{ $t('Date') }}</th>
               <th class="lg-sticky-end"></th>
             </tr>
@@ -77,6 +78,15 @@
               </td>
               <td :data-label="$t('Project / Warehouse')" class="sa-wrap">{{ sa.warehouse?.name }}</td>
               <td :data-label="$t('Submitted By')" class="sa-wrap">{{ sa.user?.name }}</td>
+              <td :data-label="$t('Difference')" class="sa-diff">
+                <template v-if="sa.items_count">
+                  <span class="sa-diff-n">{{ sa.items_count }} {{ $t('items') }}</span>
+                  <span v-if="sa.raised_total" class="sa-diff-up" :title="$t('Counted above the system stock')">+{{ $number(sa.raised_total) }}</span>
+                  <span v-if="sa.lowered_total" class="sa-diff-down" :title="$t('Counted below the system stock')">-{{ $number(sa.lowered_total) }}</span>
+                  <span v-if="!sa.raised_total && !sa.lowered_total" class="sa-diff-same">{{ $t('Match') }}</span>
+                </template>
+                <span v-else class="sa-muted">—</span>
+              </td>
               <td :data-label="$t('Date')" class="tabular-nums">{{ $date(sa.date) }}</td>
               <td class="lg-sticky-end" :data-label="$t('Actions')" @click.stop>
                 <div class="lg-actions">
@@ -95,7 +105,7 @@
               </td>
             </tr>
             <tr v-if="!superAdjustments.data.length" class="lg-empty-row">
-              <td class="lg-empty" colspan="6">{{ $t('There is no data to display.') }}</td>
+              <td class="lg-empty" colspan="7">{{ $t('There is no data to display.') }}</td>
             </tr>
           </tbody>
         </table>
@@ -243,4 +253,5 @@ export default {
     grid-template-columns: 1fr;
   }
 }
+.sa-diff { white-space: nowrap; } .sa-diff-n { display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; } .sa-diff-up, .sa-diff-down, .sa-diff-same { display: inline-block; margin: 2px 4px 0 0; padding: 1px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 800; font-variant-numeric: tabular-nums; } .sa-diff-up { color: #166534; background: #dcfce7; } .sa-diff-down { color: #991b1b; background: #fee2e2; } .sa-diff-same { color: #475569; background: #e2e8f0; }
 </style>

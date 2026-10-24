@@ -34,6 +34,9 @@ class SuperAdjustmentResource extends JsonResource
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
 
+            'items_count' => $this->when(isset($this->items_count), fn () => (int) $this->items_count),
+            'raised_total' => $this->when(isset($this->raised_total), fn () => (float) $this->raised_total),
+            'lowered_total' => $this->when(isset($this->lowered_total), fn () => (float) $this->lowered_total),
             'adjustment_session_id' => $this->adjustment_session_id,
             'session' => $this->whenLoaded('adjustmentSession', fn () => $this->adjustmentSession ? ['id' => $this->adjustmentSession->id, 'reference' => $this->adjustmentSession->reference, 'status' => $this->adjustmentSession->status] : null),
             'warehouse' => $this->whenLoaded('warehouse'),

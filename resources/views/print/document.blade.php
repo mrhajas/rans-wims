@@ -20,6 +20,7 @@
     <title>{{ ucwords(strtolower($doc['title'])) }} {{ $doc['reference'] }}</title>
     <meta name="color-scheme" content="light">
     @include('partials.print.styles')
+    @if(!empty($doc['landscape']))<style>@page { size: A4 landscape; margin: 10mm; }</style>@endif
     <style>
         .band { background: {{ $A }}; }
         .status-info { background: #dbeefe; color: #0b6fb8; }
@@ -284,6 +285,37 @@
     @endif
     @endforeach
 
+    @if(!empty($doc['table']))
+    @php($T = $doc['table'])
+    <div class="section-title">@include('print.icon', ['name' => 'package', 'color' => $AD, 'size' => 12]) &nbsp;{{ $T['title'] }}</div>
+    @if(!empty($T['note']))<p style="margin:0 0 6px;font-size:9px;color:#64748b;">{{ $T['note'] }}</p>@endif
+    <table class="items">
+        <thead><tr>
+            <th class="idx">#</th>
+            @foreach($T['cols'] as $c)<th class="{{ ($c['a'] ?? 'r') === 'l' ? '' : 'num' }}">{{ $c['label'] }}</th>@endforeach
+        </tr></thead>
+        <tbody>
+            @forelse($T['rows'] as $n => $row)
+                <tr class="{{ $n % 2 ? 'alt' : '' }}">
+                    <td class="idx">{{ $n + 1 }}</td>
+                    @foreach($row as $cell)
+                        <td class="{{ ($cell['a'] ?? 'r') === 'l' ? '' : 'num' }}" style="@if(!empty($cell['b']))font-weight:700;@endif @if(($cell['tone'] ?? 0) > 0)color:#166534;@elseif(($cell['tone'] ?? 0) < 0)color:#991b1b;@endif">{{ $cell['v'] }}</td>
+                    @endforeach
+                </tr>
+            @empty
+                <tr><td colspan="{{ count($T['cols']) + 1 }}">Nothing to show.</td></tr>
+            @endforelse
+            @if(!empty($T['totals']))
+            <tr class="total-row">
+                <td></td>
+                @foreach($T['totals'] as $cell)
+                    <td @if(!empty($cell['span']))colspan="{{ $cell['span'] }}"@endif class="{{ ($cell['a'] ?? 'r') === 'l' ? '' : 'num' }}" style="@if(($cell['tone'] ?? 0) > 0)color:#166534;@elseif(($cell['tone'] ?? 0) < 0)color:#991b1b;@endif">{{ $cell['v'] }}</td>
+                @endforeach
+            </tr>
+            @endif
+        </tbody>
+    </table>
+    @else
     <div class="section-title">@include('print.icon', ['name' => 'package', 'color' => $AD, 'size' => 12]) &nbsp;Items</div>
     <table class="items">
         <thead>
@@ -292,6 +324,11 @@
                 <th>Item</th>
                 <th>Unit</th>
                 <th class="num">Quantity</th>
+                @if($doc['change_cols'])
+                    <th class="num">Was</th>
+                    <th class="num">Change</th>
+                    <th class="num">Now</th>
+                @endif
                 @if($doc['show_values'])
                     <th class="num">Unit Value</th>
                     <th class="num">Total Value</th>
@@ -311,6 +348,11 @@
                     <td>{{ $line['name'] }}@if(!empty($line['code'])) <span class="code">({{ $line['code'] }})</span>@endif</td>
                     <td>{{ $line['unit'] }}</td>
                     <td class="num">{{ $line['qty'] }}</td>
+                    @if($doc['change_cols'])
+                        <td class="num">{{ $line['was'] ?? '-' }}</td>
+                        <td class="num" style="font-weight:700;color:{{ ($line['change_dir'] ?? 0) > 0 ? '#166534' : (($line['change_dir'] ?? 0) < 0 ? '#991b1b' : '#475569') }}">{{ $line['change'] ?? '-' }}</td>
+                        <td class="num" style="font-weight:700">{{ $line['now'] ?? '-' }}</td>
+                    @endif
                     @if($doc['show_values'])
                         <td class="num">{{ $line['unit_value'] }}</td>
                         <td class="num">{{ $line['total'] }}</td>
@@ -329,6 +371,9 @@
                 <td></td>
                 <td colspan="2">Total</td>
                 <td class="num">{{ $doc['total_qty'] }}</td>
+                @if($doc['change_cols'])
+                    <td></td><td></td><td></td>
+                @endif
                 @if($doc['show_values'])
                     <td></td>
                     <td class="num">{{ $doc['total'] }}</td>
@@ -342,6 +387,12 @@
             </tr>
         </tbody>
     </table>
+
+    @endif
+
+    @if($doc['change_cols'] && !empty($doc['change_note']))
+        <p style="margin:6px 0 0;font-size:10px;color:#64748b">{{ $doc['change_note'] }}</p>
+    @endif
 
     @if($doc['show_values'])
         <div class="amount-card">

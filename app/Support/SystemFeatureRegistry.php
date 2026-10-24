@@ -233,6 +233,14 @@ class SystemFeatureRegistry
                 'route_prefixes' => ['travels.agents.'],
                 'depends_on' => 'travels',
             ],
+            'travel_packages' => [
+                'name' => __('Travel Packages'),
+                'description' => __('Ready-made travel templates (for example Unguja to Pemba) with the amount of the ticket, accommodation, per diem and inside transport. A package starts a Travel Request for the people who travel, and every change of its amounts is kept in its history.'),
+                'module' => __('Finance'),
+                'icon' => 'collection',
+                'route_prefixes' => ['travels.packages.'],
+                'depends_on' => 'travels',
+            ],
             'travel_reports' => [
                 'name' => __('Travel Reports'),
                 'description' => __('Travel register, upcoming travels, by traveller, by destination and agent balances, with print, PDF and Excel.'),

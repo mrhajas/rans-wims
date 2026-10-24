@@ -215,7 +215,7 @@ export default {
     tabs() { return [{ key: 'statement', label: this.$t('Statement'), icon: 'list', tone: 'navy' }, { key: 'payments', label: this.$t('Payments'), icon: 'cash', tone: 'emerald', count: this.payments.length }, { key: 'travels', label: this.$t('Travels'), icon: 'plane', tone: 'sky', count: this.travels.length }, { key: 'opening', label: this.$t('Opening balance'), icon: 'clock', tone: 'amber' }]; },
     currencyOptions() { return [...new Set([...this.balances.map(b => b.currency), ...this.currencies])].map(c => ({ value: c, label: c })); },
     payStatuses() { return [{ value: 'Paid', label: this.$t('Paid') }, { value: 'Pending Voucher', label: this.$t('Pending Voucher') }, { value: 'Released', label: this.$t('Released') }]; },
-    travelStatuses() { return [{ value: 'Approved', label: this.$t('Approved') }, { value: 'Pending Approval', label: this.$t('Pending Approval') }, { value: 'Rejected', label: this.$t('Rejected') }, { value: 'Cancelled', label: this.$t('Cancelled') }]; },
+    travelStatuses() { return [{ value: 'Approved', label: this.$t('Approved') }, { value: 'Travel Request', label: this.$t('Travel Request') }, { value: 'Rejected', label: this.$t('Rejected') }, { value: 'Cancelled', label: this.$t('Cancelled') }]; },
     travelOptions() { return this.travels.filter(t => t.status === 'Approved').map(t => ({ value: t.id, label: t.reference + ' - ' + t.to_place + ' (' + this.dt(t.depart_date) + ')' })); },
     voucherTotal() { const a = Number(this.pay.amount) || 0; return this.pay.currency === 'TZS' ? a : a * (Number(this.pay.exchange_rate) || 0); },
     statementShown() { return this.grep(this.statement, this.q.statement, l => [l.date, l.reference, l.text, l.currency, l.owed, l.paid, l.balance]); },
@@ -232,7 +232,7 @@ export default {
     perr(k) { return (this.$page.props.errors || {})[k]; },
     // instant search: every word typed must be found somewhere in the row
     grep(rows, text, pick) { const w = (text || '').toLowerCase().split(/\s+/).filter(Boolean); if (!w.length) return rows; return rows.filter(r => { const hay = pick(r).filter(v => v !== null && v !== undefined).join(' ').toLowerCase(); return w.every(x => hay.includes(x)); }); },
-    statusChip(s) { return { 'Pending Approval': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
+    statusChip(s) { return { 'Travel Request': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     payChip(s) { return { Paid: 'lg-chip-green', 'Pending Voucher': 'lg-chip-amber', Released: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     availableOf(c) { const b = this.balances.find(x => x.currency === c); return b ? Math.max(0, Number(b.available)) : 0; },
     reload() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('travels.agents.show', this.agent.id), q, { only: ['statement', 'filters'], preserveState: true, preserveScroll: true, replace: true }); },

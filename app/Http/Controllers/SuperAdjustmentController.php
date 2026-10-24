@@ -73,7 +73,15 @@ class SuperAdjustmentController extends Controller
 
         $filters = $request->only('search', 'status', 'session_id');
 
+        // what each count changes: items brought up (raised) and brought down (lowered). An approved count is what its generated Adjustments really added and took away
+        // (the approval compares the count with the stock of that day); a count that is not approved yet is compared with the stock today.
+        $stock = "COALESCE((SELECT s.quantity FROM stocks s WHERE s.item_id = i.item_id AND s.warehouse_id = super_adjustments.warehouse_id AND s.variation_id IS NULL AND s.deleted_at IS NULL LIMIT 1), 0)";
+        $open = fn (string $expr) => "COALESCE((SELECT SUM($expr) FROM super_adjustment_items i WHERE i.super_adjustment_id = super_adjustments.id AND i.deleted_at IS NULL), 0)";
+        $done = fn (string $col) => "COALESCE((SELECT SUM(ai.quantity) FROM adjustment_items ai WHERE ai.adjustment_id = super_adjustments.$col AND ai.deleted_at IS NULL), 0)";
         $superAdjustments = SuperAdjustment::with(['warehouse:id,name,code', 'user:id,name', 'approver:id,name', 'rejecter:id,name', 'approvals.user:id,name', 'adjustmentSession:id,reference,status'])
+            ->select('super_adjustments.*')->withCount('items')
+            ->selectRaw("(CASE WHEN super_adjustments.status = 'Approved' THEN " . $done('created_addition_adjustment_id') . " ELSE " . $open("GREATEST(i.physical_quantity - $stock, 0)") . " END) AS raised_total")
+            ->selectRaw("(CASE WHEN super_adjustments.status = 'Approved' THEN " . $done('created_subtraction_adjustment_id') . " ELSE " . $open("GREATEST($stock - i.physical_quantity, 0)") . " END) AS lowered_total")
             ->when($filters['search'] ?? null, fn ($q, $s) => $q->search($s))
             ->when(ctype_digit((string) ($filters['session_id'] ?? '')), fn ($q) => $q->where('adjustment_session_id', (int) $filters['session_id']))
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
@@ -246,7 +254,7 @@ class SuperAdjustmentController extends Controller
             'user:id,name',
             'approver:id,name',
             'rejecter:id,name',
-            'items.item:id,name,code',
+            'items.item:id,name,code,price',
             'items.unit:id,name,code',
             'attachments',
             'additionAdjustment:id,reference',
@@ -270,6 +278,7 @@ class SuperAdjustmentController extends Controller
                 'item_id' => $i->item_id,
                 'name' => optional($i->item)->name ?? __('(Item removed)'),
                 'code' => optional($i->item)->code,
+                'price' => (float) (optional($i->item)->price ?? 0),
                 'unit' => optional($i->unit)->name,
                 'system_quantity_at_submission' => (float) $i->system_quantity_at_submission,
                 'system_quantity_live' => (float) ($liveStock[$i->item_id] ?? 0),
@@ -299,6 +308,7 @@ class SuperAdjustmentController extends Controller
         return Inertia::render('SuperAdjustment/Show', [
             'superAdjustment' => new SuperAdjustmentResource($super_adjustment),
             'items' => $items,
+            'valueReport' => \App\Services\ValueReport::forSuperAdjustment($super_adjustment),
             'attachments' => $attachments,
             'approval' => $this->approvalPanel($super_adjustment),
             'session' => $this->sessionInfo($super_adjustment),

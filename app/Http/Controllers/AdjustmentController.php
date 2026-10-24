@@ -96,7 +96,7 @@ class AdjustmentController extends Controller
             'filters'     => $filters,
             'stats'       => $this->indexStats(),
             'adjustments' => new AdjustmentCollection(
-                Adjustment::with(['warehouse:id,name', 'user:id,name', 'approver:id,name', 'rejecter:id,name'])->filter($filters)
+                Adjustment::with(['warehouse:id,name', 'user:id,name', 'approver:id,name', 'rejecter:id,name'])->withCount('items')->withSum('items as qty_total', 'quantity')->filter($filters)
                     ->when($filters['status'] ?? null, fn ($q, $status) => $q->status($status))
                     ->when($filters['view'], fn ($q, $view) => match ($view) {
                         'today' => $q->where('created_at', '>=', now()->startOfDay()->toDateTimeString()),
@@ -156,7 +156,7 @@ class AdjustmentController extends Controller
 
     public function show(Request $request, Adjustment $adjustment)
     {
-        $adjustment->load(['items.variations', 'items.item:id,code,name,track_quantity,track_weight', 'warehouse', 'items.unit:id,code,name', 'user:id,name,username', 'approver:id,name', 'rejecter:id,name', 'attachments']);
+        $adjustment->load(['items.variations', 'items.item:id,code,name,price,track_quantity,track_weight', 'warehouse', 'items.unit:id,code,name', 'user:id,name,username', 'approver:id,name', 'rejecter:id,name', 'attachments']);
 
         return $request->json ? array_merge($adjustment->toArray(), [
             'status' => $adjustment->status,
@@ -164,8 +164,12 @@ class AdjustmentController extends Controller
             'can_change_status' => ! $adjustment->deleted_at && $request->user()->hasRole('Super Admin'),
             'approval_locked' => $adjustment->approvalLocked(),
             'approval_locked_message' => $adjustment->approvalLocked() ? Adjustment::reversalBlockedMessage() : null,
+            'differences' => \App\Services\AdjustmentDifferences::for($adjustment),
+            'valueReport' => \App\Services\ValueReport::forAdjustment($adjustment),
         ]) : Inertia::render('Adjustment/Show', [
             'adjustment' => new AdjustmentResource($adjustment),
+            'differences' => \App\Services\AdjustmentDifferences::for($adjustment),
+            'valueReport' => \App\Services\ValueReport::forAdjustment($adjustment),
             'history' => $this->activityHistory(Adjustment::class, $adjustment->id),
         ]);
     }

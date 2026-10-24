@@ -242,6 +242,12 @@ class PermissionRegistry
                     'create-payment-voucher-from-travels' => __('Make a Payment Voucher for a ticket agent from the agent balance (the voucher then waits for approval in the Payment Vouchers module)'),
                     'manage-travel-agents' => __('Set or change the opening balance of a ticket agent (what they were owed before Travels started)'),
                     'manage-travel-settings' => __('Change the Travels settings: currencies, travel types and reminder days'),
+                    'read-travel-packages' => __('See the Travel Packages (the ready-made travels and their amounts)'),
+                    'create-travel-packages' => __('Create a Travel Package'),
+                    'update-travel-packages' => __('Change a Travel Package: its route and amounts, and switch it on or off (every change is kept in its history)'),
+                    'delete-travel-packages' => __('Delete a Travel Package'),
+                    'use-travel-packages' => __('Start a Travel Request from a Travel Package (choose the people and the dates)'),
+                    'audit-travel-packages' => __('See the history of a Travel Package: every change of its amounts and rates, and every request made from it'),
                 ],
             ],
 

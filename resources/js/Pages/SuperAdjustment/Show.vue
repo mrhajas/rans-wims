@@ -18,7 +18,7 @@
         <approval-actions :adjustment="superAdjustment" route-prefix="super-adjustments" />
       </page-header>
 
-      <stat-tiles :items="tiles" />
+      <stat-tiles :items="tiles" compact />
 
       <!-- the Adjustment Session this count belongs to: who started it, from when to when (click to open it) -->
       <component :is="session.can_open ? 'a' : 'div'" v-if="session" :href="session.can_open ? session.url : undefined" :target="session.can_open ? '_blank' : undefined" rel="noopener" class="sa-sess" :class="session.status === 'Open' ? 'is-open' : 'is-ended'">
@@ -114,6 +114,7 @@
             <h2 class="lg-card-title">{{ $t('Physical Stock Count') }}</h2>
             <p class="lg-card-sub">{{ sortedItems.length }} / {{ items.length }} {{ $t('items') }}</p>
           </div>
+          <button type="button" class="lg-btn tone tone-solid" style="--tone: #4f46e5" :disabled="!items.length" @click="reportOpen = true"><span class="tone-ico"><icons name="calculator" class="w-4 h-4" /></span>{{ $t('Value Report') }}</button>
         </header>
 
         <div class="sa-search">
@@ -133,16 +134,16 @@
                   <span class="lg-sort">{{ $t('Unit') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('unit') }}</span></span>
                 </th>
                 <th class="num is-sortable" @click="setItemsSort('system_quantity_at_submission')">
-                  <span class="lg-sort">{{ $t('System (at submission)') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('system_quantity_at_submission') }}</span></span>
+                  <span class="lg-sort">{{ $t('Was (system at submission)') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('system_quantity_at_submission') }}</span></span>
                 </th>
                 <th class="num is-sortable" @click="setItemsSort('system_quantity_live')">
                   <span class="lg-sort">{{ $t('System (now)') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('system_quantity_live') }}</span></span>
                 </th>
                 <th class="num is-sortable" @click="setItemsSort('physical_quantity')">
-                  <span class="lg-sort">{{ $t('Physical Count') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('physical_quantity') }}</span></span>
+                  <span class="lg-sort">{{ $t('Now (counted)') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('physical_quantity') }}</span></span>
                 </th>
                 <th class="num is-sortable" @click="setItemsSort('variance')">
-                  <span class="lg-sort">{{ $t('Variance') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('variance') }}</span></span>
+                  <span class="lg-sort">{{ $t('Difference') }} <span class="sa-sort-indicator">{{ itemsSortIndicator('variance') }}</span></span>
                 </th>
               </tr>
             </thead>
@@ -151,7 +152,8 @@
                 <td class="sa-muted" :data-label="$t('No')">{{ index + 1 }}</td>
                 <td :data-label="$t('Item')">
                   <div class="sa-itemcell">
-                    <span class="lg-main">{{ row.name }}</span>
+                    <a v-if="row.item_id && $can('update-items')" :href="route('items.edit', row.item_id)" target="_blank" rel="noopener" class="lg-main sa-itemlink" :title="$t('Open the item to edit it (new tab)')">{{ row.name }}<icons name="link" class="w-3 h-3 sa-itemlink-ico" /></a>
+                    <span v-else class="lg-main">{{ row.name }}</span>
                     <span class="sa-itemmeta">
                       <span class="sa-muted">({{ row.code }})</span>
                       <span
@@ -167,7 +169,7 @@
                   </div>
                 </td>
                 <td :data-label="$t('Unit')">{{ row.unit }}</td>
-                <td class="num" :data-label="$t('System (at submission)')">{{ $number(row.system_quantity_at_submission) }}</td>
+                <td class="num" :data-label="$t('Was (system at submission)')">{{ $number(row.system_quantity_at_submission) }}</td>
                 <td class="num" :class="{ 'sa-shift-val': stockShifted(row) }" :data-label="$t('System (now)')">
                   <span>
                     {{ $number(row.system_quantity_live) }}
@@ -182,8 +184,8 @@
                     >⚠</span>
                   </span>
                 </td>
-                <td class="num lg-main" :data-label="$t('Physical Count')">{{ $number(row.physical_quantity) }}</td>
-                <td class="num" :data-label="$t('Variance')">
+                <td class="num lg-main" :data-label="$t('Now (counted)')">{{ $number(row.physical_quantity) }}</td>
+                <td class="num" :data-label="$t('Difference')">
                   <span
                     class="sa-variance-pill"
                     :class="variancePillClass(row)"
@@ -203,6 +205,12 @@
           </table>
         </div>
       </section>
+
+      <value-report
+        :show="reportOpen" :title="$t('Value report') + ' - ' + superAdjustment.reference" :subtitle="(superAdjustment.warehouse && superAdjustment.warehouse.name) || ''"
+        :report="valueReport" :print-url="$can('print-super-adjustments') ? route('super-adjustments.value-report.print', superAdjustment.id) : null"
+        :pdf-url="$can('print-super-adjustments') ? route('super-adjustments.value-report.pdf', superAdjustment.id) : null" :excel-url="$can('print-super-adjustments') ? route('super-adjustments.value-report.export', superAdjustment.id) : null" @close="reportOpen = false"
+      />
 
       <section class="lg-card" v-if="attachments.length">
         <header class="lg-card-head">
@@ -268,12 +276,14 @@ import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import ChangeStatus from '@/Shared/Adjustment/ChangeStatus.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import ValueReport from '@/Shared/Adjustment/ValueReport.vue';
 import ApprovalActions from '@/Shared/Adjustment/ApprovalActions.vue';
 
 export default {
-  components: { AdminLayout, TecDialogModal, PageHeader, StatTiles, ChangeStatus, ApprovalActions },
+  components: { AdminLayout, TecDialogModal, PageHeader, StatTiles, ChangeStatus, ApprovalActions, ValueReport },
 
   props: {
+    valueReport: { type: Object, default: null },
     superAdjustment: Object,
     items: Array,
     attachments: Array,
@@ -283,6 +293,7 @@ export default {
 
   data() {
     return {
+      reportOpen: false,
       rejecting: false,
       rejectionReason: '',
       rejectForm: this.$inertia.form({ rejection_reason: '' }),
@@ -304,12 +315,22 @@ export default {
       const d = (this.approval.phases || []).filter(p => p.done).length;
       return d + 1;
     },
+    // what the count changes (or changed) in the stock: items brought up, items brought down, and the net
+    changeTotals() {
+      let added = 0;
+      let removed = 0;
+      (this.items || []).forEach(r => { const v = this.signedOutcomeQuantity(r); if (v > 0) added += v; else if (v < 0) removed += -v; });
+      return { added, removed, net: added - removed };
+    },
     tiles() {
       return [
         { label: this.$t('Warehouse'), value: (this.superAdjustment.warehouse && this.superAdjustment.warehouse.name) || '-', icon: 'building', tone: 'navy' },
         { label: this.$t('Date'), value: this.$date(this.superAdjustment.date), icon: 'calendar', tone: 'amber' },
         { label: this.$t('Submitted by'), value: (this.superAdjustment.user && this.superAdjustment.user.name) || '-', icon: 'user', tone: 'violet' },
         { label: this.$t('Items'), value: (this.items || []).length, icon: 'collection', tone: 'indigo' },
+        { label: this.$t('Added'), value: '+' + this.$number(this.changeTotals.added), icon: 'up', tone: 'emerald' },
+        { label: this.$t('Removed'), value: '-' + this.$number(this.changeTotals.removed), icon: 'down', tone: 'rose' },
+        { label: this.$t('Net change'), value: (this.changeTotals.net > 0 ? '+' : this.changeTotals.net < 0 ? '-' : '') + this.$number(Math.abs(this.changeTotals.net)), icon: 'adjustments', tone: this.changeTotals.net < 0 ? 'rose' : this.changeTotals.net > 0 ? 'emerald' : 'slate' },
       ];
     },
     filteredItems() {
@@ -645,4 +666,5 @@ html.dark .sa-cleared-tag { color: #fda4af; }
 .sa-textarea { width: 100%; padding: 10px 12px; border-radius: 12px; font-size: 0.86rem; border: 1px solid #d1d5db; background: transparent; }
 .sa-textarea:focus { outline: none; border-color: #f43f5e; box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.18); }
 html.dark .sa-textarea { border-color: rgba(255, 255, 255, 0.15); color: #f1f5f9; }
+.sa-itemlink { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; color: inherit; } .sa-itemlink:hover { color: #1d4ed8; text-decoration: underline; } .sa-itemlink-ico { flex: none; opacity: 0.45; } .sa-itemlink:hover .sa-itemlink-ico { opacity: 1; } .sa-itemlink :deep(div) { flex: none; margin: 0; }
 </style>

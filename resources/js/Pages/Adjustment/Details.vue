@@ -50,7 +50,7 @@
         <svg id="barcode-print" class="mx-auto"></svg>
       </div>
 
-      <stat-tiles :items="tiles" />
+      <stat-tiles :items="tiles" compact />
 
       <!-- Info -->
       <section class="lg-card dt-card">
@@ -116,7 +116,9 @@
             <h3 class="lg-card-title">{{ $t('Items') }}</h3>
             <p class="lg-card-sub">{{ (adjustment.items || []).length }} {{ $t('items') }}</p>
           </div>
+          <button v-if="valueReport && valueReport.available" type="button" class="lg-btn tone tone-solid print:hidden" style="--tone: #4f46e5" @click="reportOpen = true"><span class="tone-ico"><icons name="calculator" class="w-4 h-4" /></span>{{ $t('Value Report') }}</button>
         </header>
+        <p v-if="differences && basisNote" class="dt-basis" :class="'is-' + differences.basis"><icons name="info" class="w-4 h-4" /><span>{{ basisNote }}</span></p>
         <div class="lg-table-wrap" @scroll.passive="hideTooltip">
           <table class="lg-table lg-responsive">
             <thead>
@@ -125,6 +127,11 @@
                 <th>{{ $t('Item') }}</th>
                 <th class="num">{{ $t('Quantity') }}</th>
                 <th class="num">{{ $t('Unit') }}</th>
+                <template v-if="differences">
+                  <th class="num dt-th-was">{{ $t('Was') }}</th>
+                  <th class="num dt-th-change">{{ $t('Change') }}</th>
+                  <th class="num dt-th-now">{{ $t('Now') }}</th>
+                </template>
               </tr>
             </thead>
             <tbody>
@@ -138,6 +145,7 @@
                     </td>
                     <td class="num" :data-label="$t('Quantity')">{{ $number(variation.pivot.quantity) }}</td>
                     <td class="num dt-muted" :data-label="$t('Unit')">{{ item.unit ? item.unit.code : '—' }}</td>
+                    <template v-if="differences"><td class="num dt-muted" :data-label="$t('Was')">—</td><td class="num dt-muted" :data-label="$t('Change')">—</td><td class="num dt-muted" :data-label="$t('Now')">—</td></template>
                   </tr>
                 </template>
                 <tr v-else>
@@ -158,15 +166,35 @@
                   </td>
                   <td class="num lg-main" :data-label="$t('Quantity')">{{ $number(item.quantity) }}</td>
                   <td class="num dt-muted" :data-label="$t('Unit')">{{ item.unit ? item.unit.code : '—' }}</td>
+                  <template v-if="differences">
+                    <td class="num" :data-label="$t('Was')"><span class="dt-was" :class="{ 'is-projected': diffOf(item).basis === 'projected' }">{{ qty(diffOf(item).was) }}</span></td>
+                    <td class="num" :data-label="$t('Change')">
+                      <span v-if="diffOf(item).change !== null && diffOf(item).change !== undefined" class="dt-change" :class="diffOf(item).change > 0 ? 'is-up' : diffOf(item).change < 0 ? 'is-down' : 'is-same'">
+                        <icons :name="diffOf(item).change > 0 ? 'up' : diffOf(item).change < 0 ? 'down' : 'tick'" class="w-3 h-3 inline-flex" />{{ signed(diffOf(item).change) }}
+                      </span>
+                      <span v-else class="dt-muted">—</span>
+                    </td>
+                    <td class="num" :data-label="$t('Now')">
+                      <span class="dt-now" :class="{ 'is-projected': diffOf(item).basis === 'projected' }">{{ qty(diffOf(item).now) }}</span>
+                      <small v-if="todayDiffers(item)" class="dt-today">{{ $t('in stock today') }}: {{ qty(diffOf(item).today) }}</small>
+                    </td>
+                  </template>
                 </tr>
               </template>
               <tr v-if="!adjustment.items || !adjustment.items.length" class="lg-empty-row">
-                <td colspan="4" class="lg-empty">{{ $t('There is no data to display.') }}</td>
+                <td :colspan="differences ? 7 : 4" class="lg-empty">{{ $t('There is no data to display.') }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
+
+      <value-report
+        v-if="valueReport && valueReport.available"
+        :show="reportOpen" :title="$t('Value report') + ' - ' + adjustment.reference" :subtitle="adjustment.warehouse ? adjustment.warehouse.name : ''"
+        :report="valueReport" :print-url="$can('print-adjustments') ? route('adjustments.value-report.print', adjustment.id) : null"
+        :pdf-url="$can('print-adjustments') ? route('adjustments.value-report.pdf', adjustment.id) : null" :excel-url="$can('print-adjustments') ? route('adjustments.value-report.export', adjustment.id) : null" @close="reportOpen = false"
+      />
 
       <!-- Attachments -->
       <section v-if="adjustment.attachments && adjustment.attachments.length" class="lg-card dt-card print:hidden">
@@ -224,16 +252,18 @@
 import JsBarcode from 'jsbarcode';
 import TrashedMessage from '@/Shared/TrashedMessage.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import ValueReport from '@/Shared/Adjustment/ValueReport.vue';
 import { adjustmentStatus } from '@/Shared/Adjustment/status';
 
 export default {
-  props: { adjustment: Object },
+  props: { adjustment: Object, differences: { type: Object, default: null }, valueReport: { type: Object, default: null } },
 
-  components: { TrashedMessage, StatTiles },
+  components: { TrashedMessage, StatTiles, ValueReport },
 
   data() {
     return {
       loading: false,
+      reportOpen: false,
       tooltip: { visible: false, text: '', top: 0, left: 0, arrowLeft: 0, width: 260, placement: 'above' },
     };
   },
@@ -260,6 +290,12 @@ export default {
       if (a.status === 'Rejected') return a.rejected_at ? this.$datetime(a.rejected_at) + ' - ' + this.$t('stock was not changed.') : '';
       return this.$t('Stock changes are applied once an Admin approves this record.');
     },
+    basisNote() {
+      const b = this.differences && this.differences.basis;
+      if (b === 'applied') return this.$t('Was is the stock of this warehouse before this adjustment, Now is the stock after it. "In stock today" shows when the stock has moved since.');
+      if (b === 'projected') return this.$t('This record is not approved yet, so nothing has changed. Was is the stock today and Now is what it will be once it is approved.');
+      return this.$t('This record was rejected: the stock was not changed.');
+    },
     isSuperAdjustment() {
       return !!this.adjustment?.extra_attributes?.super_adjustment_reference;
     },
@@ -268,6 +304,11 @@ export default {
         { label: this.$t('Items'), value: (this.adjustment.items || []).length, icon: 'collection', tone: 'violet' },
         { label: this.$t('Type'), value: this.adjustment.type || '-', icon: 'adjustments', tone: 'indigo' },
         { label: this.$t('Attachments'), value: (this.adjustment.attachments || []).length, icon: 'clip', tone: 'slate' },
+        ...(this.differences ? [
+          { label: this.$t('Added'), value: '+' + this.qty(this.differences.totals.added), icon: 'up', tone: 'emerald' },
+          { label: this.$t('Removed'), value: '-' + this.qty(this.differences.totals.removed), icon: 'down', tone: 'rose' },
+          { label: this.$t('Net change'), value: this.signed(this.differences.totals.net), icon: 'adjustments', tone: this.differences.totals.net < 0 ? 'rose' : this.differences.totals.net > 0 ? 'emerald' : 'slate' },
+        ] : []),
       ];
     },
   },
@@ -290,6 +331,10 @@ export default {
   },
 
   methods: {
+    diffOf(item) { return (this.differences && this.differences.rows && this.differences.rows[item.id]) || { change: null, was: null, now: null, today: null, basis: 'none' }; },
+    qty(v) { return v === null || v === undefined ? '—' : this.$number(v); },
+    signed(v) { return v === null || v === undefined ? '—' : (v > 0 ? '+' : v < 0 ? '-' : '') + this.$number(Math.abs(v)); },
+    todayDiffers(item) { const d = this.diffOf(item); return d.basis === 'applied' && d.today !== null && d.today !== undefined && d.now !== null && Math.abs(d.today - d.now) > 0.0001; },
     renderBarcode() {
       JsBarcode('#barcode', this.adjustment.reference, { width: 1.4, margin: 0, fontSize: 0, height: 32, format: 'CODE128' });
       JsBarcode('#barcode-print', this.adjustment.reference, { width: 1, margin: 0, fontSize: 0, height: 20, format: 'CODE128' });
@@ -384,4 +429,10 @@ html.dark .dt-cleared-tag { color: #fda4af; }
   .dt-doc .lg-card { padding: 12px 14px; border-radius: 0; box-shadow: none; border: 1px solid #e2e8f0; background: #fff; }
   .dt-doc .lg-table-wrap { border: 0; }
 }
+.dt-was, .dt-now { font-weight: 800; font-variant-numeric: tabular-nums; } .dt-now { color: #1c3f66; } .dt-was.is-projected, .dt-now.is-projected { font-style: italic; opacity: 0.85; }
+.dt-change { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-weight: 800; font-size: 0.82rem; font-variant-numeric: tabular-nums; } .dt-change.is-up { color: #166534; background: #dcfce7; } .dt-change.is-down { color: #991b1b; background: #fee2e2; } .dt-change.is-same { color: #475569; background: #e2e8f0; } .dt-change :deep(div) { flex: none; margin: 0; }
+.dt-today { display: block; margin-top: 2px; font-size: 0.68rem; font-weight: 700; color: #b45309; }
+.dt-basis { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; color: #1e40af; background: #eff6ff; box-shadow: inset 0 0 0 1px #bfdbfe; } .dt-basis.is-projected { color: #92400e; background: #fffbeb; box-shadow: inset 0 0 0 1px #fde68a; } .dt-basis.is-none { color: #475569; background: #f1f5f9; box-shadow: inset 0 0 0 1px #e2e8f0; } .dt-basis :deep(div) { flex: none; margin: 2px 0 0; }
+.dt-th-was { color: #64748b; } .dt-th-change { color: #7c3aed; } .dt-th-now { color: #1c3f66; }
+html.dark .dt-now { color: #bfdbfe; } html.dark .dt-change.is-same { color: #cbd5e1; background: #26305a; } html.dark .dt-basis { background: #14233a; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); color: #bfdbfe; }
 </style>

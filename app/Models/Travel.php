@@ -14,7 +14,8 @@ class Travel extends Model
 
     protected $table = 'travels';
 
-    public const PENDING = 'Pending Approval';
+    /** A travel that waits for approval is a Travel Request (it was called Pending Approval). */
+    public const PENDING = 'Travel Request';
 
     public const APPROVED = 'Approved';
 
@@ -38,7 +39,7 @@ class Travel extends Model
     protected $setUser = true;
 
     protected $fillable = [
-        'account_id', 'reference', 'hash', 'status', 'trip_type', 'travel_type', 'purpose', 'from_place', 'from_country', 'to_place', 'to_country', 'scope', 'depart_date', 'return_date', 'booking_date',
+        'account_id', 'reference', 'hash', 'status', 'travel_package_id', 'package_name', 'trip_type', 'travel_type', 'purpose', 'from_place', 'from_country', 'to_place', 'to_country', 'scope', 'depart_date', 'return_date', 'booking_date',
         'airline', 'flight_number', 'return_airline', 'return_flight_number', 'booking_reference', 'ticket_agent_contact_id', 'currency', 'exchange_rate', 'ticket_amount',
         'has_visa', 'visa_type', 'visa_country', 'visa_reference', 'visa_agent_contact_id', 'visa_amount', 'total_amount', 'notes', 'user_id',
         'decided_by_user_id', 'decided_at', 'decision_remarks', 'cancelled_by_user_id', 'cancelled_at', 'cancel_reason', 'deleted_by', 'extra_attributes',

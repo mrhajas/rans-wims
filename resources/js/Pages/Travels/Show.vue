@@ -24,7 +24,7 @@
           </div>
         </div>
         <form v-if="asking" class="ac-reason" @submit.prevent="send"><input v-model="reason" :placeholder="asking === 'reject' ? $t('Why is it rejected? (required)') : $t('Why is it cancelled? (required)')" required /><button type="submit" class="lg-btn lg-btn-primary" :disabled="busy"><icons name="tick" class="w-4 h-4" />{{ $t('Confirm') }}</button><button type="button" class="lg-btn t-slate" @click="asking = ''"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button></form>
-        <div v-if="t.status === 'Pending Approval'" class="lg-note lg-note-amber" style="margin-top: 10px"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Waiting for approval. The ticket agent is not owed anything for this travel until it is approved.') }}</span></div>
+        <div v-if="t.status === 'Travel Request'" class="lg-note lg-note-amber" style="margin-top: 10px"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Waiting for approval. The ticket agent is not owed anything for this travel until it is approved.') }}</span></div>
         <div v-if="t.status === 'Rejected'" class="lg-note lg-note-red" style="margin-top: 10px">{{ $t('Rejected') }}<template v-if="t.decided_by"> {{ $t('by') }} {{ t.decided_by }}</template>: {{ t.decision_remarks }}</div>
         <div v-if="t.status === 'Cancelled'" class="lg-note lg-note-amber" style="margin-top: 10px">{{ $t('Cancelled') }}: {{ t.cancel_reason }}</div>
       </section>
@@ -41,6 +41,7 @@
           <div><dt>{{ $t('Departs') }}</dt><dd>{{ $date(t.depart_date) }} <small v-if="t.days_left !== null && t.status !== 'Cancelled' && t.status !== 'Rejected'" class="lg-subtext">{{ t.days_left === 0 ? $t('today') : $t('in :n day(s)', { n: t.days_left }) }}</small></dd></div>
           <div v-if="t.trip_type === 'return'"><dt>{{ $t('Returns') }}</dt><dd>{{ t.return_date ? $date(t.return_date) : '-' }}</dd></div>
           <div v-if="t.travel_type"><dt>{{ $t('Kind of travel') }}</dt><dd>{{ t.travel_type }}</dd></div>
+          <div v-if="t.package_name"><dt>{{ $t('Travel package') }}</dt><dd>{{ t.package_name }}</dd></div>
           <div><dt>{{ $t('Flight') }}</dt><dd>{{ [t.airline, t.flight_number].filter(Boolean).join(' ') || '-' }}</dd></div>
           <div v-if="t.trip_type === 'return' && (t.return_flight_number || t.return_airline)"><dt>{{ $t('Return flight') }}</dt><dd>{{ [t.return_airline || t.airline, t.return_flight_number].filter(Boolean).join(' ') }}</dd></div>
           <div v-if="t.booking_reference"><dt>{{ $t('Booking reference (PNR)') }}</dt><dd>{{ t.booking_reference }}</dd></div>
@@ -129,7 +130,7 @@ export default {
   methods: {
     rate(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 6 }); },
     money(v) { return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
-    statusChip(s) { return { 'Pending Approval': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
+    statusChip(s) { return { 'Travel Request': 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red', Cancelled: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     payChip(s) { return { Paid: 'lg-chip-green', 'Pending Voucher': 'lg-chip-amber', Released: 'lg-chip-slate' }[s] || 'lg-chip-slate'; },
     upload() { this.up.post(route('travels.attach', this.t.id), { forceFormData: true, preserveScroll: true, onSuccess: () => this.up.reset('attachments') }); },
     removeFile(f) { this.$inertia.delete(route('travels.remove-file', [this.t.id, f.id]), { preserveScroll: true }); },

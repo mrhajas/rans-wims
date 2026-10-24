@@ -2496,6 +2496,13 @@ html.dark .lg-chip-indigo { color: #c7d2fe; }
 .lg-stat.is-clickable { text-align: left; cursor: pointer; width: 100%; }
 .lg-stat.is-active { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2), var(--lg-shadow); }
 .lg-stats-tight { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+/* compact tiles: for a record page with many figures (smaller icon, padding and number) so every label and value fits */
+.lg-stats-compact { grid-template-columns: repeat(auto-fit, minmax(min(168px, 100%), 1fr)); gap: 8px; }
+.lg-stats-compact > .lg-stat { padding: 8px 11px; gap: 9px; border-radius: 14px; }
+.lg-stats-compact .lg-stat-ico { width: 32px; height: 32px; border-radius: 10px; }
+.lg-stats-compact .lg-stat-ico > div { width: 16px; height: 16px; }
+.lg-stats-compact .lg-stat-value { font-size: 1rem; }
+.lg-stats-compact .lg-stat-label { font-size: 0.66rem; }
 /* Phones: summary tiles as a compact 2-column grid (one tile per row wasted whole screens); a tile with a long figure
    (amounts) spans the full row so the number is never cut. Very narrow phones get one per row. */
 @media (max-width: 639.98px) {

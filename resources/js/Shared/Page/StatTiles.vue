@@ -1,5 +1,5 @@
 <template>
-  <section v-if="items && items.length" class="lg-stats print:hidden" :class="{ 'lg-stats-tight': items.length > 4 }">
+  <section v-if="items && items.length" class="lg-stats print:hidden" :class="{ 'lg-stats-tight': items.length > 4, 'lg-stats-compact': compact }">
     <component
       :is="item.active !== undefined ? 'button' : 'div'"
       v-for="item in items"
@@ -20,7 +20,7 @@
 
 <script>
 export default {
-  props: { items: { type: Array, default: () => [] } },
+  props: { items: { type: Array, default: () => [] }, compact: { type: Boolean, default: false } },
   emits: ['select'],
   methods: {
     format(v) {

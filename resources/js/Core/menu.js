@@ -520,7 +520,17 @@ const menus = [
         sub_menu: false,
         feature: 'travels',
         permissions: ['create-travels'],
-        lang: { helper: null, main: 'New Travel' },
+        lang: { helper: null, main: 'New Travel Request' },
+      },
+      {
+        name: 'travels.packages',
+        route: 'travels.packages.index',
+        icon: 'collection',
+        hidden: false,
+        sub_menu: false,
+        feature: 'travel_packages',
+        permissions: ['read-travel-packages'],
+        lang: { helper: null, main: 'Travel Packages' },
       },
       {
         name: 'travels.agents',

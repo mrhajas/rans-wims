@@ -56,7 +56,7 @@ class PrintDocuments
 
     private static function base(array $doc): array
     {
-        return $doc + ['parent' => null, 'notes' => null, 'show_values' => true, 'draft' => false, 'stamp_boxes' => false, 'extra_cols' => false, 'tick_col' => false, 'extra_parties' => [], 'gate_security' => false, 'site_receipt' => false, 'copies' => [], 'compact' => false, 'typed_signers' => []];
+        return $doc + ['parent' => null, 'notes' => null, 'show_values' => true, 'draft' => false, 'stamp_boxes' => false, 'extra_cols' => false, 'tick_col' => false, 'change_cols' => false, 'table' => null, 'landscape' => false, 'extra_parties' => [], 'gate_security' => false, 'site_receipt' => false, 'copies' => [], 'compact' => false, 'typed_signers' => []];
     }
 
     public static function checkin(Checkin $checkin): array
@@ -177,11 +177,81 @@ class PrintDocuments
         ]);
     }
 
+    /** The value report of a Super Adjustment or an Adjustment (App\Services\ValueReport): a landscape sheet with the totals up top and one table. */
+    public static function valueReport(array $r, ?\App\Models\User $by = null, ?string $submittedBy = null, ?string $approvedBy = null): array
+    {
+        $t = $r['totals'];
+        $m = fn ($v) => number_format((float) $v, 2);
+        $q = fn ($v) => self::qty($v);
+        $s = fn ($v, $f) => ($v > 0 ? '+' : ($v < 0 ? '-' : '')) . $f(abs($v));
+        $L = $r['labels'];
+        $rows = [];
+        foreach ($r['rows'] as $row) {
+            $rows[] = [
+                ['v' => $row['name'] . (! empty($row['code']) ? ' (' . $row['code'] . ')' : '') . (! empty($row['cleared']) ? ' - cleared' : ''), 'a' => 'l'], ['v' => $row['unit'] ?: '-', 'a' => 'l'], ['v' => $m($row['price'])],
+                ['v' => $q($row['before'])], ['v' => $m($row['before_total'])], ['v' => $q($row['after'])], ['v' => $m($row['after_total'])],
+                ['v' => $s($row['diff'], $q), 'tone' => $row['diff'] <=> 0], ['v' => $s($row['diff_value'], $m), 'tone' => $row['diff_value'] <=> 0, 'b' => true],
+            ];
+        }
+        $super = $r['kind'] === 'super_adjustment';
+
+        return self::base([
+            'accent' => '#4f46e5', 'accent_dark' => '#4338ca', 'accent_soft' => '#eef2ff', 'accent_line' => '#c7d2fe',
+            'icon' => 'sliders', 'title' => 'VALUE REPORT', 'subtitle' => $super ? 'System quantity against the physical count, in quantity and in value' : 'Stock before and after the adjustment, in quantity and in value',
+            'reference' => $r['reference'],
+            'status' => match ($r['status']) {
+                'Approved' => ['label' => 'Approved', 'class' => 'status-active'],
+                'Rejected' => ['label' => 'Rejected', 'class' => 'status-danger'],
+                default => ['label' => $r['status'] === 'Awaiting Phase 2' ? 'Awaiting 2nd approval' : 'Pending Approval', 'class' => 'status-warn'],
+            },
+            'show_values' => false, 'landscape' => true, 'compact' => true,
+            'stats' => [
+                ['icon' => 'package', 'label' => 'Items', 'value' => $t['items']],
+                ['icon' => 'cash', 'label' => $L['before_total'], 'value' => $m($t['before'])],
+                ['icon' => 'cash', 'label' => $L['after_total'], 'value' => $m($t['after'])],
+                ['icon' => 'sliders', 'label' => 'Difference in Value', 'value' => $s($t['diff'], $m)],
+                ['icon' => 'hash', 'label' => 'Above / Below', 'value' => '+' . $m($t['above']) . ' / -' . $m($t['below'])],
+            ],
+            'parties' => [
+                ['title' => $super ? 'Super Adjustment' : 'Adjustment', 'icon' => 'sliders', 'rows' => array_values(array_filter([
+                    ['Warehouse', $r['warehouse'] ?: '-'], ['Date', self::date($r['date'])], ['Status', $r['status']],
+                ]))],
+                ['title' => 'Authorisation', 'icon' => 'user', 'rows' => [['Prepared By', $submittedBy ?: '-'], ['Approved By', $approvedBy ?: '-'], ['Report By', optional($by)->name ?: '-']]],
+            ],
+            'table' => [
+                'title' => 'Items and values', 'note' => $r['basis'] . ' ' . 'The difference of a line is its value after minus its value before; the totals are the sum of the lines.' . ($t['no_price'] ? ' ' . $t['no_price'] . ' item(s) have no unit price in the Items module, so their value is 0.' : ''),
+                'cols' => [
+                    ['label' => 'Item', 'a' => 'l'], ['label' => 'Unit', 'a' => 'l'], ['label' => 'Unit Price'],
+                    ['label' => $L['before']], ['label' => $L['before_total']], ['label' => $L['after']], ['label' => $L['after_total']], ['label' => 'Difference'], ['label' => 'Difference in Value'],
+                ],
+                'rows' => $rows,
+                'totals' => [['v' => 'Totals', 'span' => 3, 'a' => 'l'], ['v' => $q($t['before_qty'])], ['v' => $m($t['before'])], ['v' => $q($t['after_qty'])], ['v' => $m($t['after'])],
+                    ['v' => $s($t['diff_qty'], $q), 'tone' => $t['diff_qty'] <=> 0], ['v' => $s($t['diff'], $m), 'tone' => $t['diff'] <=> 0, 'b' => true]],
+            ],
+            'lines' => [], 'total' => '', 'total_qty' => '', 'notes' => null,
+            'signatures' => [['role' => 'Prepared By', 'name' => $submittedBy, 'date' => self::date($r['date'])], ['role' => 'Approved By', 'name' => $approvedBy, 'date' => $r['status'] === 'Approved' ? self::date($r['date']) : '']],
+            'footer' => 'Value report ' . $r['reference'],
+        ]);
+    }
+
     public static function adjustment(Adjustment $adjustment): array
     {
         [$lines, $total, $totalQty] = self::valuedLines($adjustment->items);
+        // what each line did to the stock: how much there was, the change and how much there is after (see App\Services\AdjustmentDifferences)
+        $diff = \App\Services\AdjustmentDifferences::for($adjustment);
+        $fmt = fn ($v) => $v === null ? '-' : self::qty($v);
+        foreach ($adjustment->items->values() as $n => $item) {
+            $d = $diff['rows'][$item->id] ?? null;
+            if (isset($lines[$n]) && $d) {
+                $lines[$n]['was'] = $fmt($d['was']);
+                $lines[$n]['change'] = $d['change'] === null ? '-' : (($d['change'] > 0 ? '+' : ($d['change'] < 0 ? '-' : '')) . self::qty(abs($d['change'])));
+                $lines[$n]['change_dir'] = $d['change'] === null ? 0 : ($d['change'] <=> 0);
+                $lines[$n]['now'] = $fmt($d['now']);
+            }
+        }
 
         return self::base([
+            'change_cols' => true, 'change_note' => $diff['basis'] === 'projected' ? 'Not approved yet: Was is the stock today and Now is what it will be once approved.' : ($diff['basis'] === 'none' ? 'Rejected: the stock was not changed.' : 'Was and Now are the stock of the warehouse before and after this adjustment.'),
             'accent' => '#7c3aed', 'accent_dark' => '#6d28d9', 'accent_soft' => '#f5f3ff', 'accent_line' => '#ddd6fe',
             'icon' => 'sliders', 'title' => 'STOCK ADJUSTMENT', 'subtitle' => 'Correction to recorded stock levels',
             'reference' => $adjustment->reference,

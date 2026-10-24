@@ -531,6 +531,16 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::get('reports/pdf', [$rp, 'pdf'])->middleware('throttle:20,1,travels.reports.pdf')->name('reports.pdf');
         Route::get('reports/csv', [$rp, 'csv'])->middleware('throttle:20,1,travels.reports.csv')->name('reports.csv');
         Route::get('reports/xlsx', [$rp, 'xlsx'])->middleware('throttle:20,1,travels.reports.xlsx')->name('reports.xlsx');
+        // travel packages: ready-made travels with their amounts, their history, and the Travel Request made from one
+        $pk = Controllers\Travels\PackageController::class;
+        Route::get('packages', [$pk, 'index'])->name('packages.index');
+        Route::post('packages', [$pk, 'store'])->middleware('throttle:60,1,travels.packages.store')->name('packages.store');
+        Route::put('packages/{package}', [$pk, 'update'])->whereNumber('package')->middleware('throttle:60,1,travels.packages.update')->name('packages.update');
+        Route::post('packages/{package}/toggle', [$pk, 'toggle'])->whereNumber('package')->middleware('throttle:60,1,travels.packages.toggle')->name('packages.toggle');
+        Route::delete('packages/{package}', [$pk, 'destroy'])->whereNumber('package')->middleware('throttle:30,1,travels.packages.destroy')->name('packages.destroy');
+        Route::get('packages/{package}/history', [$pk, 'history'])->whereNumber('package')->name('packages.history');
+        Route::get('packages/{package}/request', [$pk, 'requestForm'])->whereNumber('package')->name('packages.request');
+        Route::post('packages/{package}/request', [$pk, 'submitRequest'])->whereNumber('package')->middleware('throttle:30,1,travels.packages.request.store')->name('packages.request.store');
         // ticket agents and visa issuers: balance, opening balance, payments, statement
         Route::get('agents', [$ag, 'index'])->name('agents.index');
         Route::get('agents/payments/{payment}', [$ag, 'paymentShow'])->whereNumber('payment')->name('agents.payments.show');
@@ -1799,6 +1809,13 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('checkins/{checkin}/pdf', [Controllers\CheckinController::class, 'pdf'])->name('checkins.pdf');
     Route::get('checkouts/{checkout}/print', [Controllers\CheckoutController::class, 'print'])->name('checkouts.print');
     Route::get('checkouts/{checkout}/pdf', [Controllers\CheckoutController::class, 'pdf'])->name('checkouts.pdf');
+    // the value report of an adjustment / super adjustment (unit prices, totals in value): names carry print / pdf / export so each use lands in the Download / Print log
+    Route::get('adjustments/{adjustment}/value-report/print', [Controllers\ValueReportController::class, 'adjustmentPrint'])->whereNumber('adjustment')->middleware('throttle:60,1,adjustments.value-report.print')->name('adjustments.value-report.print');
+    Route::get('adjustments/{adjustment}/value-report/pdf', [Controllers\ValueReportController::class, 'adjustmentPdf'])->whereNumber('adjustment')->middleware('throttle:30,1,adjustments.value-report.pdf')->name('adjustments.value-report.pdf');
+    Route::get('adjustments/{adjustment}/value-report/export', [Controllers\ValueReportController::class, 'adjustmentExport'])->whereNumber('adjustment')->middleware('throttle:30,1,adjustments.value-report.export')->name('adjustments.value-report.export');
+    Route::get('super-adjustments/{super_adjustment}/value-report/print', [Controllers\ValueReportController::class, 'superPrint'])->whereNumber('super_adjustment')->middleware('throttle:60,1,super-adjustments.value-report.print')->name('super-adjustments.value-report.print');
+    Route::get('super-adjustments/{super_adjustment}/value-report/pdf', [Controllers\ValueReportController::class, 'superPdf'])->whereNumber('super_adjustment')->middleware('throttle:30,1,super-adjustments.value-report.pdf')->name('super-adjustments.value-report.pdf');
+    Route::get('super-adjustments/{super_adjustment}/value-report/export', [Controllers\ValueReportController::class, 'superExport'])->whereNumber('super_adjustment')->middleware('throttle:30,1,super-adjustments.value-report.export')->name('super-adjustments.value-report.export');
     Route::get('adjustments/{adjustment}/print', [Controllers\AdjustmentController::class, 'print'])->name('adjustments.print');
     Route::get('adjustments/{adjustment}/pdf', [Controllers\AdjustmentController::class, 'pdf'])->name('adjustments.pdf');
     Route::put('adjustments/{adjustment}/approve', [Controllers\AdjustmentController::class, 'approve'])->name('adjustments.approve');

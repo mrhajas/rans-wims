@@ -76,7 +76,7 @@ export default {
     // amounts wear a colour: maroon = owed / cost, green = paid, orange = balance, pending and TZS equivalents
     // a tile that holds money (a currency and an amount) is a total: maroon
     // a travel's status as a soft coloured label (the key comes from the server, so it still works when the shown word is translated)
-    statusTone(key) { return { 'Pending Approval': 'tr-st-pending', Approved: 'tr-st-approved', Rejected: 'tr-st-rejected', Cancelled: 'tr-st-cancelled' }[key] || 'tr-st-cancelled'; },
+    statusTone(key) { return { 'Travel Request': 'tr-st-pending', Approved: 'tr-st-approved', Rejected: 'tr-st-rejected', Cancelled: 'tr-st-cancelled' }[key] || 'tr-st-cancelled'; },
     isMoney(v) { return /^([A-Z]{3} )?-?[\d,]+\.\d{2}$/.test(String(v)); },
     tone(c) {
       if (c.type !== 'money' && c.key !== 'rate') return '';
