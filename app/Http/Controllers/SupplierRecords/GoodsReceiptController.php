@@ -105,7 +105,7 @@ class GoodsReceiptController extends Controller
             'items.*.unit_label' => 'nullable|string|max:30',
             'items.*.received_quantity' => 'required|numeric|min:0',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         // Signatories: when the document setup requires a signature and blocks finalising, refuse to record the receipt without it (nothing changes with the default setup).
@@ -294,7 +294,7 @@ class GoodsReceiptController extends Controller
             'items.*.unit_label' => 'nullable|string|max:30',
             'items.*.received_quantity' => 'required|numeric|min:0',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $grn = DB::transaction(function () use ($request, $id, $data) {

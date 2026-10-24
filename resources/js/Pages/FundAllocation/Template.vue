@@ -16,7 +16,7 @@
       <section class="lg-card ft-card">
         <div class="ft-head">
           <label class="ft-f ft-grow"><span>{{ $t('Sheet title') }}</span><input v-model="form.title" class="ft-in" maxlength="190" :disabled="!can.update" /></label>
-          <label class="ft-f"><span>{{ $t('Date on the template') }}</span><input v-model="form.date" type="date" class="ft-in" :disabled="!can.update" /></label>
+          <label class="ft-f"><span>{{ $t('Date on the template') }}</span><date-picker v-model="form.date" :disabled="!can.update" flush /></label>
           <label class="ft-f"><span>{{ $t('USD rate (TZS per 1 USD)') }}</span><amount-input v-model="form.usd_rate" :decimals="2" :disabled="!can.update" /></label>
         </div>
 

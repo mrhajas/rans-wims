@@ -105,7 +105,7 @@ class SupplierLedgerController extends Controller
             'source' => 'nullable|string|max:190',
             'notes' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $entry = Ledger::recordOpeningBalance($contact, $data);
@@ -246,7 +246,7 @@ class SupplierLedgerController extends Controller
             'warehouse_id' => 'nullable|integer',
             'description' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $entry = Ledger::recordManualEntry($contact, $data);
@@ -268,7 +268,7 @@ class SupplierLedgerController extends Controller
 
         $data = $request->validate([
             'attachments' => 'required|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $entry->saveAttachments($request->file('attachments'), 'ledger-entry');

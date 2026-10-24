@@ -52,10 +52,10 @@
               @click="statusFilter = opt.value"
             >{{ opt.label }}</button>
           </div>
-          <select v-model="moduleFilter" class="fc-select">
+          <css-select v-model="moduleFilter" class="fc-select">
             <option value="">{{ $t('All Modules') }}</option>
             <option v-for="m in modules" :key="m" :value="m">{{ m }}</option>
-          </select>
+          </css-select>
         </div>
       </section>
 

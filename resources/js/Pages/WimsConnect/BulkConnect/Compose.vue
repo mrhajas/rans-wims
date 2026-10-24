@@ -239,10 +239,10 @@
       <template #content>
         <div class="flex gap-2 mb-3">
           <input v-model="contactSearch" type="text" class="bsm-input w-full" :placeholder="$t('Search contacts…')" @input="searchContacts" />
-          <select v-model="contactCategory" class="bsm-input bsm-category-select" @change="searchContacts">
+          <css-select v-model="contactCategory" class="bsm-input bsm-category-select" @change="searchContacts">
             <option value="">{{ $t('All Categories') }}</option>
             <option v-for="cat in contactCategories" :key="cat" :value="cat">{{ cat }}</option>
-          </select>
+          </css-select>
         </div>
         <div class="bsm-contact-list">
           <label v-for="c in contactResults" :key="c.id" class="bsm-contact-row" :class="{ 'bsm-contact-row-disabled': !c.phone }">

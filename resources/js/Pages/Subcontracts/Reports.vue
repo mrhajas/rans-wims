@@ -42,7 +42,7 @@
 
         <search-bar v-model="tq" :placeholder="$t('Find in these results...')" :count="shown.length" />
 
-        <div class="sc-sortbar"><label>{{ $t('Sort by') }}</label><select :value="sort.key || ''" @change="sortKey($event.target.value)"><option value="">{{ $t('Original order') }}</option><option v-for="c in report.columns" :key="c.key" :value="c.key">{{ c.label }}</option></select><button type="button" class="lg-btn t-slate" :disabled="!sort.key" @click="sort.dir = sort.dir === 'asc' ? 'desc' : 'asc'">{{ sort.dir === 'asc' ? $t('Ascending') : $t('Descending') }}</button></div>
+        <div class="sc-sortbar"><label>{{ $t('Sort by') }}</label><css-select :value="sort.key || ''" @change="sortKey($event.target.value)"><option value="">{{ $t('Original order') }}</option><option v-for="c in report.columns" :key="c.key" :value="c.key">{{ c.label }}</option></css-select><button type="button" class="lg-btn t-slate" :disabled="!sort.key" @click="sort.dir = sort.dir === 'asc' ? 'desc' : 'asc'">{{ sort.dir === 'asc' ? $t('Ascending') : $t('Descending') }}</button></div>
         <div class="lg-table-wrap sc-rep-scroll"><table class="lg-table lg-responsive sc-rep-table">
           <thead><tr class="sc-hrow"><sort-th v-for="(c, ci) in report.columns" :key="c.key" :col="c.key" :tone="tone(c, ci)" :num="c.align === 'right'" :sort="sort.key" :dir="sort.dir" @sort="sortBy({ key: $event })">{{ c.label }}</sort-th><th v-if="hasLinks" class="hd-end"></th></tr></thead>
           <tbody>

@@ -378,6 +378,23 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('task-reminders/pdf', [Controllers\TaskReminderController::class, 'pdf'])->name('task-reminders.pdf');
 
     Route::get('feature-unavailable', [Controllers\SystemFeatureController::class, 'unavailable'])->name('feature-unavailable');
+    // Settings > Performance & Data (Super Admin): retention numbers, the activity archive, slow queries, sending in the background
+    Route::get('settings/performance', [Controllers\PerformanceController::class, 'index'])->name('performance.index');
+    Route::put('settings/performance', [Controllers\PerformanceController::class, 'update'])->middleware('throttle:20,1,performance.update')->name('performance.update');
+    Route::post('settings/performance/housekeeping', [Controllers\PerformanceController::class, 'housekeeping'])->middleware('throttle:4,1,performance.housekeeping')->name('performance.housekeeping');
+    Route::get('settings/performance/archive', [Controllers\PerformanceController::class, 'archive'])->middleware('throttle:60,1,performance.archive')->name('performance.archive.list');
+    Route::get('settings/performance/archive/download', [Controllers\PerformanceController::class, 'archiveDownload'])->middleware('throttle:6,1,performance.archive.download')->name('performance.archive.download');
+    Route::get('settings/performance/archive/plan', [Controllers\PerformanceController::class, 'archivePlan'])->middleware('throttle:60,1,performance.archive.plan')->name('performance.archive.plan');
+    Route::get('settings/performance/archive/pdf', [Controllers\PerformanceController::class, 'archivePdf'])->middleware('throttle:6,1,performance.archive.pdf')->name('performance.archive.pdf');
+    Route::post('settings/performance/archive/export', [Controllers\PerformanceController::class, 'archiveExportStart'])->middleware('throttle:6,1,performance.archive.export')->name('performance.archive.export');
+    Route::get('settings/performance/archive/jobs', [Controllers\PerformanceController::class, 'archiveExports'])->middleware('throttle:90,1,performance.archive.jobs')->name('performance.archive.jobs');
+    Route::get('settings/performance/archive/exports/{export}/download', [Controllers\PerformanceController::class, 'archiveExportDownload'])->whereNumber('export')->middleware('throttle:10,1,performance.archive.export.download')->name('performance.archive.export.download');
+    Route::delete('settings/performance/archive/exports/{export}', [Controllers\PerformanceController::class, 'archiveExportDelete'])->whereNumber('export')->name('performance.archive.export.delete');
+    Route::delete('settings/performance/archive', [Controllers\PerformanceController::class, 'archiveClear'])->middleware('throttle:4,1,performance.archive.clear')->name('performance.archive.clear');
+    Route::delete('settings/performance/slow', [Controllers\PerformanceController::class, 'clearSlow'])->name('performance.slow.clear');
+    Route::post('settings/performance/queue/run', [Controllers\PerformanceController::class, 'queueRun'])->middleware('throttle:6,1,performance.queue.run')->name('performance.queue.run');
+    Route::post('settings/performance/queue/retry', [Controllers\PerformanceController::class, 'queueRetry'])->middleware('throttle:6,1,performance.queue.retry')->name('performance.queue.retry');
+    Route::delete('settings/performance/queue/failed', [Controllers\PerformanceController::class, 'queueFlush'])->middleware('throttle:4,1,performance.queue.flush')->name('performance.queue.flush');
     Route::get('system-features', [Controllers\SystemFeatureController::class, 'index'])->name('system-features.index');
     Route::put('system-features/{systemFeature}', [Controllers\SystemFeatureController::class, 'update'])->name('system-features.update');
     Route::get('system-features/reconcile', [Controllers\SystemFeatureController::class, 'reconcile'])->name('system-features.reconcile');

@@ -171,19 +171,19 @@
         <div class="lg-fields">
           <div>
             <label class="sp-label">{{ $t('Type') }}</label>
-            <select v-model="filters.type" class="sp-select"><option :value="null">{{ $t('All Types') }}</option><option v-for="(label, key) in typeLabels" :key="key" :value="key">{{ label }}</option></select>
+            <css-select v-model="filters.type" class="sp-select"><option :value="null">{{ $t('All Types') }}</option><option v-for="(label, key) in typeLabels" :key="key" :value="key">{{ label }}</option></css-select>
           </div>
           <div>
             <label class="sp-label">{{ $t('Project') }}</label>
-            <select v-model="filters.warehouse_id" class="sp-select"><option :value="null">{{ $t('All Projects') }}</option><warehouse-options :items="warehouses" /></select>
+            <css-select v-model="filters.warehouse_id" class="sp-select"><option :value="null">{{ $t('All Projects') }}</option><warehouse-options :items="warehouses" /></css-select>
           </div>
           <div>
             <label class="sp-label">{{ $t('Date From') }}</label>
-            <input type="date" v-model="filters.date_from" class="sp-select" />
+            <date-picker v-model="filters.date_from" flush />
           </div>
           <div>
             <label class="sp-label">{{ $t('Date To') }}</label>
-            <input type="date" v-model="filters.date_to" class="sp-select" />
+            <date-picker v-model="filters.date_to" flush />
           </div>
           <div class="sp-filter-reset">
             <button type="button" class="lg-btn lg-btn-soft" @click="resetFilters">

@@ -218,10 +218,10 @@
                 <span class="fx-split-label">{{ $t('Paid by') }}</span>
                 <div v-for="(l, li) in row.item.lines" :key="l._key" class="fx-pchip" :class="{ 'is-usd': isUsd(l) }">
                   <span v-if="isUsd(l)" class="fx-usdtag"><i class="fx-usd-sign">$</i>USD</span>
-                  <select v-else v-model="l.fund_payment_method_id" class="fx-sel" :disabled="l.is_paid" :aria-label="$t('Payment method')">
+                  <css-select v-else v-model="l.fund_payment_method_id" class="fx-sel" :disabled="l.is_paid" :aria-label="$t('Payment method')">
                     <option :value="null" disabled>{{ $t('Method') }}</option>
                     <option v-for="m in tzsMethods" :key="m.id" :value="m.id">{{ m.short_label }}</option>
-                  </select>
+                  </css-select>
                   <amount-input v-model="l.amount" :disabled="l.is_paid" /><i class="fx-unit-inline">TZS</i>
                   <template v-if="isUsd(l)">
                     <span class="fx-rate-at">@</span>

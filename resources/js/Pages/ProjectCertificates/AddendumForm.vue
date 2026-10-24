@@ -34,7 +34,7 @@
           </div>
           <div>
             <label class="pc-label">{{ $t('Addendum Date') }}</label>
-            <input v-model="form.addendum_date" type="date" class="pc-input" :disabled="!canEdit" />
+            <date-picker v-model="form.addendum_date" :disabled="!canEdit" flush />
           </div>
           <div>
             <label class="pc-label">{{ $t('Reference Number') }}</label>
@@ -42,7 +42,7 @@
           </div>
           <div>
             <label class="pc-label">{{ $t('Effective Date') }}</label>
-            <input v-model="form.effective_date" type="date" class="pc-input" :disabled="!canEdit" />
+            <date-picker v-model="form.effective_date" :disabled="!canEdit" flush />
           </div>
         </div>
       </section>
@@ -134,7 +134,7 @@
         <div class="lg-fields">
           <div>
             <label class="pc-label">{{ $t('Signed Date') }}</label>
-            <input v-model="form.signed_date" type="date" class="pc-input" :disabled="!canEdit" />
+            <date-picker v-model="form.signed_date" :disabled="!canEdit" flush />
           </div>
           <div>
             <label class="pc-label">{{ $t('Signed By') }}</label>

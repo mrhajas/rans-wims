@@ -84,35 +84,35 @@
             </div>
             <div>
               <label class="pml-field-label">{{ $t('Transaction Type') }}</label>
-              <select v-model="form.transaction_type" class="pml-select">
+              <css-select v-model="form.transaction_type" class="pml-select">
                 <option :value="null">{{ $t('All Transactions') }}</option>
                 <option value="checkin">{{ $t('Checked In') }}</option>
                 <option value="checkout">{{ $t('Checked Out') }}</option>
                 <option value="transfer_in">{{ $t('Transfer In') }}</option>
                 <option value="transfer_out">{{ $t('Transfer Out') }}</option>
-              </select>
+              </css-select>
             </div>
             <div>
               <label class="pml-field-label">{{ $t('Status') }}</label>
-              <select v-model="form.status" class="pml-select">
+              <css-select v-model="form.status" class="pml-select">
                 <option :value="null">{{ $t('All Statuses') }}</option>
                 <option value="completed">{{ $t('Completed') }}</option>
                 <option value="draft">{{ $t('Draft') }}</option>
-              </select>
+              </css-select>
             </div>
             <div>
               <label class="pml-field-label">{{ $t('Responsible Person') }}</label>
-              <select v-model="form.user_id" class="pml-select">
+              <css-select v-model="form.user_id" class="pml-select">
                 <option :value="null">{{ $t('Anyone') }}</option>
                 <option v-for="u in availableUsers" :key="u.id" :value="u.id">{{ u.name }}</option>
-              </select>
+              </css-select>
             </div>
             <div>
               <label class="pml-field-label">{{ $t('Supplier / Contact') }}</label>
-              <select v-model="form.contact_id" class="pml-select">
+              <css-select v-model="form.contact_id" class="pml-select">
                 <option :value="null">{{ $t('Anyone') }}</option>
                 <option v-for="c in availableContacts" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              </css-select>
             </div>
           </div>
 

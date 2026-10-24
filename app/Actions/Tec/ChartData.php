@@ -44,7 +44,7 @@ class ChartData
         $end_date = Carbon::parse($this->year . '-' . $this->month . '-01')->endOfMonth();
         $start_date = Carbon::parse($this->year . '-' . $this->month . '-01')->startOfMonth();
 
-        if (env('DB_CONNECTION') == 'sqlite') {
+        if (config('database.default') == 'sqlite') {
             $monthlyCheckins = Checkin::active()->selectRaw(
                 DB::Raw('date, COUNT(*) as total')
             );
@@ -178,7 +178,7 @@ class ChartData
         $end_date = Carbon::parse($this->year . '-01-01')->endOfYear();
         $start_date = Carbon::parse($this->year . '-01-01')->startOfYear();
 
-        if (env('DB_CONNECTION') == 'sqlite') {
+        if (config('database.default') == 'sqlite') {
             $monthlyCheckins = Checkin::active()->selectRaw(
                 DB::Raw("strftime('%m', date) as month, strftime('%Y', date) as year, COUNT(*) as total")
             );

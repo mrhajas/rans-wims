@@ -1618,7 +1618,7 @@ class PaymentVoucherController extends Controller
             'items.*.particulars_remainder' => 'required|string|max:' . PaymentVoucher::PARTICULARS_MAX,
             'items.*.amount' => ['required', 'numeric', 'min:0.01', 'max:' . PaymentVoucher::MAX_LINE_AMOUNT, 'regex:/^\d+(\.\d{1,2})?$/'],
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         // a person assigned to projects can only raise (or move) a voucher for one of those projects, or for the company

@@ -294,7 +294,7 @@ class MaterialReallocationController extends Controller
     {
         $start = Carbon::now()->subMonths(11)->startOfMonth();
 
-        $dateExpression = env('DB_CONNECTION') === 'sqlite'
+        $dateExpression = config('database.default') === 'sqlite'
             ? "strftime('%Y-%m', date_requested)"
             : "DATE_FORMAT(date_requested, '%Y-%m')";
 

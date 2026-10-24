@@ -325,7 +325,7 @@ class ProjectCertificateContractAddendumController extends Controller
             'items.*.quantity' => 'required|numeric|min:0',
             'items.*.unit_rate' => 'required|numeric|min:0',
             'attachments' => 'nullable|array|max:10',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,jpeg,png,pdf,doc,docx,xlsx'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,jpeg,png,pdf,doc,docx,xlsx'),
         ]);
 
         return [

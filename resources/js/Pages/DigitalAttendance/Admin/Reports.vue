@@ -29,7 +29,7 @@
           <div class="min-w-0">
             <div class="lg-card-title">{{ $t('Daily') }}</div>
           </div>
-          <input v-model="dailyDate" type="date" class="rep-input ml-auto" @change="loadDaily" />
+          <date-picker v-model="dailyDate" class="ml-auto" @change="loadDaily" flush />
         </div>
         <div class="lg-table-wrap">
           <table class="lg-table lg-responsive">
@@ -102,8 +102,8 @@
           </div>
         </div>
         <div class="rep-range">
-          <input v-model="customFrom" type="date" class="rep-input" />
-          <input v-model="customTo" type="date" class="rep-input" />
+          <date-picker v-model="customFrom" flush />
+          <date-picker v-model="customTo" flush />
           <button type="button" class="lg-btn lg-btn-primary" @click="loadCustom"><icons name="refresh" class="w-4 h-4" />{{ $t('Run Report') }}</button>
         </div>
         <div class="lg-table-wrap">

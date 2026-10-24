@@ -89,11 +89,20 @@ if (! function_exists('formatNumber')) {
     }
 }
 
+// The file types accepted for attachments: the ATTACHMENT_EXTS setting (config attachments.extensions) when set, else the list the caller names.
+// Read from config, never env() directly, so the configuration can be cached.
+if (! function_exists('attachment_exts')) {
+    function attachment_exts(string $default): string
+    {
+        return config('attachments.extensions') ?: $default;
+    }
+}
+
 // check if demo enabled
 if (! function_exists('demo')) {
     function demo()
     {
-        return env('DEMO', false) || env('WINDOWS', false);
+        return config('app.demo') || config('app.windows');
     }
 }
 
@@ -101,7 +110,7 @@ if (! function_exists('demo')) {
 if (! function_exists('desktopMachine')) {
     function desktopMachine()
     {
-        return env('DESKTOPMACHINE', false);
+        return config('app.desktop_machine');
     }
 }
 

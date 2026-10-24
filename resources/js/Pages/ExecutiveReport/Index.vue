@@ -61,9 +61,9 @@
           <div class="er-fields">
             <div>
               <label class="er-label" for="er-day">{{ $t('Day of Week') }}</label>
-              <select id="er-day" v-model="settingsForm.day" class="er-input">
+              <css-select id="er-day" v-model="settingsForm.day" class="er-input">
                 <option v-for="day in days" :key="day" :value="day">{{ $t(day.charAt(0).toUpperCase() + day.slice(1)) }}</option>
-              </select>
+              </css-select>
             </div>
             <div>
               <label class="er-label" for="er-time">{{ $t('Time') }}</label>

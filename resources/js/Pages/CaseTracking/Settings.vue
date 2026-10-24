@@ -52,12 +52,12 @@
               <span class="lg-tip" :data-tip="$t('Urgency level: higher sorts first')">
                 <input v-model.number="p.level" type="number" min="1" max="10" class="cs-input w-16" :aria-label="$t('Urgency level: higher sorts first')" @change="savePriority(p)" />
               </span>
-              <select v-model="p.color" class="cs-input" @change="savePriority(p)">
+              <css-select v-model="p.color" class="cs-input" @change="savePriority(p)">
                 <option value="slate">{{ $t('Slate') }}</option>
                 <option value="amber">{{ $t('Amber') }}</option>
                 <option value="rose">{{ $t('Rose') }}</option>
                 <option value="red">{{ $t('Red') }}</option>
-              </select>
+              </css-select>
               <label class="cs-toggle">
                 <input type="checkbox" v-model="p.is_active" @change="savePriority(p)" />
                 <span>{{ $t('Active') }}</span>
@@ -69,12 +69,12 @@
           <div class="cs-add flex-wrap">
             <input v-model="newPriority.name" type="text" class="cs-input flex-1" :placeholder="$t('New priority name…')" />
             <input v-model.number="newPriority.level" type="number" min="1" max="10" class="cs-input w-16" :placeholder="$t('Level')" />
-            <select v-model="newPriority.color" class="cs-input">
+            <css-select v-model="newPriority.color" class="cs-input">
               <option value="slate">{{ $t('Slate') }}</option>
               <option value="amber">{{ $t('Amber') }}</option>
               <option value="rose">{{ $t('Rose') }}</option>
               <option value="red">{{ $t('Red') }}</option>
-            </select>
+            </css-select>
             <button type="button" class="lg-btn lg-btn-primary" @click="addPriority"><icons name="plus" class="w-4 h-4" /> {{ $t('Add') }}</button>
           </div>
         </section>

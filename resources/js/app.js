@@ -14,7 +14,7 @@ import Boolean from '@/Shared/Boolean.vue';
 import Loading from '@/Shared/Loading.vue';
 import OfflineLock from '@/Shared/OfflineLock.vue';
 import OfflineReportNotice from '@/Shared/OfflineReportNotice.vue';
-import { LANGUAGES, SUPPORT_LOCALES } from '@/Core/i18n';
+import { LANGUAGES, SUPPORT_LOCALES, loadLocale } from '@/Core/i18n';
 import { initIdleLogout } from '@/Core/idleLogout';
 import IdleLogoutModal from '@/Shared/IdleLogoutModal.vue';
 import GlobalDialog from '@/Shared/GlobalDialog.vue';
@@ -27,6 +27,8 @@ import { initFieldErrors } from '@/Core/fieldErrors';
 import { initAutoNumber, setPagination } from '@/Core/autoNumber';
 import { initSaveProgress } from '@/Core/saveProgress';
 import SaveProgress from '@/Shared/SaveProgress.vue';
+import CssSelect from '@/Shared/CssSelect.vue';
+import DatePicker from '@/Shared/DatePicker.vue';
 
 import { useI18n } from 'vue-i18n';
 import { createApp, h } from 'vue';
@@ -121,12 +123,8 @@ createInertiaApp({
   title: title => `${title} - ${appName}`,
   resolve: name => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
   async setup({ el, App, props, plugin }) {
-    for await (const lang of SUPPORT_LOCALES) {
-      let messages = await import(`../../lang/${lang}.json`);
-      messages = JSON.parse(JSON.stringify(messages));
-      messages = { ...messages, ...messages?.default, default: 'default' };
-      i18n.global.setLocaleMessage(lang, messages);
-    }
+    // only the person's own language is downloaded now (the rest on switching)
+    await loadLocale(window.Locale);
 
     let app = createApp({
       setup() {
@@ -161,6 +159,8 @@ createInertiaApp({
       .component('Head', Head)
       .component('Link', Link)
       .component('Icons', Icons)
+      .component('CssSelect', CssSelect)
+      .component('DatePicker', DatePicker)
       .component('Boolean', Boolean)
       .component('Loading', Loading)
       .component('OfflineLock', OfflineLock)

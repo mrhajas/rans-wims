@@ -234,6 +234,44 @@ class PrintDocuments
         ]);
     }
 
+    /**
+     * The activity archive as a WIMS document (landscape): one part of the archive, with the period and filters it was made for. $m: part, parts, first, last (row numbers of
+     * this part), total, period, log, search; $rows: [date, log, description, by, record] per line.
+     */
+    public static function activityArchive(array $m, array $rows, ?string $by = null): array
+    {
+        $cells = [];
+        foreach ($rows as $r) {
+            $cells[] = [['v' => $r[0], 'a' => 'l', 'nw' => true], ['v' => $r[1] ?: '-', 'a' => 'l', 'nw' => true], ['v' => $r[2], 'a' => 'l'], ['v' => $r[3] ?: '-', 'a' => 'l', 'nw' => true], ['v' => $r[4] ?: '-', 'a' => 'l', 'nw' => true]];
+        }
+
+        return self::base([
+            'accent' => '#0f766e', 'accent_dark' => '#115e59', 'accent_soft' => '#f0fdfa', 'accent_line' => '#99f6e4',
+            'icon' => 'file', 'title' => 'ACTIVITY ARCHIVE', 'subtitle' => 'History moved out of the live activity log, kept for the record',
+            'reference' => $m['parts'] > 1 ? 'Part ' . $m['part'] . ' of ' . $m['parts'] : 'Complete',
+            'status' => ['label' => $m['parts'] > 1 ? 'Part ' . $m['part'] . '/' . $m['parts'] : 'Complete', 'class' => 'status-info'],
+            'show_values' => false, 'landscape' => true, 'compact' => true,
+            'stats' => [
+                ['icon' => 'hash', 'label' => 'Records in this file', 'value' => number_format(count($rows))],
+                ['icon' => 'package', 'label' => 'Records in all', 'value' => number_format($m['total'])],
+                ['icon' => 'calendar', 'label' => 'Period', 'value' => $m['period']],
+                ['icon' => 'note', 'label' => 'Log / words', 'value' => ($m['log'] ?: 'All logs') . ($m['search'] ? ' / "' . $m['search'] . '"' : '')],
+            ],
+            'parties' => [
+                ['title' => 'Report', 'icon' => 'file', 'rows' => [['Records', number_format($m['first']) . ' to ' . number_format($m['last']) . ' of ' . number_format($m['total'])], ['Period', $m['period']], ['Generated', now()->format('d/m/Y H:i')]]],
+                ['title' => 'Prepared by', 'icon' => 'user', 'rows' => [['Name', $by ?: '-']]],
+            ],
+            'table' => [
+                'title' => 'Activity history', 'note' => 'Oldest first. Nothing in this list was deleted: it moved from the live activity log to the archive after the retention period set in Settings.', 'start' => max(0, $m['first'] - 1),
+                'cols' => [['label' => 'Date', 'a' => 'l'], ['label' => 'Log', 'a' => 'l'], ['label' => 'What happened', 'a' => 'l'], ['label' => 'Done by', 'a' => 'l'], ['label' => 'Record', 'a' => 'l']],
+                'rows' => $cells,
+            ],
+            'lines' => [], 'total' => '', 'total_qty' => '', 'notes' => null,
+            'signatures' => [['role' => 'Prepared By', 'name' => $by, 'date' => now()->format('d/m/Y')]],
+            'footer' => 'Activity archive' . ($m['parts'] > 1 ? ' part ' . $m['part'] . ' of ' . $m['parts'] : ''),
+        ]);
+    }
+
     public static function adjustment(Adjustment $adjustment): array
     {
         [$lines, $total, $totalQty] = self::valuedLines($adjustment->items);

@@ -186,7 +186,7 @@ class ProjectCertificateContractController extends Controller
             'contract_start_date' => 'nullable|date',
             'contract_end_date' => 'nullable|date|after_or_equal:contract_start_date',
             'attachments' => 'nullable|array|max:10',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,jpeg,png,pdf,doc,docx,xlsx'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,jpeg,png,pdf,doc,docx,xlsx'),
             // A contract can now be co-funded by more than one client, each
             // paying in their own currency — see the migration and
             // ProjectCertificateContractClient's own docblock.

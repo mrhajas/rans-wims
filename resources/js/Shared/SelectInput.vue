@@ -1,17 +1,17 @@
 <template>
   <div class="col-span-6 sm:col-span-4 relative" :class="{ 'mb-2': size != 'small' }">
     <tec-label v-if="label" :for="id" :value="label" />
-    <select
+    <css-select
       :id="id"
       ref="input"
       v-bind="$attrs"
       v-model="selected"
       :placeholder="placeholder"
-      :class="{ 'border-red-500': error, 'py-0 h-8': size == 'small', 'mt-1': label }"
-      class="w-full border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
+      :class="{ 'is-bad': error, 'py-0 h-8': size == 'small', 'mt-1': label }"
+      class="w-full"
     >
       <slot />
-    </select>
+    </css-select>
     <!-- <div class="relative mt-1">
       <select
         class="appearance-none w-full border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
@@ -30,10 +30,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import TecLabel from '@/Jetstream/Label.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
+import CssSelect from '@/Shared/CssSelect.vue';
 
 export default {
   emits: ['update:modelValue'],
-  components: { TecLabel, TecInputError },
+  components: { TecLabel, TecInputError, CssSelect },
   props: {
     id: {
       type: String,
@@ -63,11 +64,10 @@ export default {
   },
   methods: {
     focus() {
-      this.$refs.input.focus();
+      const el = this.$refs.input && (this.$refs.input.$refs.btn || this.$refs.input.$el);
+      el && el.focus && el.focus();
     },
-    select() {
-      this.$refs.input.select();
-    },
+    select() {},
   },
 };
 </script>

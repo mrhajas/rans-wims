@@ -62,14 +62,14 @@
             <button type="button" :class="{ 'is-on': view === 'list' }" @click="setView('list')"><icons name="list" class="w-4 h-4" />{{ $t('List') }}</button>
           </div>
           <label class="ar-pagesize"><span>{{ $t('Sort') }}</span>
-            <select :value="form.sort || ''" @change="chooseSort($event.target.value)">
+            <css-select :value="form.sort || ''" @change="chooseSort($event.target.value)">
               <option value="">{{ $t('Newest first') }}</option>
               <option v-for="c in sortChoices" :key="c.key" :value="c.key">{{ c.label }}</option>
-            </select>
+            </css-select>
             <button v-if="form.sort" type="button" class="lg-icon-btn lg-tip" :data-tip="form.direction === 'asc' ? $t('Ascending') : $t('Descending')" :aria-label="$t('Toggle sort direction')" @click="form.direction = form.direction === 'asc' ? 'desc' : 'asc'"><icons name="chevron-down" class="w-4 h-4" :class="{ 'rotate-180': form.direction === 'asc' }" /></button>
           </label>
           <label class="ar-pagesize"><span>{{ $t('Per page') }}</span>
-            <select v-model.number="form.per_page" @change="apply"><option v-for="n in pageSizes" :key="n" :value="n">{{ n }}</option></select>
+            <css-select v-model.number="form.per_page" @change="apply"><option v-for="n in pageSizes" :key="n" :value="n">{{ n }}</option></css-select>
           </label>
           <div class="ar-cols">
             <button type="button" class="lg-btn lg-btn-soft ar-small" @click="showCols = !showCols"><icons name="table" class="w-4 h-4" />{{ $t('Columns') }}</button>

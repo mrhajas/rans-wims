@@ -83,9 +83,9 @@
             </p>
             <div v-if="agreementOptionsFor(item).length" class="lbr-agreement-box mb-3">
               <label class="lbr-label">{{ $t('Workforce Agreement') }}</label>
-              <select v-model="item.workforce_agreement_id" class="lbr-select" @change="onAgreementChanged(item)">
+              <css-select v-model="item.workforce_agreement_id" class="lbr-select" @change="onAgreementChanged(item)">
                 <option v-for="a in agreementOptionsFor(item)" :key="a.id" :value="a.id">{{ a.reference }}: {{ $t('Agreed') }} {{ money(a.agreed_amount) }}</option>
-              </select>
+              </css-select>
               <p v-if="selectedAgreementFor(item)" class="lbr-agreement-hint">
                 {{ $t('Paid') }}: <strong>{{ money(selectedAgreementFor(item).total_paid) }}</strong>
                 &nbsp;·&nbsp;
@@ -109,11 +109,11 @@
             <div class="lg-fields lbr-rate-grid">
               <div class="mb-2">
                 <label class="lbr-label">{{ $t('Rate Type') }}</label>
-                <select v-model="item.rate_type" class="lbr-select mt-1">
+                <css-select v-model="item.rate_type" class="lbr-select mt-1">
                   <option value="day">{{ $t('Per Day') }}</option>
                   <option value="hour">{{ $t('Per Hour') }}</option>
                   <option value="fixed">{{ $t('Fixed') }}</option>
-                </select>
+                </css-select>
               </div>
               <div v-if="item.rate_type === 'day'"><text-input type="number" :label="$t('Days')" v-model="item.days" /></div>
               <div v-if="item.rate_type === 'hour'"><text-input type="number" :label="$t('Hours')" v-model="item.hours" /></div>

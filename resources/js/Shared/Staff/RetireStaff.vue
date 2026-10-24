@@ -35,7 +35,7 @@
             </label>
           </div>
           <label class="rs-label">{{ $t('Retirement date') }}</label>
-          <input v-model="form.retired_at" type="date" class="rs-input" :class="{ bad: errors.retired_at }" />
+          <date-picker v-model="form.retired_at" :class="{ bad: errors.retired_at }" flush />
           <p v-if="errors.retired_at" class="rs-err">{{ errors.retired_at }}</p>
           <label class="rs-label">{{ $t('Note (optional)') }}</label>
           <textarea v-model="form.note" rows="2" maxlength="2000" class="rs-input" :placeholder="$t('For example: reached retirement age, agreed early retirement...')"></textarea>

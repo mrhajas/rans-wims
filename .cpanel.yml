@@ -10,7 +10,10 @@ deployment:
     - for f in public/*; do if [ "$f" != "public/index.php" ]; then cp -a "$f" /home/ranscoco/wims.ransco.co.tz/public/ || exit 1; fi; done >> /home/ranscoco/deploy-log.txt 2>&1
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan migrate --force >> /home/ranscoco/deploy-log.txt 2>&1
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan optimize:clear >> /home/ranscoco/deploy-log.txt 2>&1
-    # rebuild the route table and the compiled pages once per deploy, so no visitor pays for it (config is NOT cached: the program still reads some settings straight from .env)
+    # rebuild the route table and the compiled pages once per deploy, so no visitor pays for it (the settings cache is optional, see below)
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan route:cache >> /home/ranscoco/deploy-log.txt 2>&1 || true
+    # OPTIONAL speed-up, off by default: when the empty file /home/ranscoco/config-cache.on exists, the settings are also cached at deploy (faster start of every request).
+    # Then a change made by hand in .env only takes effect after the next deploy (or `php artisan config:clear`). Delete the file to switch it off again.
+    - if [ -f /home/ranscoco/config-cache.on ]; then /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan config:cache >> /home/ranscoco/deploy-log.txt 2>&1 || true; fi
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan view:cache >> /home/ranscoco/deploy-log.txt 2>&1 || true
     - /opt/cpanel/ea-php82/root/usr/bin/php /home/ranscoco/wims.ransco.co.tz/artisan simulation:sync >> /home/ranscoco/deploy-log.txt 2>&1 || true

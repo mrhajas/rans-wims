@@ -77,13 +77,13 @@
       <!-- Phones show the list as cards, which have no clickable column headers - so sorting gets its own control. -->
       <div class="lg-sortbar md:hidden print:hidden">
         <label for="item-sort">{{ $t('Sort by') }}</label>
-        <select id="item-sort" v-model="form.sort">
+        <css-select id="item-sort" v-model="form.sort">
           <option :value="null">{{ $t('Default') }}</option>
           <option value="name">{{ $t('Name') }}</option>
           <option value="type">{{ $t('Type') }}</option>
           <option value="price">{{ $t('Item Price') }}</option>
           <option value="quantity">{{ $t('Quantity') }}</option>
-        </select>
+        </css-select>
         <button type="button" :disabled="!form.sort" :aria-label="$t('Reverse order')" @click="form.direction = form.direction === 'asc' ? 'desc' : 'asc'">
           <icons name="chevron-down" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': form.direction === 'asc' }" />
         </button>

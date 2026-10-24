@@ -70,6 +70,12 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # A picture, style, script or font that does not exist is answered with a plain 404 right here. Without this every missing file (a profile photo not yet
+    # uploaded, the optional login logo) started the whole application only to show a 404 page, which took up to two seconds each.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(images|assets|icons|build|vendor)/.+\.(png|jpe?g|gif|svg|webp|ico|css|js|map|woff2?|ttf|eot)$ - [R=404,L]
+
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f

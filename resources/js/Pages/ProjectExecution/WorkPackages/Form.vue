@@ -72,15 +72,15 @@
                     <tec-input type="text" class="w-full" v-model="row.category" placeholder="Foundation, Electrical..." />
                   </td>
                   <td :data-label="$t('Priority')">
-                    <select v-model="row.priority" class="w-full rounded-md border-gray-300 text-sm">
+                    <css-select v-model="row.priority" class="w-full rounded-md border-gray-300 text-sm">
                       <option v-for="p in priorities" :key="p" :value="p">{{ $t(p) }}</option>
-                    </select>
+                    </css-select>
                   </td>
                   <td :data-label="$t('Engineer')">
-                    <select v-model="row.engineer_id" class="w-full rounded-md border-gray-300 text-sm">
+                    <css-select v-model="row.engineer_id" class="w-full rounded-md border-gray-300 text-sm">
                       <option :value="null">-</option>
                       <option v-for="e in engineers" :key="e.id" :value="e.id">{{ e.name }}</option>
-                    </select>
+                    </css-select>
                   </td>
                   <td :data-label="$t('Planned Start')">
                     <date-picker class="w-full" v-model="row.planned_start" />

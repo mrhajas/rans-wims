@@ -197,7 +197,7 @@ class PaymentVoucherBatchController extends Controller
             'rows.*.reference' => 'nullable|string|max:190',
             'rows.*.remarks' => 'nullable|string|max:500',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         // a person assigned to projects can only raise vouchers for one of those projects, or for the company

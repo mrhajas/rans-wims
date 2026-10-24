@@ -29,14 +29,14 @@
               <icons name="calendar" class="bsm-date-icon" />
               <div class="min-w-0">
                 <span class="bsm-date-caption">{{ $t('From') }}</span>
-                <input v-model="form.date_from" type="date" class="bsm-date-input" />
+                <date-picker v-model="form.date_from" flush />
               </div>
             </div>
             <div class="bsm-date-wrap">
               <icons name="calendar" class="bsm-date-icon" />
               <div class="min-w-0">
                 <span class="bsm-date-caption">{{ $t('To') }}</span>
-                <input v-model="form.date_to" type="date" class="bsm-date-input" />
+                <date-picker v-model="form.date_to" flush />
               </div>
             </div>
           </div>

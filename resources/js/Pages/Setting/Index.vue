@@ -35,6 +35,18 @@
             <p class="lg-note lg-note-blue"><icons name="info" class="w-4 h-4" />{{ $t('Disabling a module hides it from navigation and blocks it server-side for everyone else. No data is ever deleted.') }}</p>
           </section>
 
+          <!-- Super Admin: Performance & Data -->
+          <section v-if="$super" id="st-performance" class="lg-card">
+            <header class="lg-card-head">
+              <span class="lg-card-ico lg-ico-emerald"><icons name="chart-bar" class="w-5 h-5" /></span>
+              <div class="min-w-0">
+                <h2 class="lg-card-title">{{ $t('Performance & Data') }}</h2>
+                <p class="lg-card-sub">{{ $t('How long history is kept, the activity archive, slow queries and sending messages in the background.') }}</p>
+              </div>
+              <Link :href="route('performance.index')" class="lg-btn lg-btn-primary st-card-action">{{ $t('Open Performance & Data') }}</Link>
+            </header>
+          </section>
+
           <!-- Main settings form -->
           <form @submit.prevent="submit" class="st-form">
             <section id="st-general" class="lg-card">

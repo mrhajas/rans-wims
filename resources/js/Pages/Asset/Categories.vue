@@ -78,10 +78,10 @@
           </div>
           <div class="lg-span-all" v-if="!form.parent_id_locked">
             <label class="ac-label">{{ $t('Parent Group') }}</label>
-            <select v-model="form.parent_id" class="ac-input">
+            <css-select v-model="form.parent_id" class="ac-input">
               <option :value="null">{{ $t('(Top-level group)') }}</option>
               <option v-for="g in categories" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
+            </css-select>
           </div>
         </div>
         <div class="ac-modal-foot">

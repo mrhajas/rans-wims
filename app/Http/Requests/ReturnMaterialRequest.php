@@ -21,7 +21,7 @@ class ReturnMaterialRequest extends FormRequest
             'remarks' => 'nullable|string',
 
             'attachments' => 'nullable|array',
-            'attachments.*' => 'mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
 
             'items' => 'required|array|min:1',
             'items.*.issue_transaction_item_id' => 'required|exists:issue_transaction_items,id',

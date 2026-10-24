@@ -57,7 +57,7 @@ class SupplierReconciliationController extends Controller
             'reason' => 'nullable|string|in:' . implode(',', SupplierReconciliation::REASONS),
             'notes' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $wimsBalance = Ledger::balance($contact->id);
@@ -129,7 +129,7 @@ class SupplierReconciliationController extends Controller
 
         $data = $request->validate([
             'attachments' => 'required|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $reconciliation->saveAttachments($request->file('attachments'), 'supplier-statement');

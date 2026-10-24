@@ -241,7 +241,7 @@
         <template #title><span class="cl-mtitle">{{ compTitle }}</span></template>
         <template #content>
           <p class="cl-mtext">{{ compText }}</p>
-          <label v-if="comp.action === 'complete'" class="cl-mlabel">{{ $t('Completion date') }}<input v-model="comp.date" type="date" :max="todayStr" /></label>
+          <label v-if="comp.action === 'complete'" class="cl-mlabel">{{ $t('Completion date') }}<date-picker v-model="comp.date" :max="todayStr" flush /></label>
           <label class="cl-mlabel">{{ compLabel }}<textarea v-model="comp.note" rows="3" maxlength="1000"></textarea></label>
           <span v-if="err('reason') || err('actual_completion') || err('agreement')" class="cl-merr">{{ err('reason') || err('actual_completion') || err('agreement') }}</span>
         </template>

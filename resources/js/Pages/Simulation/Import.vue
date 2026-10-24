@@ -7,9 +7,9 @@
       <template v-if="tab === 'records'">
         <section class="lg-card">
           <div class="sim-bar">
-            <div class="ac-f"><label>{{ $t('What to import') }}</label><select v-model="module" @change="reset"><option v-for="m in modules" :key="m.key" :value="m.key">{{ m.label }}</option></select></div>
+            <div class="ac-f"><label>{{ $t('What to import') }}</label><css-select v-model="module" @change="reset"><option v-for="m in modules" :key="m.key" :value="m.key">{{ m.label }}</option></css-select></div>
             <div class="ac-f sim-grow"><label>{{ $t('Search production') }}</label><input v-model="q" type="search" :placeholder="$t('Name, reference or words')" @input="debounce" /></div>
-            <div v-if="current && current.filter" class="ac-f"><label>{{ current.filter.label }}</label><select v-model="filter" @change="load(1)"><option value="">{{ $t('Any') }}</option><option v-for="f in found.filters" :key="f" :value="f">{{ f }}</option></select></div>
+            <div v-if="current && current.filter" class="ac-f"><label>{{ current.filter.label }}</label><css-select v-model="filter" @change="load(1)"><option value="">{{ $t('Any') }}</option><option v-for="f in found.filters" :key="f" :value="f">{{ f }}</option></css-select></div>
           </div>
           <div class="lg-table-wrap"><table class="lg-table lg-responsive">
             <thead><tr><th style="width: 40px"><input type="checkbox" :checked="allOnPage" :disabled="!found.rows.length" @change="togglePage($event.target.checked)" :aria-label="$t('Select all on this page')" /></th><th>{{ $t('Record') }}</th><th>{{ $t('Details') }}</th><th></th></tr></thead>
@@ -61,7 +61,7 @@
       <section v-else-if="tab === 'file'" class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-teal"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Spreadsheet') }}</h2><p class="lg-card-sub">{{ $t('Excel or CSV of planned or fictional records. Every row is checked first; nothing is saved unless all rows are fine.') }}</p></div></header>
         <div class="sim-bar">
-          <div class="ac-f"><label>{{ $t('Kind of record') }}</label><select v-model="kind"><option v-for="k in kinds" :key="k.key" :value="k.key">{{ k.label }}</option></select></div>
+          <div class="ac-f"><label>{{ $t('Kind of record') }}</label><css-select v-model="kind"><option v-for="k in kinds" :key="k.key" :value="k.key">{{ k.label }}</option></css-select></div>
           <div class="ac-f sim-grow"><label>{{ $t('File') }} (.xlsx, .csv)</label><input type="file" accept=".xlsx,.csv,.txt" @change="file = $event.target.files[0]; fileResult = null" /></div>
         </div>
         <p class="lg-sub">{{ $t('First row names the columns') }}: <b>{{ (kinds.find(k => k.key === kind) || { columns: [] }).columns.join(', ') }}</b>. <a :href="route('simulation.import.template', kind)">{{ $t('Download a template') }}</a></p>

@@ -399,7 +399,7 @@
 import { groupWarehouses, progressOf } from '@/Core/warehouseGroups';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
-import { LANGUAGES } from '@/Core/i18n.js';
+import { LANGUAGES, loadLocale } from '@/Core/i18n.js';
 import { SITE_ENGINEER_ROLES } from '@/Core/siteEngineerRoles';
 import QuickCreateMenu from '@/Shared/Top/QuickCreateMenu.vue';
 import TecDropdown from '@/Jetstream/Dropdown.vue';
@@ -860,8 +860,7 @@ export default {
       this.$inertia.visit('/language/' + lang, {
         onFinish: async () => {
           window.Locale = lang;
-          // let messages = await import(`../../../../lang/${lang}.json`);
-          // this.$root.$i18n.setLocaleMessage(lang, messages);
+          await loadLocale(lang);
           document.querySelector('html').setAttribute('lang', lang);
           this.$root.$i18n.locale = lang;
         },

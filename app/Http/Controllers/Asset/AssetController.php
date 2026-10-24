@@ -297,7 +297,7 @@ class AssetController extends Controller
 
         $data = $request->validate([
             'attachments' => 'required|array',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
             'document_type' => 'required|string|max:100',
         ]);
 

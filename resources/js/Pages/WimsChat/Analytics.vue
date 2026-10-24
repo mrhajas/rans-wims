@@ -10,8 +10,8 @@
       </page-header>
 
       <section class="lg-card wca-filter">
-        <label class="wca-f"><span>{{ $t('From') }}</span><input v-model="from" type="date" :max="to" /></label>
-        <label class="wca-f"><span>{{ $t('To') }}</span><input v-model="to" type="date" :min="from" /></label>
+        <label class="wca-f"><span>{{ $t('From') }}</span><date-picker v-model="from" :max="to" flush /></label>
+        <label class="wca-f"><span>{{ $t('To') }}</span><date-picker v-model="to" :min="from" flush /></label>
         <button type="button" class="lg-btn lg-btn-primary" @click="apply"><icons name="refresh" class="w-4 h-4" />{{ $t('Apply') }}</button>
         <button v-for="d in [7, 30, 90]" :key="d" type="button" class="lg-btn lg-btn-soft" @click="preset(d)">{{ $t('Last :n days', { n: d }) }}</button>
       </section>

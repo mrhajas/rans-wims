@@ -8,7 +8,7 @@
         <form class="sim-form" @submit.prevent="create">
           <div class="ac-f"><label>{{ $t('Name') }} *</label><input v-model="nf.name" :placeholder="$t('For example: Budget Revision')" /><span class="ac-err">{{ nf.errors.name }}</span></div>
           <div class="ac-f sim-grow"><label>{{ $t('What is it for?') }}</label><input v-model="nf.description" /></div>
-          <div class="ac-f"><label>{{ $t('Start from') }}</label><select v-model="nf.from"><option :value="null">{{ $t('What is open now') }}</option><option v-for="s in scenarios.filter(x => !x.current && x.checkpoints.length)" :key="s.id" :value="s.id">{{ s.name }}</option></select></div>
+          <div class="ac-f"><label>{{ $t('Start from') }}</label><css-select v-model="nf.from"><option :value="null">{{ $t('What is open now') }}</option><option v-for="s in scenarios.filter(x => !x.current && x.checkpoints.length)" :key="s.id" :value="s.id">{{ s.name }}</option></css-select></div>
           <div class="ac-f"><label>&nbsp;</label><button type="submit" class="lg-btn lg-btn-primary" :disabled="nf.processing"><icons name="plus" class="w-4 h-4" />{{ $t('Create') }}</button></div>
         </form>
       </section>

@@ -37,9 +37,9 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6" /></svg>
             </button>
             <span class="wdp-panel-title">
-              <select v-model.number="viewMonth" class="wdp-select wdp-select-month" :aria-label="$t('Month')">
+              <css-select v-model.number="viewMonth" class="wdp-select wdp-select-month" :aria-label="$t('Month')">
                 <option v-for="(name, i) in monthNames" :key="i" :value="i">{{ name }}</option>
-              </select>
+              </css-select>
               <year-select v-model="viewYear" :min="minYear" :max="maxYear" :label="$t('Year')" />
             </span>
             <button type="button" class="wdp-nav" @click="shiftMonth(1)" :aria-label="$t('Next month')">

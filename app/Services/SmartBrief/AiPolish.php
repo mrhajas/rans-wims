@@ -25,7 +25,7 @@ class AiPolish
             return false;
         }
 
-        return ! $training && filled(config('services.anthropic.key') ?? env('ANTHROPIC_API_KEY'));
+        return ! $training && filled(config('services.anthropic.key'));
     }
 
     /** Returns reworded text, or null when AI is not available (the caller keeps the verified text). */

@@ -37,12 +37,12 @@
             </div>
             <div>
               <label class="fx-label">{{ $t('Transaction Type') }}</label>
-              <select v-model="form.transaction_type" class="it-select">
+              <css-select v-model="form.transaction_type" class="it-select">
                 <option value="">{{ $t('All Types') }}</option>
                 <option value="checkin">{{ $t('Checkin') }}</option>
                 <option value="checkout">{{ $t('Checkout') }}</option>
                 <option value="transfer">{{ $t('Transfer') }}</option>
-              </select>
+              </css-select>
             </div>
             <div class="item-tx-search w-full lg-span-2">
               <label class="fx-label">{{ $t('Search In Result') }}</label>

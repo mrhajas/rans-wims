@@ -47,6 +47,16 @@ const BACKUP_ENTRIES = [
   { route: 'backup.index', title: 'Create System Backup', icon: 'download', permission: 'manage-backup' },
 ];
 
+// Settings > Performance & Data (Super Admin only), reachable by what a person would type
+const PERFORMANCE_ENTRIES = [
+  { route: 'performance.index', title: 'Performance & Data', icon: 'chart-bar' },
+  { route: 'performance.index', title: 'Activity Archive', icon: 'archive-box', hash: '#pf-archive' },
+  { route: 'performance.index', title: 'Download Activity Archive', icon: 'download', hash: '#pf-archive' },
+  { route: 'performance.index', title: 'Slow Queries', icon: 'clock', hash: '#pf-slow' },
+  { route: 'performance.index', title: 'Send Messages in the Background (Queue)', icon: 'send', hash: '#pf-queue' },
+  { route: 'performance.index', title: 'Data Retention (months kept)', icon: 'archive-box', hash: '#pf-retention' },
+];
+
 // Launcher visibility mirrors the sidebar and Global Feature Control: a destination whose feature is switched off, or that is limited to
 // roles the person does not hold, is not offered. (Hiding is a convenience only. Every route is still authorised on the server.)
 function allowedHere(entry, ctx) {
@@ -130,6 +140,23 @@ export function searchMenu(query, ctx) {
       url: ctx.route(entry.route),
       rank: haystack.startsWith(q) ? 0 : 1,
     });
+  }
+
+  if (ctx.isAdmin) {
+    for (const entry of PERFORMANCE_ENTRIES) {
+      const haystack = entry.title.toLowerCase();
+      if (!haystack.includes(q)) continue;
+
+      results.push({
+        category: 'system',
+        label: 'System',
+        icon: entry.icon,
+        title: entry.title,
+        subtitle: '',
+        url: ctx.route(entry.route) + (entry.hash || ''),
+        rank: haystack.startsWith(q) ? 0 : 1,
+      });
+    }
   }
 
   results.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title));

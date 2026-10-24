@@ -1,6 +1,11 @@
 <?php
 
 return [
+    // the file types accepted for attachments (comma list); empty = each form's own default list
+    'extensions' => env('ATTACHMENT_EXTS'),
+    // the disk new attachments are stored on
+    'disk' => env('ATTACHMENT_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Routes

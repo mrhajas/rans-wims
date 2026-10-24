@@ -430,7 +430,7 @@
               </div>
               <div>
                 <label class="pc-label">{{ $t('Payment Date') }}</label>
-                <input v-model="editForm.payment_date" type="date" class="pc-input" />
+                <date-picker v-model="editForm.payment_date" flush />
               </div>
               <div>
                 <label class="pc-label">{{ $t('Method') }}</label>

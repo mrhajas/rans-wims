@@ -1,8 +1,8 @@
 <template>
   <div class="vl-time" role="group" :aria-label="$t('Time')">
-    <select :value="hh" :disabled="disabled" :aria-label="$t('Hour')" @change="set($event.target.value, mm)"><option v-for="h in hours" :key="h" :value="h">{{ h }}</option></select>
+    <css-select :value="hh" :disabled="disabled" :aria-label="$t('Hour')" @change="set($event.target.value, mm)"><option v-for="h in hours" :key="h" :value="h">{{ h }}</option></css-select>
     <span aria-hidden="true">:</span>
-    <select :value="mm" :disabled="disabled" :aria-label="$t('Minute')" @change="set(hh, $event.target.value)"><option v-for="m in minutes" :key="m" :value="m">{{ m }}</option></select>
+    <css-select :value="mm" :disabled="disabled" :aria-label="$t('Minute')" @change="set(hh, $event.target.value)"><option v-for="m in minutes" :key="m" :value="m">{{ m }}</option></css-select>
   </div>
 </template>
 

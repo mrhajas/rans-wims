@@ -93,7 +93,7 @@
       <div class="sdy-meta">
         <span>{{ diaries.meta.total.toLocaleString() }} {{ $t('result(s)') }}</span>
         <label class="sdy-per"><span>{{ $t('Per page') }}</span>
-          <select v-model.number="form.per_page"><option v-for="n in [25, 50, 100]" :key="n" :value="n">{{ n }}</option></select>
+          <css-select v-model.number="form.per_page"><option v-for="n in [25, 50, 100]" :key="n" :value="n">{{ n }}</option></css-select>
         </label>
       </div>
 

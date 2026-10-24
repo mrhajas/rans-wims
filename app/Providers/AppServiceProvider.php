@@ -12,6 +12,9 @@ class AppServiceProvider extends ServiceProvider
     {
         app()->useLangPath(base_path('lang'));
 
+        // records slow queries and slow pages once the request knows its database (Settings > Performance & Data)
+        \App\Support\Performance\SlowLog::listen();
+
         // every PDF gets a No column in its data tables (the package registered its own wrapper first; this one replaces it)
         $this->app->bind('dompdf.wrapper', fn ($app) => new \App\Support\NumberedPdf($app['dompdf'], $app['config'], $app['files'], $app['view']));
 

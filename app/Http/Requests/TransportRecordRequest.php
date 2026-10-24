@@ -87,7 +87,7 @@ class TransportRecordRequest extends FormRequest
             'notes' => 'nullable|string',
 
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|max:20480|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:20480|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ];
     }
 

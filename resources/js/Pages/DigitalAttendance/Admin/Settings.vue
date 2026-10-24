@@ -94,10 +94,10 @@
             </div>
             <div>
               <label class="set-field-label">{{ $t('Mode') }}</label>
-              <select v-model="form.digital_attendance_geofence_mode" class="set-input">
+              <css-select v-model="form.digital_attendance_geofence_mode" class="set-input">
                 <option value="warning">{{ $t('Warning only') }}</option>
                 <option value="block">{{ $t('Block attendance') }}</option>
-              </select>
+              </css-select>
             </div>
           </div>
           <div v-else class="lg-note lg-note-blue">

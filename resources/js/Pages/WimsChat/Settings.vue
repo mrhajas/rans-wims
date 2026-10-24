@@ -16,7 +16,7 @@
           <label class="wcs-field"><span>{{ $t('Maximum file size (MB)') }}</span><input v-model.number="s.max_file_mb" type="number" min="1" :max="server_max_mb" /><small>{{ $t('Default 3 MB. The server allows up to :n MB per upload.', { n: server_max_mb }) }}</small></label>
           <label class="wcs-field"><span>{{ $t('Files per message') }}</span><input v-model.number="s.max_files_per_message" type="number" min="1" max="20" /></label>
           <label class="wcs-field"><span>{{ $t('Keep files, images & voice notes for') }}</span>
-            <select v-model.number="s.attachment_retention_days" class="wcs-sel"><option v-for="o in retention" :key="o.v" :value="o.v">{{ o.label }}</option></select>
+            <css-select v-model.number="s.attachment_retention_days" class="wcs-sel"><option v-for="o in retention" :key="o.v" :value="o.v">{{ o.label }}</option></css-select>
             <small>{{ $t('Older files are erased from the server every night. The conversation still shows that a file was shared.') }}</small></label>
           <label class="wcs-field lg-span-all"><span>{{ $t('Blocked extensions (never allowed, whatever the file types below say)') }}</span><input v-model="blocked" type="text" placeholder="exe, bat, php …" /></label>
         </div>
@@ -81,7 +81,7 @@
         </header>
         <div class="lg-fields">
           <label class="wcs-field"><span>{{ $t('Keep chat messages for') }}</span>
-            <select v-model.number="s.message_retention_days" class="wcs-sel"><option v-for="o in retention" :key="o.v" :value="o.v">{{ o.label }}</option></select>
+            <css-select v-model.number="s.message_retention_days" class="wcs-sel"><option v-for="o in retention" :key="o.v" :value="o.v">{{ o.label }}</option></css-select>
             <small>{{ $t('Messages older than this are permanently deleted every night, with their reactions. “Forever” keeps everything.') }}</small></label>
           <label class="wcs-field"><span>{{ $t('Edit window (minutes)') }}</span><input v-model.number="s.edit_window_minutes" type="number" min="0" /><small>{{ $t('0 = no limit.') }}</small></label>
           <label class="wcs-field"><span>{{ $t('Delete window (minutes)') }}</span><input v-model.number="s.delete_window_minutes" type="number" min="0" /><small>{{ $t('0 = no limit. Deleted messages stay in the audit trail.') }}</small></label>
@@ -158,7 +158,7 @@
                 <td :data-label="$t('Key')"><code>{{ st.key }}</code></td>
                 <td :data-label="$t('Label')"><input v-model="st.label" maxlength="40" class="wcs-in" :aria-label="$t('Label')" /></td>
                 <td :data-label="$t('Colour')"><input v-model="st.color" type="color" class="wcs-color" :aria-label="$t('Colour')" /></td>
-                <td :data-label="$t('Others see it as')"><select v-model="st.appears_as" class="wcs-in"><option v-for="a in appears" :key="a" :value="a">{{ a }}</option></select></td>
+                <td :data-label="$t('Others see it as')"><css-select v-model="st.appears_as" class="wcs-in"><option v-for="a in appears" :key="a" :value="a">{{ a }}</option></css-select></td>
                 <td :data-label="$t('Selectable')"><input v-model="st.selectable" type="checkbox" class="sdy-cb" :disabled="core.includes(st.key) && st.key === 'offline'" /></td>
                 <td :data-label="$t('Quiet')"><input v-model="st.quiet" type="checkbox" class="sdy-cb" /></td>
                 <td><button v-if="!core.includes(st.key)" type="button" class="lg-icon-btn is-red lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="s.statuses.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button></td>

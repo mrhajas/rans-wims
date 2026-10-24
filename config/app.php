@@ -1,6 +1,12 @@
 <?php
 
 return [
+
+    // switches read through config (not env()) so the configuration can be cached on the server
+    'demo' => (bool) env('DEMO', false),
+    'windows' => (bool) env('WINDOWS', false),
+    'desktop_machine' => (bool) env('DESKTOPMACHINE', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Name

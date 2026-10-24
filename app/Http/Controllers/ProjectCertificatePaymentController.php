@@ -52,7 +52,7 @@ class ProjectCertificatePaymentController extends Controller
             'reference_number' => 'nullable|string|max:190',
             'notes' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,jpeg,png,pdf,doc,docx,xlsx'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,jpeg,png,pdf,doc,docx,xlsx'),
             // Overspend isn't blocked outright (spec req. 59: "require
             // confirmation or block according to permissions") — the
             // frontend confirms with the user first; `confirmed` records

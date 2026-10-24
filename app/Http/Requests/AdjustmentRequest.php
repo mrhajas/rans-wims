@@ -19,7 +19,7 @@ class AdjustmentRequest extends FormRequest
             'details'       => 'nullable',
             'attachments'   => 'nullable',
             'draft'         => 'nullable|boolean',
-            'attachments.*' => 'mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
 
             'date'         => 'required|date',
             'warehouse_id' => 'required|exists:warehouses,id',

@@ -66,7 +66,7 @@
           </div>
           <div v-if="plan.blockers.length" class="lg-note lg-note-red" style="margin-top: 10px"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t(':n account(s) still have an approved request that is not paid, or a voucher in process. Finish or cancel those first; the reset is refused until then.', { n: plan.blockers.length }) }}</span></div>
           <div class="op-form">
-            <label>{{ $t('Opening Date') }}<input v-model="rf.as_at" type="date" /></label>
+            <label>{{ $t('Opening Date') }}<date-picker v-model="rf.as_at" flush /></label>
             <label>{{ $t('Type RESET To Confirm') }}<input v-model="rf.confirm" type="text" autocomplete="off" placeholder="RESET" /><span class="ac-err">{{ err('confirm') }}</span></label>
             <label>{{ $t('Your Password') }}<input v-model="rf.password" type="password" autocomplete="current-password" /><span class="ac-err">{{ err('password') }}</span></label>
           </div>

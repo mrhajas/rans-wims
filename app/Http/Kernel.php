@@ -58,6 +58,7 @@ class Kernel extends HttpKernel
 
     protected $middlewareGroups = [
         'web' => [
+            \App\Http\Middleware\BlockInstallerWhenInstalled::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \App\Http\Middleware\ResolveEnvironment::class,
@@ -73,6 +74,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\ThrottleRequestFloods::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ImpersonationGuard::class,
+            \App\Http\Middleware\RecordSlowRequest::class,
             \App\Http\Middleware\EnforceIdleTimeout::class,
             \App\Http\Middleware\EnforceDeviceLimit::class,
             // Maintenance Lock for EVERY web request (not just the main route group), so no authenticated

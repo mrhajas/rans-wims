@@ -713,6 +713,13 @@ class SystemFeatureRegistry
                 'icon' => 'download',
                 'route_prefixes' => ['backup.'],
             ],
+            'performance_data' => [
+                'name' => __('Performance & Data'),
+                'description' => __('How long history and logs are kept, the activity archive (browse and download), slow queries, and sending messages in the background. Super Admin only.'),
+                'module' => __('Administration'),
+                'icon' => 'chart-bar',
+                'route_prefixes' => ['performance.'],
+            ],
             'low_stock_alert' => [
                 'name' => __('Low Stock Alert'),
                 'description' => __('The daily Low Stock Alert email / text message: who receives it, at what time, and which materials and projects it watches. Turning this off returns to the older alert.'),

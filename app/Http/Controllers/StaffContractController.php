@@ -42,7 +42,7 @@ class StaffContractController extends Controller
             'notice_period_days' => 'nullable|integer|between:0,365',
             'notes' => 'nullable|string|max:3000',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:'.env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:'.attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ];
     }
 
@@ -184,7 +184,7 @@ class StaffContractController extends Controller
             'effective_date' => 'required|date|after_or_equal:'.optional($contract->start_date)->format('Y-m-d'),
             'staff_status' => 'required|in:keep,Terminated,Inactive,Retired,Retired Active',
             'attachments' => 'nullable|array|max:3',
-            'attachments.*' => 'file|max:10240|mimes:'.env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:'.attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ], [
             'attachments.max' => __('You can attach up to 3 documents.'),
             'reason.required' => __('Write the reason. It is kept in the staff history.'),

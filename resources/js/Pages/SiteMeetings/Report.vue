@@ -42,9 +42,9 @@
             <div v-for="(a, i) in attendees_" :key="a.key" class="sm-person">
               <span class="sm-avatar" :class="{ 'is-ext': !a.user_id }">{{ initials(a.name) }}</span>
               <span class="sm-person-t"><b>{{ a.name }}</b><small>{{ [a.designation, a.organisation].filter(Boolean).join(' · ') || (a.user_id ? $t('WIMS user') : $t('Outside guest')) }}</small></span>
-              <select v-model="a.attendance" class="sm-select sm-att-select" :disabled="!can.edit_report" :aria-label="$t('Attendance')" @change="dirty = true">
+              <css-select v-model="a.attendance" class="sm-select sm-att-select" :disabled="!can.edit_report" :aria-label="$t('Attendance')" @change="dirty = true">
                 <option v-for="o in ['Invited', 'Present', 'Absent', 'Apology']" :key="o" :value="o">{{ $t(o) }}</option>
-              </select>
+              </css-select>
               <button v-if="can.edit_report" type="button" class="sm-rowbtn" :aria-label="$t('Remove')" @click="attendees_.splice(i, 1); dirty = true"><icons name="cross" class="w-4 h-4" /></button>
             </div>
           </div>
@@ -92,10 +92,10 @@
                       <td v-for="c in sec.columns" :key="c.key" :data-label="c.label">
                         <textarea v-if="c.type === 'textarea'" v-model="row[c.key]" rows="1" maxlength="4000" :disabled="!can.edit_report" @input="grow($event); dirty = true"></textarea>
                         <date-picker v-else-if="c.type === 'date'" v-model="row[c.key]" :disabled="!can.edit_report" @update:model-value="dirty = true" />
-                        <select v-else-if="c.type === 'select'" v-model="row[c.key]" :disabled="!can.edit_report" @change="dirty = true">
+                        <css-select v-else-if="c.type === 'select'" v-model="row[c.key]" :disabled="!can.edit_report" @change="dirty = true">
                           <option value="">—</option>
                           <option v-for="o in c.options || []" :key="o" :value="o">{{ o }}</option>
-                        </select>
+                        </css-select>
                         <input v-else v-model="row[c.key]" :type="'text'" :inputmode="c.type === 'number' || c.type === 'percent' ? 'decimal' : 'text'" maxlength="500" :disabled="!can.edit_report" @input="dirty = true" />
                       </td>
                     </template>

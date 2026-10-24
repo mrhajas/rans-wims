@@ -5,9 +5,9 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
       <div>
         <label class="block text-xs font-medium text-gray-600 mb-1">From</label>
-        <select v-model="fromUnit" class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+        <css-select v-model="fromUnit" class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
           <option v-for="unit in config.units" :key="unit.key" :value="unit.key">{{ unit.label }}</option>
-        </select>
+        </css-select>
         <input
           type="number"
           step="any"
@@ -17,9 +17,9 @@
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-600 mb-1">To</label>
-        <select v-model="toUnit" class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+        <css-select v-model="toUnit" class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
           <option v-for="unit in config.units" :key="unit.key" :value="unit.key">{{ unit.label }}</option>
-        </select>
+        </css-select>
         <div class="mt-2 w-full rounded-md bg-slate-50 border border-slate-200 px-3 py-2 text-sm font-semibold text-gray-900">
           {{ result }}
         </div>

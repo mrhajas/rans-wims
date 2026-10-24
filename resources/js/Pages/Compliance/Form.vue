@@ -43,15 +43,15 @@
             <text-input :label="$t('Department')" v-model="form.department" />
             <div>
               <label class="cmp-label">{{ $t('Scope') }}</label>
-              <select v-model="form.scope" class="cmp-ctl">
+              <css-select v-model="form.scope" class="cmp-ctl">
                 <option v-for="s in scopes" :key="s" :value="s">{{ $t(s) }}</option>
-              </select>
+              </css-select>
             </div>
             <div>
               <label class="cmp-label">{{ $t('Priority') }}</label>
-              <select v-model="form.priority" class="cmp-ctl" :disabled="!form.priority_is_manual_override">
+              <css-select v-model="form.priority" class="cmp-ctl" :disabled="!form.priority_is_manual_override">
                 <option v-for="p in priorities" :key="p" :value="p">{{ $t(p) }}</option>
-              </select>
+              </css-select>
               <label class="cmp-check">
                 <input type="checkbox" v-model="form.priority_is_manual_override" />
                 {{ $t('Set manually (otherwise auto-calculated from expiry date)') }}
@@ -117,10 +117,10 @@
             <text-input :label="$t('Applicant')" v-model="form.guarantee_applicant" />
             <div>
               <label class="cmp-label">{{ $t('Guarantee Type') }}</label>
-              <select v-model="form.guarantee_type" class="cmp-ctl">
+              <css-select v-model="form.guarantee_type" class="cmp-ctl">
                 <option :value="null">-</option>
                 <option v-for="t in guaranteeTypes" :key="t" :value="t">{{ $t(t) }}</option>
-              </select>
+              </css-select>
             </div>
             <text-input type="number" :label="$t('Amount')" v-model="form.guarantee_amount" />
             <text-input :label="$t('Currency')" v-model="form.guarantee_currency" placeholder="TZS" />
@@ -157,13 +157,13 @@
             <date-picker :label="$t('Maturity Date')" v-model="form.loan_maturity_date" />
             <div>
               <label class="cmp-label">{{ $t('Instalment Frequency') }}</label>
-              <select v-model="form.loan_instalment_frequency" class="cmp-ctl">
+              <css-select v-model="form.loan_instalment_frequency" class="cmp-ctl">
                 <option :value="null">-</option>
                 <option value="Monthly">{{ $t('Monthly') }}</option>
                 <option value="Quarterly">{{ $t('Quarterly') }}</option>
                 <option value="Semi-Annual">{{ $t('Semi-Annual') }}</option>
                 <option value="Annual">{{ $t('Annual') }}</option>
-              </select>
+              </css-select>
             </div>
             <text-input type="number" :label="$t('Instalment Amount')" v-model="form.loan_instalment_amount" />
             <text-input type="number" :label="$t('Outstanding Balance')" v-model="form.loan_outstanding_balance" />

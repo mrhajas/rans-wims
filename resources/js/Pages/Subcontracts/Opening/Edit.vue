@@ -20,7 +20,7 @@
           <form class="op-form" @submit.prevent="save">
             <div class="ac-f"><label>{{ $t('Contract Value') }} ({{ a.currency }}) *</label><input v-model="form.contract" inputmode="decimal" :disabled="!can.manage" /><span class="ac-err">{{ err('contract') }}</span></div>
             <div class="ac-f"><label>{{ $t('Paid To Date') }} ({{ a.currency }}) *</label><input v-model="form.paid" inputmode="decimal" :disabled="!can.manage" /><span class="ac-err">{{ err('paid') }}</span></div>
-            <div class="ac-f"><label>{{ $t('As At') }}</label><input v-model="form.as_at" type="date" :disabled="!can.manage" /><span class="ac-err">{{ err('as_at') }}</span></div>
+            <div class="ac-f"><label>{{ $t('As At') }}</label><date-picker v-model="form.as_at" :disabled="!can.manage" flush /><span class="ac-err">{{ err('as_at') }}</span></div>
             <div class="ac-f op-wide"><label>{{ $t('Note') }}</label><input v-model="form.note" maxlength="500" :placeholder="$t('Where the figures come from, for example the Excel sheet and its date')" :disabled="!can.manage" /></div>
             <div class="op-result op-wide" :class="{ 'is-neg': outNeg }">
               <icons :name="outNeg ? 'exclamation' : 'clock'" class="w-5 h-5" />

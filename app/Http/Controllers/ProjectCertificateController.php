@@ -1386,7 +1386,7 @@ class ProjectCertificateController extends Controller
             'currency' => 'nullable|string|max:10',
             'exchange_rate' => 'nullable|numeric|min:0.000001',
             'attachments' => 'nullable|array|max:10',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,jpeg,png,pdf,doc,docx,xlsx'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,jpeg,png,pdf,doc,docx,xlsx'),
         ]);
 
         if (strtoupper($data['currency'] ?? 'TZS') !== 'TZS' && empty($data['exchange_rate'])) {

@@ -85,8 +85,8 @@
             <tbody>
               <template v-for="row in filteredHistories" :key="row.id">
                 <tr v-if="editingId === row.id" class="is-editing">
-                  <td :data-label="$t('Effective From')"><input type="date" v-model="editForm.effective_from" class="ph-input" /></td>
-                  <td :data-label="$t('Effective To')"><input type="date" v-model="editForm.effective_to" class="ph-input" /></td>
+                  <td :data-label="$t('Effective From')"><date-picker v-model="editForm.effective_from" flush /></td>
+                  <td :data-label="$t('Effective To')"><date-picker v-model="editForm.effective_to" flush /></td>
                   <td :data-label="$t('Price')"><input type="number" min="0" step="0.01" v-model="editForm.price" class="ph-input text-right" /></td>
                   <td class="ph-hide-m"></td>
                   <td :data-label="$t('Remarks')"><input type="text" v-model="editForm.remarks" class="ph-input" /></td>

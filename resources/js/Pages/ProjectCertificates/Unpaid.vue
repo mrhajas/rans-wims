@@ -45,11 +45,11 @@
           <div><auto-complete v-model="form.payment_status" :suggestions="statusOptions" :placeholder="$t('All Statuses')" clearable /></div>
           <div>
             <label class="pc-mini-label">{{ $t('Date From') }}</label>
-            <input v-model="form.date_from" type="date" class="pc-input w-full" />
+            <date-picker v-model="form.date_from" class="w-full" flush />
           </div>
           <div>
             <label class="pc-mini-label">{{ $t('Date To') }}</label>
-            <input v-model="form.date_to" type="date" class="pc-input w-full" />
+            <date-picker v-model="form.date_to" class="w-full" flush />
           </div>
           <div class="pc-search-wrap lg-span-all">
             <icons name="search" class="pc-search-icon" />

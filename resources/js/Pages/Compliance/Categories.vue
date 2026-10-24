@@ -80,9 +80,9 @@
           <div class="lg-fields cmp-modal-fields">
             <div class="lg-span-all">
               <label class="cmp-label">{{ $t('Group') }}</label>
-              <select v-model="form.group" class="cmp-ctl">
+              <css-select v-model="form.group" class="cmp-ctl">
                 <option v-for="g in groups" :key="g" :value="g">{{ g }}</option>
-              </select>
+              </css-select>
             </div>
             <div class="lg-span-all">
               <label class="cmp-label">{{ $t('Name') }}</label>

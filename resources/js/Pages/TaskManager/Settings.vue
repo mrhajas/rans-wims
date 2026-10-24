@@ -45,12 +45,12 @@
         <div v-if="!canEdit" class="text-sm text-gray-500">{{ $t('Only Super Admin can change this.') }}</div>
         <template v-else>
           <div class="tm-field-label"><icons name="clock" class="w-3 h-3" />{{ $t('Remind') }}</div>
-          <select v-model.number="offset" class="tm-search-input w-full sm:w-80 px-3 py-2 text-sm rounded-lg mt-1.5 mb-4">
+          <css-select v-model.number="offset" class="tm-search-input w-full sm:w-80 px-3 py-2 text-sm rounded-lg mt-1.5 mb-4">
             <option :value="0">{{ $t('On Due Date (default)') }}</option>
             <option :value="8">{{ $t('8 Hours Earlier') }}</option>
             <option :value="12">{{ $t('12 Hours Earlier') }}</option>
             <option :value="24">{{ $t('24 Hours Earlier') }}</option>
-          </select>
+          </css-select>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
             <div>

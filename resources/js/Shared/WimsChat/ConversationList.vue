@@ -24,10 +24,10 @@
       <button v-if="chat.can.search" type="button" class="lg-tip" :class="{ 'is-on': filtersOn }" :data-tip="$t('Search filters')" :aria-label="$t('Search filters')" :aria-expanded="filtersOpen" @click="filtersOpen = !filtersOpen"><icons name="filter" class="w-4 h-4" /></button>
     </div>
     <div v-if="filtersOpen" class="wc-filters">
-      <label>{{ $t('Only') }}<select v-model="f.kind" @change="onSearch"><option value="all">{{ $t('Everything') }}</option><option value="media">{{ $t('Images') }}</option><option value="files">{{ $t('Files') }}</option><option value="links">{{ $t('Links') }}</option><option value="unread">{{ $t('Unread') }}</option></select></label>
-      <label>{{ $t('From') }}<input v-model="f.from" type="date" :max="f.to || null" @change="onSearch" /></label>
-      <label>{{ $t('To') }}<input v-model="f.to" type="date" :min="f.from || null" @change="onSearch" /></label>
-      <label>{{ $t('Sent by') }}<select v-model="f.user" @change="onSearch"><option value="">{{ $t('Anyone') }}</option><option v-for="u in people" :key="u.id" :value="u.id">{{ u.name }}</option></select></label>
+      <label>{{ $t('Only') }}<css-select v-model="f.kind" @change="onSearch"><option value="all">{{ $t('Everything') }}</option><option value="media">{{ $t('Images') }}</option><option value="files">{{ $t('Files') }}</option><option value="links">{{ $t('Links') }}</option><option value="unread">{{ $t('Unread') }}</option></css-select></label>
+      <label>{{ $t('From') }}<date-picker v-model="f.from" :max="f.to || null" @change="onSearch" flush /></label>
+      <label>{{ $t('To') }}<date-picker v-model="f.to" :min="f.from || null" @change="onSearch" flush /></label>
+      <label>{{ $t('Sent by') }}<css-select v-model="f.user" @change="onSearch"><option value="">{{ $t('Anyone') }}</option><option v-for="u in people" :key="u.id" :value="u.id">{{ u.name }}</option></css-select></label>
       <button v-if="filtersOn" type="button" class="wc-btn is-sm" @click="resetFilters">{{ $t('Clear filters') }}</button>
     </div>
 

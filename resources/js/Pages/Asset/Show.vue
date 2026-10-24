@@ -378,9 +378,9 @@
           <text-input type="date" :label="$t('Date')" v-model="checkInForm.movement_date" />
           <div>
             <label class="as-label">{{ $t('Condition After') }}</label>
-            <select v-model="checkInForm.condition_after" class="w-full rounded-md border-gray-300">
+            <css-select v-model="checkInForm.condition_after" class="w-full rounded-md border-gray-300">
               <option v-for="c in conditionList" :key="c" :value="c">{{ $t(c) }}</option>
-            </select>
+            </css-select>
           </div>
           <text-input class="lg-span-all" :label="$t('Damage Notes')" v-model="checkInForm.damage_notes" />
         </div>
@@ -429,9 +429,9 @@
           <text-input type="date" :label="$t('Date')" v-model="maintenanceForm.maintenance_date" />
           <div>
             <label class="as-label">{{ $t('Type') }}</label>
-            <select v-model="maintenanceForm.maintenance_type" class="w-full rounded-md border-gray-300">
+            <css-select v-model="maintenanceForm.maintenance_type" class="w-full rounded-md border-gray-300">
               <option v-for="t in maintenanceTypes" :key="t" :value="t">{{ $t(t) }}</option>
-            </select>
+            </css-select>
           </div>
           <text-input class="lg-span-all" :label="$t('Service Provider')" v-model="maintenanceForm.service_provider" />
           <text-input type="number" :label="$t('Cost')" v-model="maintenanceForm.cost" />

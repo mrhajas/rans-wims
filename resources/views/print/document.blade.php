@@ -298,9 +298,9 @@
         <tbody>
             @forelse($T['rows'] as $n => $row)
                 <tr class="{{ $n % 2 ? 'alt' : '' }}">
-                    <td class="idx">{{ $n + 1 }}</td>
+                    <td class="idx">{{ ($T['start'] ?? 0) + $n + 1 }}</td>
                     @foreach($row as $cell)
-                        <td class="{{ ($cell['a'] ?? 'r') === 'l' ? '' : 'num' }}" style="@if(!empty($cell['b']))font-weight:700;@endif @if(($cell['tone'] ?? 0) > 0)color:#166534;@elseif(($cell['tone'] ?? 0) < 0)color:#991b1b;@endif">{{ $cell['v'] }}</td>
+                        <td class="{{ ($cell['a'] ?? 'r') === 'l' ? '' : 'num' }}" style="@if(!empty($cell['b']))font-weight:700;@endif @if(!empty($cell['nw']))white-space:nowrap;@endif @if(($cell['tone'] ?? 0) > 0)color:#166534;@elseif(($cell['tone'] ?? 0) < 0)color:#991b1b;@endif">{{ $cell['v'] }}</td>
                     @endforeach
                 </tr>
             @empty

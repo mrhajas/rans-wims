@@ -100,21 +100,21 @@
             <icons name="search" class="pc-search-icon" />
             <input v-model="search" type="text" class="pc-search-input" :placeholder="$t('Search reference, certificate number, or status…')" />
           </div>
-          <select v-model="statusFilter" class="pc-input w-full">
+          <css-select v-model="statusFilter" class="pc-input w-full">
             <option value="">{{ $t('All Statuses') }}</option>
             <option v-for="s in statuses" :key="s" :value="s">{{ capitalize(s) }}</option>
-          </select>
-          <select v-model="paymentFilter" class="pc-input w-full">
+          </css-select>
+          <css-select v-model="paymentFilter" class="pc-input w-full">
             <option value="">{{ $t('All Payment Statuses') }}</option>
             <option v-for="s in paymentStatuses" :key="s" :value="s">{{ paymentLabel(s) }}</option>
-          </select>
+          </css-select>
           <div>
             <label class="pc-mini-label">{{ $t('Date From') }}</label>
-            <input v-model="dateFrom" type="date" class="pc-input w-full" />
+            <date-picker v-model="dateFrom" class="w-full" flush />
           </div>
           <div>
             <label class="pc-mini-label">{{ $t('Date To') }}</label>
-            <input v-model="dateTo" type="date" class="pc-input w-full" />
+            <date-picker v-model="dateTo" class="w-full" flush />
           </div>
         </div>
       </section>

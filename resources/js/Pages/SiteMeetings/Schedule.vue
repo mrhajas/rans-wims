@@ -97,9 +97,9 @@
 
               <label v-if="isMovable(m)" class="sm-move" @click.stop @mousedown.stop>
                 <icons name="forward" class="w-3.5 h-3.5" />
-                <select :aria-label="$t('Move to another day')" :value="d.date" @click.stop @change.stop="e => moveTo(m, d, e.target.value)">
+                <css-select :aria-label="$t('Move to another day')" :value="d.date" @click.stop @change.stop="e => moveTo(m, d, e.target.value)">
                   <option v-for="x in board" :key="x.date" :value="x.date">{{ x.name }} {{ x.day }} {{ x.month }}</option>
-                </select>
+                </css-select>
               </label>
               <div class="sm-card-foot">
                 <span><icons name="users" class="w-3.5 h-3.5" />{{ m.attendees_count }}</span>

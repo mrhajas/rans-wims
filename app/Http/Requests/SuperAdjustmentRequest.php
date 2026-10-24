@@ -20,7 +20,7 @@ class SuperAdjustmentRequest extends FormRequest
             'remarks' => 'nullable|string',
 
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|max:20480|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:20480|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
 
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|distinct|exists:items,id',

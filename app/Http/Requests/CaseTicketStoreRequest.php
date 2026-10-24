@@ -23,7 +23,7 @@ class CaseTicketStoreRequest extends FormRequest
             'module_reference' => 'required|string|in:' . implode(',', CaseTicket::wimsModules()),
             'external_url' => 'nullable|url|max:2048',
             'attachments' => 'nullable|array|max:10',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,jpeg,png,pdf,doc,docx,xlsx'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,jpeg,png,pdf,doc,docx,xlsx'),
             // true = also submit immediately after creating (Draft -> Submitted in one step)
             'should_submit' => 'nullable|boolean',
         ];

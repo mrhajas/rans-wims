@@ -115,14 +115,14 @@
             <div class="scm-pills"><button v-for="t in types" :key="t" type="button" :class="{ on: form.type === t }" @click="form.type = t">{{ $t(t) }}</button></div>
           </div>
           <label class="scm-f"><span>{{ $t('Position / title') }}</span><input v-model="form.position" type="text" maxlength="190" class="scm-in" /></label>
-          <label class="scm-f" :class="{ bad: errors.start_date }"><span>{{ $t('Start date') }}</span><input v-model="form.start_date" type="date" class="scm-in" required /><em v-if="errors.start_date">{{ errors.start_date }}</em></label>
-          <label v-if="form.type !== 'Permanent'" class="scm-f" :class="{ bad: errors.end_date }"><span>{{ $t('End date') }}</span><input v-model="form.end_date" type="date" class="scm-in" :min="form.start_date" required /><em v-if="errors.end_date">{{ errors.end_date }}</em></label>
+          <label class="scm-f" :class="{ bad: errors.start_date }"><span>{{ $t('Start date') }}</span><date-picker v-model="form.start_date" flush /><em v-if="errors.start_date">{{ errors.start_date }}</em></label>
+          <label v-if="form.type !== 'Permanent'" class="scm-f" :class="{ bad: errors.end_date }"><span>{{ $t('End date') }}</span><date-picker v-model="form.end_date" :min="form.start_date" flush /><em v-if="errors.end_date">{{ errors.end_date }}</em></label>
           <p v-else class="scm-perm"><icons name="tick" class="w-4 h-4" />{{ $t('A Permanent contract has a start date only. It has no end date.') }}</p>
           <div class="scm-quick" v-if="form.start_date && form.type !== 'Permanent'">
             <span>{{ $t('Ends after') }}:</span>
             <button v-for="m in [3, 6, 12, 24, 36]" :key="m" type="button" @click="endAfter(m)">{{ m }} {{ $t('months') }}</button>
           </div>
-          <label class="scm-f"><span>{{ $t('Signed on') }}</span><input v-model="form.signed_date" type="date" class="scm-in" /></label>
+          <label class="scm-f"><span>{{ $t('Signed on') }}</span><date-picker v-model="form.signed_date" flush /></label>
           <label class="scm-f" :class="{ bad: errors.basic_salary }"><span>{{ $t('Basic salary') }}</span><input v-model="form.basic_salary" type="number" min="0" step="0.01" class="scm-in" /><em v-if="errors.basic_salary">{{ errors.basic_salary }}</em></label>
           <label class="scm-f"><span>{{ $t('Probation (months)') }}</span><input v-model="form.probation_months" type="number" min="0" max="36" class="scm-in" /></label>
           <label class="scm-f"><span>{{ $t('Notice period (days)') }}</span><input v-model="form.notice_period_days" type="number" min="0" max="365" class="scm-in" /></label>
@@ -148,17 +148,17 @@
         <p class="scm-hint" style="margin-top: 0; margin-bottom: 0.9rem"><icons name="exclamation" class="w-4 h-4" />{{ $t('Use this when the person left or management ended the contract. The reason and the date are kept in the staff history for good.') }}</p>
         <div class="scm-grid">
           <label class="scm-f" :class="{ bad: stopErrors.reason_type }"><span>{{ $t('Why is it stopped?') }}</span>
-            <select v-model="stop.reason_type" class="scm-in" @change="suggestStatus"><option v-for="(label, key) in stopReasons" :key="key" :value="key">{{ $t(label) }}</option></select><em v-if="stopErrors.reason_type">{{ stopErrors.reason_type }}</em></label>
-          <label class="scm-f" :class="{ bad: stopErrors.effective_date }"><span>{{ $t('Effective date (last day)') }}</span><input v-model="stop.effective_date" type="date" class="scm-in" :min="stopTarget.start_date" required /><em v-if="stopErrors.effective_date">{{ stopErrors.effective_date }}</em></label>
+            <css-select v-model="stop.reason_type" class="scm-in" @change="suggestStatus"><option v-for="(label, key) in stopReasons" :key="key" :value="key">{{ $t(label) }}</option></css-select><em v-if="stopErrors.reason_type">{{ stopErrors.reason_type }}</em></label>
+          <label class="scm-f" :class="{ bad: stopErrors.effective_date }"><span>{{ $t('Effective date (last day)') }}</span><date-picker v-model="stop.effective_date" :min="stopTarget.start_date" flush /><em v-if="stopErrors.effective_date">{{ stopErrors.effective_date }}</em></label>
           <label class="scm-f scm-wide" :class="{ bad: stopErrors.reason }"><span>{{ $t('Reason (required)') }}</span><textarea v-model="stop.reason" rows="3" maxlength="2000" class="scm-in" :placeholder="$t('What happened? For example: resigned in a letter dated..., or terminated after the disciplinary hearing of...')"></textarea><em v-if="stopErrors.reason">{{ stopErrors.reason }}</em></label>
           <label class="scm-f scm-wide"><span>{{ $t('What happens to the staff record?') }}</span>
-            <select v-model="stop.staff_status" class="scm-in">
+            <css-select v-model="stop.staff_status" class="scm-in">
               <option value="Terminated">{{ $t('Mark as Terminated (ended by management)') }}</option>
               <option value="Inactive">{{ $t('Mark as Inactive (the person left)') }}</option>
               <option value="Retired">{{ $t('Mark as Retired (off payroll)') }}</option>
               <option value="Retired Active">{{ $t('Mark as Retired Active (still on payroll)') }}</option>
               <option value="keep">{{ $t('Keep the status as it is') }}</option>
-            </select>
+            </css-select>
           </label>
         </div>
         <div class="scm-attach">

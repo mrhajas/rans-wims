@@ -2,7 +2,7 @@
   <transition name="sp-pop">
     <div v-if="p.state !== 'idle'" class="sp-root" :class="'is-' + p.state" role="status" aria-live="polite">
       <div v-if="p.state === 'working'" class="sp-shield" aria-hidden="true"></div>
-      <div class="sp-card" :class="{ 'has-stage': p.state === 'working' && p.anim }">
+      <div class="sp-card" :class="{ 'has-stage': p.state === 'working' && p.anim, 'has-note': p.state === 'working' && p.long && !p.anim }">
         <div v-if="p.state === 'working' && p.anim" class="sp-stage" :class="'is-' + p.anim" aria-hidden="true">
           <span class="sp-trail"></span>
           <i v-for="n in 6" :key="n" class="sp-file" :class="'f' + n"></i>
@@ -111,6 +111,10 @@ export default {
 @media (max-width: 420px) { .sp-card.has-stage { min-width: 0; padding: 14px 14px 12px; } .sp-stage { width: 250px; transform-origin: center; } }
 @media (prefers-reduced-motion: reduce) { .sp-db, .sp-db-ring, .sp-file { animation: none !important; } .sp-file.f1, .sp-file.f3, .sp-file.f5 { opacity: 1; transform: translateX(120px); } }
 
+/* a long job without the animation: the notice sits under the label, inside the same card */
+.sp-card.has-note { flex-wrap: wrap; row-gap: 10px; border-radius: 1.4rem; width: min(92vw, 380px); padding: 14px 16px; }
+.sp-card.has-note .sp-keep { flex: 1 1 100%; margin: 0; }
+.sp-txt b { white-space: nowrap; }
 /* the "do not close" notice under a long job */
 .sp-keep { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 9px 12px; border-radius: 0.9rem; background: #fffbeb; color: #92400e; font-size: 0.76rem; font-weight: 700; line-height: 1.35; box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45); }
 .sp-keep svg { flex: none; width: 18px; height: 18px; margin-top: 1px; color: #d97706; animation: sp-attn 1.6s ease-in-out infinite; }

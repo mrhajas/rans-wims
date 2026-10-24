@@ -456,7 +456,7 @@ class StaffController extends Controller
             'status' => 'required|in:' . implode(',', Staff::STATUSES),
             'photo' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:5120',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $basic = (float) ($data['basic_salary'] ?? 0);

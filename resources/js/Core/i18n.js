@@ -19,4 +19,15 @@ const i18n = createI18n({
   locale: typeof window === 'undefined' ? 'en' : window.Locale || 'en',
 });
 
+// Only the language the person uses is downloaded (English is always there): the others are fetched the moment somebody switches to them.
+const loaded = new Set(['en']);
+export async function loadLocale(lang) {
+  if (!lang || loaded.has(lang) || !SUPPORT_LOCALES.includes(lang)) return;
+  let messages = await import(`../../../lang/${lang}.json`);
+  messages = JSON.parse(JSON.stringify(messages));
+  messages = { ...messages, ...messages?.default, default: 'default' };
+  i18n.global.setLocaleMessage(lang, messages);
+  loaded.add(lang);
+}
+
 export default i18n;

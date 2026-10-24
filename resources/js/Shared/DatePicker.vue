@@ -1,5 +1,5 @@
 <template>
-  <div class="col-span-6 sm:col-span-4 relative wdp-root mb-2">
+  <div class="relative wdp-root" :class="flush ? 'wdp-flush' : 'col-span-6 sm:col-span-4 mb-2'">
     <tec-label :for="id" :value="label" v-if="label" />
     <div class="relative" :class="{ 'mt-1': label }">
       <div
@@ -111,7 +111,7 @@ import TecInputError from '@/Jetstream/InputError.vue';
 export default {
   name: 'DatePicker',
 
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'change'],
 
   components: { TecLabel, TecInputError, YearSelect },
 
@@ -130,6 +130,7 @@ export default {
     modelValue: String,
     min: String,
     max: String,
+    flush: Boolean, // no outer margin or grid span: for a date field that sits inside a toolbar, a label or a table cell
   },
 
   data() {
@@ -243,6 +244,11 @@ export default {
   },
 
   methods: {
+    // every change of the date goes out as v-model and also as a "change" (with the shape a native <input type=date> gives a handler)
+    emitDate(value) {
+      this.$emit('update:modelValue', value);
+      this.$emit('change', { type: 'change', target: { value }, currentTarget: { value }, preventDefault() {}, stopPropagation() {} });
+    },
     parseValue(v) {
       if (!v || typeof v !== 'string') return null;
       const parts = v.split('-').map(Number);
@@ -313,7 +319,7 @@ export default {
       const raw = this.text.trim();
       if (!raw) {
         this.typedError = null;
-        if (this.modelValue) this.$emit('update:modelValue', '');
+        if (this.modelValue) this.emitDate('');
 
         return;
       }
@@ -341,14 +347,14 @@ export default {
       this.typedError = null;
       const value = this.toValue(d);
       this.text = this.formatValue(value);
-      if (value !== this.modelValue) this.$emit('update:modelValue', value);
+      if (value !== this.modelValue) this.emitDate(value);
       this.close();
     },
     // A rejected entry empties the value (a half-typed date is never submitted) but leaves the typed text and the message on screen.
     rejectTyped() {
       if (this.modelValue) {
         this.keepText = true;
-        this.$emit('update:modelValue', '');
+        this.emitDate('');
       }
     },
     shiftYear(delta) {
@@ -424,13 +430,13 @@ export default {
       if (cell.muted || cell.disabled) return;
       this.typedError = null;
       this.text = this.formatValue(cell.key);
-      this.$emit('update:modelValue', cell.key);
+      this.emitDate(cell.key);
       this.close();
     },
     clear() {
       this.typedError = null;
       this.text = '';
-      this.$emit('update:modelValue', '');
+      this.emitDate('');
       this.close();
     },
     goToday() {
@@ -439,7 +445,7 @@ export default {
       this.viewMonth = today.getMonth();
       this.typedError = null;
       this.text = this.formatValue(this.toValue(today));
-      this.$emit('update:modelValue', this.toValue(today));
+      this.emitDate(this.toValue(today));
       this.close();
     },
   },

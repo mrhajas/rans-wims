@@ -24,7 +24,7 @@ class TransferRequest extends FormRequest
             'attachments'   => 'nullable',
             'draft'         => 'nullable|boolean',
             'material_request_id' => 'nullable|integer|exists:material_requests,id',
-            'attachments.*' => 'mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
 
             'date'              => 'required|date',
             'from_warehouse_id' => 'required|exists:warehouses,id',

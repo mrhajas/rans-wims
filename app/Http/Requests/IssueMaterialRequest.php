@@ -31,7 +31,7 @@ class IssueMaterialRequest extends FormRequest
             'remarks' => 'nullable|string',
 
             'attachments' => 'nullable|array',
-            'attachments.*' => 'mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
 
             'items' => 'required|array|min:1',
             'items.*.issue_transaction_item_id' => 'nullable|integer',

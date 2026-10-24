@@ -106,7 +106,7 @@ class PaymentController extends Controller
             'paid_by_user_id' => 'required|integer',
             'remarks' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:10240|mimes:' . env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip'),
+            'attachments.*' => 'file|max:10240|mimes:' . attachment_exts('jpg,png,pdf,docx,xlsx,zip'),
         ]);
 
         $payment = DB::transaction(function () use ($request, $data) {

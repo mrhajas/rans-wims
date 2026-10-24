@@ -26,11 +26,11 @@
 
           <div>
             <label class="bc-label" for="bc-size">{{ $t('Label size') }}</label>
-            <select id="bc-size" v-model="size" class="bc-input">
+            <css-select id="bc-size" v-model="size" class="bc-input">
               <option value="sm">{{ $t('Small') }}</option>
               <option value="md">{{ $t('Medium') }}</option>
               <option value="lg">{{ $t('Large') }}</option>
-            </select>
+            </css-select>
           </div>
 
           <label class="bc-check">

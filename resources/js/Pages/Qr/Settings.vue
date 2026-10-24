@@ -17,11 +17,11 @@
           </div>
 
           <div class="qst-fields">
-            <div class="qst-f"><label>{{ $t('Size on screen') }}</label><select v-model="form.preview"><option value="small">{{ $t('Small') }}</option><option value="medium">{{ $t('Medium') }}</option><option value="large">{{ $t('Large') }}</option></select></div>
+            <div class="qst-f"><label>{{ $t('Size on screen') }}</label><css-select v-model="form.preview"><option value="small">{{ $t('Small') }}</option><option value="medium">{{ $t('Medium') }}</option><option value="large">{{ $t('Large') }}</option></css-select></div>
             <div class="qst-f"><label>{{ $t('Size on paper (mm)') }}</label><input v-model.number="form.print_mm" type="number" min="25" max="80" step="5" /></div>
             <div class="qst-f"><label>{{ $t('Labels per print') }}</label><input v-model.number="form.copies" type="number" min="1" max="60" /></div>
             <div class="qst-f"><label>{{ $t('Labels per row') }}</label><input v-model.number="form.columns" type="number" min="1" max="6" /></div>
-            <div class="qst-f"><label>{{ $t('Damage tolerance') }}</label><select v-model="form.error_correction"><option value="L">{{ $t('Low (smallest code)') }}</option><option value="M">{{ $t('Medium') }}</option><option value="Q">{{ $t('High (recommended)') }}</option><option value="H">{{ $t('Highest (for rough surfaces)') }}</option></select></div>
+            <div class="qst-f"><label>{{ $t('Damage tolerance') }}</label><css-select v-model="form.error_correction"><option value="L">{{ $t('Low (smallest code)') }}</option><option value="M">{{ $t('Medium') }}</option><option value="Q">{{ $t('High (recommended)') }}</option><option value="H">{{ $t('Highest (for rough surfaces)') }}</option></css-select></div>
             <div class="qst-f"><label>{{ $t('Code colour') }}</label><div class="qst-color"><input v-model="form.color" type="color" /><code>{{ form.color }}</code></div></div>
           </div>
           <p class="qst-hint"><icons name="info" class="w-4 h-4" />{{ $t('Keep the colour dark on a white background. Light colours may not scan.') }}</p>

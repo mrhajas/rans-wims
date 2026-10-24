@@ -53,10 +53,10 @@
             </div>
             <div v-if="!isEdit && defaults.repeat_max > 0" class="sm-field">
               <label for="sm_repeat">{{ $t('Repeat weekly') }}</label>
-              <select id="sm_repeat" v-model.number="form.repeat_weeks" class="sm-select">
+              <css-select id="sm_repeat" v-model.number="form.repeat_weeks" class="sm-select">
                 <option :value="0">{{ $t('Just this meeting') }}</option>
                 <option v-for="n in repeatChoices" :key="n" :value="n">{{ $t('And the next :n weeks', { n }) }}</option>
-              </select>
+              </css-select>
               <span class="sm-hint">{{ $t('Same site, day and time, one record per week.') }}</span>
             </div>
           </div>

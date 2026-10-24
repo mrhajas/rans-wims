@@ -258,7 +258,7 @@ class SiteMeetingController extends SiteMeetingBaseController
             'attendees.*.designation' => ['nullable', 'string', 'max:190'],
             'attendees.*.organisation' => ['nullable', 'string', 'max:190'],
             'attachments' => ['nullable', 'array', 'max:10'],
-            'attachments.*' => ['file', 'max:15360', 'mimes:'.env('ATTACHMENT_EXTS', 'jpg,png,pdf,docx,xlsx,zip')],
+            'attachments.*' => ['file', 'max:15360', 'mimes:'.attachment_exts('jpg,png,pdf,docx,xlsx,zip')],
             'copy_from' => ['nullable', 'integer'],
             'copy_minutes' => ['nullable', 'boolean'],
             'repeat_weeks' => $creating ? ['nullable', 'integer', 'min:0', 'max:'.max(0, $max)] : ['nullable'],

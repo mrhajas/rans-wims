@@ -1,5 +1,16 @@
 <template>
-  <div class="col-span-6 sm:col-span-4 relative" :class="{ 'mb-2': size != 'small' }">
+  <date-picker
+    v-if="type == 'date'"
+    :id="id"
+    :label="label"
+    :error="error"
+    :disabled="disabled || readonly"
+    :placeholder="placeholder"
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
+    @change="$emit('change', $event)"
+  />
+  <div v-else class="col-span-6 sm:col-span-4 relative" :class="{ 'mb-2': size != 'small' }">
     <tec-label v-if="label" :for="id" :value="label" />
     <template v-if="type == 'number'">
       <tec-input
@@ -39,10 +50,11 @@ import { v4 as uuidv4 } from 'uuid';
 import TecLabel from '@/Jetstream/Label.vue';
 import TecInput from '@/Jetstream/Input.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
+import DatePicker from '@/Shared/DatePicker.vue';
 
 export default {
-  emits: ['update:modelValue'],
-  components: { TecLabel, TecInput, TecInputError },
+  emits: ['update:modelValue', 'change'],
+  components: { TecLabel, TecInput, TecInputError, DatePicker },
   props: {
     id: {
       type: String,

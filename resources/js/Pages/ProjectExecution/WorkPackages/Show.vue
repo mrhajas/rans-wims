@@ -399,13 +399,13 @@
             <div class="lg-span-2">
               <tec-input type="text" v-model="issueForm.title" :placeholder="$t('Issue title')" required />
             </div>
-            <select v-model="issueForm.priority" class="rounded-md border-gray-300 text-sm">
+            <css-select v-model="issueForm.priority" class="rounded-md border-gray-300 text-sm">
               <option v-for="p in issuePriorities" :key="p" :value="p">{{ $t(p) }}</option>
-            </select>
-            <select v-model="issueForm.assigned_user_id" class="rounded-md border-gray-300 text-sm">
+            </css-select>
+            <css-select v-model="issueForm.assigned_user_id" class="rounded-md border-gray-300 text-sm">
               <option :value="null">{{ $t('Unassigned') }}</option>
               <option v-for="u in assignableUsers" :key="u.id" :value="u.id">{{ u.name }}</option>
-            </select>
+            </css-select>
           </div>
           <textarea v-model="issueForm.description" class="block w-full rounded-md border-gray-300 text-sm" rows="2" :placeholder="$t('Description')"></textarea>
           <div class="lg-fields items-end">
@@ -430,9 +430,9 @@
                 <p v-if="issue.resolution" class="wps-resolution">{{ $t('Resolution') }}: {{ issue.resolution }}</p>
               </div>
               <div v-if="issue.can_update" class="flex items-center gap-2 print:hidden">
-                <select :value="issue.status" @change="updateIssueStatus(issue, $event.target.value)" class="rounded-md border-gray-300 text-xs">
+                <css-select :value="issue.status" @change="updateIssueStatus(issue, $event.target.value)" class="rounded-md border-gray-300 text-xs">
                   <option v-for="s in issueStatuses" :key="s" :value="s">{{ $t(s) }}</option>
-                </select>
+                </css-select>
                 <button v-if="issue.can_delete" type="button" @click="deleteIssue(issue)" class="lg-icon-btn is-red lg-tip tip-left" :data-tip="$t('Delete')" :aria-label="$t('Delete')"><icons name="trash" class="w-4 h-4" /></button>
               </div>
             </div>

@@ -15,9 +15,9 @@
           <div class="lg-fields">
             <div>
               <label class="ds-label">{{ $t('Disposal Method') }}</label>
-              <select v-model="form.disposal_method" class="w-full rounded-md border-gray-300">
+              <css-select v-model="form.disposal_method" class="w-full rounded-md border-gray-300">
                 <option v-for="m in disposalMethods" :key="m" :value="m">{{ $t(m) }}</option>
-              </select>
+              </css-select>
             </div>
             <text-input type="date" :label="$t('Disposal Date')" v-model="form.disposal_date" />
             <text-input type="number" :label="$t('Disposal Value')" v-model="form.disposal_value" />

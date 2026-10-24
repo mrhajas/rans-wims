@@ -18,6 +18,13 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
+        // "Send in the background" (Settings > Performance & Data): the beat tells WIMS the worker is alive; the worker itself runs for ~55 seconds each minute, in the
+        // background so the other scheduled tasks never wait for it
+        \App\Support\Performance\QueueMode::apply();
+        $schedule->command('queue:beat')->everyMinute();
+        $schedule->command('queue:work --max-time=55 --sleep=2 --tries=3 --timeout=50')->everyMinute()->withoutOverlapping(2)->runInBackground();
+        $schedule->command('archive:export-run')->everyMinute()->withoutOverlapping(3)->runInBackground();
+        $schedule->command('housekeeping:run')->dailyAt('02:10')->withoutOverlapping();
         $schedule->command('stock:alert')->daily();
         $schedule->command('low-stock:send')->everyMinute()->withoutOverlapping();
         $schedule->command('acct:scan')->hourly()->withoutOverlapping();
@@ -30,13 +37,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('smart-brief:clear-logs')->dailyAt('03:50')->withoutOverlapping();
         $schedule->command('wims-connect:check-overdue-issues')->dailyAt('07:30');
         $schedule->command('wims-connect:check-boq-thresholds')->dailyAt('07:45');
-        // Same 365-day clean-up as `activitylog:clean`, except Site Diary history, which must never be silently deleted.
-        $schedule->call(function () {
-            $model = config('activitylog.activity_model', \Spatie\Activitylog\Models\Activity::class);
-            $model::where('created_at', '<', now()->subDays((int) config('activitylog.delete_records_older_than_days', 365)))
-                ->where('log_name', '!=', \App\Services\SiteDiary\SiteDiaryLogger::LOG_NAME)
-                ->delete();
-        })->name('activitylog-clean-keep-site-diary')->daily();
+        // Activity history is no longer deleted after a year: housekeeping:run (above) moves what is older than the number of months set in
+        // Settings > Performance & Data into the activity archive, where it stays and can be downloaded.
         $schedule->command('site-reports:auto-archive')->daily();
         $schedule->command('site-reports:remind-missing')->dailyAt('17:00');
         $schedule->command('site-reports:remind-missing --yesterday')->dailyAt('08:00');

@@ -229,10 +229,10 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('Pays in') }}</label>
-              <select v-model="form.currency" class="border-gray-300 rounded-md shadow-sm w-full">
+              <css-select v-model="form.currency" class="border-gray-300 rounded-md shadow-sm w-full">
                 <option value="TZS">TZS</option>
                 <option value="USD">{{ $t('USD (asks for an exchange rate)') }}</option>
-              </select>
+              </css-select>
             </div>
           </template>
 

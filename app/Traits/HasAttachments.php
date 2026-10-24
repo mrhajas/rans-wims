@@ -19,7 +19,7 @@ trait HasAttachments
                         Storage::disk('local')->path($attachment['path']),
                         [
                             'title' => $attachment['name'],
-                            'disk'  => env('ATTACHMENT_DISK', 'local'),
+                            'disk'  => config('attachments.disk', 'local'),
                             'group' => $attachment['group'] ?? null,
                         ]
                     );

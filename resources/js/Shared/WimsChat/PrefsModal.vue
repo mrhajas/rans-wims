@@ -6,10 +6,10 @@
 
       <div class="wc-prefs">
         <label v-if="chat.config.allow_manual_status && chat.features.presence" class="wc-field">{{ $t('My status') }}
-          <select v-model="status" @change="saveStatus">
+          <css-select v-model="status" @change="saveStatus">
             <option value="auto">{{ $t('Automatic (follows your activity)') }}</option>
             <option v-for="s in chat.config.statuses" :key="s.key" :value="s.key">{{ s.label }}</option>
-          </select>
+          </css-select>
         </label>
 
         <h4>{{ $t('Chat colour') }}</h4>
@@ -25,7 +25,7 @@
         <h4>{{ $t('Typing') }}</h4>
         <label class="wc-chk"><input v-model="p.enter_to_send" type="checkbox" class="sdy-cb" @change="save" />{{ $t('Enter sends the message (Shift+Enter for a new line)') }}</label>
         <label class="wc-field">{{ $t('Message density') }}
-          <select v-model="p.density" @change="save"><option value="comfortable">{{ $t('Comfortable') }}</option><option value="compact">{{ $t('Compact') }}</option></select>
+          <css-select v-model="p.density" @change="save"><option value="comfortable">{{ $t('Comfortable') }}</option><option value="compact">{{ $t('Compact') }}</option></css-select>
         </label>
 
         <h4>{{ $t('Privacy') }}</h4>
