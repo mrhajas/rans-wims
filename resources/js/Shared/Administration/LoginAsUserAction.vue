@@ -207,8 +207,12 @@ export default {
   align-items: center;
   justify-content: center;
   flex: none;
+  box-sizing: border-box;
   width: 1.9rem;
   height: 1.9rem;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
   border-radius: 9999px;
   background: linear-gradient(145deg, #7f1d1d, #500724);
   color: #fff;

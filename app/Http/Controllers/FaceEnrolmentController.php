@@ -164,6 +164,7 @@ class FaceEnrolmentController extends Controller
         FaceTemplate::query()->where('user_id', $user->id)->delete();
         FaceDevice::query()->where('user_id', $user->id)->active()->update(['revoked_at' => now()]);
         log_activity(__('Face login reset for :n.', ['n' => $user->name]), [], $request->user(), 'Users');
+        \App\Support\UserAudit::record($user, 'face_reset', [], $request->user()->id);
         \App\Services\UserNotifier::fire('face_login_reset', $user, __('Face Login Removed'), 'Face ID was removed for ' . $user->name . ' (' . $user->username . ') by ' . $request->user()->name . '.', $request->user());
 
         return back()->with('message', __('Face login was removed for :n.', ['n' => $user->name]));

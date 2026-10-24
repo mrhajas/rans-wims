@@ -92,6 +92,7 @@ class UserStaffLinkController extends Controller
 
             log_activity(__('Staff profile :ref linked to user :user.', ['ref' => $staff->staff_number, 'user' => $lockedUser->name]), ['staff_number' => $staff->staff_number, 'user_id' => $lockedUser->id], $staff, 'Staff');
             log_activity(__('Linked to staff profile :ref.', ['ref' => $staff->staff_number]), ['staff_number' => $staff->staff_number], $lockedUser, 'User');
+            \App\Support\UserAudit::record($lockedUser, 'staff_link', ['action' => 'linked', 'staff' => $staff->name, 'staff_number' => $staff->staff_number]);
             \App\Services\StaffNotifier::fire('linked', $staff, __('Staff linked'), $staff->name.' '.__('was linked to the login of :u by :n.', ['u' => $lockedUser->name, 'n' => auth()->user()->name]), auth()->user());
         });
 
@@ -126,6 +127,7 @@ class UserStaffLinkController extends Controller
 
             log_activity(__('Staff record created.'), ['staff_number' => $staff->staff_number, 'created_from_user' => $lockedUser->id], $staff, 'Staff');
             log_activity(__('Staff profile :ref created from this user.', ['ref' => $staff->staff_number]), ['staff_number' => $staff->staff_number], $lockedUser, 'User');
+            \App\Support\UserAudit::record($lockedUser, 'staff_link', ['action' => 'created', 'staff' => $staff->name, 'staff_number' => $staff->staff_number]);
             \App\Services\StaffNotifier::fire('created_from_user', $staff, __('Staff created from a login'), __('A staff profile for :s was created from the login of :u by :n.', ['s' => $staff->name, 'u' => $lockedUser->name, 'n' => auth()->user()->name]), auth()->user());
 
             return $staff;
@@ -145,6 +147,7 @@ class UserStaffLinkController extends Controller
 
         log_activity(__('Staff profile :ref unlinked from user :user.', ['ref' => $staff->staff_number, 'user' => $user->name]), ['staff_number' => $staff->staff_number, 'user_id' => $user->id], $staff, 'Staff');
         log_activity(__('Unlinked from staff profile :ref.', ['ref' => $staff->staff_number]), ['staff_number' => $staff->staff_number], $user, 'User');
+        \App\Support\UserAudit::record($user, 'staff_link', ['action' => 'unlinked', 'staff' => $staff->name, 'staff_number' => $staff->staff_number]);
         \App\Services\StaffNotifier::fire('unlinked', $staff, __('Staff unlinked'), $staff->name.' '.__('was unlinked from the login of :u by :n.', ['u' => $user->name, 'n' => $request->user()->name]), $request->user(), null, ['user' => (string) $user->name]);
 
         return back()->with('message', __('User unlinked from the staff profile.'));

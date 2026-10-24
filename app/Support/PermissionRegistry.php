@@ -610,6 +610,7 @@ class PermissionRegistry
                     'create-users' => __('create_x', ['x' => __('Users')]),
                     'update-users' => __('update_x', ['x' => __('Users')]),
                     'delete-users' => __('delete_x', ['x' => __('Users')]),
+                    'audit-users' => __('View the User Audit History'),
                 ],
             ],
 

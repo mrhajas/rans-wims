@@ -235,6 +235,8 @@ class UserController extends Controller
         $user->assignRole($this->guardedRoles($request->input('roles')));
         $user->warehouses()->sync($request->input('warehouses', []));
         \App\Support\AllWarehouseRoles::apply($user); // a role with "All warehouses" means every warehouse
+        \App\Support\UserAudit::roles($user, [], $user->fresh()->getRoleNames()->all());
+        \App\Support\UserAudit::warehouses($user, [], $user->warehouses()->withoutGlobalScopes()->pluck('warehouses.name')->all());
         UserNotifier::fire('created', $user, __('User Created'), $user->name . ' (' . $user->username . ') was created.');
 
         return redirect()->route('users.index')->with('message', __choice('action_text', ['record' => 'User', 'action' => 'created']));
@@ -265,10 +267,14 @@ class UserController extends Controller
         }
         $data['extra_attributes'] = empty($extraAttributes) ? null : $extraAttributes;
 
+        $rolesBefore = $user->getRoleNames()->all();
+        $warehousesBefore = $user->warehouses()->withoutGlobalScopes()->pluck('warehouses.name')->all();
         $user->update($data);
         $user->syncRoles($this->guardedRoles($request->input('roles')));
         $user->warehouses()->sync($request->input('warehouses', []));
         \App\Support\AllWarehouseRoles::apply($user); // a role with "All warehouses" means every warehouse
+        \App\Support\UserAudit::roles($user, $rolesBefore, $user->fresh()->getRoleNames()->all());
+        \App\Support\UserAudit::warehouses($user, $warehousesBefore, $user->warehouses()->withoutGlobalScopes()->pluck('warehouses.name')->all());
         UserNotifier::fire('updated', $user, __('User Edited'), $user->name . ' (' . $user->username . ') was edited.');
         if ($request->filled('password')) {
             UserNotifier::fire('password_set_by_admin', $user, __('Password Set by an Administrator'), 'A new password was set for ' . $user->name . ' (' . $user->username . ') by ' . (auth()->user()?->name ?? 'an administrator') . '.');

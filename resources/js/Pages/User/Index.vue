@@ -5,6 +5,9 @@
         <Link v-if="$can('create-users')" :href="route('users.create')" class="lg-btn lg-btn-primary">
           <icons name="plus" class="w-4 h-4" />{{ $t('create_x', { x: $t('User') }) }}
         </Link>
+        <button v-if="$can('audit-users')" type="button" class="lg-btn tone" style="--tone: #4f46e5" @click="openAudit(null)">
+          <span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span>{{ $t('Audit History') }}
+        </button>
       </page-header>
 
       <stat-tiles :items="statTiles" />
@@ -111,6 +114,10 @@
                 </td>
                 <td class="num">
                   <div class="lg-actions items-center">
+                    <span v-if="$can('audit-users')" class="usr-audit-wrap">
+                      <button type="button" class="usr-audit" :aria-label="$t('Audit History')" @click.stop="openAudit(user)"><icons name="clock" class="w-4 h-4" /></button>
+                      <span class="usr-audit-tip">{{ $t('Audit History') }}</span>
+                    </span>
                     <login-as-user-action v-if="canImpersonate(user)" :user="user" @click.stop />
                     <icons v-if="$can('update-users')" name="chevron-down" class="usr-go transform -rotate-90 block w-4 h-4" />
                   </div>
@@ -128,6 +135,8 @@
       </div>
 
       <pagination class="mt-6" :meta="users.meta" :links="users.links" />
+
+      <audit-modal v-if="$can('audit-users')" :show="auditOpen" :user-id="auditUser ? auditUser.id : null" :user-name="auditUser ? auditUser.name : ''" @close="auditOpen = false" />
     </div>
   </admin-layout>
 </template>
@@ -143,6 +152,7 @@ import SearchFilter from '@/Shared/SearchFilter.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import LoginAsUserAction from '@/Shared/Administration/LoginAsUserAction.vue';
+import AuditModal from './Parts/AuditModal.vue';
 
 export default {
   components: {
@@ -153,6 +163,7 @@ export default {
     PageHeader,
     StatTiles,
     LoginAsUserAction,
+    AuditModal,
   },
 
   props: {
@@ -164,6 +175,8 @@ export default {
 
   data() {
     return {
+      auditOpen: false,
+      auditUser: null,
       form: {
         role: this.filters.role,
         search: this.filters.search,
@@ -215,6 +228,11 @@ export default {
   },
 
   methods: {
+    // the audit history window: of one user (the clock beside the row) or of everyone (the button at the top)
+    openAudit(user) {
+      this.auditUser = user ? { id: user.id, name: user.name } : null;
+      this.auditOpen = true;
+    },
     goto(link) {
       if (this.$can('update-users')) {
         this.$inertia.visit(link);
@@ -303,4 +321,11 @@ tr:hover .usr-go { color: #4f6df5; transform: translateX(2px) rotate(-90deg); }
   .usr-go { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .usr-go { transition: none; } }
+.usr-audit-wrap { position: relative; display: inline-flex; }
+.usr-audit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 1.9rem; height: 1.9rem; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0; border-radius: 9999px; cursor: pointer; color: #fff; background: linear-gradient(145deg, #6366f1, #3730a3); box-shadow: 0 2px 6px -2px rgba(55, 48, 163, 0.65); transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
+.usr-audit:hover { background: linear-gradient(145deg, #818cf8, #4338ca); box-shadow: 0 6px 14px -4px rgba(55, 48, 163, 0.7); transform: translateY(-1px); }
+.usr-audit :deep(div) { flex: none; margin: 0; }
+.usr-audit :deep(svg) { width: 16px !important; height: 16px !important; }
+.usr-audit-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%) translateY(4px); white-space: nowrap; padding: 0.35rem 0.6rem; border-radius: 0.45rem; font-size: 0.68rem; font-weight: 600; background: #0f172a; color: #f1f5f9; box-shadow: 0 10px 24px -8px rgba(15, 23, 42, 0.45); opacity: 0; visibility: hidden; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
+.usr-audit-wrap:hover .usr-audit-tip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
 </style>

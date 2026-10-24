@@ -78,6 +78,7 @@ class ImpersonationController extends Controller
         }
 
         $record = Impersonation::start($actor, $user, $data['reason'], $data['mode'] ?? ImpersonationSession::MODE_FULL, $request);
+        \App\Support\UserAudit::record($user, 'impersonated', ['reason' => $data['reason'], 'mode' => $data['mode'] ?? 'full'], $actor->id);
         \App\Services\UserNotifier::fire('impersonation_started', $user, __('Signed In As Another User'), $actor->name . ' started working inside the account of ' . $user->name . ' (' . $user->username . '). Mode: ' . (($data['mode'] ?? 'full') === 'read_only' ? 'view only' : 'full') . '. Reason: ' . $data['reason'], $actor);
 
         return response()->json([

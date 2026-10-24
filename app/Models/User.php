@@ -383,6 +383,17 @@ class User extends Authenticatable
             }
         });
 
+        // the user audit history: the major things that happen to the account (see App\Support\UserAudit)
+        static::created(fn (User $user) => \App\Support\UserAudit::record($user, 'user_created'));
+        static::updated(fn (User $user) => \App\Support\UserAudit::fromChanges($user));
+        static::deleted(function (User $user) {
+            if (! $user->isForceDeleting()) {
+                \App\Support\UserAudit::record($user, 'user_deleted');
+            }
+        });
+        static::restored(fn (User $user) => \App\Support\UserAudit::record($user, 'user_restored'));
+        static::forceDeleted(fn (User $user) => \App\Support\UserAudit::record($user, 'user_deleted_permanently'));
+
         // Recipients (the contact book) pulls the person's details from their records; a pulled address waits to be enabled
         static::saved(function (User $user) {
             try {

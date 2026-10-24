@@ -112,6 +112,7 @@ class RoleController extends Controller
         if ($before !== $after) {
             $added = count(array_diff($after, $before));
             $removed = count(array_diff($before, $after));
+            \App\Support\UserAudit::record(null, 'role_permissions', ['role' => $role->name, 'added' => array_slice(array_values(array_diff($after, $before)), 0, 12), 'removed' => array_slice(array_values(array_diff($before, $after)), 0, 12), 'added_count' => $added, 'removed_count' => $removed], null, $role->name);
             \App\Services\UserNotifier::fireRole('role_permissions_changed', $role, __('Role Permissions Changed'), 'The permissions of the role ' . $role->name . ' were changed by ' . $request->user()->name . ': ' . $added . ' added, ' . $removed . ' removed.', $request->user());
         }
 
