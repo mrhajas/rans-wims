@@ -210,7 +210,7 @@
         <div><strong>{{ $doc['title'] }}</strong> &nbsp; {{ $doc['reference'] }}@if(!empty($doc['copies'])) &nbsp;&middot;&nbsp; {{ count($doc['copies']) }} copies: {{ implode(' + ', $doc['copies']) }}@endif</div>
         <div>
             <button type="button" onclick="window.print()">&#128424; Print</button>
-            <a href="{{ $pdfUrl }}">&#11015; Download PDF</a>
+            @if(empty($doc['labels']))<a href="{{ $pdfUrl }}">&#11015; Download PDF</a>@endif
         </div>
     </div>
 @endif
@@ -316,7 +316,7 @@
             @endif
         </tbody>
     </table>
-    @else
+    @elseif(empty($doc['image']) && empty($doc['labels']))
     <div class="section-title">@include('print.icon', ['name' => 'package', 'color' => $AD, 'size' => 12]) &nbsp;Items</div>
     <table class="items">
         <thead>
@@ -389,6 +389,43 @@
         </tbody>
     </table>
 
+    @endif
+
+    {{-- the item labels (Print Barcodes page): a blue label per code, the barcode / QR inside a white panel --}}
+    @if(!empty($doc['labels']))
+        @php($LW = $doc['labels']['width'])
+        <style>
+            .lbl-grid { font-size: 0; margin: 0 -4px; }
+            .lbl { display: inline-block; vertical-align: top; box-sizing: border-box; width: {{ $LW }}px; margin: 0 4px 10px; padding: 9px 9px 9px; border-radius: 12px; background: #1d4ed8; background-image: linear-gradient(160deg, #2563eb, #1e3a8a); text-align: center; page-break-inside: avoid; break-inside: avoid; box-shadow: 0 6px 12px -6px rgba(30,58,138,0.55); }
+            .lbl-name { min-height: 26px; padding: 0 2px 7px; font-size: 10.5px; line-height: 1.25; font-weight: bold; color: #ffffff; overflow: hidden; }
+            .lbl-panel { box-sizing: border-box; padding: 9px 10px 8px; border-radius: 9px; background: #ffffff; box-shadow: 0 4px 9px -3px rgba(2,6,23,0.55); }
+            .lbl-qr { width: {{ (int) round($LW * 0.56) }}px; margin: 0 auto; }
+            .lbl-code { margin-top: 5px; font-family: Menlo, Consolas, monospace; font-size: 10.5px; font-weight: bold; letter-spacing: 0.06em; color: #0b1530; }
+        </style>
+        <div class="section-title">@include('print.icon', ['name' => 'hash', 'color' => $AD, 'size' => 12]) &nbsp;Labels</div>
+        <div class="lbl-grid">
+            @foreach($doc['labels']['items'] as $l)
+                <div class="lbl">
+                    @if($doc['labels']['show_name'])<div class="lbl-name">{{ \Illuminate\Support\Str::limit($l['name'], 44) }}</div>@endif
+                    <div class="lbl-panel">
+                        @if($doc['labels']['style'] === 'qr')
+                            <div class="lbl-qr">{!! $l['svg'] !!}</div>
+                            <div class="lbl-code">{{ $l['code'] }}</div>
+                        @else
+                            {!! $l['svg'] !!}
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- a picture as the body of the document (the BinCard): shown whole, centred --}}
+    @if(!empty($doc['image']))
+        <div class="section-title">@include('print.icon', ['name' => 'file', 'color' => $AD, 'size' => 12]) &nbsp;{{ $doc['image']['title'] }}</div>
+        <div style="text-align:center;border:1px solid {{ $doc['accent_line'] ?? '#cbd5e1' }};border-radius:6px;padding:8px;margin-bottom:8px;">
+            <img src="{{ $doc['image']['src'] }}" alt="" style="max-width:100%;max-height:{{ $doc['image']['max_h'] ?? 560 }}px;">
+        </div>
     @endif
 
     @if($doc['change_cols'] && !empty($doc['change_note']))

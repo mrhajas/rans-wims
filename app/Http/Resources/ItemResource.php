@@ -30,7 +30,9 @@ class ItemResource extends JsonResource
             'track_quantity'   => $this->track_quantity == 1 ? true : false,
             'is_used'          => $this->is_used == 1 ? true : false,
             'photo'            => $this->photo ? Storage::disk('assets')->url($this->photo) : null,
-            'photos'           => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($p) => ['id' => $p->id, 'url' => Storage::disk('assets')->url($p->path)])->values()),
+            // the current BinCard photo, only when one is assigned (the list shows its container only then)
+            'bincard'          => $this->whenLoaded('bincardPhoto', fn () => $this->bincardPhoto ? ['id' => $this->bincardPhoto->id, 'url' => Storage::disk('assets')->url($this->bincardPhoto->path), 'at' => optional($this->bincard_at)->toIso8601String()] : null),
+            'photos'           => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($p) => ['id' => $p->id, 'url' => Storage::disk('assets')->url($p->path), 'cutout' => (bool) $p->cutout])->values()),
             'user'             => $this->whenLoaded('user'),
             'unit'             => $this->whenLoaded('unit'),
             'stock'            => $this->whenLoaded('stock'),

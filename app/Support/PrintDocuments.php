@@ -272,6 +272,64 @@ class PrintDocuments
         ]);
     }
 
+    /** The BinCard of an item as a WIMS document: the picture, the item, its Last update and who printed it, and when. */
+    public static function binCard(\App\Models\Item $item, string $imageSrc, ?\App\Models\User $by = null): array
+    {
+        $item->loadMissing(['unit:id,name,code', 'categories:id,name']);
+        $updatedBy = $item->bincard_by ? optional(\App\Models\User::withoutGlobalScopes()->find($item->bincard_by))->name : null;
+
+        return self::base([
+            'accent' => '#0f766e', 'accent_dark' => '#115e59', 'accent_soft' => '#f0fdfa', 'accent_line' => '#99f6e4',
+            'icon' => 'file', 'title' => 'BINCARD', 'subtitle' => 'The stock card kept with the goods, as photographed',
+            'reference' => $item->code ?: ('#' . $item->id),
+            'status' => ['label' => 'Last update ' . optional($item->bincard_at)->format('d/m/Y'), 'class' => 'status-info'],
+            'show_values' => false, 'compact' => true,
+            'stats' => [
+                ['icon' => 'package', 'label' => 'Item', 'value' => \Illuminate\Support\Str::limit($item->name, 34)],
+                ['icon' => 'hash', 'label' => 'Code', 'value' => $item->code ?: '-'],
+                ['icon' => 'calendar', 'label' => 'Last update', 'value' => optional($item->bincard_at)->format('d/m/Y H:i') ?: '-'],
+                ['icon' => 'user', 'label' => 'Updated by', 'value' => $updatedBy ?: '-'],
+            ],
+            'parties' => [
+                ['title' => 'Item', 'icon' => 'package', 'rows' => [['Name', $item->name], ['Code', $item->code ?: '-'], ['Category', $item->categories->pluck('name')->implode(', ') ?: '-'], ['Unit', optional($item->unit)->name ?: '-']]],
+                ['title' => 'Printed', 'icon' => 'user', 'rows' => [['Printed by', optional($by)->name ?: '-'], ['Date', now()->format('d/m/Y')], ['Time', now()->format('H:i:s')]]],
+            ],
+            'image' => ['title' => 'BinCard photo', 'src' => $imageSrc, 'max_h' => 480],
+            'lines' => [], 'total' => '', 'total_qty' => '', 'notes' => null,
+            'signatures' => [['role' => 'Printed By', 'name' => optional($by)->name, 'date' => now()->format('d/m/Y H:i')]],
+            'footer' => 'BinCard ' . ($item->code ?: $item->id),
+        ]);
+    }
+
+    /** The Print Barcodes page as a WIMS document: the labels exactly as chosen on the page (style, size, name, copies), who printed and when. */
+    public static function itemLabels(array $labels, array $opts, int $itemCount, ?\App\Models\User $by = null, ?string $note = null): array
+    {
+        $styleName = $opts['style'] === 'qr' ? 'QR Code' : 'Barcode';
+        $sizeName = ['sm' => 'Small', 'md' => 'Medium', 'lg' => 'Large'][$opts['size']] ?? 'Medium';
+
+        return self::base([
+            'accent' => '#1d4ed8', 'accent_dark' => '#1e3a8a', 'accent_soft' => '#eff6ff', 'accent_line' => '#bfdbfe',
+            'icon' => 'hash', 'title' => 'ITEM LABELS', 'subtitle' => $styleName . ' labels for the stores',
+            'reference' => now()->format('Ymd-His'),
+            'status' => ['label' => count($labels) . ' ' . (count($labels) === 1 ? 'label' : 'labels'), 'class' => 'status-info'],
+            'show_values' => false, 'compact' => true,
+            'stats' => [
+                ['icon' => 'hash', 'label' => 'Labels', 'value' => count($labels)],
+                ['icon' => 'package', 'label' => 'Items', 'value' => $itemCount],
+                ['icon' => 'file', 'label' => 'Style', 'value' => $styleName],
+                ['icon' => 'sliders', 'label' => 'Size', 'value' => $sizeName],
+            ],
+            'parties' => [
+                ['title' => 'Labels', 'icon' => 'package', 'rows' => [['Style', $styleName], ['Size', $sizeName], ['Item name', $opts['show_name'] ? 'Shown' : 'Hidden'], ['Copies per item', $opts['copies']]]],
+                ['title' => 'Printed', 'icon' => 'user', 'rows' => [['Printed by', optional($by)->name ?: '-'], ['Date', now()->format('d/m/Y')], ['Time', now()->format('H:i:s')]]],
+            ],
+            'labels' => ['items' => $labels, 'size' => $opts['size'], 'width' => ['sm' => 150, 'md' => 196, 'lg' => 250][$opts['size']] ?? 196, 'style' => $opts['style'], 'show_name' => (bool) $opts['show_name']],
+            'lines' => [], 'total' => '', 'total_qty' => '', 'notes' => $note,
+            'signatures' => [['role' => 'Printed By', 'name' => optional($by)->name, 'date' => now()->format('d/m/Y H:i')]],
+            'footer' => 'Item labels ' . now()->format('d/m/Y H:i'),
+        ]);
+    }
+
     public static function adjustment(Adjustment $adjustment): array
     {
         [$lines, $total, $totalQty] = self::valuedLines($adjustment->items);

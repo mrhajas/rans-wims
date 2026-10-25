@@ -28,9 +28,10 @@ class ItemRequest extends FormRequest
             'rack_location'     => 'nullable|string',
             'unit_id'           => 'nullable|exists:units,id',
             'child_category_id' => 'nullable|exists:categories,id',
-            'photo'             => 'nullable|image|mimes:png,jpg,jpeg,svg',
+            'photo'             => 'nullable|image|mimes:png,jpg,jpeg,svg,webp',
             'extra_photos'      => 'nullable|array|max:3',
-            'extra_photos.*'    => 'image|mimes:png,jpg,jpeg|max:10240',
+            'extra_photos.*'    => 'image|mimes:png,jpg,jpeg,webp|max:15360',
+            'bincard_index'     => 'nullable|integer|min:0|max:2',
             'sku'               => 'nullable|max:50|unique:items,sku,' . optional($this->route('item'))->id,
 
             'name'        => 'required|string',
@@ -47,10 +48,15 @@ class ItemRequest extends FormRequest
     public function validated($key = null, $default = null)
     {
         $data = $this->validator->validated();
-        unset($data['extra_photos']); // stored by the controller (ItemPhotoGallery), not an items column
+        unset($data['extra_photos'], $data['bincard_index']); // stored by the controller (ItemPhotoGallery), not an items column
+
+        // no new file picked: the form's empty `photo` field must never wipe the item's saved face photo (removal has its own action)
+        if (! $this->file('photo')) {
+            unset($data['photo']);
+        }
 
         if ($this->file('photo')) {
-            $data['photo'] = $this->file('photo')->store('items', 'assets');
+            $data['photo'] = \App\Support\ItemImage::store($this->file('photo'));
             if (optional($this->route('item'))->photo) {
                 Storage::disk('assets')->delete($this->route('item')->photo);
             }

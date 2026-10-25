@@ -403,6 +403,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('search/items', [Controllers\AjaxController::class, 'items'])->name('items.search');
     Route::post('scan/item', [Controllers\AjaxController::class, 'scan'])->name('items.scan');
     Route::get('barcodes', [Controllers\ItemController::class, 'barcodes'])->name('items.barcodes');
+    Route::get('barcodes/print', [Controllers\ItemController::class, 'barcodesPrint'])->middleware('throttle:30,1,items.barcodes.print')->name('items.barcodes.print');
+    Route::post('barcodes/preferences', [Controllers\ItemController::class, 'saveBarcodePrefs'])->middleware('throttle:60,1,items.barcodes.preferences')->name('items.barcodes.preferences');
     Route::post('check/stock', [Controllers\AjaxController::class, 'checkStock'])->name('stock.check');
     Route::get('items/{item}/report/print', [Controllers\ItemReportController::class, 'print'])->whereNumber('item')->middleware('throttle:60,1,items.report.print')->name('items.report.print');
     Route::get('items/{item}/report/pdf', [Controllers\ItemReportController::class, 'pdf'])->whereNumber('item')->middleware('throttle:60,1,items.report.pdf')->name('items.report.pdf');
@@ -438,6 +440,13 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::delete('items/{item}/photo', [Controllers\ItemController::class, 'destroyPhoto'])->name('items.deletePhoto');
     Route::delete('items/{item}/photos/{photo}', [Controllers\ItemController::class, 'destroyGalleryPhoto'])->name('items.photos.destroy');
     Route::post('items/{item}/photos/{photo}/main', [Controllers\ItemController::class, 'makeGalleryPhotoMain'])->name('items.photos.main');
+    Route::get('items/{item}/bincard', [Controllers\ItemController::class, 'bincard'])->whereNumber('item')->name('items.bincard');
+    Route::post('items/{item}/bincard', [Controllers\ItemController::class, 'refreshBincard'])->whereNumber('item')->middleware('throttle:20,1,items.bincard.refresh')->name('items.bincard.refresh');
+    Route::delete('items/{item}/bincard', [Controllers\ItemController::class, 'removeBincard'])->whereNumber('item')->name('items.bincard.remove');
+    Route::get('items/{item}/bincard/print', [Controllers\ItemController::class, 'bincardPrint'])->whereNumber('item')->middleware('throttle:30,1,items.bincard.print')->name('items.bincard.print');
+    Route::get('items/{item}/bincard/pdf', [Controllers\ItemController::class, 'bincardPdf'])->whereNumber('item')->middleware('throttle:20,1,items.bincard.pdf')->name('items.bincard.pdf');
+    Route::post('items/{item}/photos/{photo}/cutout', [Controllers\ItemController::class, 'cutoutPhoto'])->whereNumber('item')->middleware('throttle:30,1,items.photos.cutout')->name('items.photos.cutout');
+    Route::post('items/{item}/photos/{photo}/bincard', [Controllers\ItemController::class, 'assignBincard'])->whereNumber('item')->name('items.photos.bincard');
     Route::post('items/fetch-photo-download', [Controllers\ItemController::class, 'fetchPhotoDownload'])->name('items.fetchPhotoDownload');
 
     // Multi Transfer: items from several warehouses to one destination (an ordinary transfer per source, all held for approval). Literal paths first.

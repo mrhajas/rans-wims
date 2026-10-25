@@ -80,30 +80,23 @@ trait ItemHelpers
         );
     }
 
+    /**
+     * Makes sure the item has a stock row in every warehouse. This used to loop over the warehouses INSIDE a loop over the warehouses and ask the database about
+     * each pair (W x W questions, 2 more for each: with 60 warehouses over 7,000 queries every time an item was saved). Now one question lists the rows that
+     * exist, and only the missing ones are created.
+     */
     public function setStock()
     {
-        $warehouses = Warehouse::all();
-        foreach ($warehouses as $warehouse) {
-            foreach ($warehouses as $warehouse) {
-                $stock = $this->stock()->where(['warehouse_id' => $warehouse->id])->first();
-                if (! $stock) {
-                    $this->stock()->create([
-                        'weight'         => 0,
-                        'quantity'       => 0,
-                        'warehouse_id'   => $warehouse->id,
-                        'rack_location'  => $this->rack_location,
-                        'alert_quantity' => $this->alert_quantity,
-                    ]);
-                }
-                // $this->stock()->updateOrCreate([
-                //     'account_id'   => getAccountId(),
-                //     'warehouse_id' => $warehouse->id,
-                // ], [
-                //     'weight'         => 0,
-                //     'quantity'       => 0,
-                //     'rack_location'  => $this->rack_location,
-                //     'alert_quantity' => $this->alert_quantity,
-                // ]);
+        $have = $this->stock()->pluck('warehouse_id')->flip();
+        foreach (Warehouse::all() as $warehouse) {
+            if (! isset($have[$warehouse->id])) {
+                $this->stock()->create([
+                    'weight'         => 0,
+                    'quantity'       => 0,
+                    'warehouse_id'   => $warehouse->id,
+                    'rack_location'  => $this->rack_location,
+                    'alert_quantity' => $this->alert_quantity,
+                ]);
             }
         }
     }

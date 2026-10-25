@@ -3169,3 +3169,10 @@ html.dark .sdy-type-chip:not(.is-on) .sdy-type-mark { background: #b91c1c; }
 .autono-td { color: var(--lg-faint, #94a3b8); font-weight: 700; font-size: 0.82em; }
 .lg-responsive td.autono-td { text-align: right !important; }
 @media print { .autono-th, .autono-td { width: 2rem; min-width: 2rem; } }
+/* phones: a row that names a suffix shows it beside its number, e.g. "1 (Code: RSI-1139)" */
+.autono-td[data-suffix]::after { display: none; }
+@media (max-width: 767.98px) {
+  .autono-td[data-suffix] { white-space: normal; }
+  .autono-td[data-suffix]::after { display: inline; content: ' (' attr(data-suffix) ')'; margin-left: 0.3em; color: var(--lg-ink, #0f172a); font-weight: 700; }
+  .item-code-line { display: none; }
+}

@@ -14,6 +14,7 @@
           <span class="fx-used-ico"><icons name="duplicate" class="w-3.5 h-3.5" /></span>
           <span>{{ creatingUsed ? $t('Creating…') : $t('Create USED') }}</span>
         </button>
+        <item-photo-chips v-if="edit" :item="edit" @photos="photoViewOpen = true" @bincard="binCardOpen = true" />
         <Link :href="route('items.index')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Items') }}</Link>
       </page-header>
 
@@ -99,13 +100,7 @@
           </header>
           <div class="fx-photo">
             <div v-if="photoPreviewUrl && !photoLoadError" class="fx-photo-thumb">
-              <img
-                :src="photoPreviewUrl"
-                alt=""
-                class="fx-photo-img"
-                @click="imagePreviewOpen = true"
-                @error="photoLoadError = true"
-              />
+              <zoom-image class="fx-photo-img" :src="photoPreviewUrl" fit="cover" :size="240" @open="imagePreviewOpen = true" @error="photoLoadError = true" />
               <button
                 type="button"
                 @click="removePhoto"
@@ -118,7 +113,7 @@
             </div>
             <div v-else class="fx-photo-thumb fx-photo-empty is-click" role="button" tabindex="0" :aria-label="$t('Select photos')" @click="$refs.fileInput && $refs.fileInput.browse()" @keyup.enter="$refs.fileInput && $refs.fileInput.browse()"><icons name="image" class="w-6 h-6" /></div>
             <div class="fx-photo-body">
-              <file-input ref="fileInput" v-model="form.photo" multiple :max-files="3" @files="onPickedFiles" accept="image/png,image/jpeg,image/svg+xml" :error="$page.props.errors.photo" :label="$t('Photo')" />
+              <file-input ref="fileInput" :model-value="null" multiple :max-files="Math.max(1, photosLeft)" @files="onPickedFiles" accept="image/png,image/jpeg,image/webp" :error="$page.props.errors.photo" :label="$t('Photos (up to 3)')" />
               <button
                 type="button"
                 class="lg-btn lg-tip tip-left fx-fetch-btn fx-btn-blue"
@@ -150,18 +145,44 @@
               />
               <!-- the phone's own camera app, used when the live camera cannot start (for example without https) -->
               <input ref="nativeCam" type="file" accept="image/*" capture="environment" class="hidden" @change="e => { addCaptured(e.target.files[0]); e.target.value = ''; }" />
-              <div v-if="gallery.length || pendingPhotos.length" class="fx-gal">
-                <div v-for="g in gallery" :key="'g' + g.id" class="fx-gal-item">
-                  <img :src="g.url" alt="" @click="galleryView = g.url" />
-                  <button type="button" class="fx-gal-x lg-tip" :data-tip="$t('Remove')" @click="removeGallery(g)"><icons name="cross" class="w-3 h-3" /></button>
-                  <button type="button" class="fx-gal-face lg-tip" :data-tip="$t('Make this the face of the item')" :aria-label="$t('Make this the face of the item')" @click="makeMainGallery(g)"><icons name="star" class="w-3 h-3" /></button>
+              <!-- one switch decides whether the photos taken or picked here lose their background (the cut-out is made on this device) -->
+              <label class="fx-cut"><input v-model="cutOnCapture" type="checkbox" @change="rememberCut" /><span class="fx-cut-ui" aria-hidden="true"></span><span><b>{{ $t('Remove the background') }}</b><small>{{ $t('Keeps just the object. Done on this device, needs no internet after the first time.') }}</small></span></label>
+
+              <div v-if="gallery.length || pendingPhotos.length || edit?.bincard" class="fx-gal">
+                <!-- the BinCard of the item (its own photo, not counted among the three) -->
+                <div v-if="edit && edit.bincard" class="fx-tile is-bincard">
+                  <div class="fx-tile-img"><zoom-image :src="edit.bincard.url" fit="cover" preview="natural" :size="360" @open="binCardOpen = true" /></div>
+                  <span class="fx-tile-tag">{{ $t('BinCard') }}</span>
+                  <button type="button" class="fx-act is-wide" @click="binCardOpen = true"><icons name="doc-text" class="w-3.5 h-3.5" />{{ $date(edit.bincard.at) }}</button>
                 </div>
-                <div v-for="(p, i) in pendingPhotos" :key="'p' + i" class="fx-gal-item is-new">
-                  <img :src="p.url" alt="" @click="galleryView = p.url" />
-                  <button type="button" class="fx-gal-x lg-tip" :data-tip="$t('Remove')" @click="removePending(i)"><icons name="cross" class="w-3 h-3" /></button>
-                  <button type="button" class="fx-gal-face lg-tip" :data-tip="$t('Make this the face of the item')" :aria-label="$t('Make this the face of the item')" @click="makeMainPending(i)"><icons name="star" class="w-3 h-3" /></button>
+
+                <div v-for="g in gallery" :key="'g' + g.id" class="fx-tile">
+                  <div class="fx-tile-img">
+                    <zoom-image :src="g.url" fit="cover" :size="240" @open="galleryView = g.url" />
+                    <span v-if="savedBusy[g.id]" class="fx-busy"><i></i><small>{{ savedBusy[g.id] }}</small></span>
+                  </div>
+                  <div class="fx-acts">
+                    <button type="button" class="fx-act is-face lg-tip" :data-tip="$t('Make this the face of the item')" :aria-label="$t('Make this the face of the item')" @click="makeMainGallery(g)"><icons name="star" class="w-3.5 h-3.5" /></button>
+                    <button type="button" class="fx-act is-card lg-tip" :data-tip="$t('Use as the BinCard of the item')" :aria-label="$t('Use as the BinCard of the item')" @click="makeBinCardGallery(g)"><icons name="doc-text" class="w-3.5 h-3.5" /></button>
+                    <button type="button" class="fx-act is-cut lg-tip" :disabled="g.cutout || savedBusy[g.id]" :data-tip="g.cutout ? $t('The background is already removed') : $t('Remove the background')" :aria-label="$t('Remove the background')" @click="cutOutSaved(g)"><icons name="sparkles" class="w-3.5 h-3.5" /></button>
+                    <button type="button" class="fx-act is-del lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="removeGallery(g)"><icons name="cross" class="w-3.5 h-3.5" /></button>
+                  </div>
                 </div>
-                <span class="fx-gal-count">{{ gallery.length + pendingPhotos.length }}/3 · {{ $t('Save the item to keep new photos.') }}</span>
+
+                <div v-for="(p, i) in pendingPhotos" :key="'p' + i + p.url" class="fx-tile is-new" :class="{ 'is-card': p.bincard }">
+                  <div class="fx-tile-img">
+                    <zoom-image :src="p.url" fit="cover" :size="240" @open="galleryView = p.url" />
+                    <span v-if="p.busy" class="fx-busy"><i></i><small>{{ p.status || $t('Working') }}</small></span>
+                  </div>
+                  <span v-if="p.bincard" class="fx-tile-tag">{{ $t('BinCard') }}</span>
+                  <div class="fx-acts">
+                    <button type="button" class="fx-act is-face lg-tip" :data-tip="$t('Make this the face of the item')" :aria-label="$t('Make this the face of the item')" @click="makeMainPending(i)"><icons name="star" class="w-3.5 h-3.5" /></button>
+                    <button type="button" class="fx-act is-card lg-tip" :class="{ 'is-on': p.bincard }" :data-tip="p.bincard ? $t('Not the BinCard') : $t('Use as the BinCard of the item')" :aria-label="$t('Use as the BinCard of the item')" @click="toggleBinCardPending(i)"><icons name="doc-text" class="w-3.5 h-3.5" /></button>
+                    <button type="button" class="fx-act is-cut lg-tip" :class="{ 'is-on': p.cut }" :disabled="p.busy || p.cut" :data-tip="p.cut ? $t('The background is already removed') : $t('Remove the background')" :aria-label="$t('Remove the background')" @click="cutOut(i)"><icons name="sparkles" class="w-3.5 h-3.5" /></button>
+                    <button type="button" class="fx-act is-del lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="removePending(i)"><icons name="cross" class="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                <span class="fx-gal-count">{{ photoCount }}/3 · {{ $t('Save the item to keep new photos.') }}</span>
               </div>
             </div>
           </div>
@@ -363,7 +384,7 @@
     />
 
     <modal :show="!!galleryView" max-width="2xl" :closeable="true" @close="galleryView = null">
-      <div class="p-3"><img v-if="galleryView" :src="galleryView" alt="" class="w-full h-auto rounded-md" /></div>
+      <div class="p-3"><div v-if="galleryView" class="fx-zoomframe"><img :src="galleryView" class="fx-zoomimg" alt="" /></div></div>
     </modal>
 
     <!-- Photo Preview Modal -->
@@ -378,9 +399,13 @@
             <icons name="cross" class="h-5 w-5" />
           </button>
         </div>
-        <img v-if="photoPreviewUrl" :src="photoPreviewUrl" alt="" class="w-full h-auto rounded-md" />
+        <div v-if="photoPreviewUrl" class="fx-zoomframe"><img :src="photoPreviewUrl" class="fx-zoomimg" alt="" /></div>
+        
       </div>
     </modal>
+
+    <photo-viewer-modal v-if="edit" :show="photoViewOpen" :photos="itemPhotoList(edit)" :title="edit.name" @close="photoViewOpen = false" />
+    <bin-card-modal v-if="edit" :show="binCardOpen" :item-id="edit.id" @close="binCardOpen = false" @updated="$inertia.reload({ only: ['edit'], preserveScroll: true, preserveState: true })" />
 
     <!-- Fetch Photo URL Modal -->
     <modal :show="showPhotoUrlModal" max-width="lg" :transparent="true" :closeable="!fetchingPhotoUrl" @close="closePhotoUrlModal">
@@ -431,6 +456,11 @@ import Dialog from '@/Shared/Dialog.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
 import CameraCapture from '@/Shared/SiteDiary/CameraCapture.vue';
+import ZoomImage from '@/Shared/ZoomImage.vue';
+import BinCardModal from '@/Shared/Item/BinCardModal.vue';
+import PhotoViewerModal from '@/Shared/Item/PhotoViewerModal.vue';
+import ItemPhotoChips from '@/Shared/Item/ItemPhotoChips.vue';
+import { itemPhotoList } from '@/Core/itemPhotos';
 import FileInput from '@/Shared/FileInput.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import SelectInput from '@/Shared/SelectInput.vue';
@@ -460,6 +490,10 @@ export default {
     PageHeader,
     TextareaInput,
     CameraCapture,
+    ZoomImage,
+    BinCardModal,
+    PhotoViewerModal,
+    ItemPhotoChips,
     TecDialogModal,
     TecDangerButton,
     TrashedMessage,
@@ -473,6 +507,10 @@ export default {
       photo: false,
       cameraOpen: false,
       galleryView: null,
+      binCardOpen: false,
+      photoViewOpen: false,
+      savedBusy: {},
+      cutOnCapture: (() => { try { return localStorage.getItem('wims_cut_background') === '1'; } catch (e) { return false; } })(),
       pendingPhotos: [],
       creatingUsed: false,
       photoObjectUrl: null,
@@ -496,6 +534,7 @@ export default {
         price: this.edit ? this.edit.price : 0,
         photo: null,
         extra_photos: [],
+        bincard_index: null,
         _method: this.edit ? 'put' : 'post',
         sku: this.edit ? this.edit.sku : null,
         name: this.edit ? this.edit.name : null,
@@ -523,8 +562,12 @@ export default {
     gallery() {
       return (this.edit && this.edit.photos) || [];
     },
+    // three photos in all: the face of the item, the saved photos and the new ones (a photo marked as the BinCard is not counted)
+    photoCount() {
+      return (this.photoPreviewUrl ? 1 : 0) + this.gallery.length + this.pendingPhotos.filter(x => !x.bincard).length;
+    },
     photosLeft() {
-      return Math.max(0, 3 - this.gallery.length - this.pendingPhotos.length);
+      return Math.max(0, 3 - this.photoCount);
     },
     parents() {
       return this.categories.filter(c => !c.parent_id);
@@ -567,14 +610,111 @@ export default {
       this.creatingUsed = true;
       this.$inertia.post(this.route('items.create-used', this.edit.id), {}, { onFinish: () => (this.creatingUsed = false) });
     },
+    rememberCut() {
+      try { localStorage.setItem('wims_cut_background', this.cutOnCapture ? '1' : '0'); } catch (e) { /* the switch just is not remembered */ }
+    },
+    // keeps the photos the form will send (and which of them is the BinCard) in step with what the person sees
+    syncPending() {
+      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+      const i = this.pendingPhotos.findIndex(p => p.bincard);
+      this.form.bincard_index = i >= 0 ? i : null;
+    },
     addCaptured(file) {
       if (!file || this.photosLeft <= 0) return;
-      this.pendingPhotos.push({ file, url: URL.createObjectURL(file) });
-      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+      const p = { file, orig: file, url: URL.createObjectURL(file), cut: false, busy: false, status: '', bincard: false, ready: null };
+      this.pendingPhotos.push(p);
+      this.syncPending();
+      // the photo is made small on this device while the person goes on (it is what gets sent when the item is saved)
+      p.ready = import('@/Core/imagePrep').then(({ prepareImage }) => prepareImage(file)).then(small => {
+        if (small !== file && this.pendingPhotos.includes(p) && !p.cut) {
+          URL.revokeObjectURL(p.url);
+          p.file = small;
+          p.orig = small;
+          p.url = URL.createObjectURL(small);
+          this.syncPending();
+        }
+      }).catch(() => {});
+      if (this.cutOnCapture) this.cutOut(this.pendingPhotos.length - 1);
     },
-    // several files picked at once: the first is the main photo (already set by the field), the others join the extra photos (three photos at most)
+    // cuts the object out of a pending photo (or brings the original back): done in the browser, nothing is sent anywhere
+    async cutOut(i) {
+      const p = this.pendingPhotos[i];
+      if (!p || p.busy) return;
+      if (p.cut) {
+        URL.revokeObjectURL(p.url);
+        p.file = p.orig;
+        p.url = URL.createObjectURL(p.orig);
+        p.cut = false;
+        this.syncPending();
+        return;
+      }
+      p.busy = true;
+      p.status = this.$t('Loading the cut-out engine');
+      try {
+        if (p.ready) await p.ready; // the small copy first
+        const { removeBackground } = await import('@/Core/removeBackground');
+        const blob = await removeBackground(p.orig, s => (p.status = this.$t(s)));
+        const base = String(p.orig.name || 'photo').replace(/\.[^.]+$/, '');
+        const { prepareImage } = await import('@/Core/imagePrep');
+        const out = await prepareImage(new File([blob], base + '-cutout.png', { type: 'image/png' })); // a transparent WebP, a fraction of the PNG's size
+        URL.revokeObjectURL(p.url);
+        p.file = out;
+        p.url = URL.createObjectURL(out);
+        p.cut = true;
+        this.syncPending();
+      } catch (e) {
+        this.$page.props.flash.error = (e && e.message && /object/.test(e.message)) ? this.$t('No object was found in this photo.') : this.$t('The background could not be removed. The photo was kept as it is.');
+      } finally {
+        p.busy = false;
+        p.status = '';
+      }
+    },
+    itemPhotoList,
+    // the same cut-out for a photo that is already saved: the picture is cut out on this device and the cut-out replaces the saved file
+    async cutOutSaved(g) {
+      if (g.cutout || this.savedBusy[g.id]) return;
+      this.savedBusy = { ...this.savedBusy, [g.id]: this.$t('Loading the cut-out engine') };
+      try {
+        const original = await (await fetch(g.url, { cache: 'no-store' })).blob();
+        const { removeBackground } = await import('@/Core/removeBackground');
+        const blob = await removeBackground(original, s => (this.savedBusy = { ...this.savedBusy, [g.id]: this.$t(s) }));
+        const { prepareImage } = await import('@/Core/imagePrep');
+        const file = await prepareImage(new File([blob], 'cutout.png', { type: 'image/png' }));
+        await new Promise(resolve => {
+          this.$inertia.post(this.route('items.photos.cutout', [this.edit.id, g.id]), { photo: file }, {
+            forceFormData: true, preserveScroll: true, preserveState: true,
+            headers: { 'X-Progress-Label': this.$t('Saving the cut-out'), 'X-Progress-Done': this.$t('Background removed') },
+            onSuccess: () => this.$inertia.reload({ only: ['edit'], preserveScroll: true, preserveState: true }),
+            onFinish: resolve,
+          });
+        });
+      } catch (e) {
+        this.$page.props.flash.error = (e && /object/.test(e.message || '')) ? this.$t('No object was found in this photo.') : this.$t('The background could not be removed. The photo was kept as it is.');
+      } finally {
+        const rest = { ...this.savedBusy };
+        delete rest[g.id];
+        this.savedBusy = rest;
+      }
+    },
+    toggleBinCardPending(i) {
+      const on = !this.pendingPhotos[i].bincard;
+      this.pendingPhotos.forEach(p => (p.bincard = false)); // only one photo is the BinCard
+      this.pendingPhotos[i].bincard = on;
+      this.syncPending();
+    },
+    makeBinCardGallery(g) {
+      this.$inertia.post(this.route('items.photos.bincard', [this.edit.id, g.id]), {}, { preserveScroll: true, preserveState: true, headers: { 'X-Progress-Label': this.$t('Setting the BinCard'), 'X-Progress-Done': this.$t('BinCard set') }, onSuccess: () => this.$inertia.reload({ only: ['edit'], preserveScroll: true, preserveState: true }) });
+    },
+    // every picked photo joins the photos of the item (three at most); the face of the item is only changed with the star
     onPickedFiles(files) {
-      (files || []).slice(1).forEach(f => this.addCaptured(f));
+      const list = files || [];
+      if (this.photosLeft <= 0) {
+        this.$page.props.flash.error = this.$t('This item already has 3 photos. Remove one first.');
+        return;
+      }
+      const room = this.photosLeft; // read before the photos are added
+      list.slice(0, room).forEach(f => this.addCaptured(f));
+      if (list.length > room) this.$page.props.flash.error = this.$t('Only :n photo(s) fitted. An item can have 3.', { n: room });
     },
     makeMainGallery(g) {
       if (this.form.photo && !confirm(this.$t('The photo you just picked as the main photo has not been saved yet and will be dropped. Continue?'))) return;
@@ -588,13 +728,13 @@ export default {
       const previous = this.form.photo;
       this.form.photo = picked.file;
       URL.revokeObjectURL(picked.url);
-      if (previous instanceof File) this.pendingPhotos.splice(i, 0, { file: previous, url: URL.createObjectURL(previous) });
-      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+      if (previous instanceof File) this.pendingPhotos.splice(i, 0, { file: previous, orig: previous, url: URL.createObjectURL(previous), cut: false, busy: false, status: '', bincard: false });
+      this.syncPending();
     },
     removePending(i) {
       const [gone] = this.pendingPhotos.splice(i, 1);
       if (gone) URL.revokeObjectURL(gone.url);
-      this.form.extra_photos = this.pendingPhotos.map(p => p.file);
+      this.syncPending();
     },
     removeGallery(g) {
       this.$inertia.delete(this.route('items.photos.destroy', [this.edit.id, g.id]), { preserveScroll: true, preserveState: true });
@@ -629,7 +769,11 @@ export default {
     // one URL, or two or three separated by a space: the first becomes the main photo, the others join the extra photos (three at most)
     async submitPhotoUrl() {
       if (this.fetchingPhotoUrl || !this.photoUrlInput) return;
-      const urls = [...new Set(this.photoUrlInput.split(/[\s,]+/).filter(Boolean))].slice(0, 3);
+      if (this.photosLeft <= 0) {
+        this.$page.props.flash.error = this.$t('This item already has 3 photos. Remove one first.');
+        return;
+      }
+      const urls = [...new Set(this.photoUrlInput.split(/[\s,]+/).filter(Boolean))].slice(0, this.photosLeft);
       if (!urls.length) return;
 
       this.fetchingPhotoUrl = true;
@@ -637,13 +781,11 @@ export default {
       let failed = 0;
       let message = this.$t('Failed to download that photo. Check the URL and try again.');
       for (const url of urls) {
-        const asMain = attached === 0;
-        if (!asMain && this.photosLeft <= 0) break;
+        if (this.photosLeft <= 0) break;
         try {
           const res = await axios.post(this.route('items.fetchPhotoDownload'), { url, name: this.form.name }, { responseType: 'blob' });
           const file = new File([res.data], `${this.form.name || 'item'}-photo-${attached + 1}.jpg`, { type: res.data.type || 'image/jpeg' });
-          if (asMain) this.form.photo = file;
-          else this.addCaptured(file);
+          this.addCaptured(file); // it joins the item's photos: the face of the item is not replaced
           attached++;
         } catch (err) {
           failed++;
@@ -660,7 +802,7 @@ export default {
       if (attached) {
         this.showPhotoUrlModal = false;
         this.photoUrlInput = '';
-        this.$page.props.flash.message = this.$t('Photo attached. Save the item to keep it.') + (failed ? ` ${failed} ` + this.$t('link(s) could not be fetched.') : '');
+        this.$page.props.flash.message = this.$t('Photo added. Save the item to keep it.') + (failed ? ` ${failed} ` + this.$t('link(s) could not be fetched.') : '');
       } else {
         this.$page.props.flash.error = message;
       }
@@ -673,6 +815,7 @@ export default {
           this.pendingPhotos.forEach(p => URL.revokeObjectURL(p.url));
           this.pendingPhotos = [];
           this.form.extra_photos = [];
+          this.form.bincard_index = null;
         },
         // onFinish: () => {
         //   if (list) {
@@ -817,13 +960,36 @@ html.dark .fx-used-btn { box-shadow: 0 12px 22px -10px rgba(245, 158, 11, 0.55),
 .fx-step-r { border-radius: 0 9999px 9999px 0; }
 
 /* photos taken for the item */
-.fx-gal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
-.fx-gal-item { position: relative; width: 64px; height: 64px; border-radius: 0.75rem; overflow: visible; }
-.fx-gal-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.75rem; cursor: zoom-in; border: 1px solid var(--lg-line); }
-.fx-gal-item.is-new img { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); }
-.fx-gal-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 9999px; background: #dc2626; color: #fff; cursor: pointer; }
-.fx-gal-face { position: absolute; bottom: -6px; right: -6px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 9999px; background: linear-gradient(145deg, #fbbf24, #d97706); color: #fff; cursor: pointer; box-shadow: 0 4px 10px -2px rgba(217, 119, 6, 0.7); }
-.fx-gal-face:hover { filter: brightness(1.1); transform: scale(1.1); }
+.fx-gal { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; margin-top: 10px; }
+.fx-tile { position: relative; display: grid; gap: 6px; width: 116px; min-width: 0; }
+.fx-tile-img { position: relative; width: 116px; height: 116px; border-radius: 0.9rem; overflow: hidden; border: 1px solid var(--lg-line); background: repeating-conic-gradient(#e2e8f0 0 25%, #f8fafc 0 50%) 50% / 14px 14px; }
+html.dark .fx-tile-img { background: repeating-conic-gradient(#0f172a 0 25%, #1e293b 0 50%) 50% / 14px 14px; }
+.fx-tile.is-new .fx-tile-img { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); }
+.fx-tile.is-card .fx-tile-img, .fx-tile.is-bincard .fx-tile-img { border-color: #0f766e; box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.3); }
+.fx-tile-tag { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 9999px; background: #0f766e; color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.03em; box-shadow: 0 4px 8px -2px rgba(15, 118, 110, 0.7); pointer-events: none; }
+.fx-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 3px; justify-items: center; }
+.fx-act { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; box-sizing: border-box; width: 26px; min-width: 26px; height: 26px; min-height: 0; max-height: 26px; aspect-ratio: 1 / 1; padding: 0; border: 0; border-radius: 50%; line-height: 1; color: #fff; cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease; }
+.fx-act:hover:not(:disabled) { transform: scale(1.12); filter: brightness(1.08); } .fx-act:disabled { opacity: 0.5; cursor: progress; }
+.fx-act.is-face { background: linear-gradient(145deg, #fbbf24, #d97706); box-shadow: 0 4px 10px -2px rgba(217, 119, 6, 0.7); }
+.fx-act.is-card { background: linear-gradient(145deg, #2dd4bf, #0f766e); box-shadow: 0 4px 10px -2px rgba(15, 118, 110, 0.7); }
+.fx-act.is-card.is-on, .fx-act.is-cut.is-on { outline: 2px solid #0f172a; outline-offset: 1px; }
+.fx-act.is-cut { background: linear-gradient(145deg, #a78bfa, #6d28d9); box-shadow: 0 4px 10px -2px rgba(109, 40, 217, 0.7); }
+.fx-act.is-del { background: linear-gradient(145deg, #f87171, #dc2626); box-shadow: 0 4px 10px -2px rgba(220, 38, 38, 0.7); }
+.fx-act.is-wide { width: 100%; min-width: 0; aspect-ratio: auto; border-radius: 9999px; padding: 0 6px; font-size: 0.68rem; font-weight: 700; background: linear-gradient(145deg, #2dd4bf, #0f766e); box-shadow: 0 4px 10px -2px rgba(15, 118, 110, 0.7); }
+.fx-busy { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; background: rgba(15, 23, 42, 0.55); color: #fff; text-align: center; }
+.fx-busy i { width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(from 0deg, #f43f5e, #f59e0b, #22c55e, #06b6d4, #6366f1, #f43f5e); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); animation: fx-spin 0.9s linear infinite; }
+.fx-busy small { font-size: 0.64rem; font-weight: 700; padding: 0 6px; }
+@keyframes fx-spin { to { transform: rotate(360deg); } }
+.fx-cut { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; padding: 9px 12px; border-radius: 0.9rem; border: 1px solid var(--lg-line); background: var(--lg-soft); cursor: pointer; }
+.fx-cut input { position: absolute; opacity: 0; pointer-events: none; }
+.fx-cut-ui { position: relative; flex: none; width: 40px; height: 22px; margin-top: 2px; border-radius: 9999px; background: #94a3b8; transition: background 0.2s ease; }
+.fx-cut-ui::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(15, 23, 42, 0.3); transition: transform 0.2s ease; }
+.fx-cut input:checked + .fx-cut-ui { background: linear-gradient(135deg, #a78bfa, #6d28d9); } .fx-cut input:checked + .fx-cut-ui::after { transform: translateX(18px); }
+.fx-cut input:focus-visible + .fx-cut-ui { outline: 3px solid rgba(109, 40, 217, 0.4); outline-offset: 2px; }
+.fx-cut span:last-child { display: grid; gap: 1px; } .fx-cut b { font-size: 0.84rem; } .fx-cut small { font-size: 0.72rem; line-height: 1.35; color: var(--lg-mute); }
+.fx-zoomframe { height: min(70vh, 640px); border-radius: 0.9rem; overflow: hidden; background: repeating-conic-gradient(#e2e8f0 0 25%, #f8fafc 0 50%) 50% / 22px 22px; }
+html.dark .fx-zoomframe { background: repeating-conic-gradient(#0f172a 0 25%, #1e293b 0 50%) 50% / 22px 22px; }
+.fx-zoomimg { display: block; width: 100%; height: 100%; object-fit: contain; }
 .fx-gal-count { font-size: 0.72rem; font-weight: 600; color: var(--lg-mute); }
 
 /* Fetch Photo dialog */

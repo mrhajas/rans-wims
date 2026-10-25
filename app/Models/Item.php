@@ -17,12 +17,13 @@ class Item extends Model
         'track_quantity' => 'boolean',
         'track_weight'   => 'boolean',
         'is_used'        => 'boolean',
+        'bincard_at'     => 'datetime',
     ];
 
     protected $fillable = [
         'name', 'code', 'symbology', 'track_weight', 'track_quantity', 'alert_quantity', 'rack_location', 'photo',
         'has_variants', 'variants', 'has_serials', 'sku', 'details', 'unit_id', 'account_id', 'extra_attributes',
-        'price', 'is_used'
+        'price', 'is_used', 'bincard_photo_id', 'bincard_at', 'bincard_by'
     ];
 
     protected $with = ['unit:id,code,name', 'unit.subunits'];
@@ -37,9 +38,22 @@ class Item extends Model
         $this->attributes['name'] = $value === null ? null : mb_strtoupper($value);
     }
 
+    /** the extra photos (three at most); the BinCard photos are kept apart */
     public function photos()
     {
-        return $this->hasMany(ItemPhoto::class)->orderBy('position')->orderBy('id');
+        return $this->hasMany(ItemPhoto::class)->where('kind', 'photo')->orderBy('position')->orderBy('id');
+    }
+
+    /** every BinCard photo, newest first: the current one and the older ones (history) */
+    public function bincards()
+    {
+        return $this->hasMany(ItemPhoto::class)->where('kind', 'bincard')->orderByDesc('id');
+    }
+
+    /** the BinCard that is current */
+    public function bincardPhoto()
+    {
+        return $this->belongsTo(ItemPhoto::class, 'bincard_photo_id');
     }
 
     public function allStock()

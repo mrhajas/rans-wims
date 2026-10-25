@@ -358,6 +358,11 @@ export default {
       if (routeName === 'material-reallocations.index' && current === 'material-reallocations.reports') {
         return true;
       }
+      // The pages that belong to an item but have no sidebar entry of their own (Print Barcodes, stock trail, price history, ...) read as "Items"
+      // so the Items group opens and scrolls into view; Import / Alerts / Create keep their own leaves.
+      if (routeName === 'items.index' && current.startsWith('items.') && !/^items\.(import|workflow|create|index)/.test(current)) {
+        return true;
+      }
       if (!routeName.endsWith('.index')) {
         return false;
       }

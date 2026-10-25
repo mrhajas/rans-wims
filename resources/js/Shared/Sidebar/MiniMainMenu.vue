@@ -256,6 +256,10 @@ export default {
       if (routeName === 'wims-connect.bulk-connect.index' && current.startsWith('wims-connect.bulk-connect.')) {
         return true;
       }
+      // See FullMainMenu.vue: Print Barcodes, stock trail, price history ... read as "Items".
+      if (routeName === 'items.index' && current.startsWith('items.') && !/^items\.(import|workflow|create|index)/.test(current)) {
+        return true;
+      }
       // See FullMainMenu.vue: Material Reallocation's Reports hub is a
       // sibling of, not a suffix on, its own .index route.
       if (routeName === 'material-reallocations.index' && current === 'material-reallocations.reports') {

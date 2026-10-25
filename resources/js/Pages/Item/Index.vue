@@ -135,7 +135,7 @@
               </span>
             </th>
           </tr>
-          <tr :key="item.id" v-for="item in displayItems" class="hover:bg-gray-100 focus-within:bg-gray-100">
+          <tr :key="item.id" v-for="item in displayItems" :data-no-suffix="$t('Code') + ': ' + item.code" class="hover:bg-gray-100 focus-within:bg-gray-100">
             <td class="item-row-line" @click="goto(item)" :class="{ 'cursor-pointer': $can('read-items') }">
               <div class="px-6 py-4 max-w-md flex items-center focus:text-indigo-500">
                 <label v-if="canBulk && !item.deleted_at" class="item-pick mr-3" @click.stop>
@@ -152,7 +152,9 @@
                   <div class="font-bold">
                     <hover-preview category="items" :id="item.id">{{ item.name }}</hover-preview>
                   </div>
-                  <div>
+                  <!-- the labelled chips: Item Photo (all its photos, Previous / Next) and BinCard (only when one is assigned) -->
+                  <item-photo-chips :item="item" @photos="openPhotos(item)" @bincard="openBinCard(item)" />
+                  <div class="item-code-line">
                     {{ $t('Code') }}: <strong>{{ item.code }}</strong>
                   </div>
                   <div v-if="item.sku" class="text-gray-600">{{ $t('SKU') }}: {{ item.sku }}</div>
@@ -478,6 +480,9 @@
       :content="$t('Are you sure you want to restore the record?')"
     />
 
+    <photo-viewer-modal :show="photoView.open" :photos="photoView.photos" :title="photoView.title" @close="photoView.open = false" />
+    <bin-card-modal :show="binCard.open" :item-id="binCard.id" @close="binCard.open = false" @updated="refreshItems" />
+
     <loading v-if="loading" />
   </admin-layout>
 </template>
@@ -502,6 +507,10 @@ import SearchFilter from '@/Shared/SearchFilter.vue';
 import TecDropdownLink from '@/Jetstream/DropdownLink.vue';
 import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
+import BinCardModal from '@/Shared/Item/BinCardModal.vue';
+import PhotoViewerModal from '@/Shared/Item/PhotoViewerModal.vue';
+import ItemPhotoChips from '@/Shared/Item/ItemPhotoChips.vue';
+import { itemPhotoList } from '@/Core/itemPhotos';
 import SuperAdminPasswordModal from '@/Shared/SuperAdminPasswordModal.vue';
 import { loadIndexData, loadDetail, loadItemStock, groupStockByWarehouse } from '@/Core/offlineDataSource';
 
@@ -520,6 +529,9 @@ export default {
     AutoComplete,
     SearchFilter,
     HoverPreview,
+    BinCardModal,
+    PhotoViewerModal,
+    ItemPhotoChips,
     TecDropdownLink,
     TecSectionTitle,
     SuperAdminPasswordModal,
@@ -567,6 +579,8 @@ export default {
       offlineItems: null,
       warehouseTooltip: { visible: false, rows: [], x: 0, y: 0 },
       photoZoom: { visible: false, src: '', x: 0, y: 0 },
+      binCard: { open: false, id: null },
+      photoView: { open: false, title: '', photos: [] },
     };
   },
 
@@ -658,6 +672,16 @@ export default {
   },
 
   methods: {
+    openPhotos(item) {
+      this.photoView = { open: true, title: item.name, photos: itemPhotoList(item) };
+    },
+    openBinCard(item) {
+      this.binCard = { open: true, id: item.id };
+    },
+    // after a BinCard was refreshed or removed in the window: the list shows the new picture and date
+    refreshItems() {
+      this.$inertia.reload({ only: ['items'], preserveScroll: true, preserveState: true, headers: { 'X-Quiet': '1' } });
+    },
     toggleAll() {
       this.picked = this.allPicked ? this.picked.filter(id => !this.pickable.some(i => i.id === id)) : [...new Set([...this.picked, ...this.pickable.map(i => i.id)])];
     },
@@ -1045,6 +1069,14 @@ export default {
 </script>
 
 <style scoped>
+/* the BinCard container after the item's name */
+.bc-chip { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; padding: 3px 10px 3px 3px; border: 1px solid rgba(15, 118, 110, 0.35); border-radius: 0.8rem; background: linear-gradient(135deg, rgba(240, 253, 250, 0.95), rgba(236, 253, 245, 0.9)); color: #115e59; cursor: pointer; text-align: left; box-shadow: 0 6px 12px -8px rgba(15, 118, 110, 0.6); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.bc-chip:hover { transform: translateY(-1px); box-shadow: 0 10px 16px -8px rgba(15, 118, 110, 0.7); }
+.bc-chip-img { display: block; flex: none; width: 46px; height: 34px; border-radius: 0.55rem; overflow: hidden; background: #fff; }
+.bc-chip-txt { display: grid; line-height: 1.15; } .bc-chip-txt b { font-size: 0.72rem; font-weight: 800; } .bc-chip-txt small { font-size: 0.64rem; color: #0f766e; font-weight: 600; }
+.bc-chip-ico { opacity: 0.6; }
+html.dark .bc-chip { background: rgba(15, 118, 110, 0.18); color: #99f6e4; border-color: rgba(45, 212, 191, 0.4); } html.dark .bc-chip-txt small { color: #5eead4; }
+
 .item-pick { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 4px; border-radius: 9px; background: #fff; cursor: pointer; box-shadow: 0 6px 12px -5px rgba(194, 65, 12, 0.55), 0 1px 3px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(234, 88, 12, 0.28); }
 html.dark .item-pick { background: #1e293b; }
 .item-pick input { width: 18px; height: 18px; accent-color: #c2410c; cursor: pointer; }

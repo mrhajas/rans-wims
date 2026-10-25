@@ -23,19 +23,103 @@ class ItemController extends Controller
     public function barcodes(Request $request)
     {
         abort_unless($request->user()->can('read-items'), 403);
+        return Inertia::render('Item/Barcodes', [
+            'items'   => $this->barcodeQuery($request)->get(['id', 'code', 'name', 'symbology']),
+            'filters' => ['search' => $request->input('search'), 'categories' => $this->barcodeCategoryIds($request)],
+            'categoryList' => Category::ofAccount()->orderBy('name')->get(['id', 'name']),
+            'prefs'   => $this->barcodePrefs($request->user()),
+        ]);
+    }
+
+    /** The items of the Print Barcodes page: the ones picked (ids) or the search result, or all of them. */
+    private function barcodeQuery(Request $request)
+    {
         $ids = collect(explode(',', (string) $request->input('ids')))->filter()->values();
+        $categories = $this->barcodeCategoryIds($request);
 
         $query = Item::query()->orderBy('name');
         if ($ids->isNotEmpty()) {
             $query->whereIn('id', $ids);
-        } elseif ($request->filled('search')) {
-            $query->search($request->input('search'));
+        }
+        if ($request->filled('search')) {
+            $query->search(trim((string) $request->input('search'))); // item name, code, SKU and category
+        }
+        if ($categories) {
+            $query->whereHas('categories', fn ($q) => $q->whereIn('categories.id', $categories)); // any of the chosen categories
         }
 
-        return Inertia::render('Item/Barcodes', [
-            'items'   => $query->get(['id', 'code', 'name', 'symbology']),
-            'filters' => ['search' => $request->input('search')],
+        return $query;
+    }
+
+    /** The categories chosen on the Print Barcodes page (comma separated ids). */
+    private function barcodeCategoryIds(Request $request): array
+    {
+        return collect(explode(',', (string) $request->input('categories')))->map(fn ($v) => (int) $v)->filter()->unique()->values()->all();
+    }
+
+    /** Print Barcodes as a WIMS report: the same labels as the page shows (style, size, name, copies), printed by / date / time, logged. */
+    public function barcodesPrint(Request $request)
+    {
+        abort_unless($request->user()->can('read-items'), 403);
+        $opts = $request->validate([
+            'style'     => 'required|in:barcode,qr',
+            'size'      => 'required|in:sm,md,lg',
+            'show_name' => 'required|boolean',
+            'copies'    => 'required|integer|min:1|max:100',
         ]);
+        $items = $this->barcodeQuery($request)->get(['id', 'code', 'name', 'symbology']);
+        $max = 1500; // one printed document stays a sensible size
+        $labels = [];
+        $note = null;
+        foreach ($items as $item) {
+            $code = (string) $item->code;
+            $svg = $opts['style'] === 'qr'
+                ? \Illuminate\Support\Facades\Cache::remember('qrart:v1:' . md5($code), now()->addDays(30), fn () => \App\Support\QrArt::svg($code)) // drawing a code is slow, the same code is the same picture
+                : \App\Support\ItemLabelBarcode::svg($code, 1.8, ['sm' => 38, 'md' => 52, 'lg' => 70][$opts['size']]);
+            for ($i = 0; $i < (int) $opts['copies']; $i++) {
+                if (count($labels) >= $max) {
+                    $note = __('Only the first :n labels are printed in one document. Print the rest with a smaller selection.', ['n' => $max]);
+                    break 2;
+                }
+                $labels[] = ['name' => $item->name, 'code' => $code, 'svg' => $svg];
+            }
+        }
+        log_activity(__('Item labels printed'), ['labels' => count($labels), 'items' => $items->count(), 'style' => $opts['style'], 'size' => $opts['size']], null, 'Item');
+
+        return view('print.document', [
+            'doc' => \App\Support\PrintDocuments::itemLabels($labels, $opts + ['show_name' => (bool) $opts['show_name']], $items->count(), $request->user(), $note),
+            'isPdf' => false, 'companyName' => optional($request->user()->account)->name,
+            'qr' => \App\Support\PrintQrCode::dataUri(route('items.barcodes')), 'pdfUrl' => null,
+        ]);
+    }
+
+    private const BARCODE_PREF_DEFAULTS = ['style' => 'barcode', 'size' => 'md', 'show_name' => true, 'copies' => 1];
+
+    /** What this person chose last time on the Print Barcodes page (kept in their own profile record, so it follows them to any device). */
+    private function barcodePrefs($user): array
+    {
+        $raw = DB::table('users')->where('id', $user->id)->value('extra_attributes');
+        $saved = is_string($raw) ? (json_decode($raw, true)['barcode_page'] ?? []) : [];
+
+        return array_merge(self::BARCODE_PREF_DEFAULTS, array_intersect_key((array) $saved, self::BARCODE_PREF_DEFAULTS));
+    }
+
+    public function saveBarcodePrefs(Request $request)
+    {
+        abort_unless($request->user()->can('read-items'), 403);
+        $data = $request->validate([
+            'style'     => 'required|in:barcode,qr',
+            'size'      => 'required|in:sm,md,lg',
+            'show_name' => 'required|boolean',
+            'copies'    => 'required|integer|min:1|max:100',
+        ]);
+
+        $raw = DB::table('users')->where('id', $request->user()->id)->value('extra_attributes');
+        $all = is_string($raw) ? (json_decode($raw, true) ?: []) : [];
+        $all['barcode_page'] = $data;
+        DB::table('users')->where('id', $request->user()->id)->update(['extra_attributes' => json_encode($all)]);
+
+        return response()->json(['saved' => true]);
     }
 
     public function create()
@@ -106,6 +190,83 @@ class ItemController extends Controller
         return back()->with('message', __choice('action_text', ['record' => 'Item photo', 'action' => 'deleted']));
     }
 
+    /** The BinCard window: the current BinCard with its date and who set it, and the earlier ones. */
+    public function bincard(Item $item)
+    {
+        abort_unless(auth()->user()->can('read-items'), 403);
+
+        return response()->json(\App\Support\BinCard::details($item) + ['can_update' => auth()->user()->can('update-items')]);
+    }
+
+    /** The BinCard as a WIMS report (print view). The route name has "print" in it, so every use is in the Download / Print log; it is also written to the activity log. */
+    public function bincardPrint(Request $request, Item $item)
+    {
+        return view('print.document', $this->bincardDocument($request, $item, false));
+    }
+
+    public function bincardPdf(Request $request, Item $item)
+    {
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('print.document', $this->bincardDocument($request, $item, true))->setPaper('a4')->download('bincard-' . ($item->code ?: $item->id) . '.pdf');
+    }
+
+    private function bincardDocument(Request $request, Item $item, bool $isPdf): array
+    {
+        abort_unless($request->user()->can('read-items'), 403);
+        $photo = $item->bincardPhoto;
+        abort_unless($photo && Storage::disk('assets')->exists($photo->path), 404);
+        // the picture travels inside the document (a PDF cannot fetch it), made a little smaller so the file stays light
+        [$bytes, $ext] = \App\Support\ItemImage::compress(Storage::disk('assets')->get($photo->path), 1600, pathinfo($photo->path, PATHINFO_EXTENSION));
+        $src = 'data:image/' . ($ext === 'jpg' ? 'jpeg' : $ext) . ';base64,' . base64_encode($bytes);
+        log_activity($isPdf ? __('BinCard downloaded as PDF') : __('BinCard printed'), ['item' => $item->name, 'code' => $item->code, 'photo' => $photo->id], $item, 'Item');
+
+        return [
+            'doc' => \App\Support\PrintDocuments::binCard($item, $src, $request->user()), 'isPdf' => $isPdf, 'companyName' => optional($request->user()->account)->name,
+            'qr' => \App\Support\PrintQrCode::dataUri(route('items.edit', $item->id)), 'pdfUrl' => route('items.bincard.pdf', $item->id),
+        ];
+    }
+
+    /** The background of one of the item's saved photos was removed in the browser: the cut-out replaces the file. */
+    public function cutoutPhoto(Request $request, Item $item, \App\Models\ItemPhoto $photo)
+    {
+        abort_unless($request->user()->can('update-items') && $photo->item_id === $item->id && $photo->kind === 'photo', 403);
+        $request->validate(['photo' => 'required|image|mimes:png,webp|max:15360']);
+        [$path] = \App\Support\ItemImage::storeInfo($request->file('photo'));
+        Storage::disk('assets')->delete($photo->path);
+        $photo->forceFill(['path' => $path, 'cutout' => true])->save();
+        log_activity(__('Item photo background removed'), ['item' => $item->name, 'photo' => $photo->id], $item, 'Item');
+
+        return back()->with('message', __('The background was removed.'));
+    }
+
+    /** Refresh BinCard: one new photo becomes the current BinCard and its date and time. */
+    public function refreshBincard(Request $request, Item $item)
+    {
+        abort_unless($request->user()->can('update-items'), 403);
+        $request->validate(['photo' => 'required|image|mimes:png,jpg,jpeg,webp|max:15360']);
+        \App\Support\BinCard::refresh($item, $request->file('photo'), $request->user());
+
+        return back()->with('message', __('BinCard refreshed.'));
+    }
+
+    /** One of the item's extra photos becomes the BinCard. */
+    public function assignBincard(Item $item, \App\Models\ItemPhoto $photo)
+    {
+        abort_unless(auth()->user()->can('update-items') && $photo->item_id === $item->id && $photo->kind === 'photo', 403);
+        \App\Support\BinCard::assign($item, $photo, auth()->user());
+
+        return back()->with('message', __('The photo is now the BinCard of the item.'));
+    }
+
+    /** Takes the BinCard off the item (the photos stay in the history). */
+    public function removeBincard(Item $item)
+    {
+        abort_unless(auth()->user()->can('update-items'), 403);
+        $item->forceFill(['bincard_photo_id' => null, 'bincard_at' => null, 'bincard_by' => null])->saveQuietly();
+        log_activity(__('BinCard removed'), ['item' => $item->name, 'code' => $item->code], $item, 'Item');
+
+        return back()->with('message', __('The BinCard was removed from the item.'));
+    }
+
     /** Makes one of the extra photos the face of the item: it swaps places with the current main photo. */
     public function makeGalleryPhotoMain(Item $item, \App\Models\ItemPhoto $photo)
     {
@@ -150,7 +311,7 @@ class ItemController extends Controller
 
     public function edit(Item $item)
     {
-        $item->load('categories:id,code,name', 'photos');
+        $item->load('categories:id,code,name', 'photos', 'bincardPhoto');
 
         return Inertia::render('Item/Form', [
             'edit'       => new ItemResource($item),
@@ -180,7 +341,7 @@ class ItemController extends Controller
         $sort = $request->get('sort');
         $direction = $request->get('direction') === 'asc' ? 'asc' : 'desc';
 
-        $query = Item::with(['categories:id,code,name', 'stock' => fn ($q) => $q->without('variation')->where(fn ($w) => $w->where('quantity', '!=', 0)->orWhere('weight', '!=', 0))])
+        $query = Item::with(['categories:id,code,name', 'bincardPhoto:id,item_id,path', 'photos:id,item_id,path,kind,cutout,position', 'stock' => fn ($q) => $q->without('variation')->where(fn ($w) => $w->where('quantity', '!=', 0)->orWhere('weight', '!=', 0))])
             ->withSum('stock', 'quantity')
             ->filter($filters)
             ->when(warehouse_scope_ids() !== null, fn ($q) => $q->whereHas('stock', fn ($s) => $s->whereIn('warehouse_id', warehouse_scope_ids())));
@@ -265,7 +426,7 @@ class ItemController extends Controller
 
             $created = Item::create($data);
             $created->addVariations()->saveRelations($data);
-            \App\Support\ItemPhotoGallery::add($created, $request->file('extra_photos', []));
+            \App\Support\ItemPhotoGallery::add($created, $request->file('extra_photos', []), $request->filled('bincard_index') ? (int) $request->input('bincard_index') : null, $request->user());
         });
         if ($created) {
             \App\Services\ItemNotifier::fire('created', __('Item Added'), \App\Services\ItemNotifier::label($created) . ' was added' . \App\Services\ItemNotifier::by() . '.', $created, ['skip_actor' => true]);
@@ -474,7 +635,7 @@ class ItemController extends Controller
         $data = $request->validated();
         $item->update($data);
         $item->addVariations()->saveRelations($data);
-        \App\Support\ItemPhotoGallery::add($item, $request->file('extra_photos', []));
+        \App\Support\ItemPhotoGallery::add($item, $request->file('extra_photos', []), $request->filled('bincard_index') ? (int) $request->input('bincard_index') : null, $request->user());
         \App\Services\ItemNotifier::fire('updated', __('Item Edited'), \App\Services\ItemNotifier::label($item) . ' was edited' . \App\Services\ItemNotifier::by() . '.', $item, ['skip_actor' => true]);
         session()->flash('message', __choice('action_text', ['record' => 'Item', 'action' => 'updated']));
 

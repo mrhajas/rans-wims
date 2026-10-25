@@ -1,9 +1,10 @@
 import { reactive } from 'vue';
 import i18n from '@/Core/i18n';
+import { describeRequest } from '@/Core/progressLabels';
 
 // The small centred "working" indicator: it appears when a save, update, add or delete is sent, turns into a "done" (or "problem") label with the server's
 // message, and fades away. It replaces the old corner notification. Reads are not shown (the top progress line already covers moving between pages).
-export const progress = reactive({ state: 'idle', label: '', text: '', kind: '', done: '', anim: '', long: false });
+export const progress = reactive({ state: 'idle', label: '', text: '', kind: '', done: '', fail: '', anim: '', long: false, percent: null });
 
 const t = key => {
   try {
@@ -26,6 +27,7 @@ let lastAt = 0;
 let activeVisits = 0;
 let safetyTimer = null;
 let current = null; // the write that is being sent right now
+let auth = false; // it is a sign-in step (login, second step, reset)
 
 // while a long job runs (backup, restore) a refresh or closing the tab would break it: the browser asks first
 const guard = e => {
@@ -54,13 +56,15 @@ function clearTimers() {
   showTimer = hideTimer = safetyTimer = null;
 }
 
-export function begin(method, label, long = false, done = '', anim = '') {
+export function begin(method, label, long = false, done = '', anim = '', fail = '') {
   activeVisits += 1;
   outcome = null;
   started = Date.now();
   clearTimers();
   progress.label = label || workingLabel(method);
   progress.done = done || '';
+  progress.fail = fail || '';
+  progress.percent = null;
   progress.long = !!long;
   setGuard(!!long);
   progress.anim = anim || ''; // 'backup' or 'restore': files flying into / out of a database instead of the small spinner
@@ -98,8 +102,9 @@ export function result(kind, text, fallback) {
   clearTimers();
   progress.state = kind === 'error' ? 'error' : 'done';
   progress.anim = '';
+  progress.percent = null;
   progress.long = false;
-  progress.label = kind === 'error' ? t('Not saved') : fallback || t('Saved');
+  progress.label = kind === 'error' ? progress.fail || t('Not saved') : fallback || progress.done || t('Saved');
   progress.text = text || '';
   hideTimer = setTimeout(() => {
     progress.state = 'idle';
@@ -109,10 +114,21 @@ export function result(kind, text, fallback) {
 export function dismiss() {
   current = null;
   progress.anim = '';
+  progress.percent = null;
   progress.long = false;
   clearTimers();
   progress.state = 'idle';
 }
+
+const hasFiles = data => {
+  try {
+    if (data instanceof FormData) for (const v of data.values()) if (v instanceof File) return true;
+  } catch (e) {
+    // not a form: nothing to upload
+  }
+
+  return false;
+};
 
 const strip = s => String(s || '').replace(/<[^>]*>/g, '');
 
@@ -125,17 +141,44 @@ export function initSaveProgress(router, getPage) {
     if (!writes(visit)) return;
     current = visit;
     const h = visit.headers || {};
-    begin(visit.method, h['X-Progress-Label'], !!h['X-Progress-Long'], h['X-Progress-Done'], h['X-Progress-Anim']);
+    let path = '';
+    try {
+      path = new URL(String(visit.url), window.location.origin).pathname;
+    } catch (e) {
+      path = String(visit.url || '');
+    }
+    const d = describeRequest(path, visit.method);
+    auth = d.auth;
+    // a save that sends pictures shows them flying up to the cloud, with the percentage that has gone
+    const upload = hasFiles(visit.data);
+    begin(visit.method, h['X-Progress-Label'] || (upload && !d.auth ? t('Uploading') + '...' : d.working), !!h['X-Progress-Long'], h['X-Progress-Done'] || d.done, h['X-Progress-Anim'] || (upload ? 'upload' : ''), d.fail);
+    if (upload) progress.percent = 0;
+  });
+  router.on('progress', event => {
+    if (current && progress.percent !== null && event.detail && event.detail.progress) progress.percent = Math.round(event.detail.progress.percentage || 0);
   });
   router.on('success', event => {
     if (!current) return;
     const flash = (event.detail.page.props || {}).flash || {};
+    // a sign-in step that leads to another sign-in page (the password was right, now the second step) is not "done" yet
+    if (auth && String(event.detail.page.component || '').startsWith('Auth/')) {
+      outcome = { kind: 'skip' };
+      return;
+    }
     outcome = flash.error ? { kind: 'error', text: strip(flash.error) } : { kind: 'success', text: flash.message || '' };
   });
   router.on('error', event => {
     if (!current) return;
-    const n = Object.keys(event.detail.errors || {}).length;
-    outcome = { kind: 'error', text: n === 1 ? t('There is one form error.') : t('There are :n form errors.').replace(':n', n) };
+    const errs = event.detail.errors || {};
+    const n = Object.keys(errs).length;
+    const first = Object.values(errs)[0];
+    const msg = Array.isArray(first) ? first[0] : first;
+    // one error: say what it is ("These credentials do not match our records."); several: how many
+    outcome = { kind: 'error', text: n === 1 && msg ? String(msg) : t('There are :n form errors.').replace(':n', n) };
+    // the sign-in pages already open their own notice for a licence, a prayer break, a disabled account, maintenance, a lock or a question to answer: no second message on top
+    if (auth && /licen|prayer|disabled|maintenance|verification|too many|locked|blocked|wait|retry/i.test(String(msg || ''))) {
+      outcome = { kind: 'skip' };
+    }
   });
   router.on('invalid', () => {
     if (current) dismiss();
@@ -158,7 +201,7 @@ export function initSaveProgress(router, getPage) {
       if (!activeVisits) dismiss();
       return;
     }
-    if (!outcome) {
+    if (!outcome || outcome.kind === 'skip') {
       dismiss();
       return;
     }

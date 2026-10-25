@@ -70,6 +70,18 @@ function makeCell(tag, text) {
   return c;
 }
 
+// a row may carry data-no-suffix="Code: RSI-1139": on a phone the number cell then reads "1 (Code: RSI-1139)" (see .autono-td[data-suffix] in app.css)
+function syncSuffix(row) {
+  const cell = row.firstElementChild;
+  if (!isOurs(cell)) return;
+  const text = row.dataset ? row.dataset.noSuffix : '';
+  if (text) {
+    if (cell.dataset.suffix !== text) cell.dataset.suffix = text;
+  } else if (cell.dataset.suffix) {
+    delete cell.dataset.suffix;
+  }
+}
+
 function offsetFor(count) {
   const i = offsets.findIndex(o => o.count === count && !o.used);
   if (i < 0) return 0;
@@ -100,6 +112,7 @@ function process(table) {
     const first = r.firstElementChild;
     if (!isOurs(first)) {
       r.insertBefore(makeCell('td', data ? String(++n) : ''), first);
+      syncSuffix(r);
       return;
     }
     if (data) {
@@ -108,6 +121,7 @@ function process(table) {
     } else if (first.textContent !== '') {
       first.textContent = '';
     }
+    syncSuffix(r);
   });
   // footer rows
   if (table.tFoot) {
