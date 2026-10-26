@@ -15,6 +15,12 @@
           <span>{{ creatingUsed ? $t('Creating…') : $t('Create USED') }}</span>
         </button>
         <item-photo-chips v-if="edit" :item="edit" @photos="photoViewOpen = true" @bincard="binCardOpen = true" />
+        <!-- the item code, read only: a click opens the Item Details window (the stock in each warehouse) -->
+        <button v-if="edit && edit.code" type="button" class="fx-code-chip lg-tip tip-left" :data-tip="$t('Open the Item Details: the stock in each warehouse')" :aria-label="$t('Item code :code, open the Item Details', { code: edit.code })" :disabled="detailsLoading" @click="openDetails">
+          <span class="fx-code-ico"><icons name="hash" class="w-4 h-4" /></span>
+          <span class="fx-code-txt"><small>{{ $t('Item code') }}</small><b>{{ edit.code }}</b></span>
+          <icons name="chevron-down" class="w-4 h-4 fx-code-go" />
+        </button>
         <Link :href="route('items.index')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Items') }}</Link>
       </page-header>
 
@@ -405,6 +411,25 @@
     </modal>
 
     <photo-viewer-modal v-if="edit" :show="photoViewOpen" :photos="itemPhotoList(edit)" :title="edit.name" @close="photoViewOpen = false" />
+
+    <!-- Item Details: the same window as on the Items list (stock in each warehouse, movements, print and PDF) -->
+    <modal v-if="edit" :show="detailsOpen" max-width="4xl" :closeable="true" @close="detailsOpen = false">
+      <div class="rounded-md overflow-hidden">
+        <div class="fx-idm-head print:hidden">
+          <span class="fx-idm-ico"><icons name="collection" class="w-5 h-5" /></span>
+          <div class="fx-idm-title"><b>{{ $t('Item Details') }}</b><span>{{ edit.name }}</span></div>
+          <div class="fx-idm-actions">
+            <a :href="route('items.barcodes', { ids: edit.id })" target="_blank" rel="noopener" class="fx-idm-btn lg-tip" :data-tip="$t('Print Barcode')" :aria-label="$t('Print Barcode')"><icons name="doc" class="h-5 w-5" /></a>
+            <a :href="route('items.report.pdf', edit.id)" class="fx-idm-btn is-green lg-tip" :data-tip="$t('Download PDF')" :aria-label="$t('Download PDF')"><icons name="download" class="h-5 w-5" /></a>
+            <button type="button" class="fx-idm-btn is-blue lg-tip" :data-tip="$t('Print Report')" :aria-label="$t('Print')" @click="printDetails"><icons name="printer" class="h-5 w-5" /></button>
+            <button type="button" class="fx-idm-btn is-red" :aria-label="$t('Close')" @click="detailsOpen = false"><icons name="cross" class="h-5 w-5" /></button>
+          </div>
+        </div>
+        <div class="p-6 print:block print:h-full bg-gray-100">
+          <item-details v-if="detailsItem" :item="detailsItem" :modal="true" />
+        </div>
+      </div>
+    </modal>
     <bin-card-modal v-if="edit" :show="binCardOpen" :item-id="edit.id" @close="binCardOpen = false" @updated="$inertia.reload({ only: ['edit'], preserveScroll: true, preserveState: true })" />
 
     <!-- Fetch Photo URL Modal -->
@@ -460,6 +485,9 @@ import ZoomImage from '@/Shared/ZoomImage.vue';
 import BinCardModal from '@/Shared/Item/BinCardModal.vue';
 import PhotoViewerModal from '@/Shared/Item/PhotoViewerModal.vue';
 import ItemPhotoChips from '@/Shared/Item/ItemPhotoChips.vue';
+import ItemDetails from './Details.vue';
+import axios from 'axios';
+import { printWithAnimation, itemPrintSheet, printUrlInFrame } from '@/Core/printAnimation';
 import { itemPhotoList } from '@/Core/itemPhotos';
 import FileInput from '@/Shared/FileInput.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -494,6 +522,7 @@ export default {
     BinCardModal,
     PhotoViewerModal,
     ItemPhotoChips,
+    ItemDetails,
     TecDialogModal,
     TecDangerButton,
     TrashedMessage,
@@ -508,6 +537,9 @@ export default {
       cameraOpen: false,
       galleryView: null,
       binCardOpen: false,
+      detailsOpen: false,
+      detailsItem: null,
+      detailsLoading: false,
       photoViewOpen: false,
       savedBusy: {},
       cutOnCapture: (() => { try { return localStorage.getItem('wims_cut_background') === '1'; } catch (e) { return false; } })(),
@@ -600,6 +632,24 @@ export default {
   },
 
   methods: {
+    // the Item Details window (as on the Items list): loaded when first opened, kept for the next time
+    async openDetails() {
+      if (this.detailsItem && this.detailsItem.id === this.edit.id) {
+        this.detailsOpen = true;
+        return;
+      }
+      this.detailsLoading = true;
+      try {
+        const res = await axios.get(this.route('items.show', this.edit.id) + '?json=yes');
+        this.detailsItem = res.data;
+        this.detailsOpen = true;
+      } finally {
+        this.detailsLoading = false;
+      }
+    },
+    printDetails() {
+      printWithAnimation(itemPrintSheet(this, this.detailsItem), () => printUrlInFrame(this.route('items.report.print', this.edit.id)));
+    },
     // Makes the "<name> - USED" twin of this item (same details, flagged Used, no stock) and opens it.
     async createUsed() {
       const ok = await this.$confirm(
@@ -870,6 +920,26 @@ export default {
 </script>
 
 <style scoped>
+.fx-idm-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--lg-card, #fff); border-bottom: 1px solid var(--lg-line, #e5e7eb); }
+.fx-idm-ico { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #2f6199, #1c3f66); }
+.fx-idm-title { display: grid; min-width: 0; flex: 1; line-height: 1.2; } .fx-idm-title b { font-size: 1rem; } .fx-idm-title span { font-size: 0.82rem; color: var(--lg-mute, #64748b); overflow-wrap: anywhere; }
+.fx-idm-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.fx-idm-btn { width: 38px; height: 38px; min-height: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; border: 0; cursor: pointer; background: rgba(148, 163, 184, 0.16); color: #475569; transition: background 0.15s ease, transform 0.15s ease; }
+.fx-idm-btn:hover { transform: translateY(-1px); background: rgba(148, 163, 184, 0.3); }
+.fx-idm-btn.is-blue { background: rgba(59, 130, 196, 0.16); color: #1c3f66; } .fx-idm-btn.is-green { background: rgba(16, 185, 129, 0.16); color: #047857; } .fx-idm-btn.is-red { background: rgba(225, 29, 72, 0.12); color: #be123c; }
+@media (max-width: 479.98px) { .fx-idm-head { padding: 12px; } .fx-idm-actions { gap: 5px; } .fx-idm-btn { width: 34px; height: 34px; } .fx-idm-ico { display: none; } }
+
+.fx-code-chip { display: inline-flex; align-items: center; text-align: left; border: 1px solid rgba(14, 116, 144, 0.25); gap: 10px; min-height: 0; padding: 5px 14px 5px 5px; border-radius: 1rem; text-decoration: none; cursor: pointer; color: #0c4a6e; background: linear-gradient(135deg, #e0f2fe, #ede9fe); border: 1px solid rgba(14, 116, 144, 0.25); box-shadow: 0 10px 18px -12px rgba(3, 105, 161, 0.75); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.fx-code-chip:hover { transform: translateY(-1px); box-shadow: 0 14px 22px -12px rgba(3, 105, 161, 0.85); }
+.fx-code-ico { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 0.8rem; color: #fff; background: linear-gradient(145deg, #38bdf8, #1d4ed8); box-shadow: 0 8px 14px -8px rgba(29, 78, 216, 0.9); }
+.fx-code-txt { display: grid; line-height: 1.15; }
+.fx-code-txt small { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #0369a1; }
+.fx-code-txt b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.04em; color: #0f172a; }
+.fx-code-go { opacity: 0.55; transform: rotate(-90deg); transition: transform 0.15s ease, opacity 0.15s ease; }
+.fx-code-chip:hover .fx-code-go { opacity: 1; transform: rotate(-90deg) translateY(3px); }
+html.dark .fx-code-chip { color: #bae6fd; background: linear-gradient(135deg, rgba(14, 116, 144, 0.3), rgba(76, 29, 149, 0.3)); border-color: rgba(125, 211, 252, 0.3); }
+html.dark .fx-code-txt b { color: #f1f5f9; } html.dark .fx-code-txt small { color: #7dd3fc; }
+
 /* Create USED: warm amber (the colour "Used" items already wear in the list) with a lifted shadow */
 .fx-used-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 2.5rem; padding: 0.35rem 1rem 0.35rem 0.4rem; border: 0; border-radius: 9999px; cursor: pointer; font-size: 0.82rem; font-weight: 800; letter-spacing: 0.01em; color: #fff; background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 45%, #d97706 100%); box-shadow: 0 12px 22px -10px rgba(217, 119, 6, 0.85), 0 3px 6px rgba(217, 119, 6, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.45); text-shadow: 0 1px 1px rgba(146, 64, 14, 0.35); transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease; }
 .fx-used-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 16px 26px -10px rgba(217, 119, 6, 0.95), 0 4px 8px rgba(217, 119, 6, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5); filter: saturate(1.08); }

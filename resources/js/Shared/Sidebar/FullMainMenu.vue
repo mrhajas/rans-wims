@@ -133,7 +133,14 @@ export default {
     return { rawMenus: Menus, current: '' };
   },
   mounted() {
-    this.scrollToActiveMenuItem();
+    // just opened (a page load, or the tablet / phone drawer sliding in): jump to the active item at once
+    this.scrollToActiveMenuItem({ instant: true });
+    ['touchstart', 'wheel', 'pointerdown'].forEach(ev => this.$el.addEventListener(ev, this.menuTouched, { passive: true }));
+  },
+  beforeUnmount() {
+    ['touchstart', 'wheel', 'pointerdown'].forEach(ev => this.$el && this.$el.removeEventListener(ev, this.menuTouched));
+    clearTimeout(this.touchTimer);
+    this.scrollToken = -1;
   },
   watch: {
     // Only re-scroll on a genuine navigation to a different page — not on
@@ -154,36 +161,56 @@ export default {
     },
   },
   methods: {
-    scrollToActiveMenuItem() {
-      // A fixed nextTick count isn't reliably enough: a child DropdownMenu
-      // opens itself from its OWN mounted()/watcher (a separate component
-      // reacting to its own `active` prop), and on a cold full-page load
-      // (as opposed to an in-app Inertia visit) that cascade can take more
-      // reactive flushes to settle than any fixed number of nextTicks
-      // covers. Poll across animation frames instead, up to ~1s, so this
-      // works the same whether the active item's dropdown was already open
-      // or needs to expand first.
+    // Brings the active item into view inside the menu's OWN scroll box. It never uses scrollIntoView (that also scrolls the page and every container
+    // above the menu, which made the tablet drawer and the page behind it jump), it does nothing while the menu is hidden (the desktop menu is
+    // hidden on a tablet), it jumps straight there when the menu has just opened (no long scroll animation while the drawer slides in), it leaves
+    // the menu alone when the item is already in view, and it stops the moment the person touches, wheels or scrolls the menu themselves.
+    scrollToActiveMenuItem(opts = {}) {
+      const box = this.$el;
+      if (!box || !box.getBoundingClientRect) return;
+      const token = (this.scrollToken = (this.scrollToken || 0) + 1);
       let attempts = 0;
+      // the next frame, or a short timer when the page is in the background and no frames are drawn
+      const later = fn => {
+        let done = false;
+        const once = () => { if (!done) { done = true; fn(); } };
+        requestAnimationFrame(once);
+        setTimeout(once, 50);
+      };
       const tryScroll = () => {
-        // Prefer a specific active sub-menu leaf; only fall back to the
-        // dropdown trigger itself (.liquid-dropdown-active) when the active
-        // group has no single matching leaf to point at (e.g. a per-project
-        // Project Certificates page). Checked as a true fallback, not a
-        // combined selector — the trigger sits earlier in the DOM than its
-        // children, so querySelector('.a, .b') would prefer it over a more
-        // specific active leaf on every other group that already has one.
-        const active = this.$el.querySelector('.liquid-menu-active') || this.$el.querySelector('.liquid-dropdown-active');
+        if (token !== this.scrollToken || this.userTouchedMenu) return; // a newer request, or the person is scrolling the menu
+        if (!box.clientHeight) return; // hidden (display: none) on this screen size
+        // Prefer a specific active sub-menu leaf; only fall back to the dropdown trigger itself when the group has no single matching leaf.
+        // (the group's own leaf appears a moment after the group opens, so the trigger is used only when no leaf shows up within about 12 frames)
+        const active = box.querySelector('.liquid-menu-active') || (attempts >= 12 ? box.querySelector('.liquid-dropdown-active') : null);
         if (active) {
+          // the menu's own scroll box: the nearest ancestor of the item that scrolls (inside this menu only)
+          let scroller = active.parentElement;
+          while (scroller && scroller !== box.parentElement && !(/(auto|scroll)/.test(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight + 1)) scroller = scroller.parentElement;
+          // the menu may not be tall enough to scroll yet (a group is still opening): try again in a moment
+          if (!scroller || scroller === box.parentElement) {
+            if (++attempts < 60) later(tryScroll);
+            return;
+          }
+          const b = scroller.getBoundingClientRect();
+          const r = active.getBoundingClientRect();
+          const margin = 56;
+          if (r.top >= b.top + margin && r.bottom <= b.bottom - margin) return; // already comfortably in view
+          const top = Math.max(0, scroller.scrollTop + (r.top - b.top) - (scroller.clientHeight / 2 - r.height / 2));
           const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          active.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+          scroller.scrollTo({ top, behavior: opts.instant || reduceMotion ? 'auto' : 'smooth' });
           return;
         }
-        attempts++;
-        if (attempts < 60) {
-          requestAnimationFrame(tryScroll);
-        }
+        // a child DropdownMenu opens itself from its own watcher: wait for it (up to about a second)
+        if (++attempts < 60) later(tryScroll);
       };
-      this.$nextTick(() => requestAnimationFrame(tryScroll));
+      this.$nextTick(() => later(tryScroll));
+    },
+    // the person took hold of the menu: whatever it was about to scroll to must not fight their finger
+    menuTouched() {
+      this.userTouchedMenu = true;
+      clearTimeout(this.touchTimer);
+      this.touchTimer = setTimeout(() => (this.userTouchedMenu = false), 2500);
     },
     hasIssueReturnRole() {
       const userRoles = (this.$page.props.auth?.user?.roles || []).map(role => role.name);
