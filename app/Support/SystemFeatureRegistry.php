@@ -599,6 +599,14 @@ class SystemFeatureRegistry
                 'icon' => 'chart-bar',
                 'route_prefixes' => ['reports.', 'item-category-report.'],
             ],
+            'stock_archive' => [
+                'name' => __('Stock Archive'),
+                'description' => __('A kept record of the whole company\'s stock (each warehouse and project by category) as a small PDF, made every week or on request, e-mailed to the chosen people, with a history of what happened to every entry.'),
+                'module' => __('Reports & Intelligence'),
+                'icon' => 'collection',
+                'route_prefixes' => ['stock-archives.'],
+                'depends_on' => null,
+            ],
             'executive_report' => [
                 'name' => __('Executive Intelligence Report'),
                 'description' => __('The AI-generated weekly executive briefing.'),

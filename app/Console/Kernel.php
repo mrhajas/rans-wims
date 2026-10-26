@@ -26,6 +26,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('archive:export-run')->everyMinute()->withoutOverlapping(3)->runInBackground();
         $schedule->command('housekeeping:run')->dailyAt('02:10')->withoutOverlapping();
         $schedule->command('stock:alert')->daily();
+        // Stock Archive: the day and time are settings, so the check runs every minute and acts only when they have come; old entries go once a day
+        $schedule->command('stock-archive:run')->everyMinute()->withoutOverlapping(10);
+        $schedule->command('stock-archive:purge')->dailyAt('03:25')->withoutOverlapping();
         $schedule->command('low-stock:send')->everyMinute()->withoutOverlapping();
         $schedule->command('acct:scan')->hourly()->withoutOverlapping();
         $schedule->command('subcontracts:scan')->dailyAt('07:30')->withoutOverlapping();

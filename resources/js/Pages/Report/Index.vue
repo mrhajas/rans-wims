@@ -333,6 +333,16 @@ export default {
         });
       }
 
+      // Stock Archive: the kept weekly stock reports
+      if (this.$can('read-stock-archives') && features.stock_archive !== false) {
+        links.push({
+          route: 'stock-archives.index',
+          label: this.$t('Stock Archive'),
+          description: this.$t('The whole company\'s stock, every warehouse and project by category, kept as a PDF'),
+          icon: 'archive-box',
+        });
+      }
+
       // Weather & Site Risk report: only for people who may read it (the page and the exports are checked again on the server)
       if (this.$can('read-weather') && features.weather_risk !== false && features.weather_reports !== false) {
         links.push({

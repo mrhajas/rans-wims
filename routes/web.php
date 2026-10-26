@@ -2012,6 +2012,19 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('preview/adjustment/{adjustment}', [Controllers\NotificationController::class, 'adjustment'])->name('notifications.adjustment.preview');
 
     // Reports
+    // Reports > Stock Archive: a kept record of the whole company's stock, with its history
+    Route::get('stock-archives', [Controllers\StockArchiveController::class, 'index'])->name('stock-archives.index');
+    Route::post('stock-archives', [Controllers\StockArchiveController::class, 'generate'])->middleware('throttle:6,1,stock-archives.generate')->name('stock-archives.generate');
+    Route::post('stock-archives/bulk-delete', [Controllers\StockArchiveController::class, 'bulkDestroy'])->middleware('throttle:10,1,stock-archives.bulk-delete')->name('stock-archives.bulk-delete');
+    Route::post('stock-archives/wipes', [Controllers\StockArchiveController::class, 'wipeStart'])->middleware('throttle:10,1,stock-archives.wipes.start')->name('stock-archives.wipes.start');
+    Route::post('stock-archives/wipes/{wipe}/confirm', [Controllers\StockArchiveController::class, 'wipeConfirm'])->whereNumber('wipe')->middleware('throttle:10,1,stock-archives.wipes.confirm')->name('stock-archives.wipes.confirm');
+    Route::delete('stock-archives/wipes/{wipe}', [Controllers\StockArchiveController::class, 'wipeCancel'])->whereNumber('wipe')->name('stock-archives.wipes.cancel');
+    Route::put('stock-archives/settings', [Controllers\StockArchiveController::class, 'settings'])->name('stock-archives.settings');
+    Route::get('stock-archives/{archive}/preview', [Controllers\StockArchiveController::class, 'preview'])->whereNumber('archive')->middleware('throttle:60,1,stock-archives.preview')->name('stock-archives.preview');
+    Route::get('stock-archives/{archive}/download', [Controllers\StockArchiveController::class, 'download'])->whereNumber('archive')->middleware('throttle:60,1,stock-archives.download')->name('stock-archives.download');
+    Route::get('stock-archives/{archive}/history', [Controllers\StockArchiveController::class, 'history'])->whereNumber('archive')->name('stock-archives.history');
+    Route::post('stock-archives/{archive}/email', [Controllers\StockArchiveController::class, 'email'])->whereNumber('archive')->middleware('throttle:10,1,stock-archives.email')->name('stock-archives.email');
+    Route::delete('stock-archives/{archive}', [Controllers\StockArchiveController::class, 'destroy'])->whereNumber('archive')->middleware('throttle:10,1,stock-archives.destroy')->name('stock-archives.destroy');
     Route::get('reports', [Controllers\ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/general', [Controllers\ReportController::class, 'general'])->name('reports.general');
     Route::get('reports/general/pdf', [Controllers\ReportController::class, 'generalPdf'])->name('reports.general.pdf');

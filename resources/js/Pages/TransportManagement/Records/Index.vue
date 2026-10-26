@@ -45,7 +45,7 @@
       <div v-if="canBulkVerify && selectedVerifyIds.length" class="tm-selbar tm-selbar-violet">
         <span class="tm-selbar-text">
           <span class="lg-card-ico lg-ico-violet tm-selbar-ico"><icons name="tick" class="w-4 h-4" /></span>
-          {{ selectedVerifyIds.length }} {{ $t('trip(s) selected') }}
+          {{ selectedVerifyIds.length }} {{ $t('unverified trip(s) selected to verify (they cannot be paid yet)') }}
         </span>
         <button type="button" class="lg-btn tm-btn-violet" @click="openBulkVerify">
           <icons name="tick" class="w-4 h-4" /> {{ $t('Verify') }} {{ selectedVerifyIds.length }} {{ $t('trip(s)') }}
@@ -113,19 +113,17 @@
                   :aria-label="$t('Select')"
                   @change="toggleSelect(r.id)"
                 />
-                <span
-                  v-else-if="canBulkVerify && r.can_verify"
-                  class="lg-tip tip-left tm-check-tip"
-                  :data-tip="$t('Select for bulk verify')"
+                <!-- an unverified trip can never be paid: it gets a lock, not a payment checkbox. A person who may verify ticks the violet box to VERIFY it. -->
+                <label
+                  v-else-if="!r.is_verified && canBulkVerify && r.can_verify"
+                  class="tr-verify-box lg-tip tip-left"
+                  :class="{ 'is-on': selectedVerifyIds.includes(r.id) }"
+                  :data-tip="$t('Unverified: it cannot be paid until it is verified. Tick this box to verify it.')"
                 >
-                  <input
-                    type="checkbox"
-                    class="tr-checkbox tr-checkbox-violet"
-                    :checked="selectedVerifyIds.includes(r.id)"
-                    :aria-label="$t('Select for bulk verify')"
-                    @change="toggleVerifySelect(r.id)"
-                  />
-                </span>
+                  <input type="checkbox" :checked="selectedVerifyIds.includes(r.id)" :aria-label="$t('Select to verify (an unverified trip cannot be paid)')" @change="toggleVerifySelect(r.id)" />
+                  <span aria-hidden="true"><icons name="lock-closed" class="tr-vb-lock" /><icons name="tick" class="tr-vb-tick" /></span>
+                </label>
+                <span v-else-if="!r.is_verified && r.payment_status !== 'Cancelled'" class="tr-locked lg-tip tip-left" :data-tip="$t('Unverified: it cannot be paid until it is verified.')"><icons name="lock-closed" class="w-3.5 h-3.5" /></span>
                 <span v-else class="tr-checkbox-placeholder"></span>
               </td>
               <td :data-label="$t('No')" class="tm-no">{{ (records.meta?.from ?? 1) + idx }}</td>
@@ -497,6 +495,8 @@ export default {
       this.$inertia.patch(this.route('transport-records.verify', r.id), {}, { preserveScroll: true });
     },
     toggleSelect(id) {
+      // only a verified, unpaid trip without a voucher can ever be selected for a Payment Voucher
+      if (!this.eligibleIds.includes(id)) return;
       const i = this.selectedIds.indexOf(id);
       if (i === -1) {
         this.selectedIds.push(id);
@@ -547,7 +547,7 @@ export default {
       }
       this.$inertia.post(
         this.route('transport-records.create-payment-voucher'),
-        { transport_record_ids: this.selectedIds },
+        { transport_record_ids: this.selectedIds.filter(id => this.eligibleIds.includes(id)) },
         { onSuccess: () => (this.selectedIds = []) }
       );
     },
@@ -709,6 +709,14 @@ html.dark .tr-override-flag { color: #f87171 !important; }
 }
 .tr-checkbox:focus-visible { outline: 2px solid #3b82f6; }
 .tr-checkbox-violet { accent-color: #7c3aed; border-color: #c4b5fd; }
+.tr-verify-box { position: relative; display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; cursor: pointer; }
+.tr-verify-box input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tr-verify-box > span { display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 9999px; border: 1.5px dashed #a78bfa; color: #7c3aed; background: rgba(237, 233, 254, 0.7); transition: all 0.15s ease; }
+.tr-verify-box .tr-vb-lock { width: 0.7rem; height: 0.7rem; } .tr-verify-box .tr-vb-tick { display: none; width: 0.7rem; height: 0.7rem; }
+.tr-verify-box.is-on > span { border-style: solid; color: #fff; background: linear-gradient(145deg, #8b5cf6, #6d28d9); }
+.tr-verify-box.is-on .tr-vb-lock { display: none; } .tr-verify-box.is-on .tr-vb-tick { display: block; }
+.tr-verify-box input:focus-visible + span { outline: 2px solid #7c3aed; outline-offset: 2px; }
+.tr-locked { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 9999px; color: #94a3b8; background: rgba(148, 163, 184, 0.15); cursor: help; }
 .tr-checkbox-placeholder { display: inline-block; width: 1rem; height: 1rem; }
 
 /* Teleported amount-diff tooltip: position fixed, above the modal overlays */

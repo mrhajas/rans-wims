@@ -3431,6 +3431,16 @@ const menus = [
         lang: { main: 'Usage Material Per Site' },
       },
       {
+        name: 'stock-archives.index',
+        route: 'stock-archives.index',
+        feature: 'stock_archive',
+        icon: 'archive-box',
+        hidden: false,
+        sub_menu: false,
+        permissions: ['read-stock-archives'],
+        lang: { main: 'Stock Archive' },
+      },
+      {
         name: 'item-category-report.index',
         route: 'item-category-report.index',
         icon: 'collection',

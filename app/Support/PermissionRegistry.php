@@ -587,6 +587,14 @@ class PermissionRegistry
                 ],
             ],
 
+            'stock_archives' => [
+                'label' => __('Stock Archive'),
+                'abilities' => [
+                    'read-stock-archives' => __('Open the Stock Archive: see the kept stock reports, preview and download them, and see the history of each'),
+                    'create-stock-archives' => __('Make a stock report now (it is kept in the Stock Archive and shows who made it). Deleting entries and the settings are for Super Admins only'),
+                ],
+            ],
+
             'units' => [
                 'label' => __('Units'),
                 'abilities' => [

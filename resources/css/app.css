@@ -3123,6 +3123,15 @@ html.dark .sdy-type-chip:not(.is-on) .sdy-type-mark { background: #b91c1c; }
   html body .app-shell.wims-float .liquid-side-rail.rail-full .mm-btn { flex: none; }
 }
 
+/* map zoom buttons: the + and - sit exactly in the middle of round buttons (the global button rules had pushed them off centre) */
+.leaflet-bar { border: 0 !important; border-radius: 16px !important; overflow: hidden; background: transparent; box-shadow: 0 10px 22px -10px rgba(30, 41, 59, 0.55) !important; }
+.leaflet-bar a, .leaflet-bar a:hover { display: flex !important; align-items: center; justify-content: center; box-sizing: border-box; width: 38px !important; height: 38px !important; min-height: 0 !important; padding: 0 !important; margin: 0; line-height: 1 !important; text-indent: 0 !important; font: 700 22px/1 system-ui, sans-serif !important; color: #1e293b; background: rgba(255, 255, 255, 0.96); border: 0 !important; border-radius: 0 !important; transition: background 0.15s ease, color 0.15s ease; }
+.leaflet-bar a + a { border-top: 1px solid rgba(100, 116, 139, 0.25) !important; }
+.leaflet-bar a:hover { background: #eef2ff; color: #4338ca; }
+.leaflet-bar a.leaflet-disabled { color: #cbd5e1; background: rgba(248, 250, 252, 0.9); cursor: default; }
+.leaflet-bar a span { display: block; line-height: 1; margin-top: -2px; }
+html.dark .leaflet-bar a { background: rgba(30, 41, 59, 0.95); color: #e2e8f0; }
+html.dark .leaflet-bar a:hover { background: #312e81; color: #fff; }
 /* map labels use the WIMS font too */
 .leaflet-container, .leaflet-container .leaflet-control-attribution, .leaflet-container .leaflet-control-scale-line { font-family: inherit; }
 
