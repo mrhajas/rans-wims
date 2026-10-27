@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\DatabaseBackup;
+use App\Support\Backup\AutoBackupSettings;
 use App\Models\BackupActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,38 @@ class BackupController extends Controller
 
         return Inertia::render('Backup/Index', [
             'database' => DB::connection()->getDatabaseName(),
-            'activities' => BackupActivity::with('user')->latest()->take(50)->get(),
+            // the log is paged (a long history never loads in one go)
+            'activities' => BackupActivity::with('user:id,name')->latest('id')->paginate(15)->withQueryString(),
+            'backupStats' => [
+                'last_backup' => optional(BackupActivity::where('activity', '!=', 'Restore')->where('activity', '!=', 'Safety Backup')->latest('id')->first())->created_at,
+                'last_restore' => optional(BackupActivity::where('activity', 'Restore')->latest('id')->first())->created_at,
+                'backups' => BackupActivity::where('activity', '!=', 'Restore')->where('activity', '!=', 'Safety Backup')->count(),
+            ],
+            'auto' => [
+                'enabled' => AutoBackupSettings::enabled(),
+                'interval_hours' => AutoBackupSettings::intervalHours(),
+                'keep' => AutoBackupSettings::keep(),
+                'options' => AutoBackupSettings::options(),
+                'last' => optional(AutoBackupSettings::lastAutoAt())->toIso8601String(),
+                'next' => optional(AutoBackupSettings::nextDueAt())->toIso8601String(),
+            ],
         ]);
+    }
+
+    /** Super Admin: how often the automatic backup runs (not less than every 8 hours, up to 15 days), whether it runs, and how many are kept. */
+    public function autoSettings(Request $request)
+    {
+        $this->authorizeSuperAdmin();
+        $data = $request->validate([
+            'enabled' => 'required|boolean',
+            'interval_hours' => ['required', 'integer', 'in:' . implode(',', AutoBackupSettings::options())],
+            'keep' => 'required|integer|min:1|max:30',
+        ]);
+        $before = ['enabled' => AutoBackupSettings::enabled(), 'interval_hours' => AutoBackupSettings::intervalHours(), 'keep' => AutoBackupSettings::keep()];
+        AutoBackupSettings::save((bool) $data['enabled'], (int) $data['interval_hours'], (int) $data['keep'], $request->user()->account_id);
+        log_activity(__('Automatic backup settings saved'), ['from' => $before, 'to' => $data], $request->user(), 'Backup');
+
+        return back()->with('message', __('Automatic backup settings saved.'));
     }
 
     public function download(Request $request, DatabaseBackup $backup)
@@ -42,7 +73,7 @@ class BackupController extends Controller
         ]);
 
         $database = DB::connection()->getDatabaseName();
-        $filename = $database . '-backup-' . now()->format('Ymd-His') . '.sql';
+        $filename = $database . '-backup-' . now()->format('Ymd-His') . '.sql.gz'; // compressed: about 7 times smaller, so a quicker download
 
         try {
             $path = $backup->saveToDisk($filename, storage_path('app/tmp-backups'));
@@ -62,7 +93,7 @@ class BackupController extends Controller
             ->log('Database backup downloaded by ' . optional(auth()->user())->name);
 
         BackupActivity::create([
-            'user_id' => auth()->id(),
+            'user_id' => $this->actorId(),
             'activity' => 'Backup',
             'database' => $database,
             'filename' => $filename,
@@ -70,7 +101,7 @@ class BackupController extends Controller
         ]);
 
         return response()->download($path, $filename, [
-            'Content-Type' => 'application/sql',
+            'Content-Type' => 'application/gzip',
         ])->deleteFileAfterSend(true);
     }
 
@@ -79,12 +110,13 @@ class BackupController extends Controller
         $this->authorizeSuperAdmin();
 
         $database = DB::connection()->getDatabaseName();
-        $filename = ($database ?: 'database') . '-system-backup-' . now()->format('Ymd-His') . '.sql';
+        $filename = ($database ?: 'database') . '-system-backup-' . now()->format('Ymd-His') . '.sql.gz';
 
         $oldSystemBackups = BackupActivity::where('activity', 'System BackUp')->get();
 
         try {
             $path = $backup->saveToDisk($filename);
+            $filename = basename($path);
         } catch (\Throwable $e) {
             Log::error('System backup creation failed', ['error' => $e->getMessage()]);
 
@@ -113,7 +145,7 @@ class BackupController extends Controller
             ->log('System backup created by ' . optional(auth()->user())->name);
 
         BackupActivity::create([
-            'user_id' => auth()->id(),
+            'user_id' => $this->actorId(),
             'activity' => 'System BackUp',
             'database' => $database,
             'filename' => $filename,
@@ -137,7 +169,7 @@ class BackupController extends Controller
     {
         $this->authorizeSuperAdmin();
 
-        if (! in_array($backupActivity->activity, ['Auto Back Up', 'System BackUp'], true)) {
+        if (! in_array($backupActivity->activity, ['Auto Back Up', 'System BackUp', 'Safety Backup'], true)) {
             abort(404);
         }
 
@@ -166,7 +198,7 @@ class BackupController extends Controller
             ->log(($backupActivity->activity === 'Auto Back Up' ? 'Auto backup' : 'System backup') . ' downloaded by ' . optional(auth()->user())->name);
 
         BackupActivity::create([
-            'user_id' => auth()->id(),
+            'user_id' => $this->actorId(),
             'activity' => 'Backup',
             'database' => DB::connection()->getDatabaseName(),
             'filename' => ($backupActivity->activity === 'Auto Back Up' ? 'Auto backup: ' : 'System backup: ') . $backupActivity->filename,
@@ -178,7 +210,7 @@ class BackupController extends Controller
         ]);
 
         return response()->download($path, $backupActivity->filename, [
-            'Content-Type' => 'application/sql',
+            'Content-Type' => str_ends_with(strtolower($path), '.gz') ? 'application/gzip' : 'application/sql',
         ]);
     }
 
@@ -191,15 +223,15 @@ class BackupController extends Controller
         }
 
         $request->validate([
-            'file'    => 'required|file|max:204800',
+            'file'    => 'required|file|max:512000',
             'confirm' => 'required|in:RESTORE',
             'password' => 'required|current_password',
         ]);
 
         $uploaded = $request->file('file');
         $extension = strtolower($uploaded->getClientOriginalExtension());
-        if (! in_array($extension, ['sql', 'txt'], true)) {
-            return back()->withErrors(['file' => 'The file must be a .sql or .txt file.']);
+        if (! in_array($extension, ['sql', 'txt', 'gz'], true)) {
+            return back()->withErrors(['file' => 'The file must be a .sql, .sql.gz or .txt file.']);
         }
 
         $path = $uploaded->getRealPath();
@@ -208,6 +240,7 @@ class BackupController extends Controller
 
         $database = DB::connection()->getDatabaseName();
         try {
+            $safety = $this->safetyBackup($backup); // a restore overwrites the database: the way back is saved first
             $result = $backup->restoreFromFile($path);
         } catch (\Throwable $e) {
             Log::error('Database restore failed', ['error' => $e->getMessage()]);
@@ -215,32 +248,41 @@ class BackupController extends Controller
             return back()->with('error', 'Restore failed: ' . $e->getMessage());
         }
 
-        activity('Backup')
-            ->causedBy(auth()->user())
-            ->withProperties([
-                'filename'        => $originalName,
-                'statements_run'  => $result['statements'],
-                'errors_count'    => count($result['errors']),
-                'first_errors'    => array_slice($result['errors'], 0, 5),
-                'size'            => $size,
-            ])
-            ->log('Database restore performed by ' . optional(auth()->user())->name);
+        $this->recordSafety($safety);
 
-        BackupActivity::create([
-            'user_id' => auth()->id(),
-            'activity' => 'Restore',
-            'database' => $database,
-            'filename' => $originalName,
-            'statements_run' => $result['statements'],
-            'errors_count' => count($result['errors']),
-            'properties' => [
+        // writing the log must never turn a restore that WORKED into an error page
+        try {
+            activity('Backup')
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'filename'        => $originalName,
+                    'statements_run'  => $result['statements'],
+                    'errors_count'    => count($result['errors']),
+                    'first_errors'    => array_slice($result['errors'], 0, 5),
+                    'size'            => $size,
+                ])
+                ->log('Database restore performed by ' . optional(auth()->user())->name);
+
+            BackupActivity::create([
+                'user_id' => $this->actorId(),
+                'activity' => 'Restore',
+                'database' => $database,
                 'filename' => $originalName,
                 'statements_run' => $result['statements'],
                 'errors_count' => count($result['errors']),
-                'first_errors' => array_slice($result['errors'], 0, 5),
-                'size' => $size,
-            ],
-        ]);
+                'properties' => [
+                    'filename' => $originalName,
+                    'statements_run' => $result['statements'],
+                    'errors_count' => count($result['errors']),
+                    'first_errors' => array_slice($result['errors'], 0, 5),
+                    'size' => $size,
+                ],
+            ]);
+
+
+        } catch (\Throwable $e) {
+            Log::warning('Restore log entry could not be written', ['error' => $e->getMessage()]);
+        }
 
         $message = 'Restore completed: ' . $result['statements'] . ' statement(s) executed';
         if (! empty($result['errors'])) {
@@ -256,7 +298,7 @@ class BackupController extends Controller
     {
         $this->authorizeSuperAdmin();
 
-        if (! in_array($backupActivity->activity, ['Auto Back Up', 'System BackUp'], true)) {
+        if (! in_array($backupActivity->activity, ['Auto Back Up', 'System BackUp', 'Safety Backup'], true)) {
             abort(404);
         }
 
@@ -271,6 +313,7 @@ class BackupController extends Controller
         }
 
         try {
+            $safety = $this->safetyBackup($backup);
             $result = $backup->restoreFromFile($path);
         } catch (\Throwable $e) {
             Log::error('Auto backup restore failed', ['error' => $e->getMessage(), 'backup' => $backupActivity->filename]);
@@ -278,37 +321,46 @@ class BackupController extends Controller
             return back()->with('error', 'Restore failed: ' . $e->getMessage());
         }
 
-        $size = filesize($path);
+        $this->recordSafety($safety);
 
-        activity('Backup')
-            ->withProperties([
-                'filename' => $backupActivity->filename,
+        // writing the log must never turn a restore that WORKED into an error page
+        try {
+            $size = filesize($path);
+
+            activity('Backup')
+                ->withProperties([
+                    'filename' => $backupActivity->filename,
+                    'statements_run' => $result['statements'],
+                    'errors_count' => count($result['errors']),
+                    'first_errors' => array_slice($result['errors'], 0, 5),
+                    'restored_from_auto_backup' => $backupActivity->activity === 'Auto Back Up',
+                    'restored_from_system_backup' => $backupActivity->activity === 'System BackUp',
+                    'size' => $size,
+                ])
+                ->log(($backupActivity->activity === 'Auto Back Up' ? 'Auto backup' : 'System backup') . ' restored by ' . optional(auth()->user())->name);
+
+            BackupActivity::create([
+                'user_id' => $this->actorId(),
+                'activity' => 'Restore',
+                'database' => DB::connection()->getDatabaseName(),
+                'filename' => ($backupActivity->activity === 'Auto Back Up' ? 'Auto backup: ' : 'System backup: ') . $backupActivity->filename,
                 'statements_run' => $result['statements'],
                 'errors_count' => count($result['errors']),
-                'first_errors' => array_slice($result['errors'], 0, 5),
-                'restored_from_auto_backup' => $backupActivity->activity === 'Auto Back Up',
-                'restored_from_system_backup' => $backupActivity->activity === 'System BackUp',
-                'size' => $size,
-            ])
-            ->log(($backupActivity->activity === 'Auto Back Up' ? 'Auto backup' : 'System backup') . ' restored by ' . optional(auth()->user())->name);
+                'properties' => [
+                    'filename' => $backupActivity->filename,
+                    'statements_run' => $result['statements'],
+                    'errors_count' => count($result['errors']),
+                    'first_errors' => array_slice($result['errors'], 0, 5),
+                    'restored_from_auto_backup' => $backupActivity->activity === 'Auto Back Up',
+                    'restored_from_system_backup' => $backupActivity->activity === 'System BackUp',
+                    'size' => $size,
+                ],
+            ]);
 
-        BackupActivity::create([
-            'user_id' => auth()->id(),
-            'activity' => 'Restore',
-            'database' => DB::connection()->getDatabaseName(),
-            'filename' => ($backupActivity->activity === 'Auto Back Up' ? 'Auto backup: ' : 'System backup: ') . $backupActivity->filename,
-            'statements_run' => $result['statements'],
-            'errors_count' => count($result['errors']),
-            'properties' => [
-                'filename' => $backupActivity->filename,
-                'statements_run' => $result['statements'],
-                'errors_count' => count($result['errors']),
-                'first_errors' => array_slice($result['errors'], 0, 5),
-                'restored_from_auto_backup' => $backupActivity->activity === 'Auto Back Up',
-                'restored_from_system_backup' => $backupActivity->activity === 'System BackUp',
-                'size' => $size,
-            ],
-        ]);
+
+        } catch (\Throwable $e) {
+            Log::warning('Restore log entry could not be written', ['error' => $e->getMessage()]);
+        }
 
         $message = 'Restore completed: ' . $result['statements'] . ' statement(s) executed';
         if (! empty($result['errors'])) {
@@ -318,6 +370,58 @@ class BackupController extends Controller
         }
 
         return back()->with('message', $message . '.');
+    }
+
+    /**
+     * Saves the database as it is NOW before a restore overwrites it (compressed; the latest two are kept in the backups folder), so a restore that
+     * stops half way, or a wrong file, can always be undone. Returns what is needed to list it AFTERWARDS: the restore replaces the backup log
+     * itself, so a log row written before would be wiped by the very restore it protects against.
+     */
+    private function safetyBackup(DatabaseBackup $backup): array
+    {
+        $database = DB::connection()->getDatabaseName();
+        $path = $backup->saveToDisk(($database ?: 'database') . '-before-restore-' . now()->format('Ymd-His') . '.sql.gz');
+        $files = glob(dirname($path) . DIRECTORY_SEPARATOR . '*-before-restore-*.sql.gz') ?: [];
+        rsort($files);
+        foreach (array_slice($files, 2) as $old) {
+            @unlink($old);
+        }
+
+        return ['database' => $database, 'path' => $path, 'filename' => basename($path), 'size' => filesize($path), 'user_id' => $this->actorId(), 'actor' => optional(auth()->user())->name];
+    }
+
+    /** Lists the safety backup in the log once the restore is done (and removes the log rows of safety backups whose file was pruned). */
+    private function recordSafety(array $meta): void
+    {
+        try {
+            BackupActivity::create([
+                'user_id' => $this->actorId(),
+                'activity' => 'Safety Backup',
+                'database' => $meta['database'],
+                'filename' => $meta['filename'],
+                'properties' => ['database' => $meta['database'], 'filename' => $meta['filename'], 'path' => $meta['path'], 'size' => $meta['size'], 'actor' => $meta['actor']],
+            ]);
+            foreach (BackupActivity::where('activity', 'Safety Backup')->get() as $row) {
+                $p = $row->properties['path'] ?? null;
+                if (! $p || ! file_exists($p)) {
+                    $row->delete();
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Safety backup log entry could not be written', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /** The person doing a restore, or null when the restored database does not contain them (a restore replaces the users table too). */
+    private function actorId(): ?int
+    {
+        try {
+            $id = auth()->id();
+
+            return $id && \App\Models\User::withoutGlobalScopes()->whereKey($id)->exists() ? (int) $id : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function authorizeSuperAdmin(): void

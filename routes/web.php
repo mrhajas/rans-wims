@@ -2067,6 +2067,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
 
     // Database backup & restore (Super Admin only)
     Route::get('backup', [Controllers\BackupController::class, 'index'])->name('backup.index');
+    Route::put('backup/auto-settings', [Controllers\BackupController::class, 'autoSettings'])->name('backup.auto.settings');
     Route::post('backup/system/create', [Controllers\BackupController::class, 'createSystemBackup'])->name('backup.system.create');
     Route::post('backup/download', [Controllers\BackupController::class, 'download'])->name('backup.download');
     Route::post('backup/download/{backupActivity}/auto', [Controllers\BackupController::class, 'downloadAuto'])->name('backup.download.auto');

@@ -45,7 +45,7 @@ trait SharedLookups
 
     protected function itemOptions(): array
     {
-        return Item::query()->with('unit:id,name,code')->orderBy('name')->limit(300)->get(['id', 'name', 'code', 'unit_id', 'price'])
+        return Item::query()->with('unit:id,name,code')->orderBy('name')->limit(5000)->get(['id', 'name', 'code', 'unit_id', 'price']) // every item: it was cut at the first 300 by name, so the rest could not be picked on these forms
             ->map(fn ($i) => [
                 'id' => $i->id,
                 'name' => $i->name,
@@ -57,7 +57,7 @@ trait SharedLookups
 
     protected function userOptions(): array
     {
-        return User::query()->orderBy('name')->limit(200)->get(['id', 'name'])
+        return User::query()->orderBy('name')->limit(2000)->get(['id', 'name'])
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values()->all();
     }
 

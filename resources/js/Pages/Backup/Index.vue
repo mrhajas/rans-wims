@@ -52,7 +52,7 @@
             <span class="lg-card-ico lg-ico-navy"><icons name="download" class="w-5 h-5" /></span>
             <div class="min-w-0">
               <h2 class="lg-card-title">{{ $t('Download Backup') }}</h2>
-              <p class="lg-card-sub">{{ $t('Generates a complete SQL dump of the current database, including schema and data.') }}</p>
+              <p class="lg-card-sub">{{ $t('Generates a complete, compressed (.sql.gz) copy of the current database, including structure and data. It is about 7 times smaller than a plain file.') }}</p>
             </div>
           </header>
           <button type="button" class="lg-btn lg-btn-dark" :disabled="downloadProcessing" @click="openDownloadConfirm">
@@ -86,11 +86,11 @@
           <p class="lg-note lg-note-red mb-4"><icons name="exclamation" class="w-4 h-4" />{{ $t('This action cannot be undone. Take a fresh backup before restoring.') }}</p>
 
           <form @submit.prevent="openConfirm">
-            <input ref="fileInput" id="bk-file" type="file" accept=".sql,.txt" class="sr-only" @change="onFileChange" />
+            <input ref="fileInput" id="bk-file" type="file" accept=".sql,.gz,.txt" class="sr-only" @change="onFileChange" />
             <label for="bk-file" class="bk-drop" :class="{ 'has-file': form.file }">
               <span class="bk-drop-ico"><icons :name="form.file ? 'tick' : 'upload'" class="w-5 h-5" /></span>
               <span class="min-w-0">
-                <span class="bk-drop-title">{{ form.file ? form.file.name : $t('Choose a .sql backup file') }}</span>
+                <span class="bk-drop-title">{{ form.file ? form.file.name : $t('Choose a .sql or .sql.gz backup file') }}</span>
                 <span class="bk-drop-sub">{{ form.file ? formatBytes(form.file.size) : $t('Click to browse your computer') }}</span>
               </span>
             </label>
@@ -106,6 +106,43 @@
           </form>
         </section>
       </div>
+
+      <!-- Automatic backup: how often -->
+      <section class="lg-card mt-4">
+        <header class="lg-card-head">
+          <span class="lg-card-ico lg-ico-indigo"><icons name="clock" class="w-5 h-5" /></span>
+          <div class="min-w-0 flex-1">
+            <h2 class="lg-card-title">{{ $t('Automatic Backup') }}</h2>
+            <p class="lg-card-sub">{{ $t('WIMS saves a copy of the database by itself. Choose how often (not less than every 8 hours, up to every 15 days).') }}</p>
+          </div>
+          <button type="button" class="lg-btn lg-btn-dark" :disabled="autoForm.processing" @click="saveAuto"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button>
+        </header>
+        <div class="bk-auto">
+          <label class="bk-auto-switch" :class="{ 'is-on': autoForm.enabled }">
+            <input v-model="autoForm.enabled" type="checkbox" />
+            <span class="bk-auto-ui" aria-hidden="true"></span>
+            <span><b>{{ $t('Backup automatically') }}</b><small>{{ autoForm.enabled ? $t('On: a new backup is made when the time below has passed.') : $t('Off: no automatic backups are made.') }}</small></span>
+          </label>
+          <div class="bk-auto-grid">
+            <div>
+              <label class="bk-label" for="bk-interval">{{ $t('Make a backup every') }}</label>
+              <css-select id="bk-interval" v-model="autoForm.interval_hours" class="bk-input" :disabled="!autoForm.enabled">
+                <option v-for="h in auto.options" :key="h" :value="h">{{ intervalLabel(h) }}</option>
+              </css-select>
+              <div v-if="autoForm.errors.interval_hours" class="bk-error">{{ autoForm.errors.interval_hours }}</div>
+            </div>
+            <div>
+              <label class="bk-label" for="bk-keep">{{ $t('Keep the latest automatic backups') }}</label>
+              <input id="bk-keep" v-model.number="autoForm.keep" type="number" min="1" max="30" class="bk-input" :disabled="!autoForm.enabled" />
+              <div v-if="autoForm.errors.keep" class="bk-error">{{ autoForm.errors.keep }}</div>
+            </div>
+            <div class="bk-auto-info">
+              <span><small>{{ $t('Last automatic backup') }}</small><b>{{ auto.last ? formatDate(auto.last) : $t('Never') }}</b></span>
+              <span><small>{{ $t('Next one') }}</small><b>{{ auto.enabled ? (auto.next ? formatDate(auto.next) : $t('Now')) : $t('Off') }}</b></span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- Activity -->
       <section class="lg-card mt-4">
@@ -130,7 +167,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="entry in activities" :key="entry.id">
+              <tr v-for="entry in rows" :key="entry.id">
                 <td :data-label="$t('When')" class="lg-main">{{ formatDate(entry.created_at) }}</td>
                 <td :data-label="$t('Activity')"><span class="lg-chip" :class="activityChip(entry.activity)">{{ entry.activity }}</span></td>
                 <td :data-label="$t('User')">{{ entry.user ? entry.user.name : entry.activity === 'Auto Back Up' ? 'RANS WIMS System' : $t('System') }}</td>
@@ -148,12 +185,18 @@
                   <span v-else class="lg-subtext">-</span>
                 </td>
               </tr>
-              <tr v-if="activities.length === 0" class="lg-empty-row">
+              <tr v-if="rows.length === 0" class="lg-empty-row">
                 <td colspan="7" class="lg-empty">{{ $t('No backup activity yet.') }}</td>
               </tr>
             </tbody>
           </table>
         </div>
+        <nav v-if="activities.last_page > 1" class="bk-pager" :aria-label="$t('Pages')">
+          <template v-for="(l, i) in activities.links" :key="i">
+            <span v-if="!l.url" class="bk-pg is-off" v-html="cleanLabel(l.label)"></span>
+            <Link v-else :href="l.url" preserve-scroll class="bk-pg" :class="{ 'is-on': l.active }" v-html="cleanLabel(l.label)" />
+          </template>
+        </nav>
       </section>
     </div>
 
@@ -231,22 +274,26 @@
 </template>
 
 <script>
+import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { beginTask, endTask } from '@/Core/saveProgress';
 import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 
 export default {
-  components: { AdminLayout, TecSectionTitle, TecDialogModal },
+  components: { AdminLayout, TecSectionTitle, TecDialogModal, Link },
 
   props: {
     database: { type: String, default: '' },
-    activities: { type: Array, default: () => [] },
+    activities: { type: Object, default: () => ({ data: [], links: [], last_page: 1 }) },
+    backupStats: { type: Object, default: () => ({ last_backup: null, last_restore: null, backups: 0 }) },
+    auto: { type: Object, default: () => ({ enabled: true, interval_hours: 24, keep: 3, options: [8, 16, 24], last: null, next: null }) },
   },
 
   data() {
     return {
       confirm: false,
+      autoForm: this.$inertia.form({ enabled: this.auto.enabled, interval_hours: this.auto.interval_hours, keep: this.auto.keep }),
       actionError: '',
       form: this.$inertia.form({
         file: null,
@@ -271,14 +318,17 @@ export default {
   },
 
   computed: {
+    rows() {
+      return (this.activities && this.activities.data) || [];
+    },
     lastBackup() {
-      return this.activities.find(a => !/restore/i.test(a.activity || '')) || null;
+      return this.backupStats.last_backup ? { created_at: this.backupStats.last_backup } : null;
     },
     lastRestore() {
-      return this.activities.find(a => /restore/i.test(a.activity || '')) || null;
+      return this.backupStats.last_restore ? { created_at: this.backupStats.last_restore } : null;
     },
     backupCount() {
-      return this.activities.filter(a => !/restore/i.test(a.activity || '')).length;
+      return this.backupStats.backups;
     },
     canSubmit() {
       return this.form.file && this.form.confirm === 'RESTORE' && !this.form.processing;
@@ -300,9 +350,21 @@ export default {
   },
 
   methods: {
+    cleanLabel(label) {
+      return String(label).replace('&laquo; Previous', '&lsaquo;').replace('Next &raquo;', '&rsaquo;');
+    },
+    intervalLabel(h) {
+      if (h < 24) return h + ' ' + this.$t('hours');
+      if (h === 24) return '24 ' + this.$t('hours') + ' (' + this.$t('every day') + ')';
+      return h / 24 + ' ' + this.$t('days');
+    },
+    saveAuto() {
+      this.autoForm.put(this.route('backup.auto.settings'), { preserveScroll: true });
+    },
     activityChip(activity) {
       const a = String(activity || '');
       if (/restore/i.test(a)) return 'lg-chip-red';
+      if (/safety/i.test(a)) return 'lg-chip-amber';
       if (/auto/i.test(a)) return 'lg-chip-blue';
       if (/system/i.test(a)) return 'lg-chip-green';
       return 'lg-chip-slate';
@@ -386,8 +448,8 @@ export default {
       this.downloadProcessing = true;
       try {
         beginTask(this.$t('Preparing backup'), this.$t('Downloaded'), 'backup');
-        await this.downloadViaFetch(this.route('backup.download'), this.downloadPassword, `${this.database}-backup.sql`);
-        endTask(true, `${this.database}-backup.sql`);
+        await this.downloadViaFetch(this.route('backup.download'), this.downloadPassword, `${this.database}-backup.sql.gz`);
+        endTask(true, `${this.database}-backup.sql.gz`);
         this.closeDownloadConfirm();
       } catch (error) {
         endTask(false, error.message);
@@ -407,7 +469,7 @@ export default {
       this.autoProcessing = false;
     },
     hasBackupActions(entry) {
-      return ['Auto Back Up', 'System BackUp'].includes(entry.activity);
+      return ['Auto Back Up', 'System BackUp', 'Safety Backup'].includes(entry.activity);
     },
     createSystemBackup() {
       if (this.systemBackupProcessing) {
@@ -533,6 +595,26 @@ export default {
 </script>
 
 <style scoped>
+.bk-pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 14px; }
+.bk-pg { display: inline-grid; place-items: center; min-width: 36px; height: 36px; padding: 0 10px; border-radius: 11px; font-size: 0.82rem; font-weight: 800; color: var(--lg-ink); background: var(--lg-card); border: 1px solid var(--lg-line); }
+.bk-pg.is-on { color: #fff; border-color: transparent; background: linear-gradient(145deg, #3b82f6, #1d4ed8); }
+.bk-pg.is-off { opacity: 0.4; }
+
+.bk-auto { display: grid; gap: 14px; padding: 4px 18px 18px; }
+.bk-auto-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: end; }
+@media (max-width: 800px) { .bk-auto-grid { grid-template-columns: 1fr; } }
+.bk-auto-switch { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: var(--lg-soft); border: 1px solid var(--lg-line); cursor: pointer; }
+.bk-auto-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.bk-auto-switch b { display: block; font-size: 0.9rem; } .bk-auto-switch small { display: block; font-size: 0.76rem; color: var(--lg-mute, #64748b); }
+.bk-auto-ui { position: relative; flex: none; width: 44px; height: 26px; border-radius: 9999px; background: #cbd5e1; transition: background 0.2s ease; }
+.bk-auto-ui::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 9999px; background: #fff; box-shadow: 0 2px 5px rgba(15, 23, 42, 0.35); transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bk-auto-switch.is-on { border-color: #a5b4fc; background: linear-gradient(135deg, rgba(224, 231, 255, 0.7), var(--lg-soft)); }
+.bk-auto-switch.is-on .bk-auto-ui { background: linear-gradient(135deg, #6366f1, #4338ca); }
+.bk-auto-switch.is-on .bk-auto-ui::after { transform: translateX(18px); }
+.bk-auto-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bk-auto-info span { display: grid; gap: 2px; padding: 8px 12px; border-radius: 12px; background: var(--lg-soft); border: 1px solid var(--lg-line); }
+.bk-auto-info small { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lg-faint); } .bk-auto-info b { font-size: 0.86rem; }
+
 .bk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .bk-divider { height: 1px; margin: 1.4rem 0; background: var(--lg-line); }
 .bk-danger { border-color: rgba(244, 63, 94, 0.28); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 30px -18px rgba(190, 18, 60, 0.35); }

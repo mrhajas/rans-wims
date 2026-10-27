@@ -45,7 +45,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('site-reports:auto-archive')->daily();
         $schedule->command('site-reports:remind-missing')->dailyAt('17:00');
         $schedule->command('site-reports:remind-missing --yesterday')->dailyAt('08:00');
-        $schedule->command('backup:auto')->cron('0 0 */2 * *')->withoutOverlapping();
+        // every hour it asks whether the interval chosen on the Backup page (8 hours to 15 days) has passed
+        $schedule->command('backup:auto')->hourly()->withoutOverlapping();
         $schedule->command('task-reminders:dispatch')->everyMinute()->withoutOverlapping();
         $schedule->command('task-manager:dispatch-due-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('assets:check-expiries')->dailyAt('07:15');
