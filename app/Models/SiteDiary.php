@@ -76,7 +76,7 @@ class SiteDiary extends Model
     /** Project ids the user may work in (null = every project). */
     public static function projectIdsFor(User $user): ?array
     {
-        if ($user->hasRole(['Super Admin', 'Admin']) && ! $user->warehouses()->exists()) {
+        if ($user->hasRole('Super Admin') || ($user->hasRole('Admin') && ! $user->warehouses()->exists())) {
             return null;
         }
         $ids = $user->warehouses()->pluck('warehouses.id')->all();

@@ -115,7 +115,10 @@ class HandleInertiaRequests extends Middleware
             return $request->attributes->get('_managed_warehouses');
         }
 
-        $assigned = $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at']);
+        // a Super Admin switches between EVERY active project, whatever list is on the person; an Admin without a list does too
+        $assigned = $user->hasRole('Super Admin')
+            ? collect()
+            : $user->warehouses()->where('active', 1)->visible()->orderBy('name')->get(['warehouses.id', 'warehouses.name', 'warehouses.status', 'warehouses.completed_at']);
 
         if ($assigned->isEmpty() && $user->hasRole(['Super Admin', 'Admin'])) {
             $assigned = Warehouse::ofAccount()->active()->visible()->orderBy('name')->get(['id', 'name', 'status', 'completed_at']);

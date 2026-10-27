@@ -208,6 +208,12 @@ if (! function_exists('accessible_warehouse_ids')) {
             return $value = null;
         }
 
+        // A Super Admin is never limited by a list of warehouses: every project, today's and tomorrow's, whatever is (or is not) ticked on the person.
+        // (A list on a Super Admin used to turn "everything" into "only these", so one new project made every other page look empty.)
+        if ($user->hasRole('Super Admin')) {
+            return $value = null;
+        }
+
         $assigned = $user->warehouses()->pluck('warehouses.id')->all();
         if (! empty($assigned)) {
             return $value = $assigned;

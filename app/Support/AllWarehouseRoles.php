@@ -53,7 +53,10 @@ class AllWarehouseRoles
     public static function attachNew(Warehouse $warehouse): void
     {
         try {
-            $ids = self::usersOf()->when($warehouse->account_id, fn ($q) => $q->where('account_id', $warehouse->account_id))->pluck('users.id');
+            // only people who already have a list: someone with no list sees everything, and one new warehouse would shrink that to one
+            $ids = self::usersOf()->when($warehouse->account_id, fn ($q) => $q->where('account_id', $warehouse->account_id))
+                ->whereExists(fn ($q) => $q->selectRaw('1')->from('user_warehouse')->whereColumn('user_warehouse.user_id', 'users.id'))
+                ->pluck('users.id');
             if ($ids->isNotEmpty()) {
                 $warehouse->users()->syncWithoutDetaching($ids->all());
             }

@@ -8,7 +8,12 @@ class Warehouse extends Model
 {
     use HasAttachments;
 
-    /** A new project / warehouse is given to every Super Admin of its account at once, so nobody has to tick it for them later. */
+    /**
+     * A new project / warehouse is given to the Super Admins of its account who already have a list of warehouses, so nobody has to tick it for
+     * them later. A Super Admin with NO list sees every warehouse (accessible_warehouse_ids() treats an empty list as "no limit"): giving that
+     * person the new warehouse would put a list of ONE warehouse on them and every page (Items, Check-ins, Check-outs, Transfers ...) would show
+     * only that project, which looked like all the data had disappeared.
+     */
     protected static function booted(): void
     {
         parent::booted(); // keeps the account scope and the account_id / deleted_by hooks of the base Model
@@ -17,6 +22,7 @@ class Warehouse extends Model
             try {
                 $ids = User::withoutGlobalScopes()->role('Super Admin')
                     ->when($warehouse->account_id, fn ($q) => $q->where('account_id', $warehouse->account_id))
+                    ->whereExists(fn ($q) => $q->selectRaw('1')->from('user_warehouse')->whereColumn('user_warehouse.user_id', 'users.id'))
                     ->pluck('users.id');
                 if ($ids->isNotEmpty()) {
                     $warehouse->users()->syncWithoutDetaching($ids->all());
