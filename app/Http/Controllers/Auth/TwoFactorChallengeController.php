@@ -40,12 +40,10 @@ class TwoFactorChallengeController extends Controller
         $channels = $this->otp->enabledChannels($user);
         $hasApp = ! empty($user->two_factor_secret);
 
-        // Someone whose only second factor is a single Email/SMS code gets it sent straight away.
-        if (! $hasApp && count($channels) === 1 && ! $this->otp->state($user)) {
-            $this->otp->send($user, $channels[0]);
-        }
-
         $state = $this->otp->state($user);
+        // Someone whose only second factor is a single Email/SMS code gets it sent straight away: the page asks for it itself as it opens
+        // (sending from here made the page wait for the mail server before showing anything).
+        $autoSend = ! $hasApp && count($channels) === 1 && ! $state;
 
         $methods = [];
         if ($hasApp) {
@@ -68,6 +66,7 @@ class TwoFactorChallengeController extends Controller
             'initialMethod' => $state['channel'] ?? $first,
             'otp' => $state,
             'otpTtlMinutes' => (int) (TwoFactorOtp::TTL_SECONDS / 60),
+            'autoSend' => $autoSend,
         ]);
     }
 

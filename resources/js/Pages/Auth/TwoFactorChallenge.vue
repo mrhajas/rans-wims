@@ -41,6 +41,7 @@
               <span>{{ sending ? $t('Sending...') : sendLabel }}</span>
             </span>
           </button>
+          <p v-if="sending" class="tfa-wait mt-3" role="status"><span class="tfa-spin" aria-hidden="true"></span>{{ $t('Sending the code. This can take up to 30 seconds, please wait.') }}</p>
           <p v-if="currentTab.available === false" class="mt-2 text-xs font-semibold text-amber-700">{{ $t('SMS codes are not available right now. Please choose another method.') }}</p>
         </div>
 
@@ -64,9 +65,9 @@
           </div>
         </div>
 
-        <div v-else-if="!isChannel || codeSent">
+        <div v-else>
           <label>{{ $t('6-digit code') }}</label>
-          <div class="tfa-boxes mt-1.5" @paste.prevent="onPaste">
+          <div class="tfa-boxes mt-1.5" :class="{ 'tfa-boxes-idle': isChannel && !codeSent }" @paste.prevent="onPaste">
             <input
               v-for="(d, i) in digits"
               :key="i"
@@ -76,6 +77,7 @@
               inputmode="numeric"
               pattern="[0-9]*"
               maxlength="1"
+              :disabled="isChannel && !codeSent"
               :autocomplete="i === 0 ? 'one-time-code' : 'off'"
               :aria-label="$t('Digit') + ' ' + (i + 1)"
               class="tfa-box"
@@ -85,6 +87,8 @@
               @focus="$event.target.select()"
             />
           </div>
+
+          <p v-if="isChannel && !codeSent" class="tfa-idle-hint mt-2">{{ $t('The boxes open as soon as the code has been sent.') }}</p>
 
           <!-- Sent-code status + resend -->
           <div v-if="isChannel && codeSent" class="tfa-sent mt-3">
@@ -107,11 +111,10 @@
 
         <div class="mt-6 w-full">
           <loading-button
-            v-if="!isChannel || codeSent"
             type="submit"
             class="auth-submit block w-full"
             :loading="form.processing"
-            :disabled="form.processing || !canSubmit"
+            :disabled="form.processing || !canSubmit || (isChannel && !codeSent)"
           >
             <span class="inline-flex items-center gap-2">
               <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
@@ -182,6 +185,7 @@ export default {
     initialMethod: { type: String, default: 'app' },
     otp: { type: Object, default: null },
     otpTtlMinutes: { type: Number, default: 5 },
+    autoSend: { type: Boolean, default: false },
   },
 
   data() {
@@ -273,6 +277,9 @@ export default {
       if (this.expiresIn > 0) this.expiresIn -= 1;
     }, 1000);
     this.$nextTick(() => (this.method === 'recovery' ? this.$refs.recovery?.focus() : this.focusBox(0)));
+    // someone whose only second step is one e-mail / SMS code: the page opens at once and the code is sent from here (sending from the server
+    // while the page loads kept the page blank for as long as the mail server took)
+    if (this.autoSend && this.isChannel && !this.codeSent) this.sendCode();
   },
 
   beforeUnmount() {
@@ -393,6 +400,13 @@ export default {
 }
 .auth-shell .tfa-tab-off { opacity: 0.55; }
 
+.auth-shell .tfa-wait { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 600; color: #475569; }
+.auth-shell .tfa-spin { flex: none; width: 16px; height: 16px; border-radius: 9999px; border: 2.5px solid rgba(99, 102, 241, 0.25); border-top-color: #4f46e5; animation: tfa-rot 0.8s linear infinite; }
+@keyframes tfa-rot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .auth-shell .tfa-spin { animation: none; } }
+.auth-shell .tfa-boxes-idle { opacity: 0.55; }
+.auth-shell .tfa-boxes-idle .tfa-box { background: rgba(148, 163, 184, 0.14); border-style: dashed; cursor: not-allowed; }
+.auth-shell .tfa-idle-hint { font-size: 0.76rem; font-weight: 600; color: #64748b; }
 .auth-shell .tfa-boxes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .auth-shell .tfa-box {
   width: 100%; height: 54px; text-align: center; font-size: 1.35rem; font-weight: 800; color: #0f172a;

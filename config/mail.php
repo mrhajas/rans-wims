@@ -55,7 +55,7 @@ return [
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username'   => env('MAIL_USERNAME'),
             'password'   => env('MAIL_PASSWORD'),
-            'timeout'    => null,
+            'timeout'    => env('MAIL_TIMEOUT', 30), // seconds; a mail server that does not answer must not hold a page for a minute
             'auth_mode'  => null,
         ],
 

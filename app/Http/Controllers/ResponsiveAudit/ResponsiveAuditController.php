@@ -82,6 +82,10 @@ class ResponsiveAuditController extends Controller
             if (! in_array('GET', $route->methods(), true) || str_contains($uri, '{') || $name === '' || ! in_array('feature.gate', $route->gatherMiddleware(), true)) {
                 continue;
             }
+            // the audit only LOOKS at pages: anything that changes or removes data is never opened, whatever it is called
+            if (preg_match('/(maintenance|reset|wipe|purge|truncate|destroy)/i', $name . $uri)) {
+                continue;
+            }
             if (preg_match('/(print|pdf|csv|xls|export|download|file|data|json|ajax|health|sync|heartbeat|logout|options|search|lookup|suggest|reconcile|responsive-audit)/', $name . $uri) || Str::startsWith($uri, ['_', 'api', 'sanctum', 'livewire', 'storage', 'user/', 'two-factor', 'commands', 'face-login', 'offline', 'rauncher', 'quick-menu', 'hover-preview', 'media', 'scan', 'alerts', 'wimshow'])) {
                 continue;
             }

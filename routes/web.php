@@ -2062,7 +2062,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('roles/{role}/duplicate', [Controllers\RoleController::class, 'duplicate'])->name('roles.duplicate');
 
     // Maintenance: wipe checkouts/checkins and zero out stock
-    Route::get('maintenance/reset-stock', [Controllers\MaintenanceController::class, 'resetStock'])->name('maintenance.reset-stock');
+    // POST only (never a GET: anything that just visits an address must not be able to empty the system), with password + typed confirmation
+    Route::post('maintenance/reset-stock', [Controllers\MaintenanceController::class, 'resetStock'])->middleware('throttle:2,1,maintenance.reset-stock')->name('maintenance.reset-stock');
 
     // Database backup & restore (Super Admin only)
     Route::get('backup', [Controllers\BackupController::class, 'index'])->name('backup.index');
