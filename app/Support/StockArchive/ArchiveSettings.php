@@ -20,9 +20,9 @@ class ArchiveSettings
             'send_time' => '07:00',     // East Africa Time
             'keep_days' => 60,          // entries older than this are removed (their file too); 0 = keep for ever
             'email' => true,            // e-mail the report with the PDF attached
-            'role_names' => [],         // everybody with one of these roles
+            'role_names' => ['Super Admin'], // everybody with one of these roles
             'user_ids' => [],           // and these people
-            'extra_emails' => ['extriontech@gmail.com'], // and these addresses (testing)
+            'extra_emails' => [],       // and these addresses
             'last_run_on' => null,
         ];
     }
