@@ -1,6 +1,7 @@
 import { reactive } from 'vue';
 import i18n from '@/Core/i18n';
 import { describeRequest } from '@/Core/progressLabels';
+import { describeErrors, describeMessage } from '@/Core/errorKinds';
 
 // The small centred "working" indicator: it appears when a save, update, add or delete is sent, turns into a "done" (or "problem") label with the server's
 // message, and fades away. It replaces the old corner notification. Reads are not shown (the top progress line already covers moving between pages).
@@ -93,7 +94,7 @@ export function endTask(ok, text, done) {
 }
 
 /** Shows the result label (kind: 'success' or 'error') for a moment. The same label twice within a second is shown once. */
-export function result(kind, text, fallback) {
+export function result(kind, text, fallback, title) {
   const key = kind + '|' + text;
   const now = Date.now();
   if (key === lastKey && now - lastAt < 1000) return;
@@ -104,7 +105,7 @@ export function result(kind, text, fallback) {
   progress.anim = '';
   progress.percent = null;
   progress.long = false;
-  progress.label = kind === 'error' ? progress.fail || t('Not saved') : fallback || progress.done || t('Saved');
+  progress.label = kind === 'error' ? title || progress.fail || t('Not saved') : fallback || progress.done || t('Saved');
   progress.text = text || '';
   hideTimer = setTimeout(() => {
     progress.state = 'idle';
@@ -165,7 +166,12 @@ export function initSaveProgress(router, getPage) {
       outcome = { kind: 'skip' };
       return;
     }
-    outcome = flash.error ? { kind: 'error', text: strip(flash.error) } : { kind: 'success', text: flash.message || '' };
+    if (flash.error) {
+      const d = auth ? { title: '', text: strip(flash.error) } : describeMessage(strip(flash.error), '');
+      outcome = { kind: 'error', text: d.text, title: d.title };
+    } else {
+      outcome = { kind: 'success', text: flash.message || '' };
+    }
   });
   router.on('error', event => {
     if (!current) return;
@@ -173,8 +179,9 @@ export function initSaveProgress(router, getPage) {
     const n = Object.keys(errs).length;
     const first = Object.values(errs)[0];
     const msg = Array.isArray(first) ? first[0] : first;
-    // one error: say what it is ("These credentials do not match our records."); several: how many
-    outcome = { kind: 'error', text: n === 1 && msg ? String(msg) : t('There are :n form errors.').replace(':n', n) };
+    // say what kind of problem it is and give the message ("Not enough stock", "Missing information", ...); a sign-in step keeps its plain wording
+    const d = auth ? { title: '', text: n === 1 && msg ? String(msg) : t('There are :n form errors.').replace(':n', n) } : describeErrors(errs, progress.fail);
+    outcome = { kind: 'error', text: d.text, title: d.title };
     // the sign-in pages already open their own notice for a licence, a prayer break, a disabled account, maintenance, a lock or a question to answer: no second message on top
     if (auth && /licen|prayer|disabled|maintenance|verification|too many|locked|blocked|wait|retry/i.test(String(msg || ''))) {
       outcome = { kind: 'skip' };
@@ -205,6 +212,6 @@ export function initSaveProgress(router, getPage) {
       dismiss();
       return;
     }
-    result(outcome.kind, outcome.text, outcome.kind === 'success' ? progress.done || doneLabel(method) : undefined);
+    result(outcome.kind, outcome.text, outcome.kind === 'success' ? progress.done || doneLabel(method) : undefined, outcome.title);
   });
 }

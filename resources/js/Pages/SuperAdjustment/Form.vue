@@ -125,6 +125,8 @@
                     :placeholder="$t('Search items to count…')"
                   />
                 </div>
+                <button type="button" class="lg-btn lg-btn-soft flex-none" :aria-label="$t('Scan barcode with camera')" @click="$refs.scanner.show()"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" /><circle cx="12" cy="13" r="4" /></svg>{{ $t('Scan') }}</button>
+                <camera-barcode-scanner ref="scanner" @resolved="itemSelected" />
                 <!-- jumps to the Physical Count of the last item added, with the cursor ready to type -->
                 <button v-if="form.items.length" type="button" class="sa-jump lg-tip" :data-tip="$t('Go to the last item added')" :aria-label="$t('Go to the last item added')" @click="goToLastCount"><icons name="down" class="w-5 h-5" /></button>
               </div>
@@ -445,12 +447,14 @@ import TecLabel from '@/Jetstream/Label.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import InputError from '@/Jetstream/InputError.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
+import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 
 export default {
   components: {
+    CameraBarcodeScanner,
     AcctSelect, Link, AdminLayout, TecLabel, TextInput, InputError, AutoComplete, LoadingButton, PageHeader, StatTiles },
 
   props: {

@@ -215,7 +215,14 @@ class AjaxController extends Controller
             return Item::with('variations')->whereId($request->input('id'))->get();
         }
 
-        return Item::with('variations')->search($request->input('search'))->take(25)->get();
+        $query = Item::with('variations')->search($request->input('search'));
+
+        // the Transfer form lists items as "CODE - name", alphabetically (other pickers keep the plain item as before)
+        if ($request->boolean('labelled')) {
+            return $query->orderBy('name')->take(25)->get()->each(fn ($item) => $item->setAttribute('label', $item->code.' - '.$item->name));
+        }
+
+        return $query->take(25)->get();
     }
 
     public function scan(Request $request)

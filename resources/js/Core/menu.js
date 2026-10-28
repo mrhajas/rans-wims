@@ -1164,6 +1164,19 @@ const menus = [
         lang: { helper: 'list_x', main: 'Material Requests' },
       },
       {
+        name: 'material-requests.create',
+        route: 'material-requests.create',
+        icon: 'plus',
+        hidden: false,
+        sub_menu: false,
+        roles: [
+          'Project Manager', 'Project Managers', 'Procurement Manager', 'Procurement Manger', 'Admin', 'Super Admin',
+          ...SITE_ENGINEER_ROLES, 'Store Manager',
+        ],
+        permissions: ['create-material-requests'],
+        lang: { helper: 'create_x', main: 'Material Request' },
+      },
+      {
         name: 'material-requests.workflow',
         route: 'material-requests.workflow',
         icon: 'adjustments',

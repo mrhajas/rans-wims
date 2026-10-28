@@ -7,7 +7,7 @@
         :subtitle="$t('Fill in the details below to submit the material request.')"
       >
         <span v-if="edit" class="lg-chip lg-chip-green" style="text-transform: none">{{ edit.reference }}</span>
-        <Link :href="route('material-requests.index')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Material Requests') }}</Link>
+        <Link :href="route('material-requests.index')" class="lg-btn tone" style="--tone: #475569"><span class="tone-ico"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" /></span>{{ $t('Material Requests') }}</Link>
       </page-header>
 
       <form @submit.prevent="submit">
@@ -123,13 +123,23 @@
             </table>
           </div>
 
-          <div class="mt-4">
-            <button type="button" @click="addItem" class="lg-btn lg-btn-soft">
-              <icons name="plus" class="w-4 h-4" />
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <button type="button" @click="addItem" class="lg-btn tone" style="--tone: #059669">
+              <span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>
               {{ $t('Add Item') }}
             </button>
-            <div v-if="$page.props.errors.items" class="text-red-600 text-sm mt-2">{{ $page.props.errors.items }}</div>
+            <button type="button" @click="$refs.cameraScanner.show()" class="lg-btn tone" style="--tone: #2563eb" :aria-label="$t('Scan barcode with camera')">
+              <span class="tone-ico">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+              {{ $t('Scan') }}
+            </button>
           </div>
+          <div v-if="$page.props.errors.items" class="text-red-600 text-sm mt-2">{{ $page.props.errors.items }}</div>
+          <camera-barcode-scanner ref="cameraScanner" @resolved="scannedItem" />
         </section>
 
         <section class="lg-card">
@@ -144,8 +154,8 @@
             <div class="fx-attach">
               <label class="fx-label">{{ $t('Attachments') }}</label>
               <div class="flex flex-col gap-2 items-start">
-                <button type="button" class="lg-btn lg-btn-soft" @click.prevent="$refs.file?.click()">
-                  <icons name="upload" class="w-4 h-4" />
+                <button type="button" class="lg-btn tone" style="--tone: #d97706" @click.prevent="$refs.file?.click()">
+                  <span class="tone-ico"><icons name="upload" class="w-4 h-4" /></span>
                   {{ $t('Choose files') }}
                 </button>
                 <input
@@ -185,8 +195,8 @@
         <div class="lg-actionbar">
           <span class="lg-actionbar-note">{{ form.items.length }} {{ $t('Items') }}</span>
           <div class="lg-actionbar-btns">
-            <button type="submit" :disabled="form.processing" class="lg-btn lg-btn-primary">
-              <icons :name="form.processing ? 'refresh' : 'tick'" class="w-4 h-4" :class="{ 'animate-spin': form.processing }" /> {{ $t('Submit Request') }}
+            <button type="submit" :disabled="form.processing" class="lg-btn tone tone-solid" style="--tone: #059669">
+              <span class="tone-ico"><icons :name="form.processing ? 'refresh' : 'tick'" class="w-4 h-4" :class="{ 'animate-spin': form.processing }" /></span>{{ $t('Submit Request') }}
             </button>
           </div>
         </div>
@@ -204,6 +214,7 @@ import DatePicker from '@/Shared/DatePicker.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import SelectInput from '@/Shared/SelectInput.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
+import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
 
 export default {
   components: {
@@ -214,6 +225,7 @@ export default {
     AutoComplete,
     SelectInput,
     PageHeader,
+    CameraBarcodeScanner,
   },
 
   props: {
@@ -267,6 +279,24 @@ export default {
     },
     addItem() {
       this.form.items.push(this.blankItem());
+    },
+    // an item found by the camera or by typing its code: the same item again adds one to its quantity, otherwise it takes the first empty line
+    scannedItem(found) {
+      const id = found && found.id;
+      if (!id) return;
+      const same = this.form.items.find(i => i.item_id == id);
+      if (same) {
+        same.quantity = (parseFloat(same.quantity) || 0) + 1;
+        return;
+      }
+      let index = this.form.items.findIndex(i => !i.item_id);
+      if (index === -1) {
+        this.addItem();
+        index = this.form.items.length - 1;
+      }
+      this.form.items[index].quantity = 1;
+      this.onItemChange(index, id);
+      if (!this.form.items[index].unit_id && found.unit_id) this.form.items[index].unit_id = found.unit_id;
     },
     removeItem(index) {
       this.form.items.splice(index, 1);

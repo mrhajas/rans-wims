@@ -185,37 +185,12 @@
         </div>
       </form>
 
-      <div v-if="cameraScanOpen" class="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" @click.self="closeCameraScanner">
-        <div class="if-scan lg-page">
-          <header class="lg-card-head">
-            <span class="lg-card-ico lg-ico-sky"><icons name="mobile" class="w-5 h-5" /></span>
-            <div class="min-w-0"><h4 class="lg-card-title">{{ $t('Scan Item Barcode') }}</h4></div>
-            <button type="button" class="lg-icon-btn ml-auto lg-tip" :data-tip="$t('Close')" :aria-label="$t('Close')" @click="closeCameraScanner">
-              <icons name="cross" class="w-4 h-4" />
-            </button>
-          </header>
-
-          <div id="issue-item-camera-scanner" class="if-scan-view"></div>
-          <div class="lg-subtext mt-2">{{ $t('Use your phone camera to scan barcode, or enter barcode manually below.') }}</div>
-          <div v-if="cameraStatusMessage" class="lg-note lg-note-blue mt-2">{{ cameraStatusMessage }}</div>
-          <div v-if="cameraError" class="lg-note lg-note-red mt-2">{{ cameraError }}</div>
-
-          <div class="mt-3">
-            <text-input
-              v-model="manualBarcode"
-              type="text"
-              :label="$t('Manual Barcode')"
-              :placeholder="$t('Enter barcode and press Enter')"
-              @keyup.enter="submitManualBarcode"
-            />
-          </div>
-
-          <div class="mt-3 flex justify-end gap-2">
-            <button type="button" @click="closeCameraScanner" class="lg-btn lg-btn-soft">{{ $t('Close') }}</button>
-            <button type="button" @click="submitManualBarcode" class="lg-btn lg-btn-primary"><icons name="search" class="w-4 h-4" />{{ $t('Find Item') }}</button>
-          </div>
-        </div>
-      </div>
+      <camera-barcode-scanner
+        ref="scanner"
+        :title="$t('Scan Item Barcode')"
+        :hint="$t('Point your camera at the barcode. The item is added if the selected warehouse holds it.')"
+        :lookup="addItemByBarcode"
+      />
     </div>
   </admin-layout>
 </template>
@@ -227,9 +202,11 @@ import TextInput from '@/Shared/TextInput.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
+import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
 
 export default {
   components: {
+    CameraBarcodeScanner,
     AdminLayout,
     PageHeader,
     TextInput,
@@ -252,13 +229,6 @@ export default {
 
     return {
       localItemsError: '',
-      cameraScanOpen: false,
-      cameraLoading: false,
-      cameraScanner: null,
-      cameraError: '',
-      cameraStatusMessage: '',
-      lastScannedCode: null,
-      manualBarcode: '',
       autoExpectedReturnDate: initialExpectedReturnDate,
       form: this.$inertia.form({
         issue_date: initialIssueDate,
@@ -548,97 +518,10 @@ export default {
         this.localItemsError = 'Select a warehouse first to scan items.';
         return;
       }
-
-      this.cameraScanOpen = true;
-      this.cameraError = '';
-      this.cameraStatusMessage = 'Opening camera...';
-      this.lastScannedCode = null;
-      this.manualBarcode = '';
-      this.$nextTick(() => this.startCameraScanner());
+      this.localItemsError = '';
+      this.$refs.scanner.show();
     },
-    closeCameraScanner() {
-      this.cameraScanOpen = false;
-      this.cameraStatusMessage = '';
-      this.stopCameraScanner();
-    },
-    async startCameraScanner() {
-      if (!this.cameraScanOpen || this.cameraLoading) {
-        return;
-      }
-
-      this.cameraLoading = true;
-      this.cameraError = '';
-
-      try {
-        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
-
-        if (this.cameraScanner) {
-          await this.stopCameraScanner();
-        }
-
-        this.cameraScanner = new Html5Qrcode('issue-item-camera-scanner');
-        await this.cameraScanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: (viewfinderWidth, viewfinderHeight) => ({
-              width: Math.floor(viewfinderWidth * 0.9),
-              height: Math.floor(viewfinderHeight * 0.4),
-            }),
-            aspectRatio: 1.333334,
-            rememberLastUsedCamera: true,
-            formatsToSupport: [
-              Html5QrcodeSupportedFormats.CODE_128,
-              Html5QrcodeSupportedFormats.CODE_39,
-              Html5QrcodeSupportedFormats.CODE_93,
-              Html5QrcodeSupportedFormats.CODABAR,
-              Html5QrcodeSupportedFormats.EAN_13,
-              Html5QrcodeSupportedFormats.EAN_8,
-              Html5QrcodeSupportedFormats.UPC_A,
-              Html5QrcodeSupportedFormats.UPC_E,
-              Html5QrcodeSupportedFormats.ITF,
-              Html5QrcodeSupportedFormats.QR_CODE,
-              Html5QrcodeSupportedFormats.DATA_MATRIX,
-            ],
-          },
-          decodedText => {
-            const code = (decodedText || '').trim();
-            if (!code || this.lastScannedCode === code) {
-              return;
-            }
-
-            this.lastScannedCode = code;
-            this.cameraStatusMessage = `Detected barcode: ${code}`;
-            if (this.addItemByBarcode(code)) {
-              this.closeCameraScanner();
-            } else {
-              this.lastScannedCode = null;
-            }
-          },
-          () => {}
-        );
-
-        this.cameraStatusMessage = 'Camera started. Hold barcode steady for 1-2 seconds.';
-      } catch (error) {
-        this.cameraError = 'Unable to start camera scanner. Please allow camera access and try again.';
-        this.cameraStatusMessage = '';
-      } finally {
-        this.cameraLoading = false;
-      }
-    },
-    submitManualBarcode() {
-      const code = String(this.manualBarcode || '').trim();
-      if (!code) {
-        this.cameraError = 'Please enter a barcode value.';
-        return;
-      }
-
-      this.cameraError = '';
-      this.cameraStatusMessage = `Searching item for: ${code}`;
-      if (this.addItemByBarcode(code)) {
-        this.closeCameraScanner();
-      }
-    },
+    // the scanner's lookup: true when the item was added, else the reason (shown on its red screen)
     addItemByBarcode(rawCode) {
       const code = String(rawCode || '').trim().toLowerCase();
       if (!code) {
@@ -647,41 +530,14 @@ export default {
 
       const matched = this.warehouseItemSuggestions.find(item => String(item.code || '').trim().toLowerCase() === code);
       if (!matched) {
-        this.cameraError = 'Barcode scanned but no available item matched in selected warehouse.';
-        return false;
+        return this.$t('Barcode scanned but no available item matched in selected warehouse.');
       }
 
+      this.localItemsError = '';
       this.addItemFromSearch(matched.id);
-      if (this.localItemsError) {
-        this.cameraError = this.localItemsError;
-        return false;
-      }
 
-      this.cameraError = '';
-      this.cameraStatusMessage = `Item added: ${matched.name}`;
-      return true;
+      return this.localItemsError ? this.localItemsError : true;
     },
-    async stopCameraScanner() {
-      if (!this.cameraScanner) {
-        return;
-      }
-
-      try {
-        await this.cameraScanner.stop();
-      } catch (e) {
-      }
-
-      try {
-        await this.cameraScanner.clear();
-      } catch (e) {
-      }
-
-      this.cameraScanner = null;
-      this.cameraLoading = false;
-    },
-  },
-  beforeUnmount() {
-    this.stopCameraScanner();
   },
 };
 </script>
@@ -718,10 +574,6 @@ html.dark .if-err, html.dark .if-err-note { color: #fda4af; }
 .issue-items-table :deep(input),
 .issue-items-table :deep(.h-10) { height: 2.5rem; }
 
-.if-scan { width: 100%; max-width: 28rem; padding: 1.15rem 1.3rem; border-radius: 22px; background: #fff; box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.55); }
-html .if-scan.lg-page { --lg-card: #ffffff; --lg-line: #e6ebf3; --lg-soft: #f6f8fc; --lg-ink: #0f172a; --lg-mute: #64748b; --lg-faint: #94a3b8; --lg-navy: #1c3f66; }
-.if-scan .lg-card-head { margin-bottom: 0.8rem; }
-.if-scan-view { width: 100%; min-height: 220px; border-radius: 16px; border: 1px solid var(--lg-line); background: var(--lg-soft); overflow: hidden; }
 
 /* Below md each row becomes its own card with the column name above each control. */
 @media (max-width: 767px) {

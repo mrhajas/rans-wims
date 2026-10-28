@@ -389,62 +389,13 @@
       </div>
     </modal>
 
-    <modal :show="cameraScanOpen" max-width="lg" :closeable="true" @close="closeCameraScanner">
-      <div class="rounded-md overflow-hidden">
-        <div class="px-6 py-4 bg-white border-b flex items-center justify-between">
-          <div class="text-lg font-semibold">{{ $t('Scan Barcode') }}</div>
-          <button
-            @click="closeCameraScanner"
-            class="flex items-center justify-center h-8 w-8 rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-300 focus:outline-none"
-          >
-            <icons name="cross" class="h-5 w-5" />
-          </button>
-        </div>
-
-        <div class="p-6 bg-gray-50 space-y-4">
-          <p class="text-sm text-gray-600">{{ $t('Point your camera at the barcode. The item details will open automatically after scan.') }}</p>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              @click="openCameraCapture"
-              class="inline-flex items-center px-3 py-2 rounded-md bg-blue-700 text-white text-xs font-semibold uppercase tracking-widest hover:bg-blue-800"
-            >
-              {{ $t('Scan From Camera Photo') }}
-            </button>
-            <span v-if="!canUseLiveCamera" class="text-xs text-amber-700">
-              {{ $t('Live camera requires HTTPS on mobile. Use camera photo scan or open app on HTTPS.') }}
-            </span>
-          </div>
-          <input
-            ref="cameraCaptureInput"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            class="hidden"
-            @change="scanCapturedImage"
-          />
-          <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-            <input
-              v-model="manualBarcode"
-              type="text"
-              class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              :placeholder="$t('Or enter barcode manually e.g. RSI-0001')"
-            />
-            <button
-              type="button"
-              @click="submitManualBarcode"
-              class="inline-flex items-center justify-center px-3 py-2 rounded-md bg-gray-700 text-white text-xs font-semibold uppercase tracking-widest hover:bg-gray-800"
-            >
-              {{ $t('Find Item') }}
-            </button>
-          </div>
-          <div id="item-camera-scanner" class="w-full min-h-[260px] rounded-md overflow-hidden bg-black"></div>
-          <p v-if="cameraLoading" class="text-sm text-gray-600">{{ $t('Opening camera...') }}</p>
-          <p v-if="cameraStatusMessage" class="text-sm text-blue-700">{{ cameraStatusMessage }}</p>
-          <p v-if="cameraError" class="text-sm text-red-600">{{ cameraError }}</p>
-        </div>
-      </div>
-    </modal>
+    <camera-barcode-scanner
+      ref="scanner"
+      :title="$t('Scan Barcode')"
+      :hint="$t('Point your camera at the barcode or the item QR code. The item details will open automatically after scan.')"
+      :done-text="$t('Opening the item')"
+      :lookup="cameraLookup"
+    />
 
     <!-- Delete User Confirmation Modal -->
     <Dialog
@@ -494,6 +445,7 @@ import mapValues from 'lodash/mapValues';
 import ItemDetails from './Details.vue';
 import Dialog from '@/Shared/Dialog.vue';
 import Modal from '@/Jetstream/Modal.vue';
+import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
 import { printWithAnimation, itemPrintSheet, printUrlInFrame } from '@/Core/printAnimation';
 import TecButton from '@/Jetstream/Button.vue';
 import Pagination from '@/Shared/Pagination.vue';
@@ -516,6 +468,7 @@ import { loadIndexData, loadDetail, loadItemStock, groupStockByWarehouse } from 
 
 export default {
   components: {
+    CameraBarcodeScanner,
     PageHeader,
     StatTiles,
     Modal,
@@ -561,14 +514,6 @@ export default {
       permanent: false,
       restoreConf: false,
       scanning: false,
-      cameraScanOpen: false,
-      cameraLoading: false,
-      cameraError: null,
-      cameraStatusMessage: null,
-      cameraScanner: null,
-      lastScannedCode: null,
-      manualBarcode: '',
-      canUseLiveCamera: typeof window !== 'undefined' ? window.isSecureContext && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) : false,
       form: {
         search: this.filters.search,
         trashed: this.filters.trashed,
@@ -588,10 +533,6 @@ export default {
     if (this.$connection.status === 'offline') {
       this.loadOfflineItems();
     }
-  },
-
-  unmounted() {
-    this.stopCameraScanner();
   },
 
   computed: {
@@ -819,7 +760,8 @@ export default {
       const withoutPrefix = noGroupSeparator.replace(/^\][A-Za-z0-9]{2}/, '');
       return withoutPrefix.replace(/\s+/g, '');
     },
-    scanSearch(value, { showNotFound = false } = {}) {
+    // the item of a code (typed in the search box, or read by the camera): its details open
+    scanSearch(value) {
       const code = this.normalizeBarcode(value);
       if (!code || this.scanning) return Promise.resolve(false);
       this.scanning = true;
@@ -827,212 +769,36 @@ export default {
         .post(route('items.scan'), { code })
         .then(res => {
           if (res.data.found) {
-            this.cameraError = null;
             this.goto({ id: res.data.id });
             return true;
           }
 
-          if (showNotFound) {
-            this.cameraError = this.$t('Barcode scanned but no item matched. Please verify the barcode is saved as Item Code/SKU.');
-          }
-
           return false;
         })
-        .catch(() => {
-          if (showNotFound) {
-            this.cameraError = this.$t('Could not validate scanned barcode. Please try again.');
-          }
-
-          return false;
-        })
+        .catch(() => false)
         .finally(() => (this.scanning = false));
     },
     openCameraScanner() {
-      this.cameraScanOpen = true;
-      this.cameraError = null;
-      this.cameraStatusMessage = this.$t('Scanner ready. Point the barcode inside the frame.');
-      this.lastScannedCode = null;
-      this.manualBarcode = '';
-      this.$nextTick(() => this.startCameraScanner());
+      this.$refs.scanner.show();
     },
-    closeCameraScanner() {
-      this.cameraScanOpen = false;
-      this.cameraStatusMessage = null;
-      this.stopCameraScanner();
-    },
-    async startCameraScanner() {
-      if (!this.cameraScanOpen || this.cameraLoading) {
-        return;
-      }
-
-      if (!this.canUseLiveCamera) {
-        this.cameraError = this.$t('Live camera scanner is unavailable on this connection. Use "Scan From Camera Photo" or open the app over HTTPS.');
-        return;
-      }
-
-      this.cameraLoading = true;
-      this.cameraStatusMessage = this.$t('Opening camera...');
-
-      try {
-        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
-
-        if (this.cameraScanner) {
-          await this.stopCameraScanner();
-        }
-
-        this.cameraScanner = new Html5Qrcode('item-camera-scanner');
-
-        await this.cameraScanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: (viewfinderWidth, viewfinderHeight) => ({
-              width: Math.floor(viewfinderWidth * 0.9),
-              height: Math.floor(viewfinderHeight * 0.4),
-            }),
-            aspectRatio: 1.333334,
-            rememberLastUsedCamera: true,
-            formatsToSupport: [
-              Html5QrcodeSupportedFormats.CODE_128,
-              Html5QrcodeSupportedFormats.CODE_39,
-              Html5QrcodeSupportedFormats.CODE_93,
-              Html5QrcodeSupportedFormats.CODABAR,
-              Html5QrcodeSupportedFormats.EAN_13,
-              Html5QrcodeSupportedFormats.EAN_8,
-              Html5QrcodeSupportedFormats.UPC_A,
-              Html5QrcodeSupportedFormats.UPC_E,
-              Html5QrcodeSupportedFormats.ITF,
-              Html5QrcodeSupportedFormats.QR_CODE,
-              Html5QrcodeSupportedFormats.DATA_MATRIX,
-            ],
-          },
-          decodedText => {
-            const code = (decodedText || '').trim();
-            if (!code || this.lastScannedCode === code || this.scanning) {
-              return;
-            }
-
-            this.lastScannedCode = code;
-            this.cameraStatusMessage = this.$t('Detected barcode') + ': ' + code;
-              this.scanSearch(code, { showNotFound: true }).then(found => {
-                if (found) {
-                  this.closeCameraScanner();
-                } else {
-                  this.lastScannedCode = null;
-                }
-              });
-          },
-          () => {}
-        );
-
-        this.cameraStatusMessage = this.$t('Camera started. Hold barcode steady for 1-2 seconds.');
-      } catch (error) {
-        this.cameraError = this.$t('Unable to start camera scanner. Please allow camera access and try again.');
-        this.cameraStatusMessage = null;
-      } finally {
-        this.cameraLoading = false;
-      }
-    },
-    openCameraCapture() {
-      this.cameraError = null;
-      this.cameraStatusMessage = this.$t('Opening camera photo capture...');
-      this.$refs.cameraCaptureInput?.click();
-    },
-    submitManualBarcode() {
-      const code = this.normalizeBarcode(this.manualBarcode);
-      if (!code) {
-        this.cameraError = this.$t('Please enter a barcode value.');
-        return;
-      }
-
-      this.cameraError = null;
-      this.cameraStatusMessage = this.$t('Searching item for') + ': ' + code;
-      this.scanSearch(code, { showNotFound: true }).then(found => {
-        if (found) {
-          this.closeCameraScanner();
-        }
-      });
-    },
-    async scanCapturedImage(event) {
-      const file = event?.target?.files?.[0];
-      if (!file || this.scanning) {
-        return;
-      }
-
-      this.cameraLoading = true;
-      this.cameraError = null;
-      this.cameraStatusMessage = this.$t('Processing selected image...');
-
-      try {
-        let code = '';
-
-        // Pass 1: html5-qrcode
+    // the camera window's lookup: an item barcode or item QR opens the item; a WIMS record QR opens its record (if this person may see it)
+    async cameraLookup(code) {
+      const m = String(code).match(/\/q\/([A-Za-z0-9]{8,64})(?:[/?#]|$)/);
+      if (m) {
         try {
-          const { Html5Qrcode } = await import('html5-qrcode');
-          const fileScanner = new Html5Qrcode('item-camera-scanner');
-          const decodedText = await fileScanner.scanFile(file, true);
-          code = (decodedText || '').trim();
-
-          try {
-            await fileScanner.clear();
-          } catch (e) {
+          const { data } = await axios.get(route('qr-codes.check', m[1]));
+          if (data.status === 'allowed') {
+            setTimeout(() => this.$inertia.visit(data.go), 450);
+            return true;
           }
+
+          return data.status === 'no_permission' ? this.$t('You are not allowed to view this record. Ask an administrator if you need access.') : this.$t('This code is not recognised, or the record is not available.');
         } catch (e) {
-        }
-
-        // Pass 2: ZXing fallback
-        if (!code) {
-          const { BrowserMultiFormatReader } = await import('@zxing/browser');
-          const reader = new BrowserMultiFormatReader();
-          const imageUrl = URL.createObjectURL(file);
-
-          try {
-            const result = await reader.decodeFromImageUrl(imageUrl);
-            code = (result?.getText?.() || '').trim();
-          } finally {
-            URL.revokeObjectURL(imageUrl);
-            reader.reset();
-          }
-        }
-
-        if (!code) {
-          this.cameraError = this.$t('No barcode detected in the selected image.');
-          return;
-        }
-
-        this.lastScannedCode = code;
-        this.cameraStatusMessage = this.$t('Detected barcode') + ': ' + code;
-        const found = await this.scanSearch(code, { showNotFound: true });
-        if (found) {
-          this.closeCameraScanner();
-        }
-      } catch (error) {
-        this.cameraError = this.$t('Could not read barcode from image. Please retake with clearer focus and better lighting.');
-        this.cameraStatusMessage = null;
-      } finally {
-        this.cameraLoading = false;
-        if (event?.target) {
-          event.target.value = '';
+          return this.$t('The code could not be checked. Check your connection and try again.');
         }
       }
-    },
-    async stopCameraScanner() {
-      if (!this.cameraScanner) {
-        return;
-      }
 
-      try {
-        await this.cameraScanner.stop();
-      } catch (e) {
-      }
-
-      try {
-        await this.cameraScanner.clear();
-      } catch (e) {
-      }
-
-      this.cameraScanner = null;
-      this.cameraLoading = false;
+      return (await this.scanSearch(code)) || this.$t('Barcode scanned but no item matched. Please verify the barcode is saved as Item Code/SKU.');
     },
     closeModal() {
       this.edit = null;

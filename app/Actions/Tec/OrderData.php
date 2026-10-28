@@ -48,6 +48,10 @@ class OrderData
                     }
                     unset($variation['old_quantity']);
                 }
+                unset($variation);
+                // sync() reads a list's POSITIONS as the ids to link, so [0, 1] would be linked (and an edit would rewrite the wrong rows);
+                // keyed by the variation's own id each variation is matched to its own row, and one listed twice is counted once
+                $item['variations'] = collect($item['variations'])->filter(fn ($v) => ! empty($v['variation_id']))->keyBy('variation_id')->all();
             }
             unset($item['selected']);
             $item['order'] = $index;

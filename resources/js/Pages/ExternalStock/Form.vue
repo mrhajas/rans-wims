@@ -41,9 +41,11 @@
 
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="bag" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Items') }}</h2><p class="lg-card-sub">{{ out ? $t('Search an item. For a Stock Out you see how much this person holds and can still take.') : $t('Search an item and enter the quantity.') }}</p></div></header>
-          <div style="margin-bottom: 12px">
-            <auto-complete json keep-focus reset-search id="ex-add-item" :suggestions="route('items.search')" :placeholder="$t('Scan barcode or search items')" :defaultText="$t('Scan barcode or search items for next')" @update:model-value="addItem" />
+          <div class="flex items-start gap-2" style="margin-bottom: 12px">
+            <div class="flex-1 min-w-0"><auto-complete json keep-focus reset-search id="ex-add-item" :suggestions="route('items.search')" :placeholder="$t('Scan barcode or search items')" :defaultText="$t('Scan barcode or search items for next')" @update:model-value="addItem" /></div>
+            <button type="button" class="lg-btn lg-btn-soft flex-none" :aria-label="$t('Scan barcode with camera')" @click="$refs.scanner.show()"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" /><circle cx="12" cy="13" r="4" /></svg>{{ $t('Scan') }}</button>
           </div>
+          <camera-barcode-scanner ref="scanner" @resolved="addItem" />
           <span class="ac-err">{{ err('lines') }}</span>
           <ul class="ex-lines">
             <li v-for="(l, i) in form.lines" :key="l.key" :class="{ 'is-bad': lineBad(l) || lineErr(i) }">
@@ -81,6 +83,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
+import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import AcctDropzone from '@/Pages/Accounts/AcctDropzone.vue';
 import AcctFileList from '@/Pages/Accounts/AcctFileList.vue';
@@ -89,7 +92,7 @@ import { router } from '@inertiajs/vue3';
 let seq = 0;
 
 export default {
-  components: { ScTabs, AdminLayout, PageHeader, Link, DatePicker, AutoComplete, AcctSelect, AcctDropzone, AcctFileList, PersonModal },
+  components: { CameraBarcodeScanner, ScTabs, AdminLayout, PageHeader, Link, DatePicker, AutoComplete, AcctSelect, AcctDropzone, AcctFileList, PersonModal },
   props: { m: Object, kind: String, kinds: Array, people: Array, warehouses: Array, drivers: Array, vehicles: Array, today: String, newPersonUrl: String, attachments: Array },
   data() {
     // (personOpen and addedPeople: the person added in the window joins the list at once)

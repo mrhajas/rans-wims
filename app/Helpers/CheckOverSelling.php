@@ -16,6 +16,9 @@ class CheckOverSelling
             $base_quantity = 0;
             $unit = null;
             $item = $items->where('id', $order_item['item_id'])->first();
+            if (! $item) {
+                continue; // an item that no longer exists is reported by the form's own validation
+            }
             if (isset($order_item['selected']) && isset($order_item['selected']['variations']) && ! empty($order_item['selected']['variations'])) {
                 foreach ($order_item['selected']['variations'] as $order_variation) {
                     $quantity = $order_variation['quantity'] + 0;

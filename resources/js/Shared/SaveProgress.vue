@@ -51,6 +51,7 @@ import { progress } from '@/Core/saveProgress';
 import { usePage } from '@inertiajs/vue3';
 import { watch } from 'vue';
 import { result, isBusy } from '@/Core/saveProgress';
+import { describeErrors, describeMessage } from '@/Core/errorKinds';
 
 export default {
   setup() {
@@ -62,16 +63,30 @@ export default {
       () => page.props && page.props.flash,
       flash => {
         if (!flash || quiet() || isBusy()) return;
-        if (flash.error) result('error', strip(flash.error));
+        if (flash.error) {
+          const d = describeMessage(strip(flash.error), '');
+          result('error', d.text, undefined, d.title);
+        }
         else if (flash.message) result('success', flash.message);
       },
       { deep: true },
     );
+    // only a problem that is NEW is announced: fixing one field of several, or the page clearing an error, must not bring the pill back
+    let seen = {};
     watch(
       () => page.props && page.props.errors,
       errors => {
-        const n = errors ? Object.keys(errors).length : 0;
-        if (n && !quiet() && !isBusy()) result('error', n === 1 ? 'There is one form error.' : 'There are ' + n + ' form errors.');
+        const now = {};
+        Object.keys(errors || {}).forEach(k => (now[k] = Array.isArray(errors[k]) ? errors[k][0] : errors[k]));
+        const fresh = {};
+        Object.keys(now).forEach(k => {
+          if (seen[k] !== now[k]) fresh[k] = now[k];
+        });
+        seen = now;
+        if (Object.keys(fresh).length && !quiet() && !isBusy()) {
+          const d = describeErrors(fresh, '');
+          result('error', d.text, undefined, d.title);
+        }
       },
       { deep: true },
     );

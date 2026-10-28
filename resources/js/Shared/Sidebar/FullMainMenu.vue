@@ -394,6 +394,10 @@ export default {
         return false;
       }
       const base = routeName.slice(0, -'.index'.length);
+      // a group with its own "Create" leaf lights that leaf on the create page, not the list above it too
+      if (current === base + '.create' && this.menus.some(m => (m.sub_menu || []).some(sm => sm.route === base + '.create'))) {
+        return false;
+      }
       return ['.create', '.edit', '.show', '.store', '.update', '.destroy'].some(suffix => current === base + suffix);
     },
     // Whether a dropdown parent should auto-expand: derived straight from
