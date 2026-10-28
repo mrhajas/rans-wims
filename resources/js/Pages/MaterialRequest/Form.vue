@@ -154,7 +154,7 @@
             <div class="fx-attach">
               <label class="fx-label">{{ $t('Attachments') }}</label>
               <div class="flex flex-col gap-2 items-start">
-                <button type="button" class="lg-btn tone" style="--tone: #d97706" @click.prevent="$refs.file?.click()">
+                <button type="button" class="lg-btn tone" style="--tone: #d97706" :disabled="filesLeft <= 0" @click.prevent="$refs.file?.click()">
                   <span class="tone-ico"><icons name="upload" class="w-4 h-4" /></span>
                   {{ $t('Choose files') }}
                 </button>
@@ -167,19 +167,24 @@
                   class="sr-only"
                   @change="onFiles"
                 />
-                <ul v-if="pickedFiles.length" class="fx-files">
-                  <li v-for="(name, fi) in pickedFiles" :key="fi"><icons name="clip" class="w-3.5 h-3.5 flex-none" /><span class="truncate">{{ name }}</span></li>
-                </ul>
-              </div>
-              <div v-if="$page.props.errors.attachments" class="text-red-600 text-sm mt-1">{{ $page.props.errors.attachments }}</div>
-              <div v-if="edit && edit.attachments && edit.attachments.length" class="mt-3">
-                <ul class="fx-files fx-files-list">
-                  <li v-for="attachment in edit.attachments" :key="attachment.id">
-                    <span class="truncate">{{ attachment.title }}</span>
-                    <a class="fx-dl" :href="route('media.download', attachment.id)">{{ $t('Download') }}</a>
+                <p class="fx-file-hint">{{ $t('Up to :n files, :mb MB each (PDF, DOC or DOCX).', { n: maxFiles, mb: maxMb }) }}</p>
+                <ul v-if="existingFiles.length || files.length" class="fx-files fx-files-list">
+                  <li v-for="attachment in existingFiles" :key="'e' + attachment.id">
+                    <span class="fx-file-ico"><icons name="doc-text" class="w-4 h-4" /></span>
+                    <span class="fx-file-name truncate">{{ attachment.title }}</span>
+                    <a class="lg-icon-btn lg-tip tip-left" :data-tip="$t('Preview')" :aria-label="$t('Preview')" :href="route('media.download', { media: attachment.id, preview: 1 })" target="_blank" rel="noopener"><icons name="eye" class="w-4 h-4" /></a>
+                    <button type="button" class="lg-icon-btn is-red lg-tip tip-left" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="removeExisting(attachment)"><icons name="trash" class="w-4 h-4" /></button>
+                  </li>
+                  <li v-for="(file, fi) in files" :key="'n' + fi + file.name + file.size">
+                    <span class="fx-file-ico is-new"><icons name="doc-text" class="w-4 h-4" /></span>
+                    <span class="fx-file-name truncate">{{ file.name }}<small>{{ sizeText(file.size) }}</small></span>
+                    <button type="button" class="lg-icon-btn lg-tip tip-left" :data-tip="$t('Preview')" :aria-label="$t('Preview')" @click="previewFile(file)"><icons name="eye" class="w-4 h-4" /></button>
+                    <button type="button" class="lg-icon-btn is-red lg-tip tip-left" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="files.splice(fi, 1); fileProblems = []"><icons name="trash" class="w-4 h-4" /></button>
                   </li>
                 </ul>
               </div>
+              <div v-for="(msg, mi) in fileProblems" :key="'p' + mi" class="text-red-600 text-sm mt-1">{{ msg }}</div>
+              <div v-for="msg in serverFileErrors" :key="msg" class="text-red-600 text-sm mt-1">{{ msg }}</div>
             </div>
             <div class="lg-fields fx-notes-fields">
               <div class="lg-span-all">
@@ -240,7 +245,13 @@ export default {
 
   data() {
     return {
-      pickedFiles: [],
+      // the files chosen so far (each one can be previewed or removed before saving), the ones already saved on this request,
+      // and the reasons any chosen file was turned away
+      files: [],
+      existingFiles: this.edit && this.edit.attachments ? [...this.edit.attachments] : [],
+      fileProblems: [],
+      maxFiles: 5,
+      maxMb: 5,
       form: this.$inertia.form({
         _method: this.edit ? 'PUT' : 'POST',
         warehouse_id: this.edit ? this.edit.warehouse_id : null,
@@ -262,6 +273,13 @@ export default {
   },
 
   computed: {
+    filesLeft() {
+      return this.maxFiles - this.existingFiles.length - this.files.length;
+    },
+    serverFileErrors() {
+      const errors = this.$page.props.errors || {};
+      return Object.keys(errors).filter(k => k === 'attachments' || k.startsWith('attachments.')).map(k => errors[k]);
+    },
     itemSuggestions() {
       return this.items.map(item => ({
         id: item.id,
@@ -271,8 +289,47 @@ export default {
   },
 
   methods: {
+    // adds the chosen files to the list: PDF / DOC / DOCX, 5 MB each, 5 in all (saved ones count), the same file twice is skipped
     onFiles(e) {
-      this.pickedFiles = Array.from((e.target && e.target.files) || []).map(f => f.name);
+      const picked = Array.from((e.target && e.target.files) || []);
+      const problems = [];
+      picked.forEach(file => {
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        if (!['pdf', 'doc', 'docx'].includes(ext)) {
+          problems.push(this.$t(':file is not a PDF, DOC or DOCX file.', { file: file.name }));
+        } else if (file.size > this.maxMb * 1024 * 1024) {
+          problems.push(this.$t(':file is larger than :mb MB (:size).', { file: file.name, mb: this.maxMb, size: this.sizeText(file.size) }));
+        } else if (this.files.some(f => f.name === file.name && f.size === file.size)) {
+          problems.push(this.$t(':file is already in the list.', { file: file.name }));
+        } else if (this.filesLeft <= 0) {
+          problems.push(this.$t(':file was not added: a request holds up to :n files.', { file: file.name, n: this.maxFiles }));
+        } else {
+          this.files.push(file);
+        }
+      });
+      this.fileProblems = problems;
+      // so choosing the same file again after removing it still fires
+      if (e.target) e.target.value = '';
+    },
+    sizeText(bytes) {
+      return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    },
+    // opens the chosen file in a new tab straight from this computer (a PDF shows; a Word file is handed to the browser to download)
+    previewFile(file) {
+      const url = URL.createObjectURL(file);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    },
+    // a file already saved on this request: removed from the server at once (the rest of the form stays as typed)
+    async removeExisting(attachment) {
+      if (!(await this.$confirm(this.$t('Remove :file from this request?', { file: attachment.title })))) return;
+      this.$inertia.delete(route('media.delete', attachment.id), {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+          this.existingFiles = this.existingFiles.filter(a => a.id !== attachment.id);
+        },
+      });
     },
     blankItem() {
       return { item_id: null, quantity: null, unit_id: null, priority: 'Normal', remarks: '' };
@@ -317,9 +374,7 @@ export default {
       return selected ? selected.name || selected.code : '';
     },
     submit() {
-      if (this.$refs.file) {
-        this.form.attachments = this.$refs.file.files;
-      }
+      this.form.attachments = this.files.length ? this.files : null;
 
       const payload = pick(this.form, ['warehouse_id', 'date_requested', 'reason', 'comments', 'attachments', 'items', '_method']);
       this.form.transform(() => payload);
@@ -388,10 +443,12 @@ export default {
 .fx-attach { min-width: 0; }
 .fx-files { width: 100%; font-size: 0.8rem; color: var(--lg-ink); }
 .fx-files li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 2px; }
-.fx-files-list { border: 1px solid var(--lg-line); border-radius: 14px; overflow: hidden; }
-.fx-files-list li { justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--lg-line); }
+.fx-files-list { border: 1px solid var(--lg-line); border-radius: 14px; overflow: hidden; background: var(--lg-card); }
+.fx-files-list li { padding: 8px 12px; border-bottom: 1px solid var(--lg-line); }
 .fx-files-list li:last-child { border-bottom: 0; }
-.fx-dl { flex: none; font-weight: 700; color: var(--lg-navy); }
-.fx-dl:hover { text-decoration: underline; }
-html.dark .fx-dl { color: #93c5fd; }
+.fx-file-hint { font-size: 0.75rem; color: var(--lg-mute); }
+.fx-file-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 28px; height: 28px; border-radius: 9px; color: #fff; background: linear-gradient(145deg, #60a5fa, #1d4ed8); }
+.fx-file-ico.is-new { background: linear-gradient(145deg, #34d399, #047857); }
+.fx-file-name { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.fx-file-name small { display: block; font-size: 0.7rem; font-weight: 500; color: var(--lg-mute); }
 </style>

@@ -28,14 +28,24 @@ class MaterialRequestUpdateRequest extends FormRequest
             'date_requested' => 'required|date',
             'reason' => 'required|string',
             'comments' => 'nullable|string',
-            'attachments' => 'nullable',
-            'attachments.*' => 'mimes:pdf,doc,docx',
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'file|mimes:pdf,doc,docx|max:5120',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.quantity' => 'required|numeric|gt:0',
             'items.*.unit_id' => 'nullable|exists:units,id',
             'items.*.priority' => 'required|in:Low,Normal,High,Emergency',
             'items.*.remarks' => 'nullable|string',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'attachments.max' => __('A request holds up to :max files.', ['max' => 5]),
+            'attachments.*.max' => __('Each file can be up to 5 MB.'),
+            'attachments.*.mimes' => __('Only PDF, DOC or DOCX files can be attached.'),
+            'attachments.*.uploaded' => __('A file could not be uploaded. Keep each file under 5 MB.'),
         ];
     }
 
