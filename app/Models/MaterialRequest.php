@@ -257,4 +257,9 @@ class MaterialRequest extends Model
                 ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
         });
     }
+
+    public function reminders()
+    {
+        return $this->hasMany(MaterialRequestReminder::class, 'material_request_id');
+    }
 }

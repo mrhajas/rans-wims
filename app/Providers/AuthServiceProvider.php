@@ -42,6 +42,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\TransportRecord' => 'App\Policies\TransportRecordPolicy',
         'App\Models\Task' => 'App\Policies\TaskPolicy',
         'App\Models\SalaryPeriod' => 'App\Policies\SalaryPeriodPolicy',
+        'App\Models\MaterialRequestReminder' => 'App\Policies\MaterialRequestReminderPolicy',
     ];
 
     public function boot()

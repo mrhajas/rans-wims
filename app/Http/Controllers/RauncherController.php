@@ -407,6 +407,21 @@ class RauncherController extends Controller
                 'title' => fn ($m) => $m->full_name,
                 'subtitle' => fn ($m) => trim($m->reference . ' ' . ($m->company ? '· ' . $m->company : '') . ($m->phone ? ' · ' . $m->phone : '')),
             ],
+            'holidays' => [
+                'label' => 'Holidays',
+                'icon' => 'sparkles',
+                'permission' => 'read-holiday-greetings',
+                'route' => 'holiday-greetings.holidays.show',
+                'search' => function ($term) {
+                    $u = auth()->user();
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $term) . '%';
+
+                    return \App\Models\HolidayDay::query()->where('name', 'like', $like)
+                        ->when(! \App\Services\FeatureManager::canAccess('holiday_dashboard', $u), fn ($q) => $q->whereRaw('1 = 0'))->orderByDesc('date');
+                },
+                'title' => fn ($m) => $m->name . ' ' . $m->year,
+                'subtitle' => fn ($m) => $m->date->format('D j M Y'),
+            ],
             'incoming-items' => [
                 'label' => 'Incoming Items',
                 'icon' => 'email',

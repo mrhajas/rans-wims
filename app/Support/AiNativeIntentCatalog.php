@@ -52,6 +52,28 @@ class AiNativeIntentCatalog
                     ? "Found {$r['count']} chat message(s) about \"{$r['query']}\": ".implode(' | ', $r['items'])
                     : ($r['message'] ?? 'No chat messages matched.'),
             ],
+            'holiday_next' => [
+                'patterns' => ['/(?:when\s+is|what\s+is)\s+the\s+next\s+(?:public\s+)?holiday\s*\??$/i', '/next\s+(?:public\s+)?holiday\s*\??$/i'],
+                'map' => fn (array $m) => [],
+                'handler' => [\App\Services\AiTools\HolidayGreetingsTool::class, 'next'],
+                'format' => fn (array $r) => ($r['found'] ?? false)
+                    ? "The next holiday is {$r['name']} on {$r['date']} (".($r['days'] === 0 ? 'today' : ($r['days'] === 1 ? 'tomorrow' : "in {$r['days']} days")."). The Super Admins are reminded on {$r['reminder']}.".($r['confirmed'] ? '' : ' The date follows the moon and is still to be confirmed.'))
+                    : ($r['message'] ?? null),
+            ],
+            'holiday_year' => [
+                'patterns' => ['/how\s+many\s+(?:public\s+)?holidays\s+(?:are\s+there\s+|do\s+we\s+have\s+)?(?:in\s+|for\s+)?(?<year>this year|\d{4})\s*\??$/i', '/(?:list|show)\s+(?:me\s+)?(?:the\s+)?holidays\s+(?:of|for|in)\s+(?<year>this year|\d{4})\s*\??$/i'],
+                'map' => fn (array $m) => ['year' => isset($m['year']) && ctype_digit($m['year']) ? (int) $m['year'] : null],
+                'handler' => [\App\Services\AiTools\HolidayGreetingsTool::class, 'year'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? "{$r['count']} holidays count in {$r['year']}: ".implode('; ', $r['items']).'.' : ($r['message'] ?? null),
+            ],
+            'holiday_status' => [
+                'patterns' => ['/(?:were|was|have|has)\s+the\s+(?<holiday>.+?)\s+(?:holiday\s+)?greetings?\s+(?:been\s+)?sent\s*\??$/i', '/(?:status|how\s+did)\s+(?:of\s+)?(?:the\s+)?(?<holiday>.+?)\s+greetings?\s*\??$/i'],
+                'map' => fn (array $m) => ['holiday_name' => trim($m['holiday'])],
+                'handler' => [\App\Services\AiTools\HolidayGreetingsTool::class, 'status'],
+                'format' => fn (array $r) => ($r['found'] ?? false)
+                    ? ($r['state'] === 'not_sent' ? "The {$r['name']} greetings (".$r['date'].') have not been sent yet.' : "The {$r['name']} greetings: {$r['emailSent']} of {$r['emailTotal']} emails and {$r['smsSent']} of {$r['smsTotal']} SMS went through".($r['failed'] ? ", {$r['failed']} failed" : '').($r['pending'] ? ", {$r['pending']} still sending" : '').'.')
+                    : ($r['message'] ?? null),
+            ],
             'site_diary_today' => [
                 'patterns' => [
                     '/(?:show|list|what are)\s+(?:me\s+)?(?:today\'?s|the\s+today\'?s)\s+site\s+diar(?:y|ies)(?:\s+(?:for|at|in)\s+(?<warehouse>.+?))?\s*\??$/i',

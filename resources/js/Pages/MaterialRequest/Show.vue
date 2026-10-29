@@ -32,6 +32,9 @@
         <button v-if="materialRequest.can_download_pdf" type="button" @click="downloadPdf" class="lg-btn lg-btn-dark">
           <icons name="doc-text" class="w-4 h-4" />{{ $t('Download PDF') }}
         </button>
+        <button v-if="materialRequest.can_remind || (materialRequest.can_view_reminders && materialRequest.reminder_count)" type="button" class="lg-btn tone print:hidden" style="--tone: #d97706" @click="reminderOpen = true">
+          <span class="tone-ico"><icons name="bell" class="w-4 h-4" /></span>{{ $t('Reminder') }}<b v-if="materialRequest.reminder_count" class="mr-bell-n2">{{ materialRequest.reminder_count }}</b>
+        </button>
         <Link v-if="materialRequest.can_edit" :href="route('material-requests.edit', materialRequest.id)" class="lg-btn mr-btn-amber">
           <icons name="edit" class="w-4 h-4" />{{ $t('Edit') }}
         </Link>
@@ -343,6 +346,19 @@
         </div>
       </section>
 
+      <section v-if="reminders.length" class="lg-card print:hidden">
+        <div class="lg-card-head">
+          <span class="lg-card-ico lg-ico-amber"><icons name="bell" class="w-5 h-5" /></span>
+          <div class="min-w-0 flex-1">
+            <h2 class="lg-card-title">{{ $t('Reminders') }} ({{ reminders.length }})</h2>
+            <p class="lg-card-sub">{{ $t('Every reminder sent about this request, with the note, the files and who was told.') }}</p>
+          </div>
+          <button type="button" class="lg-btn lg-btn-soft" @click="reminderOpen = true">{{ $t('Open') }}</button>
+        </div>
+        <div class="mr-rem-list"><reminder-card v-for="r in reminders.slice(0, 3)" :key="r.id" :reminder="r" /></div>
+        <p v-if="reminders.length > 3" class="mr-rem-more"><button type="button" @click="reminderOpen = true">{{ $t('Show all :n reminders', { n: reminders.length }) }}</button></p>
+      </section>
+
       <section v-if="materialRequest.attachments && materialRequest.attachments.length" class="lg-card">
         <div class="lg-card-head">
           <span class="lg-card-ico lg-ico-teal"><icons name="clip" class="w-5 h-5" /></span>
@@ -456,6 +472,7 @@
         </template>
       </tec-dialog-modal>
     </div>
+    <reminder-modal :show="reminderOpen" :request-id="materialRequest.id" @close="reminderOpen = false" @sent="$inertia.reload({ only: ['reminders', 'materialRequest'], preserveScroll: true })" />
   </admin-layout>
 </template>
 
@@ -471,6 +488,8 @@ import SelectInput from '@/Shared/SelectInput.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import SimpleAutocomplete from '@/Shared/SimpleAutocomplete.vue';
+import ReminderModal from './ReminderModal.vue';
+import ReminderCard from '@/Pages/MrReminders/ReminderCard.vue';
 import { printWithAnimation, printUrlInFrame, materialRequestPrintSheet } from '@/Core/printAnimation';
 
 export default {
@@ -484,9 +503,12 @@ export default {
     LoadingButton,
     TecDialogModal,
     SimpleAutocomplete,
+    ReminderModal,
+    ReminderCard,
   },
 
   props: {
+    reminders: { type: Array, default: () => [] },
     statuses: Array,
     materialRequest: Object,
     mrTransfers: { type: Object, default: null },
@@ -501,6 +523,7 @@ export default {
 
   data() {
     return {
+      reminderOpen: false,
       trQty: {},
       trBusy: false,
       changingStatus: false,
@@ -1093,6 +1116,10 @@ export default {
 </script>
 
 <style scoped>
+.mr-rem-list { display: grid; gap: 10px; margin-top: 12px; }
+.mr-rem-more { margin: 10px 0 0; }
+.mr-rem-more button { font-weight: 800; font-size: 0.82rem; color: #be185d; cursor: pointer; }
+.mr-bell-n2 { margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: #d97706; color: #fff; font-size: 0.68rem; line-height: 18px; text-align: center; }
 .mr-item-refs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .mr-ref-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; color: #0f766e; background: rgba(20, 184, 166, 0.12); box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.35); text-decoration: none; }
 .mr-ref-chip small { font-weight: 600; color: var(--lg-mute); }

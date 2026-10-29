@@ -251,6 +251,23 @@ class PermissionRegistry
                 ],
             ],
 
+            // Holiday Greetings: standalone. It only reads users, staff and contacts when somebody presses Import.
+            'holiday_greetings' => [
+                'label' => __('Holiday Greetings'),
+                'abilities' => [
+                    'read-holiday-greetings' => __('Open Holiday Greetings: the dashboard with this year\'s holidays, the coming ones and the record of every holiday'),
+                    'manage-holidays' => __('Add, change, switch off or remove a holiday, confirm a date that follows the moon, and include a holiday that falls on a weekend'),
+                    'read-holiday-contacts' => __('See the list of people who receive the greetings'),
+                    'manage-holiday-contacts' => __('Import users, staff and contacts into the list, add people by hand, change or remove them'),
+                    'prepare-holiday-greetings' => __('Change the greeting message (email and SMS) and leave people out of one holiday'),
+                    'send-holiday-greetings' => __('Send the greetings of a holiday and retry the ones that failed'),
+                    'print-holiday-greetings' => __('Print, download and export the record of a holiday'),
+                    'manage-holiday-photos' => __('Upload a photo for the background of a holiday email, or put the WIMS photo back'),
+                    'manage-holiday-settings' => __('Change the Holiday Greetings settings: hours before the reminder, weekends, reminder channels and the sign-off'),
+                    'receive-holiday-reminders' => __('Receive the reminder (email and SMS) that a holiday is coming, in addition to the Super Admins'),
+                ],
+            ],
+
             'visitor_logs' => [
                 'label' => __('Visitor Logs'),
                 'abilities' => [
@@ -672,6 +689,17 @@ class PermissionRegistry
                     'view-procedures-material-requests' => __('View Procedures (Read-Only)'),
                     'print-material-requests' => __('Print Material Requests'),
                     'download-material-requests' => __('Download PDF'),
+                ],
+            ],
+
+            // Reminders on approved Material Requests that have not reached their final status: send them (email, SMS, app alert), see the history and who was told, print the report.
+            'mr_reminders' => [
+                'label' => __('Material Request Reminders'),
+                'abilities' => [
+                    'read-mr-reminders' => __('See the reminders sent on Material Requests and the All Requests Reminders page'),
+                    'send-mr-reminders' => __('Send a reminder on an approved Material Request that has not reached its final status'),
+                    'print-mr-reminders' => __('Print and download the reminders report (PDF and CSV)'),
+                    'manage-mr-reminder-settings' => __('Choose who receives the reminders (roles and users) and through which channels'),
                 ],
             ],
 

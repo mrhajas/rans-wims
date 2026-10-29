@@ -302,6 +302,27 @@ class AiToolRegistry
                 'input_schema' => ['type' => 'object', 'properties' => ['query' => ['type' => 'string', 'description' => 'Optional part of the file name.']], 'required' => []],
                 'handler' => [\App\Services\AiTools\WimsChatTool::class, 'files'],
             ],
+            'holiday_next' => [
+                'label' => __('Holiday Greetings, next holiday'),
+                'description' => 'The next holiday that counts, how many days away it is and when the Super Admins are reminded.',
+                'examples' => ['When is the next holiday?'],
+                'input_schema' => ['type' => 'object', 'properties' => new \stdClass(), 'required' => []],
+                'handler' => [\App\Services\AiTools\HolidayGreetingsTool::class, 'next'],
+            ],
+            'holiday_year' => [
+                'label' => __('Holiday Greetings, holidays of the year'),
+                'description' => 'The holidays of a year that count (weekend holidays do not count).',
+                'examples' => ['How many holidays are there this year?'],
+                'input_schema' => ['type' => 'object', 'properties' => ['year' => ['type' => 'integer', 'description' => 'Optional year, default this year.']], 'required' => []],
+                'handler' => [\App\Services\AiTools\HolidayGreetingsTool::class, 'year'],
+            ],
+            'holiday_status' => [
+                'label' => __('Holiday Greetings, status'),
+                'description' => 'Whether the greetings of a holiday were sent and how many emails and SMS went through.',
+                'examples' => ['Were the Christmas greetings sent?'],
+                'input_schema' => ['type' => 'object', 'properties' => ['holiday_name' => ['type' => 'string', 'description' => 'Name of the holiday, e.g. Christmas.'], 'year' => ['type' => 'integer', 'description' => 'Optional year.']], 'required' => ['holiday_name']],
+                'handler' => [\App\Services\AiTools\HolidayGreetingsTool::class, 'status'],
+            ],
             'site_diary_summary' => [
                 'label' => __('Site Diary, counts'),
                 'description' => 'Counts the site diaries the user may see, optionally for one project and for today / this month.',

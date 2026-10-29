@@ -55,3 +55,7 @@
 /docs/subcontracts-data-review.md
 /scripts/wimshow
 /resources/knowledge/_*
+
+# Holiday Greetings: the pictures made from the photos (black and white at 15%) are generated on the server when needed
+/public/images/holiday/bg/*
+!/public/images/holiday/bg/.gitkeep

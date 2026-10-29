@@ -390,6 +390,10 @@ export default {
       if (routeName === 'items.index' && current.startsWith('items.') && !/^items\.(import|workflow|create|index)/.test(current)) {
         return true;
       }
+      // a holiday's own page has no sidebar entry: it reads as the Holidays dashboard so the group opens and scrolls into view
+      if (routeName === 'holiday-greetings.dashboard' && current.startsWith('holiday-greetings.holidays.')) {
+        return true;
+      }
       if (!routeName.endsWith('.index')) {
         return false;
       }

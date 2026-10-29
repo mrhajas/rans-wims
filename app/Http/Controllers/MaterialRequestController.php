@@ -112,6 +112,13 @@ class MaterialRequestController extends Controller
                 ->all());
         });
 
+        // Reminders sent per request on this page (the bell icon shows how many)
+        $reminderStats = \App\Models\MaterialRequestReminder::query()->whereIn('material_request_id', $materialRequests->pluck('id'))->selectRaw('material_request_id, COUNT(*) as n, MAX(created_at) as last_at')->groupBy('material_request_id')->get()->keyBy('material_request_id');
+        $materialRequests->getCollection()->each(function ($m) use ($reminderStats) {
+            $m->setAttribute('reminder_count', (int) ($reminderStats[$m->id]->n ?? 0));
+            $m->setAttribute('last_reminder_at', $reminderStats[$m->id]->last_at ?? null);
+        });
+
         // One grouped count over the same visibility scope as the list (filters intentionally ignored).
         $statusCounts = MaterialRequestVisibility::scopeQueryFor(MaterialRequest::query(), $user)
             ->select('status', DB::raw('COUNT(*) as total'))
@@ -297,8 +304,13 @@ class MaterialRequestController extends Controller
             ? ['can_create' => \App\Services\MaterialRequestTransfers::allows($material_request) && $request->user()->can('create-transfers'), 'groups' => \App\Services\MaterialRequestTransfers::allows($material_request) ? \App\Services\MaterialRequestTransfers::groups($material_request) : [], 'made' => \App\Services\MaterialRequestTransfers::transfers($material_request), 'by_item' => (object) \App\Services\MaterialRequestTransfers::byItem($material_request->id), 'lines' => collect(\App\Services\MaterialRequestTransfers::lines($material_request))->filter(fn ($l) => $l['has_transfer'])->values()->all(), 'can_open' => $request->user()->can('read-transfers')]
             : null;
 
+        $reminderRows = $request->user()->can('read-mr-reminders') ? $material_request->reminders()->with(['sender:id,name', 'attachments'])->latest('id')->get() : collect();
+        $material_request->setAttribute('reminder_count', $reminderRows->count());
+        $material_request->setAttribute('last_reminder_at', optional($reminderRows->first())->created_at);
+
         return Inertia::render('MaterialRequest/Show', [
             'mrTransfers' => $mrTransfers,
+            'reminders' => $reminderRows->map(fn ($r) => \App\Services\MrReminders\ReminderSender::present($r, false))->values(),
             'materialRequest' => new MaterialRequestResource($material_request),
             'statuses' => MaterialRequest::statuses(),
             'availableStockByItem' => $availableStockByItem,

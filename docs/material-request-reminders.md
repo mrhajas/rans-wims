@@ -1,0 +1,11 @@
+# Material Request Reminders
+
+Built 2026-10-29. Migration `2026_12_18_100000_create_mr_reminders` (tables `mr_reminders`, `mr_reminder_deliveries`, 4 permissions, feature `mr_reminders` which depends on `material_requests`).
+
+- **Who can be reminded about**: a request that is Approved, Partially Issued or Fully Issued and not yet Cleared/Closed (`ReminderSender::eligible`).
+- **Where**: a bell icon (with the number of reminders sent) on the Material Requests list rows, a **Reminder** button on the request page, both opening the same window (`MaterialRequest/ReminderModal.vue`): request details and reference, who will be told, **Notes & Remarks**, up to 5 files of 5 MB (PDF, DOC, DOCX, JPG, PNG) and the history of earlier reminders. The request page also lists its reminders. Menu: Material Requests > **All Requests Reminders**.
+- **How**: app alert (bell), email (with the files attached) and SMS (WIMS Connect SMS; plain text, no link) to each recipient. One delivery row per person and channel (Sent / Failed / Skipped, with the reason), so the report says who was told what. The sender is not told their own reminder.
+- **Softcoded recipients**: settings `mrr_roles` (default Super Admin), `mrr_users`, `mrr_email`, `mrr_sms`, `mrr_app`; edited by "Who Is Told" on the All Requests Reminders page (permission `manage-mr-reminder-settings`, Super Admin only by default).
+- **Permissions**: `read-mr-reminders`, `send-mr-reminders`, `print-mr-reminders` are given by the migration to every role that has `read-material-requests`; `manage-mr-reminder-settings` to Super Admin only. Controllers use explicit checks (`setAbilities([])`). Files are opened through the shared `media.download` with `MaterialRequestReminderPolicy`.
+- **All Requests Reminders page**: stats, live filters (search, project, request status, sender, who was told, channel, result, dates), cards with the note, files, channel counts and an expandable "who was told", print / PDF / CSV of the same filter (one line per person and channel), everything logged (log name "MR Reminders").
+- Not included: ARIS questions, reminders on other modules, a cooldown between reminders.

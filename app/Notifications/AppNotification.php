@@ -48,6 +48,8 @@ class AppNotification extends Notification implements ShouldQueue
             'external_stock',
             'travels',
             'visitor_logs',
+            'holiday_greetings',
+            'mr_reminders',
             'administration',
             'subcontracts',
             'stock_alerts',
@@ -155,6 +157,8 @@ class AppNotification extends Notification implements ShouldQueue
             'external_stock' => ['icon' => '📦', 'accent' => '#c2410c', 'label' => __('External Stock')],
             'travels' => ['icon' => '✈️', 'accent' => '#0e7490', 'label' => __('Travels')],
             'visitor_logs' => ['icon' => '🛎️', 'accent' => '#0369a1', 'label' => __('Visitor Logs')],
+            'mr_reminders' => ['icon' => '⏰', 'accent' => '#d97706', 'label' => __('Material Request Reminder')],
+            'holiday_greetings' => ['icon' => '🎉', 'accent' => '#be185d', 'label' => __('Holiday Greetings')],
             'administration' => ['icon' => '🗂️', 'accent' => '#0f766e', 'label' => __('Administration')],
             'subcontracts' => ['icon' => '🏗️', 'accent' => '#7c2d12', 'label' => __('Subcontractors')],
             'multi_transfers' => ['icon' => '🔀', 'accent' => '#6d28d9', 'label' => __('Multi Transfer')],
@@ -196,7 +200,7 @@ class AppNotification extends Notification implements ShouldQueue
 
         $eventKey = (string) ($this->data['type'] ?? ($this->data['module'] ?? 'notification'));
 
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->withSymfonyMessage(fn ($m) => $m->getHeaders()->addTextHeader(\App\Services\WimsConnect\OutboundLog::EVENT_HEADER, $eventKey))
             ->subject($this->data['title'] ?? __('WIMS Notification'))
             ->view('emails.notification', [
@@ -210,5 +214,14 @@ class AppNotification extends Notification implements ShouldQueue
                 'details' => $this->data['details'] ?? [],
                 'items' => $this->data['items'] ?? [],
             ]);
+
+        // files that go with the email (the reminder on a Material Request): [['path' => ..., 'name' => ...]]
+        foreach ((array) ($this->data['mail_attachments'] ?? []) as $file) {
+            if (! empty($file['path']) && is_file($file['path'])) {
+                $mail->attach($file['path'], ['as' => $file['name'] ?? basename($file['path'])]);
+            }
+        }
+
+        return $mail;
     }
 }

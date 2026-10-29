@@ -654,6 +654,56 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('settings/options/reorder', [$set, 'reorderOptions'])->middleware('throttle:60,1,visitor-logs.settings.options.reorder')->name('settings.options.reorder');
     });
 
+    // Holiday Greetings: the holidays of the year, the list of people who receive greetings (imported from users, staff and contacts or typed in), the email and SMS of each holiday, sending with a delivery
+    // indicator, and the record of every holiday. Names all start "holiday-greetings." so Global Feature Control covers them.
+    Route::prefix('holiday-greetings')->name('holiday-greetings.')->group(function () {
+        $dash = Controllers\HolidayGreetings\DashboardController::class;
+        $hol = Controllers\HolidayGreetings\HolidayController::class;
+        $snd = Controllers\HolidayGreetings\SendController::class;
+        $con = Controllers\HolidayGreetings\ContactController::class;
+        $rec = Controllers\HolidayGreetings\RecordController::class;
+        $set = Controllers\HolidayGreetings\SettingsController::class;
+        $bun = Controllers\HolidayGreetings\BundleController::class;
+        Route::get('/', [$dash, 'index'])->name('dashboard');
+
+        Route::post('holidays', [$hol, 'store'])->middleware('throttle:30,1,holiday-greetings.holidays.store')->name('holidays.store');
+        Route::get('holidays/{holiday}', [$hol, 'show'])->whereNumber('holiday')->name('holidays.show');
+        Route::put('holidays/{holiday}', [$hol, 'update'])->whereNumber('holiday')->middleware('throttle:60,1,holiday-greetings.holidays.update')->name('holidays.update');
+        Route::delete('holidays/{holiday}', [$hol, 'destroy'])->whereNumber('holiday')->middleware('throttle:30,1,holiday-greetings.holidays.destroy')->name('holidays.destroy');
+        Route::post('holidays/{holiday}/remind', [$hol, 'remindNow'])->whereNumber('holiday')->middleware('throttle:6,1,holiday-greetings.holidays.remind')->name('holidays.remind');
+
+        Route::post('holidays/{holiday}/preview', [$snd, 'preview'])->whereNumber('holiday')->middleware('throttle:120,1,holiday-greetings.send.preview')->name('send.preview');
+        Route::put('holidays/{holiday}/message', [$snd, 'template'])->whereNumber('holiday')->middleware('throttle:60,1,holiday-greetings.send.template')->name('send.template');
+        Route::post('holidays/{holiday}/message/reset', [$snd, 'reset'])->whereNumber('holiday')->middleware('throttle:30,1,holiday-greetings.send.reset')->name('send.reset');
+        Route::post('holidays/{holiday}/left-out', [$snd, 'exclude'])->whereNumber('holiday')->middleware('throttle:240,1,holiday-greetings.send.exclude')->name('send.exclude');
+        Route::post('holidays/{holiday}/send', [$snd, 'start'])->whereNumber('holiday')->middleware('throttle:10,1,holiday-greetings.send.start')->name('send.start');
+        Route::put('holidays/{holiday}/auto-send', [$snd, 'auto'])->whereNumber('holiday')->middleware('throttle:30,1,holiday-greetings.send.auto')->name('send.auto');
+        Route::post('holidays/{holiday}/retry', [$snd, 'retryFailed'])->whereNumber('holiday')->middleware('throttle:20,1,holiday-greetings.send.retry-failed')->name('send.retry-failed');
+        Route::post('holidays/{holiday}/retry/{delivery}', [$snd, 'retryOne'])->whereNumber(['holiday', 'delivery'])->middleware('throttle:120,1,holiday-greetings.send.retry-one')->name('send.retry-one');
+
+        Route::get('holidays/{holiday}/record/print', [$rec, 'print'])->whereNumber('holiday')->middleware('throttle:30,1,holiday-greetings.records.print')->name('records.print');
+        Route::get('holidays/{holiday}/record/pdf', [$rec, 'pdf'])->whereNumber('holiday')->middleware('throttle:20,1,holiday-greetings.records.pdf')->name('records.pdf');
+        Route::get('holidays/{holiday}/record/csv', [$rec, 'csv'])->whereNumber('holiday')->middleware('throttle:20,1,holiday-greetings.records.csv')->name('records.csv');
+
+        Route::get('people', [$con, 'index'])->name('contacts.index');
+        Route::post('people', [$con, 'store'])->middleware('throttle:60,1,holiday-greetings.contacts.store')->name('contacts.store');
+        Route::put('people/{contact}', [$con, 'update'])->whereNumber('contact')->middleware('throttle:120,1,holiday-greetings.contacts.update')->name('contacts.update');
+        Route::delete('people/{contact}', [$con, 'destroy'])->whereNumber('contact')->middleware('throttle:60,1,holiday-greetings.contacts.destroy')->name('contacts.destroy');
+        Route::get('bundles', [$bun, 'index'])->name('bundles.index');
+        Route::post('bundles', [$bun, 'store'])->middleware('throttle:30,1,holiday-greetings.bundles.store')->name('bundles.store');
+        Route::put('bundles/{bundle}', [$bun, 'update'])->whereNumber('bundle')->middleware('throttle:60,1,holiday-greetings.bundles.update')->name('bundles.update');
+        Route::delete('bundles/{bundle}', [$bun, 'destroy'])->whereNumber('bundle')->middleware('throttle:30,1,holiday-greetings.bundles.destroy')->name('bundles.destroy');
+        Route::post('people/import/preview', [$con, 'importPreview'])->middleware('throttle:30,1,holiday-greetings.contacts.import-preview')->name('contacts.import-preview');
+        Route::post('people/import', [$con, 'import'])->middleware('throttle:10,1,holiday-greetings.contacts.import')->name('contacts.import');
+
+        Route::get('settings', [$set, 'show'])->name('settings');
+        Route::put('settings', [$set, 'update'])->middleware('throttle:30,1,holiday-greetings.settings.update')->name('settings.update');
+        $pho = Controllers\HolidayGreetings\PhotoController::class;
+        Route::post('settings/photos/{theme}', [$pho, 'store'])->where('theme', '[a-z]+')->middleware('throttle:20,1,holiday-greetings.settings.photos.store')->name('settings.photos.store');
+        Route::delete('settings/photos/{theme}', [$pho, 'reset'])->where('theme', '[a-z]+')->middleware('throttle:20,1,holiday-greetings.settings.photos.reset')->name('settings.photos.reset');
+        Route::post('settings/photos/{theme}/off', [$pho, 'off'])->where('theme', '[a-z]+')->middleware('throttle:20,1,holiday-greetings.settings.photos.off')->name('settings.photos.off');
+    });
+
     // Subcontractor Management: subcontractors (Contacts), agreements, work schedules, variations, payment requests (paid only through Payment Vouchers), statements, import, reports.
     // Names all start "subcontracts." so Global Feature Control covers them.
     Route::prefix('subcontracts')->name('subcontracts.')->group(function () {
@@ -1018,6 +1068,18 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         ->name('material-requests.print');
     Route::get('material-requests/{material_request}/pdf', [Controllers\MaterialRequestController::class, 'pdf'])
         ->name('material-requests.pdf');
+
+    // Material Request Reminders: send one from a request, and the page / report of every reminder and who was told (names start "material-request-reminders." for Feature Control).
+    Route::prefix('material-request-reminders')->name('material-request-reminders.')->group(function () {
+        $rem = Controllers\MrReminders\ReminderController::class;
+        Route::get('/', [$rem, 'index'])->name('index');
+        Route::get('print', [$rem, 'print'])->middleware('throttle:30,1,material-request-reminders.print')->name('print');
+        Route::get('pdf', [$rem, 'pdf'])->middleware('throttle:20,1,material-request-reminders.pdf')->name('pdf');
+        Route::get('csv', [$rem, 'csv'])->middleware('throttle:20,1,material-request-reminders.csv')->name('csv');
+        Route::put('settings', [$rem, 'settings'])->middleware('throttle:30,1,material-request-reminders.settings')->name('settings');
+        Route::get('request/{material_request}', [$rem, 'form'])->whereNumber('material_request')->middleware('throttle:120,1,material-request-reminders.form')->name('form');
+        Route::post('request/{material_request}', [$rem, 'store'])->whereNumber('material_request')->middleware('throttle:20,1,material-request-reminders.store')->name('store');
+    });
 
     Route::get('material-reallocations/reports', [Controllers\MaterialReallocationController::class, 'reports'])
         ->name('material-reallocations.reports');

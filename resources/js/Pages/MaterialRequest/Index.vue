@@ -128,6 +128,18 @@
                     <Link :href="route('material-requests.show', materialRequest.id)" class="lg-icon-btn lg-tip" :data-tip="$t('View')">
                       <icons name="eye-flat" class="w-4 h-4" />
                     </Link>
+                    <button
+                      v-if="materialRequest.can_remind || (materialRequest.can_view_reminders && materialRequest.reminder_count)"
+                      type="button"
+                      class="lg-icon-btn is-amber lg-tip mr-bell"
+                      :class="{ 'has-sent': materialRequest.reminder_count }"
+                      :data-tip="reminderTip(materialRequest)"
+                      :aria-label="$t('Reminder')"
+                      @click="openReminder(materialRequest)"
+                    >
+                      <icons name="bell" class="w-4 h-4" />
+                      <b v-if="materialRequest.reminder_count" class="mr-bell-n">{{ materialRequest.reminder_count }}</b>
+                    </button>
                     <Link
                       v-if="canEdit(materialRequest)"
                       :href="route('material-requests.edit', materialRequest.id)"
@@ -170,6 +182,7 @@
       @confirm="forceClear"
       @close="forceAsk = false"
     />
+    <reminder-modal :show="reminderId !== null" :request-id="reminderId" @close="reminderId = null" @sent="onReminderSent" />
   </admin-layout>
 </template>
 
@@ -186,6 +199,7 @@ import AutoComplete from '@/Shared/AutoComplete.vue';
 import SearchFilter from '@/Shared/SearchFilter.vue';
 import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
 import SuperAdminPasswordModal from '@/Shared/SuperAdminPasswordModal.vue';
+import ReminderModal from './ReminderModal.vue';
 
 export default {
   components: {
@@ -198,6 +212,7 @@ export default {
     SearchFilter,
     HoverPreview,
     SuperAdminPasswordModal,
+    ReminderModal,
   },
 
   props: {
@@ -214,6 +229,7 @@ export default {
 
   data() {
     return {
+      reminderId: null,
       picked: [],
       forceAsk: false,
       forceBusy: false,
@@ -290,6 +306,18 @@ export default {
   },
 
   methods: {
+    openReminder(m) {
+      this.reminderId = m.id;
+    },
+    reminderTip(m) {
+      if (!m.reminder_count) return this.$t('Send a reminder');
+      return this.$t('Reminder (:n sent)', { n: m.reminder_count }) + (m.last_reminder_at ? ' · ' + this.$datetime(m.last_reminder_at) : '');
+    },
+    onReminderSent({ id }) {
+      const rows = this.materialRequests.data || [];
+      const row = rows.find(r => r.id === id);
+      if (row) { row.reminder_count = (row.reminder_count || 0) + 1; row.last_reminder_at = new Date().toISOString(); }
+    },
     // every status except Rejected, Cleared and Closed can be cleared by force
     isClearable(m) {
       return !['Rejected', 'Cleared', 'Closed'].includes(m.status);
@@ -407,6 +435,9 @@ export default {
 </script>
 
 <style scoped>
+.mr-bell { position: relative; }
+.mr-bell.has-sent { box-shadow: 0 4px 10px -4px rgba(217, 119, 6, 0.7); }
+.mr-bell-n { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #d97706; color: #fff; font-size: 0.62rem; line-height: 16px; text-align: center; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.6); }
 .mr-status-cell { min-width: 330px; }
 /* ---- compact, easy-to-scan rows: tighter padding, names wrap instead of stretching the row, outlined icons, a soft inner shadow instead of hard lines ---- */
 .mr-table td { padding-top: 9px; padding-bottom: 9px; border-bottom: 0; box-shadow: inset 0 -8px 8px -9px rgba(15, 37, 64, 0.28); }

@@ -34,6 +34,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('subcontracts:scan')->dailyAt('07:30')->withoutOverlapping();
         $schedule->command('travels:remind')->dailyAt('07:20')->withoutOverlapping();
         $schedule->command('visitor-logs:watch')->everyThirtyMinutes()->withoutOverlapping();
+        // Holiday Greetings: reminds the Super Admins the set number of hours before a holiday (the hours are a setting, so it checks every ten minutes)
+        $schedule->command('holiday-greetings:remind')->everyTenMinutes()->withoutOverlapping();
+        // ...and sends the greetings of the holidays that are set to send themselves (a time such as 10 minutes before needs a check every minute)
+        $schedule->command('holiday-greetings:auto-send')->everyMinute()->withoutOverlapping();
         $schedule->command('subcontracts:sweep')->hourly()->withoutOverlapping();
         $schedule->command('staff-contracts:remind')->dailyAt('06:30')->withoutOverlapping();
         $schedule->command('signatories:seed-mappings --housekeeping')->dailyAt('03:40')->withoutOverlapping();
