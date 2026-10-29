@@ -100,7 +100,7 @@ class ReminderController extends Controller
                 $o['counts'] = $this->countsOf($d);
                 $o['people'] = $d->map(fn ($x) => ['name' => $x->name, 'channel' => $x->channel, 'address' => $x->address, 'status' => $x->status, 'error' => $x->error])->values();
 
-                return $o + ['request_id' => $r->material_request_id, 'project' => optional(optional($mr)->warehouse)->name, 'current_status' => $mr ? MaterialRequest::statusLabel($mr->status) : null, 'cleared' => $mr ? $mr->isFinal() : false];
+                return $o + ['request_id' => $r->material_request_id, 'project' => optional(optional($mr)->warehouse)->name, 'current_status' => $mr ? MaterialRequest::statusLabel($mr->status) : null, 'current_raw' => $mr ? $mr->status : null, 'cleared' => $mr ? $mr->isFinal() : false];
             })->values(),
                 'links' => $rows->linkCollection()->map(fn ($l) => ['url' => $l['url'], 'label' => $l['label'], 'active' => $l['active']])->values(), 'from' => $rows->firstItem(), 'to' => $rows->lastItem(), 'total' => $rows->total()],
             'filters' => $f, 'stats' => $stats,

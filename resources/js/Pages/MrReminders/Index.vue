@@ -43,7 +43,7 @@
           <template #aside>
             <Link :href="route('material-requests.show', r.request_id)" class="mrr-ref">{{ r.reference }}</Link>
             <span class="mrr-proj">{{ r.project || '-' }}</span>
-            <span class="lg-chip" :class="r.cleared ? 'lg-chip-green' : 'lg-chip-amber'" style="text-transform: none">{{ $t('Now: :s', { s: r.current_status || '-' }) }}</span>
+            <span class="mrr-st" :class="'st-' + stKey(r.current_raw)"><i><icons :name="stIcon(r.current_raw)" class="w-3 h-3" /></i>{{ $t('Request Status') }}: <b>{{ r.current_status || '-' }}</b></span>
             <a :href="route('material-requests.show', r.request_id)" target="_blank" rel="noopener" class="lg-btn tone mrr-open" style="--tone: #2563eb"><span class="tone-ico"><icons name="clip" class="w-4 h-4" /></span>{{ $t('Open Request') }}</a>
           </template>
         </reminder-card>
@@ -115,6 +115,8 @@ export default {
     go() { router.get(route('material-request-reminders.index'), this.clean(), { preserveState: true, preserveScroll: true, replace: true, onFinish: () => { this.busy = false; } }); },
     reset() { Object.keys(this.f).forEach(k => { this.f[k] = ''; }); },
     exportUrl(name) { return route(name, this.clean()); },
+    stKey(s) { return { 'Pending Approval': 'pending', Approved: 'approved', Rejected: 'rejected', 'Partially Issued': 'partial', Issued: 'issued', Cleared: 'cleared', Closed: 'closed' }[s] || 'draft'; },
+    stIcon(s) { return { 'Pending Approval': 'clock', Approved: 'tick', Rejected: 'cross', 'Partially Issued': 'truck', Issued: 'archive-box', Cleared: 'lock-closed', Closed: 'lock-closed' }[s] || 'clip'; },
     toggle(list, v) { const i = list.indexOf(v); i === -1 ? list.push(v) : list.splice(i, 1); },
     openSettings() { this.sf.clearErrors(); this.settingsOpen = true; },
     saveSettings() { this.sf.put(route('material-request-reminders.settings'), { preserveScroll: true, onSuccess: () => { this.settingsOpen = false; } }); },
@@ -130,6 +132,16 @@ export default {
 .mrr-ref { font-weight: 800; color: #2563eb; font-size: 0.9rem; }
 .lg-btn.tone.mrr-open { box-shadow: 0 8px 18px -8px rgba(37, 99, 235, 0.65), 0 2px 4px rgba(15, 23, 42, 0.12); }
 .lg-btn.tone.mrr-open:hover { transform: translateY(-1px); box-shadow: 0 12px 22px -8px rgba(37, 99, 235, 0.75), 0 3px 6px rgba(15, 23, 42, 0.14); }
+.mrr-st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 4px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; color: var(--st-ink); background: var(--st-bg); box-shadow: 0 4px 10px -5px var(--st-ink); }
+.mrr-st b { font-weight: 800; }
+.mrr-st i { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; color: #fff; background: var(--st-dot); }
+.mrr-st.st-approved { --st-ink: #1d4ed8; --st-bg: rgba(59, 130, 246, 0.13); --st-dot: #2563eb; }
+.mrr-st.st-partial { --st-ink: #6d28d9; --st-bg: rgba(139, 92, 246, 0.14); --st-dot: #7c3aed; }
+.mrr-st.st-issued { --st-ink: #0e7490; --st-bg: rgba(6, 182, 212, 0.14); --st-dot: #0891b2; }
+.mrr-st.st-cleared { --st-ink: #047857; --st-bg: rgba(16, 185, 129, 0.15); --st-dot: #059669; }
+.mrr-st.st-pending { --st-ink: #b45309; --st-bg: rgba(245, 158, 11, 0.16); --st-dot: #d97706; }
+.mrr-st.st-rejected { --st-ink: #be123c; --st-bg: rgba(244, 63, 94, 0.14); --st-dot: #e11d48; }
+.mrr-st.st-closed, .mrr-st.st-draft { --st-ink: #475569; --st-bg: rgba(100, 116, 139, 0.15); --st-dot: #64748b; }
 .mrr-proj { font-size: 0.78rem; color: var(--lg-mute); }
 .mrr-empty { text-align: center; padding: 28px 16px; color: var(--lg-mute); }
 .mrr-search, .mrr-date { width: 100%; min-height: 42px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--lg-line); background: var(--lg-card); color: var(--lg-ink); box-shadow: 0 6px 14px -6px rgba(15, 23, 42, 0.3), 0 2px 4px rgba(15, 23, 42, 0.06); }
