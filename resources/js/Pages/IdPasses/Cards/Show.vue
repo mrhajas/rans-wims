@@ -132,10 +132,10 @@
         <div v-if="ac.key === 'renew'" class="ac-f"><label>{{ $t('New expiry date') }}</label><date-picker v-model="af.expires_at" /><small class="lg-subtext">{{ $t('Empty: the standard validity of the category, from today.') }}</small><span class="ac-err">{{ errs.expires_at }}</span></div>
         <div v-if="ac.reason" class="ac-f"><label>{{ ac.reasonLabel }} <b class="wims-req">*</b></label><input v-model="af.reason" maxlength="500" autocomplete="off" /><span class="ac-err">{{ errs.reason }}</span></div>
         <div v-if="ac.key === 'approve'" class="ac-f"><label>{{ $t('Remarks') }}</label><input v-model="af.remarks" maxlength="500" /></div>
-        <div v-if="ac.key === 'replace'" class="ac-f"><label>{{ $t('New photograph (optional)') }}</label><input type="file" accept="image/*" @change="af.photo = $event.target.files[0]" /><small class="lg-subtext">{{ $t('The old photograph is used if you do not choose one.') }}</small></div>
+        <div v-if="ac.key === 'replace'" class="ac-f"><label>{{ $t('New photograph (optional)') }}</label><photo-cropper v-model="af.photo" :min-width="minPhotoWidth" :background="card.photo_background || ''" @busy="cropBusy = $event" /><small class="lg-subtext">{{ $t('The old photograph is used if you do not choose one.') }}</small></div>
         <p v-if="ac.warn" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ ac.warn }}</span></p>
       </form>
-      <template #footer><button type="button" class="lg-btn tone" :disabled="af.processing" @click="ac = null" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-act" class="lg-btn tone tone-solid" :disabled="af.processing" :style="{ '--tone': ac && ac.danger ? '#dc2626' : '#16a34a' }"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ ac ? ac.button : '' }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="af.processing" @click="ac = null" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-act" class="lg-btn tone tone-solid" :disabled="af.processing || cropBusy" :style="{ '--tone': ac && ac.danger ? '#dc2626' : '#16a34a' }"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ ac ? ac.button : '' }}</button></template>
     </travel-modal>
 
     <!-- edit details -->
@@ -158,9 +158,9 @@
     </travel-modal>
 
     <travel-modal :show="photoOpen" :title="$t('Photograph')" :subtitle="$t('Choose or take a picture; the part inside the frame goes on the card.')" icon="camera" max-width="2xl" :busy="photoBusy" @close="photoOpen = false">
-      <photo-cropper v-model="newPhoto" :min-width="minPhotoWidth" />
+      <photo-cropper v-model="newPhoto" :min-width="minPhotoWidth" :background="card.photo_background || ''" @busy="cropBusy = $event" />
       <span class="ac-err">{{ errs.photo }}</span>
-      <template #footer><button type="button" class="lg-btn tone" @click="photoOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="!newPhoto || photoBusy" @click="savePhoto" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save photograph') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" @click="photoOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="!newPhoto || photoBusy || cropBusy" @click="savePhoto" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save photograph') }}</button></template>
     </travel-modal>
   </admin-layout>
 </template>
@@ -185,7 +185,7 @@ export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, IdCutout, PhotoCropper, CategoryChip, PersonSearch, IdMakeOverlay },
   props: { info: Object, card: Object, front: String, back: String, css: String, events: Array, prints: Array, canHistory: Boolean, gateTypes: Array, can: Object, layouts: Array, minPhotoWidth: Number, pooled: Boolean, holder: Object, assignments: { type: Array, default: () => [] }, cardHistory: { type: Array, default: () => [] } },
   data() {
-    return { tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
+    return { tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, cropBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
   },
   computed: {
     errs() { return this.$page.props.errors || {}; },
@@ -238,7 +238,7 @@ export default {
     submitAction() {
       const k = this.ac.key; const f = this.af; const opts = { preserveScroll: true, onSuccess: () => { this.ac = null; this.photoV = Date.now(); } };
       const url = route('id-passes.' + this.info.route + '.' + k, [this.card.id]);
-      f.transform(d => { const o = {}; if (['reject', 'suspend', 'revoke', 'replace'].includes(k)) o.reason = d.reason; if (k === 'approve') o.remarks = d.remarks; if (k === 'renew') o.expires_at = d.expires_at; if (k === 'replace' && d.photo) o.photo = d.photo; return o; }).post(url, { ...opts, forceFormData: k === 'replace' });
+      f.transform(d => { const o = {}; if (['reject', 'suspend', 'revoke', 'replace'].includes(k)) o.reason = d.reason; if (k === 'approve') o.remarks = d.remarks; if (k === 'renew') o.expires_at = d.expires_at; if (k === 'replace' && d.photo) { o.photo = d.photo.file; if (d.photo.original) o.photo_original = d.photo.original; if (d.photo.cutout) o.photo_cutout = d.photo.cutout; } return o; }).post(url, { ...opts, forceFormData: k === 'replace' });
     },
     openEdit() {
       const c = this.card;
@@ -248,7 +248,7 @@ export default {
     saveEdit() { this.ef.put(route('id-passes.' + this.info.route + '.update', [this.card.id]), { preserveScroll: true, onSuccess: () => { this.editOpen = false; } }); },
     savePhoto() {
       if (!this.newPhoto) return; this.photoBusy = true;
-      const fd = new FormData(); fd.append('photo', this.newPhoto.file); if (this.newPhoto.original) fd.append('photo_original', this.newPhoto.original);
+      const fd = new FormData(); fd.append('photo', this.newPhoto.file); if (this.newPhoto.original) fd.append('photo_original', this.newPhoto.original); if (this.newPhoto.cutout) fd.append('photo_cutout', this.newPhoto.cutout);
       router.post(route('id-passes.' + this.info.route + '.photo', [this.card.id]), fd, { preserveScroll: true, forceFormData: true, onSuccess: () => { this.photoOpen = false; this.newPhoto = null; this.photoV = Date.now(); }, onFinish: () => { this.photoBusy = false; } });
     },
     eventText(e) {

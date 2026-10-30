@@ -12,7 +12,7 @@
         <div class="lg-table-wrap"><table class="lg-table lg-responsive">
           <thead><tr><th>{{ $t('Category') }}</th><th>{{ $t('Kind') }}</th><th>{{ $t('Numbering') }}</th><th>{{ $t('Validity') }}</th><th>{{ $t('Rules') }}</th><th>{{ $t('Cards') }}</th><th></th></tr></thead>
           <tbody><tr v-for="c in categories" :key="c.id" :class="{ 'is-off': !c.is_active }">
-            <td :data-label="$t('Category')"><span class="st-dot" :style="{ background: c.band_color }"></span><b>{{ c.name }}</b><div v-if="c.label" class="lg-subtext">{{ $t('Card says') }}: {{ c.label }}</div></td>
+            <td :data-label="$t('Category')"><span class="st-dot" :style="{ background: c.band_color }"></span><b>{{ c.name }}</b><span v-if="c.photo_background" class="st-bgdot lg-tip tip-left" :data-tip="$t('Photo background') + ': ' + c.photo_background" :style="{ background: c.photo_background }"></span><div v-if="c.label" class="lg-subtext">{{ $t('Card says') }}: {{ c.label }}</div></td>
             <td :data-label="$t('Kind')">{{ kindName(c.kind) }}</td>
             <td :data-label="$t('Numbering')"><b>{{ c.example }}</b><div class="lg-subtext">{{ $t('prefix') }} {{ c.prefix || '-' }} · {{ c.digits }} {{ $t('digits') }}</div></td>
             <td :data-label="$t('Validity')">{{ c.validity_value ? c.validity_value + ' ' + $t(c.validity_unit) : $t('No expiry') }}</td>
@@ -60,6 +60,24 @@
           <div class="ac-f"><label>{{ $t('Word on a pass card') }}</label><input v-model="cf.label" maxlength="40" :placeholder="$t('For example Visitor Pass')" /></div>
           <div class="ac-f"><label>{{ $t('Band colour') }} <b class="wims-req">*</b></label><input v-model="cf.band_color" type="color" class="st-color" /></div>
           <div class="ac-f"><label>{{ $t('Arrow colour') }} <b class="wims-req">*</b></label><input v-model="cf.arrow_color" type="color" class="st-color" /></div>
+          <div class="ac-f st-all"><label>{{ $t('Photo background') }}</label>
+            <div class="st-bg">
+              <button v-for="sw in swatches" :key="sw.hex" type="button" class="st-sw" :class="{ 'is-on': (cf.photo_background || '').toLowerCase() === sw.hex }" :title="sw.name" :style="{ background: sw.hex }" @click="cf.photo_background = sw.hex"></button>
+              <input v-model="bgColour" type="color" class="st-sw st-sw-pick" :title="$t('Another colour')" />
+              <button type="button" class="lg-btn tone" :class="{ 'tone-solid': !cf.photo_background }" style="--tone: #64748b" @click="cf.photo_background = null"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Keep as taken') }}</button>
+            </div>
+            <small class="lg-subtext">{{ cf.photo_background ? $t('The person is cut out of the photograph and placed on this colour when the ID is made. A photograph that already has this background is left as it is.') : $t('Photographs go on the card exactly as they were taken.') }}</small>
+            <span class="ac-err">{{ errs.photo_background }}</span>
+            <div v-if="!isNew && cf.cards && cf.photo_background" class="st-apply">
+              <button type="button" class="lg-btn tone tone-solid" :disabled="ab.running || cf.photo_background !== bgSaved" style="--tone: #7c3aed" @click="applyBg"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ $t('Apply to the :n IDs already issued', { n: cf.cards }) }}</button>
+              <small v-if="cf.photo_background !== bgSaved" class="lg-subtext">{{ $t('Save the colour first.') }}</small>
+              <div v-if="ab.total || ab.msg" class="st-ab">
+                <div v-if="ab.total" class="st-bar"><i :style="{ width: Math.round(ab.done / ab.total * 100) + '%' }"></i></div>
+                <span>{{ ab.msg }}</span>
+                <button v-if="ab.running" type="button" class="lg-btn tone" style="--tone: #dc2626" @click="ab.stop = true">{{ $t('Stop') }}</button>
+              </div>
+            </div>
+          </div>
           <div class="ac-f"><label>{{ $t('Icon (compound worker front)') }}</label><acct-select v-model="cf.icon" :options="iconOptions" :placeholder="$t('None')" clearable /></div>
         </template>
         <template v-if="isNew || can.numbering">
@@ -86,16 +104,19 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import TravelModal from '@/Pages/Travels/TravelModal.vue';
 import CardFace from './Parts/CardFace.vue';
+import { removeBackground } from '../../Core/removeBackground';
 
 export default {
   components: { AdminLayout, PageHeader, Link, AcctSelect, TravelModal, CardFace },
   props: { categories: Array, kinds: Array, icons: Array, values: Object, defaults: Object, contactCategories: Array, backHtml: String, css: String, can: Object },
   data() {
-    return { g: { ...this.values }, gf: this.$inertia.form({}), q: { idpass_qr_mode: this.values.idpass_qr_mode }, qf: this.$inertia.form({}), open: false, isNew: false, editId: null, cf: this.$inertia.form({}) };
+    return { g: { ...this.values }, gf: this.$inertia.form({}), q: { idpass_qr_mode: this.values.idpass_qr_mode }, qf: this.$inertia.form({}), open: false, isNew: false, editId: null, cf: this.$inertia.form({}), bgSaved: null, ab: { running: false, stop: false, done: 0, total: 0, msg: '' } };
   },
   computed: {
     errs() { return this.$page.props.errors || {}; },
     units() { return [{ value: 'days', label: this.$t('days') }, { value: 'months', label: this.$t('months') }, { value: 'years', label: this.$t('years') }]; },
+    swatches() { return [{ hex: '#ffffff', name: this.$t('White') }, { hex: '#e5e7eb', name: this.$t('Light grey') }, { hex: '#1e6fd9', name: this.$t('Blue') }, { hex: '#ffa800', name: this.$t('Yellow orange') }, { hex: '#16a34a', name: this.$t('Green') }, { hex: '#dc2626', name: this.$t('Red') }]; },
+    bgColour: { get() { return this.cf.photo_background || '#ffffff'; }, set(v) { this.cf.photo_background = v; } },
     iconOptions() { return this.icons.map(i => ({ value: i, label: i })); },
   },
   methods: {
@@ -103,11 +124,32 @@ export default {
     resetGeneral() { this.g = { ...this.g, ...this.defaults }; },
     saveGeneral() { this.gf = this.$inertia.form({ ...this.g }); this.gf.put(route('id-passes.settings.general'), { preserveScroll: true }); },
     saveQr() { this.qf = this.$inertia.form({ ...this.q }); this.qf.put(route('id-passes.settings.qr'), { preserveScroll: true }); },
-    openNew() { this.isNew = true; this.editId = null; this.cf = this.$inertia.form({ kind: 'compound', name: '', label: '', band_color: '#1565c0', arrow_color: '#fff200', icon: null, prefix: '', digits: 3, validity_value: 1, validity_unit: 'years', contact_categories: [], requires_approval: false, photo_required: true, vehicle_required: false, pooled: false }); this.cf.clearErrors(); this.open = true; },
-    openEdit(c) { this.isNew = false; this.editId = c.id; this.cf = this.$inertia.form({ ...c, contact_categories: [...(c.contact_categories || [])] }); this.cf.clearErrors(); this.open = true; },
+    openNew() { this.isNew = true; this.editId = null; this.ab = { running: false, stop: false, done: 0, total: 0, msg: '' }; this.cf = this.$inertia.form({ kind: 'compound', name: '', label: '', band_color: '#1565c0', arrow_color: '#fff200', photo_background: null, icon: null, prefix: '', digits: 3, validity_value: 1, validity_unit: 'years', contact_categories: [], requires_approval: false, photo_required: true, vehicle_required: false, pooled: false }); this.cf.clearErrors(); this.open = true; },
+    openEdit(c) { this.isNew = false; this.editId = c.id; this.bgSaved = c.photo_background || null; this.ab = { running: false, stop: false, done: 0, total: 0, msg: '' }; this.cf = this.$inertia.form({ ...c, contact_categories: [...(c.contact_categories || [])] }); this.cf.clearErrors(); this.open = true; },
     saveCat() {
       const o = { preserveScroll: true, onSuccess: () => { this.open = false; } };
       if (this.isNew) this.cf.post(route('id-passes.settings.categories.store'), o); else this.cf.put(route('id-passes.settings.categories.update', [this.editId]), o);
+    },
+    /** Re-colours the photographs of the IDs already issued: the server does those that kept their cut-out, this browser (it holds the cut-out engine) does the rest one by one. */
+    async applyBg() {
+      const ab = this.ab; Object.assign(ab, { running: true, stop: false, done: 0, total: 0, msg: this.$t('Working on the IDs already issued') });
+      let r;
+      try { r = (await window.axios.post(route('id-passes.settings.categories.photo-background', [this.editId]), {}, { headers: { 'X-Quiet': '1' } })).data; } catch (e) { ab.running = false; ab.msg = (e.response && e.response.data && e.response.data.message) || this.$t('This could not be done.'); return; }
+      let ok = 0; const failed = []; ab.total = r.pending.length;
+      for (const p of r.pending) {
+        if (ab.stop) break;
+        ab.msg = this.$t('Photograph of :n (:i of :t)', { n: p.name, i: ab.done + 1, t: ab.total });
+        try {
+          const img = (await window.axios.get(p.photo, { responseType: 'blob' })).data;
+          const cut = await removeBackground(img, null, { trim: false });
+          const fd = new FormData(); fd.append('photo', new File([img], 'photo.jpg', { type: 'image/jpeg' })); fd.append('photo_cutout', new File([cut], 'cutout.png', { type: 'image/png' })); fd.append('keep_original', '1');
+          await window.axios.post(p.save, fd, { headers: { 'X-Quiet': '1' } }); ok++;
+        } catch (e) { failed.push(p.number); }
+        ab.done++;
+      }
+      ab.running = false;
+      ab.msg = this.$t(':a photographs re-coloured, :k already had the colour, :b done here in the browser.', { a: r.recoloured + ok, k: r.kept, b: ok }) + (failed.length ? ' ' + this.$t('Could not be done: :l.', { l: failed.join(', ') }) : '') + (ab.stop ? ' ' + this.$t('Stopped.') : '');
+      this.$inertia.reload({ only: ['categories'], preserveScroll: true });
     },
     remove(c) { this.$confirm(this.$t('Delete :n?', { n: c.name })).then(ok => { if (ok) this.$inertia.delete(route('id-passes.settings.categories.destroy', [c.id]), { preserveScroll: true }); }).catch(() => {}); },
   },
@@ -120,6 +162,12 @@ tr.is-off td { opacity: 0.55; }
 .st-two { display: grid; gap: 18px; align-items: start; margin: 18px 0; grid-template-columns: minmax(0, 1fr); } @media (min-width: 1100px) { .st-two { grid-template-columns: minmax(0, 1fr) 300px; } .st-prev { position: sticky; top: 84px; } }
 .st-prev { display: grid; gap: 10px; padding: 16px; border-radius: 22px; background: var(--lg-card, #fff); box-shadow: 0 18px 34px -22px rgba(15, 37, 64, 0.5), 0 0 0 1px var(--lg-line, #e2e8f0); }
 .st-all { grid-column: 1 / -1; }
+.st-bgdot { display: inline-block; width: 14px; height: 14px; margin-left: 8px; border-radius: 4px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(15, 37, 64, 0.3); }
+.st-bg { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.st-sw { width: 38px; height: 38px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(15, 37, 64, 0.25), 0 6px 12px -6px rgba(15, 37, 64, 0.6); transition: transform 0.15s; } .st-sw:hover { transform: scale(1.1); } .st-sw.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 5px #1565c0, 0 6px 12px -6px rgba(15, 37, 64, 0.6); }
+.st-bg .st-sw-pick { width: 38px; min-width: 38px; max-width: 38px; height: 38px; padding: 2px; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); overflow: hidden; }
+.st-apply { display: grid; gap: 8px; justify-items: start; margin-top: 10px; padding: 12px; border-radius: 16px; background: var(--lg-soft, #f1f5f9); width: 100%; }
+.st-ab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; font-weight: 700; font-size: 0.82rem; } .st-bar { flex: 1 1 100%; height: 8px; border-radius: 99px; background: rgba(15, 37, 64, 0.12); overflow: hidden; } .st-bar i { display: block; height: 100%; background: #7c3aed; transition: width 0.3s; }
 .st-color { height: 42px; padding: 3px 6px; width: 100%; border-radius: 12px; cursor: pointer; }
 .st-chips { display: flex; flex-wrap: wrap; gap: 8px; } .st-chips label { display: inline-flex; gap: 6px; align-items: center; padding: 6px 12px; border-radius: 999px; background: var(--lg-soft, #f1f5f9); font-weight: 700; font-size: 0.82rem; cursor: pointer; } .st-chips label.is-on { background: #1565c0; color: #fff; }
 .st-checks { display: grid; gap: 8px; } .st-checks label { display: flex; gap: 8px; align-items: center; font-weight: 700; }

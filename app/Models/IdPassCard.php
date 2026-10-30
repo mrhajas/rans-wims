@@ -30,7 +30,7 @@ class IdPassCard extends Model
 
     protected $table = 'idpass_cards';
 
-    protected $fillable = ['account_id', 'kind', 'category_id', 'number', 'seq_no', 'token', 'status', 'staff_id', 'contact_id', 'visitor_id', 'full_name', 'title', 'phone', 'company', 'photo_path', 'photo_original',
+    protected $fillable = ['account_id', 'kind', 'category_id', 'number', 'seq_no', 'token', 'status', 'staff_id', 'contact_id', 'visitor_id', 'full_name', 'title', 'phone', 'company', 'photo_path', 'photo_original', 'photo_cutout', 'photo_bg',
         'issued_at', 'expires_at', 'host_name', 'purpose', 'authorisation_type', 'vehicle_registration', 'vehicle_description', 'restrictions', 'notes', 'replaces_id', 'replaced_by_id', 'created_by_user_id',
         'approved_by_user_id', 'approved_at', 'decision_reason', 'status_by_user_id', 'status_at', 'status_reason', 'print_count', 'last_printed_at', 'expiry_notified_at', 'deleted_by'];
 

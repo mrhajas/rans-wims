@@ -22,8 +22,13 @@ class PhotoService
 
     public const OUT_H = 1250;
 
-    /** @return array{path:string,original:?string,width:int,height:int,low:bool} */
-    public static function store(UploadedFile $file, ?UploadedFile $original = null): array
+    /**
+     * $cutout is the transparent picture of the person that the browser made from the same frame, $bg the colour the category wants behind it:
+     * with both, the card picture is the cut-out on that colour; without a cut-out, a photograph that already stands on the colour is kept as it is.
+     *
+     * @return array{path:string,original:?string,cutout:?string,bg:?string,width:int,height:int,low:bool}
+     */
+    public static function store(UploadedFile $file, ?UploadedFile $original = null, ?UploadedFile $cutout = null, ?string $bg = null): array
     {
         if ($file->getSize() > self::MAX_KB * 1024) {
             throw ValidationException::withMessages(['photo' => __('The photograph is too large. Keep it under :mb MB.', ['mb' => self::MAX_KB / 1024])]);
@@ -35,18 +40,34 @@ class PhotoService
         $dir = 'idpass/photos/' . now()->format('Y/m') . '/' . Str::random(24);
         $bytes = file_get_contents($file->getRealPath());
         $card = self::cardImage($bytes);
-        Storage::disk('local')->put($dir . '/card.jpg', $card['jpeg']);
+        $jpeg = $card['jpeg'];
+        $cutPath = null;
+        $madeBg = null;
+        if (PhotoBackground::valid($bg)) {
+            $bg = strtolower($bg);
+            $cutBytes = $cutout ? file_get_contents($cutout->getRealPath()) : null;
+            $laid = $cutBytes && @getimagesizefromstring($cutBytes) ? PhotoBackground::composite($cutBytes, $bg) : null;
+            if ($laid) {
+                $jpeg = $laid;
+                $cutPath = $dir . '/cutout.png';
+                Storage::disk('local')->put($cutPath, $cutBytes);
+                $madeBg = $bg;
+            } elseif (PhotoBackground::matches($jpeg, $bg)) {
+                $madeBg = $bg;       // already stands on the colour: left as it is
+            }
+        }
+        Storage::disk('local')->put($dir . '/card.jpg', $jpeg);
         $originalPath = null;
         $src = $original ?: $file;
         $ext = ['image/png' => 'png', 'image/webp' => 'webp'][$src->getMimeType()] ?? 'jpg';
         $originalPath = $dir . '/original.' . $ext;
         Storage::disk('local')->put($originalPath, file_get_contents($src->getRealPath()));
 
-        return ['path' => $dir . '/card.jpg', 'original' => $originalPath, 'width' => $card['src_w'], 'height' => $card['src_h'], 'low' => $card['src_w'] < self::MIN_WIDTH];
+        return ['path' => $dir . '/card.jpg', 'original' => $originalPath, 'cutout' => $cutPath, 'bg' => $madeBg, 'width' => $card['src_w'], 'height' => $card['src_h'], 'low' => $card['src_w'] < self::MIN_WIDTH];
     }
 
     /** The picture of a staff member in the card frame (their profile photograph is copied, so the card does not change if the profile photo does). */
-    public static function fromStaff(Staff $s): ?array
+    public static function fromStaff(Staff $s, ?string $bg = null): ?array
     {
         if (! $s->photo || ! Storage::disk('assets')->exists($s->photo)) {
             return null;
@@ -55,10 +76,11 @@ class PhotoService
         $card = self::cardImage($bytes);
         $dir = 'idpass/photos/' . now()->format('Y/m') . '/' . Str::random(24);
         Storage::disk('local')->put($dir . '/card.jpg', $card['jpeg']);
+        $madeBg = PhotoBackground::valid($bg) && PhotoBackground::matches($card['jpeg'], $bg) ? strtolower($bg) : null;
         $ext = strtolower(pathinfo($s->photo, PATHINFO_EXTENSION)) ?: 'jpg';
         Storage::disk('local')->put($dir . '/original.' . $ext, $bytes);
 
-        return ['path' => $dir . '/card.jpg', 'original' => $dir . '/original.' . $ext, 'width' => $card['src_w'], 'height' => $card['src_h'], 'low' => $card['src_w'] < self::MIN_WIDTH];
+        return ['path' => $dir . '/card.jpg', 'original' => $dir . '/original.' . $ext, 'cutout' => null, 'bg' => $madeBg, 'width' => $card['src_w'], 'height' => $card['src_h'], 'low' => $card['src_w'] < self::MIN_WIDTH];
     }
 
     /** The staff photograph in the card frame, kept in the cache for the preview of the issue form (nothing is saved on the staff member or a card). */

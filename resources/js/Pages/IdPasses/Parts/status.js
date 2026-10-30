@@ -1,3 +1,5 @@
 // How a status of an ID is shown (colour of the chip) and worded; shared by every ID page.
 export const statusChip = s => ({ Active: 'lg-chip-green', Expired: 'lg-chip-amber', 'Pending Approval': 'lg-chip-amber', Suspended: 'lg-chip-orange', Revoked: 'lg-chip-red', Rejected: 'lg-chip-red', Replaced: 'lg-chip-slate' }[s] || 'lg-chip-slate');
 export const statusIcon = s => ({ Active: 'tick', Expired: 'clock', 'Pending Approval': 'clock', Suspended: 'pause', Revoked: 'x-circle', Rejected: 'x-circle', Replaced: 'refresh' }[s] || 'info');
+// What a status means, for the tooltip of its chip (translate with $t where it is shown).
+export const statusTipText = s => ({ Active: 'In use: it can be printed and scanned.', Expired: 'The valid-until date has passed. Renew it to use it again.', 'Pending Approval': 'Waiting for someone else to approve it before it can be printed.', Suspended: 'Paused: scanning shows it as not valid until it is reactivated.', Revoked: 'Cancelled for good. It never works again.', Rejected: 'The request was turned down.', Replaced: 'A newer ID took its place.' }[s] || 'Status of this ID.');

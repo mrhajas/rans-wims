@@ -46,8 +46,8 @@ const smooth = (a, b, x) => {
   return t * t * (3 - 2 * t);
 };
 
-/** @param {Blob|File} file  @returns {Promise<Blob>} PNG with a transparent background */
-export async function removeBackground(file, onStatus) {
+/** @param {Blob|File} file  @param {{trim?:boolean}} opts trim:false keeps the whole picture (the person stays where they are in the frame)  @returns {Promise<Blob>} PNG with a transparent background */
+export async function removeBackground(file, onStatus, opts = {}) {
   const s = await session(onStatus);
   onStatus && onStatus('Finding the object');
   const src = await load(file);
@@ -114,6 +114,7 @@ export async function removeBackground(file, onStatus) {
   }
   if (x1 <= x0 || y1 <= y0) throw new Error('No object was found in this photo.');
   ctx.putImageData(img, 0, 0);
+  if (opts.trim === false) return new Promise((resolve, reject) => src.toBlob(b => (b ? resolve(b) : reject(new Error('Could not save the picture.'))), 'image/png'));
 
   // keep just the object: crop to it with a small margin
   const pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04);

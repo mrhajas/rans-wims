@@ -17,10 +17,10 @@
         <article v-for="c in cards" :key="c.kind" class="idd-kind" :style="{ '--tone': c.tone }">
           <header><span class="idd-ico"><icons :name="c.icon" class="w-6 h-6" /></span><div><h2>{{ c.label }}</h2><small>{{ c.counts.total }} {{ $t('in all') }}</small></div></header>
           <div class="idd-nums">
-            <div><b>{{ c.counts.active }}</b><span>{{ $t('Active') }}</span></div>
-            <div><b>{{ c.counts.expired }}</b><span>{{ $t('Expired') }}</span></div>
-            <div><b>{{ c.counts.pending }}</b><span>{{ $t('Waiting') }}</span></div>
-            <div><b>{{ c.counts.suspended + c.counts.revoked }}</b><span>{{ $t('Suspended / revoked') }}</span></div>
+            <div class="lg-tip" :data-tip="$t('In use now: can be printed and scanned')"><b>{{ c.counts.active }}</b><span>{{ $t('Active') }}</span></div>
+            <div class="lg-tip" :data-tip="$t('The valid-until date has passed')"><b>{{ c.counts.expired }}</b><span>{{ $t('Expired') }}</span></div>
+            <div class="lg-tip" :data-tip="$t('Waiting to be approved')"><b>{{ c.counts.pending }}</b><span>{{ $t('Waiting') }}</span></div>
+            <div class="lg-tip" :data-tip="$t('Paused or cancelled: scanning shows them as not valid')"><b>{{ c.counts.suspended + c.counts.revoked }}</b><span>{{ $t('Suspended / revoked') }}</span></div>
           </div>
           <footer><Link :href="c.url" class="lg-btn tone" style="--tone: #2563eb"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span>{{ $t('Open') }}</Link><Link v-if="c.create_url" :href="c.create_url" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Issue') }}</Link></footer>
         </article>
@@ -73,6 +73,7 @@ export default {
 .idd-kind header { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; } .idd-kind h2 { margin: 0; font-size: 1.05rem; } .idd-kind small { color: var(--lg-mute, #64748b); }
 .idd-ico { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; color: #fff; background: var(--tone); box-shadow: 0 12px 20px -12px var(--tone); }
 .idd-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; text-align: center; } .idd-nums b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; } .idd-nums span { font-size: 0.64rem; font-weight: 800; text-transform: uppercase; color: var(--lg-mute, #64748b); line-height: 1.2; display: block; }
+.idd-nums > div { padding: 6px 2px; border-radius: 12px; transition: background-color 0.15s, transform 0.15s; } .idd-nums > div:hover { background: color-mix(in srgb, var(--tone) 10%, transparent); transform: translateY(-2px); } .idd-nums .lg-tip::after { left: 50%; right: auto; transform: translate(-50%, 4px); } .idd-nums .lg-tip:hover::after { transform: translate(-50%, 0); }
 .idd-kind footer { display: flex; gap: 8px; flex-wrap: wrap; }
 .idd-two { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
 .idd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; grid-template-columns: minmax(0, 1fr); } .idd-list li { min-width: 0; } .idd-list a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; color: inherit; text-decoration: none; } .idd-list a:hover { background: rgba(21, 101, 192, 0.08); }

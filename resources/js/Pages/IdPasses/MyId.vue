@@ -31,7 +31,7 @@
             <section class="myid-hero">
               <span class="myid-hero-ico"><icons name="user" class="w-6 h-6" /></span>
               <div class="min-w-0"><small>{{ $t('Welcome back') }}</small><h2>{{ firstName }}</h2></div>
-              <span class="myid-badge" :class="'st-' + card.status_raw.replace(/\s/g, '')"><icons :name="statusIcon(card.status)" class="w-4 h-4" />{{ $t(card.status) }}</span>
+              <span class="myid-badge lg-tip" :data-tip="$t(statusTipText(card.status))" :class="'st-' + card.status_raw.replace(/\s/g, '')"><icons :name="statusIcon(card.status)" class="w-4 h-4" />{{ $t(card.status) }}</span>
             </section>
             <section v-if="card.status_raw !== 'Active'" class="lg-note lg-note-amber myid-note-top"><icons :name="statusIcon(card.status)" class="w-4 h-4" /><span>{{ $t('This ID is not active (:s). Please see the office.', { s: $t(card.status).toLowerCase() }) }}</span></section>
 
@@ -68,7 +68,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import IdCutout from './Parts/IdCutout.vue';
 import IdMakeOverlay from './Parts/IdMakeOverlay.vue';
-import { statusIcon } from './Parts/status';
+import { statusIcon, statusTipText } from './Parts/status';
 import { idMakeFile } from '@/Core/idMake';
 
 // "My ID": the signed-in person's own card. A short scan plays first (the card outline is read, its QR squares assemble, a laser sweeps), then the card drops in. Tap/click skips the scan.
@@ -89,7 +89,7 @@ export default {
   },
   beforeUnmount() { this.timers.forEach(t => { clearInterval(t); clearTimeout(t); }); },
   methods: {
-    statusIcon,
+    statusIcon, statusTipText,
     async make(kind) {
       const c = this.card;
       if (c.print_count > 0) { window.location = c.detail_url || route('id-passes.my-id'); return; }
@@ -142,7 +142,7 @@ export default {
 @keyframes myid-glint { 0% { left: -40%; } 45%, 100% { left: 140%; } }
 .myid-hero-ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 16px; background: rgba(255, 255, 255, 0.2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); flex: none; }
 .myid-hero > div { flex: 1; } .myid-hero small { opacity: 0.8; font-weight: 600; } .myid-hero h2 { margin: 0; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; }
-.myid-badge { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-weight: 800; font-size: 0.82rem; background: #fff; color: #166534; box-shadow: 0 8px 14px -8px rgba(0, 0, 0, 0.5); }
+.myid-badge.lg-tip::after { right: 0; } .myid-badge { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-weight: 800; font-size: 0.82rem; background: #fff; color: #166534; box-shadow: 0 8px 14px -8px rgba(0, 0, 0, 0.5); }
 .myid-badge.st-PendingApproval, .myid-badge.st-Expired { color: #92400e; } .myid-badge.st-Suspended { color: #9a3412; } .myid-badge.st-Revoked, .myid-badge.st-Replaced, .myid-badge.st-Rejected { color: #991b1b; }
 .myid-note-top { margin: 0; }
 @keyframes myid-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }

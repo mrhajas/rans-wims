@@ -9,7 +9,9 @@ use App\Models\IdPassCard;
 use App\Models\IdPassCategory;
 use App\Services\IdPass\CardAssets;
 use App\Services\IdPass\CardRenderer;
+use App\Services\IdPass\IdPassKinds;
 use App\Services\IdPass\IdPassSettings;
+use App\Services\IdPass\PhotoBackground;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,7 +60,7 @@ class SettingsController extends Controller
         $used = IdPassCard::query()->selectRaw('category_id, COUNT(*) n, MAX(seq_no) m')->groupBy('category_id')->get()->keyBy('category_id');
         $maxLedger = DB::table('idpass_numbers')->selectRaw('category_id, MAX(seq_no) m')->groupBy('category_id')->pluck('m', 'category_id');
         $cats = IdPassCategory::query()->orderBy('sort_order')->orderBy('name')->get()->map(fn (IdPassCategory $c) => ['id' => $c->id, 'kind' => $c->kind, 'key' => $c->key, 'name' => $c->name, 'label' => $c->label, 'prefix' => $c->prefix, 'digits' => $c->digits, 'next_number' => $c->next_number,
-            'band_color' => $c->band_color, 'arrow_color' => $c->arrow_color, 'icon' => $c->icon, 'contact_categories' => $c->contact_categories ?: [], 'validity_value' => $c->validity_value, 'validity_unit' => $c->validity_unit, 'requires_approval' => $c->requires_approval,
+            'band_color' => $c->band_color, 'arrow_color' => $c->arrow_color, 'photo_background' => $c->photo_background, 'icon' => $c->icon, 'contact_categories' => $c->contact_categories ?: [], 'validity_value' => $c->validity_value, 'validity_unit' => $c->validity_unit, 'requires_approval' => $c->requires_approval,
             'photo_required' => $c->photo_required, 'vehicle_required' => $c->vehicle_required, 'pooled' => $c->pooled, 'is_active' => $c->is_active, 'sort_order' => $c->sort_order, 'cards' => (int) ($used[$c->id]->n ?? 0), 'min_next' => (int) ($maxLedger[$c->id] ?? 0) + 1, 'example' => $c->format((int) $c->next_number)]);
         $sample = IdPassCategory::query()->where('kind', 'staff')->first();
         $back = $sample ? CardRenderer::back(CardRenderer::draft(['full_name' => 'Sample', 'issued' => Carbon::today(config('app.timezone')), 'expires' => Carbon::today(config('app.timezone'))->addYears(2)->subDay()], $sample, 'RS001', null, 'https://wims.invalid/id-verify/preview'), 'web') : '';
@@ -114,7 +116,7 @@ class SettingsController extends Controller
         $this->need('manage-id-templates');
         $this->need('manage-id-numbering');
         $d = $request->validate(['kind' => 'required|in:staff,compound,visitor,gate', 'name' => 'required|string|max:80', 'label' => 'nullable|string|max:40', 'prefix' => ['nullable', 'regex:/^[A-Za-z0-9-]{0,12}$/'], 'digits' => 'required|integer|min:1|max:8',
-            'band_color' => $this->colour(), 'arrow_color' => $this->colour(), 'icon' => 'nullable|string|max:40', 'contact_categories' => 'nullable|array', 'contact_categories.*' => 'string|max:80', 'validity_value' => 'nullable|integer|min:1|max:3650',
+            'band_color' => $this->colour(), 'arrow_color' => $this->colour(), 'photo_background' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'icon' => 'nullable|string|max:40', 'contact_categories' => 'nullable|array', 'contact_categories.*' => 'string|max:80', 'validity_value' => 'nullable|integer|min:1|max:3650',
             'validity_unit' => 'required|in:days,months,years', 'requires_approval' => 'boolean', 'photo_required' => 'boolean', 'vehicle_required' => 'boolean', 'pooled' => 'boolean'], ['name.required' => __('Type the name of the category.')]);
         $key = Str::slug($d['name']) ?: 'category';
         $base = $key;
@@ -124,7 +126,7 @@ class SettingsController extends Controller
         if (! empty($d['icon']) && ! in_array($d['icon'], $this->icons(), true)) {
             throw ValidationException::withMessages(['icon' => __('Choose an icon from the list.')]);
         }
-        $c = IdPassCategory::create(['kind' => $d['kind'], 'key' => $key, 'name' => trim($d['name']), 'label' => $d['label'] ?? null, 'prefix' => strtoupper((string) ($d['prefix'] ?? '')), 'digits' => $d['digits'], 'next_number' => 1, 'band_color' => $d['band_color'], 'arrow_color' => $d['arrow_color'],
+        $c = IdPassCategory::create(['kind' => $d['kind'], 'key' => $key, 'name' => trim($d['name']), 'label' => $d['label'] ?? null, 'prefix' => strtoupper((string) ($d['prefix'] ?? '')), 'digits' => $d['digits'], 'next_number' => 1, 'band_color' => $d['band_color'], 'arrow_color' => $d['arrow_color'], 'photo_background' => ! empty($d['photo_background']) ? strtolower($d['photo_background']) : null,
             'icon' => $d['icon'] ?? null, 'contact_categories' => $d['kind'] === 'compound' ? array_values(array_filter($d['contact_categories'] ?? [])) : null, 'validity_value' => $d['validity_value'] ?? null, 'validity_unit' => $d['validity_unit'],
             'requires_approval' => (bool) ($d['requires_approval'] ?? false), 'photo_required' => (bool) ($d['photo_required'] ?? false), 'vehicle_required' => (bool) ($d['vehicle_required'] ?? false), 'pooled' => $d['kind'] === 'visitor' && (bool) ($d['pooled'] ?? false), 'is_active' => true, 'sort_order' => (int) IdPassCategory::query()->max('sort_order') + 1]);
         log_activity('RANS ID category added', ['name' => $c->name, 'kind' => $c->kind], $c, 'RANS ID & Pass Management');
@@ -138,14 +140,14 @@ class SettingsController extends Controller
         $this->gate();
         $u = $request->user();
         $c = IdPassCategory::query()->findOrFail($category);
-        $before = $c->only(['name', 'label', 'band_color', 'arrow_color', 'icon', 'prefix', 'digits', 'next_number', 'validity_value', 'validity_unit', 'requires_approval', 'photo_required', 'vehicle_required', 'pooled', 'is_active', 'contact_categories', 'sort_order']);
+        $before = $c->only(['name', 'label', 'band_color', 'arrow_color', 'photo_background', 'icon', 'prefix', 'digits', 'next_number', 'validity_value', 'validity_unit', 'requires_approval', 'photo_required', 'vehicle_required', 'pooled', 'is_active', 'contact_categories', 'sort_order']);
         $set = [];
         if ($u->can('manage-id-templates')) {
-            $d = $request->validate(['name' => 'required|string|max:80', 'label' => 'nullable|string|max:40', 'band_color' => $this->colour(), 'arrow_color' => $this->colour(), 'icon' => 'nullable|string|max:40']);
+            $d = $request->validate(['name' => 'required|string|max:80', 'label' => 'nullable|string|max:40', 'band_color' => $this->colour(), 'arrow_color' => $this->colour(), 'photo_background' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'icon' => 'nullable|string|max:40']);
             if (! empty($d['icon']) && ! in_array($d['icon'], $this->icons(), true)) {
                 throw ValidationException::withMessages(['icon' => __('Choose an icon from the list.')]);
             }
-            $set += ['name' => trim($d['name']), 'label' => $d['label'] ?? null, 'band_color' => $d['band_color'], 'arrow_color' => $d['arrow_color'], 'icon' => $d['icon'] ?? null];
+            $set += ['name' => trim($d['name']), 'label' => $d['label'] ?? null, 'band_color' => $d['band_color'], 'arrow_color' => $d['arrow_color'], 'photo_background' => ! empty($d['photo_background']) ? strtolower($d['photo_background']) : null, 'icon' => $d['icon'] ?? null];
         }
         if ($u->can('manage-id-numbering')) {
             $min = (int) DB::table('idpass_numbers')->where('category_id', $c->id)->max('seq_no') + 1;
@@ -169,11 +171,40 @@ class SettingsController extends Controller
         if (array_key_exists('next_number', $set) || array_key_exists('prefix', $set)) {
             log_activity('RANS ID numbering changed', ['category' => $c->name, 'prefix' => $c->prefix, 'digits' => $c->digits, 'next' => $c->next_number], $c, 'RANS ID & Pass Management');
         }
+        if (array_key_exists('photo_background', $set) && ($before['photo_background'] ?? null) !== ($set['photo_background'] ?? null)) {
+            log_activity('RANS ID photo background changed', ['category' => $c->name, 'from' => $before['photo_background'] ?? null, 'to' => $set['photo_background']], $c, 'RANS ID & Pass Management');
+        }
         if (array_key_exists('band_color', $set) || array_key_exists('icon', $set) || array_key_exists('label', $set)) {
             log_activity('RANS ID card template changed', ['category' => $c->name], $c, 'RANS ID & Pass Management');
         }
 
         return back()->with('message', __('Saved.'));
+    }
+
+    /**
+     * Puts the photographs of the IDs already issued on the colour of the category: cards that kept their cut-out are re-coloured here, photographs already on the colour are left alone,
+     * and the rest are listed so the browser (which holds the cut-out engine) can do them one by one.
+     */
+    public function applyPhotoBackground(Request $request, int $category)
+    {
+        $this->gate();
+        $this->need('manage-id-templates');
+        $c = IdPassCategory::query()->findOrFail($category);
+        abort_unless(PhotoBackground::valid($c->photo_background), 422, __('Choose a photo background colour for this category first.'));
+        $out = ['recoloured' => 0, 'kept' => 0, 'no_photo' => 0, 'pending' => []];
+        IdPassCard::query()->where('category_id', $c->id)->whereIn('status', IdPassCard::OPEN)->whereNotNull('photo_path')->orderBy('id')->chunkById(200, function ($cards) use (&$out, $c) {
+            foreach ($cards as $card) {
+                $r = PhotoBackground::apply($card, $c->photo_background);
+                if ($r === 'needs_browser') {
+                    $out['pending'][] = ['id' => $card->id, 'number' => $card->number, 'name' => $card->full_name, 'photo' => route('id-passes.' . IdPassKinds::get($card->kind)['route'] . '.photo-file', [$card->id]), 'save' => route('id-passes.' . IdPassKinds::get($card->kind)['route'] . '.photo', [$card->id])];
+                } else {
+                    $out[$r]++;
+                }
+            }
+        });
+        log_activity('RANS ID photo background applied', ['category' => $c->name, 'colour' => $c->photo_background, 'recoloured' => $out['recoloured'], 'kept' => $out['kept'], 'for_browser' => count($out['pending'])], $c, 'RANS ID & Pass Management');
+
+        return response()->json($out + ['colour' => $c->photo_background]);
     }
 
     public function destroy(Request $request, int $category)

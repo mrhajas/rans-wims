@@ -1,6 +1,6 @@
 <template>
   <div class="idc" :style="{ '--idc-w': size + 'px', '--idc-c': color || '#1565c0' }">
-    <div class="idc-stage" ref="stage" @pointermove="move" @pointerleave="leave" @click="flip" role="button" tabindex="0" :aria-label="$t('Turn the card over')" @keydown.enter.prevent="flip" @keydown.space.prevent="flip">
+    <div class="idc-stage lg-tip" :data-tip="side === 'front' ? $t('Click the card to see the back') : $t('Click the card to see the front')" ref="stage" @pointermove="move" @pointerleave="leave" @click="flip" role="button" tabindex="0" :aria-label="$t('Turn the card over')" @keydown.enter.prevent="flip" @keydown.space.prevent="flip">
       <span class="idc-shadow"></span>
       <div class="idc-tilt" :style="tilt">
         <div class="idc-flip" :class="{ 'is-back': side === 'back' }">
@@ -12,10 +12,10 @@
     </div>
 
     <div class="idc-btns" role="group" :aria-label="$t('Card actions')">
-      <button type="button" class="lg-btn tone" :class="{ 'tone-solid': side === 'front' }" style="--tone: #2563eb" :aria-pressed="side === 'front'" @click="side = 'front'"><span class="tone-ico"><icons name="user" class="w-4 h-4" /></span>{{ $t('Front') }}</button>
-      <button type="button" class="lg-btn tone" :class="{ 'tone-solid': side === 'back' }" style="--tone: #d97706" :aria-pressed="side === 'back'" @click="side = 'back'"><span class="tone-ico"><icons name="qr-code" class="w-4 h-4" /></span>{{ $t('Back') }}</button>
-      <button v-if="canPrint" type="button" class="lg-btn tone tone-solid" style="--tone: #4f46e5" :disabled="blocked" :title="blocked ? blockedText : ''" @click="$emit('print')"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span>{{ $t('Print') }}</button>
-      <button v-if="canDownload" type="button" class="lg-btn tone tone-solid" style="--tone: #0d9488" :disabled="blocked" :title="blocked ? blockedText : ''" @click="$emit('download')"><span class="tone-ico"><icons name="download" class="w-4 h-4" /></span>{{ $t('Download') }}</button>
+      <button type="button" class="lg-btn tone lg-tip" :data-tip="$t('Show the front of the card')" :class="{ 'tone-solid': side === 'front' }" style="--tone: #2563eb" :aria-pressed="side === 'front'" @click="side = 'front'"><span class="tone-ico"><icons name="user" class="w-4 h-4" /></span>{{ $t('Front') }}</button>
+      <button type="button" class="lg-btn tone lg-tip" :data-tip="$t('Show the back: QR code and terms')" :class="{ 'tone-solid': side === 'back' }" style="--tone: #d97706" :aria-pressed="side === 'back'" @click="side = 'back'"><span class="tone-ico"><icons name="qr-code" class="w-4 h-4" /></span>{{ $t('Back') }}</button>
+      <button v-if="canPrint" type="button" class="lg-btn tone tone-solid lg-tip" style="--tone: #4f46e5" :disabled="blocked" :data-tip="blocked ? blockedText : $t('Print this card (55 x 85 mm)')" @click="$emit('print')"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span>{{ $t('Print') }}</button>
+      <button v-if="canDownload" type="button" class="lg-btn tone tone-solid lg-tip" style="--tone: #0d9488" :disabled="blocked" :data-tip="blocked ? blockedText : $t('Download the card as a PDF')" @click="$emit('download')"><span class="tone-ico"><icons name="download" class="w-4 h-4" /></span>{{ $t('Download') }}</button>
     </div>
   </div>
 </template>
@@ -62,7 +62,20 @@ export default {
 .idc-skel i { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%); transform: translateX(-100%); animation: idc-sheen 1.3s ease-in-out infinite; }
 @keyframes idc-sheen { to { transform: translateX(100%); } }
 
+.idc-stage.lg-tip::after { right: auto; left: 50%; bottom: calc(100% + 10px); transform: translate(-50%, 4px); }
+.idc-stage.lg-tip:hover::after, .idc-stage.lg-tip:focus-visible::after { transform: translate(-50%, 0); transition-delay: 0.35s; }
+.idc-btns .lg-tip::after { right: auto; left: 50%; transform: translate(-50%, 4px); }
+.idc-btns .lg-tip:hover::after, .idc-btns .lg-tip:focus-visible::after { transform: translate(-50%, 0); }
+/* hover: the card lifts, its shadow spreads, a ring in the colour of the ID glows and a band of light crosses it */
+.idc-stage:hover .idc-shadow { opacity: 0.75; transform: scale(1.12); animation: none; }
+.idc-shadow { transition: opacity 0.3s, transform 0.3s; }
+.idc-side :deep(.idp-face) { transition: box-shadow 0.3s; }
+.idc-stage:hover .idc-side :deep(.idp-face) { box-shadow: 0 34px 44px -22px rgba(8, 20, 40, 0.8), 0 0 0 3px color-mix(in srgb, var(--idc-c) 55%, transparent), 0 0 34px -4px color-mix(in srgb, var(--idc-c) 60%, transparent); }
+.idc-glare::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); }
+.idc-stage:hover .idc-glare::after { transform: translateX(120%); transition: transform 0.9s ease; }
+.idc-btns .lg-btn { transition: transform 0.15s, box-shadow 0.2s; } .idc-btns .lg-btn:not(:disabled):hover { transform: translateY(-2px); } .idc-btns .lg-btn:not(:disabled):active { transform: translateY(0) scale(0.97); }
+@media (hover: none) { .idc-stage.lg-tip::after { display: none; } }
 .idc-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; }
 @media (max-width: 420px) { .idc-btns { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 320px; } .idc-btns .lg-btn { justify-content: center; } }
-@media (prefers-reduced-motion: reduce) { .idc-stage, .idc-tilt, .idc-shadow, .idc-skel i { animation: none !important; } .idc-flip { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .idc-stage, .idc-tilt, .idc-shadow, .idc-skel i { animation: none !important; } .idc-flip, .idc-glare::after, .idc-btns .lg-btn { transition: none !important; } }
 </style>

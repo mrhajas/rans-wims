@@ -9,8 +9,14 @@ use App\Services\Workflow\WorkflowMessenger;
 /** Hands an ID event to its Alerts page (who is told, on which channel, with which words). Never throws: a failed message must not stop an ID from being saved. No link in the text. */
 class IdPassNotifier
 {
+    /** Set by the samples command: sample IDs must never send a message to anyone. */
+    public static bool $muted = false;
+
     public static function fire(string $event, IdPassCard $c, ?User $actor = null, ?string $reason = null): void
     {
+        if (self::$muted) {
+            return;
+        }
         try {
             $c->loadMissing('category');
             $kind = __(\App\Models\IdPassCategory::KINDS[$c->kind] ?? $c->kind);

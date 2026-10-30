@@ -35,12 +35,12 @@
             <th class="idl-sort" @click="sortBy('printed')">{{ $t('Printed') }}<i>{{ arrow('printed') }}</i></th><th></th></tr></thead>
           <tbody>
             <tr v-for="r in rows.data" :key="r.id" class="is-click idl-row" :style="{ '--c': r.color }" @click="open(r)">
-              <td class="idl-ph"><img v-if="r.has_photo" loading="lazy" :src="route('id-passes.' + info.route + '.photo-file', [r.id]) + '?w=96'" alt="" /><span v-else><icons name="user" class="w-4 h-4" /></span></td>
-              <td :data-label="$t('ID number')"><span class="lg-main idl-no">{{ r.number }}</span><div v-if="r.staff_number" class="lg-subtext">{{ r.staff_number }}</div></td>
+              <td class="idl-ph"><img v-if="r.has_photo" loading="lazy" decoding="async" :src="route('id-passes.' + info.route + '.photo-file', [r.id]) + '?w=96'" alt="" /><span v-else><icons name="user" class="w-4 h-4" /></span></td>
+              <td :data-label="$t('ID number')"><span class="lg-main idl-no lg-tip tip-left" :data-tip="$t('Open :n', { n: r.number })">{{ r.number }}</span><div v-if="r.staff_number" class="lg-subtext">{{ r.staff_number }}</div></td>
               <td :data-label="$t('Name')"><template v-if="r.pooled"><span v-if="r.holder" class="lg-chip lg-chip-amber idl-hold">{{ $t('With') }} {{ r.holder }}</span><span v-else class="lg-chip lg-chip-green idl-hold">{{ $t('Free') }}</span></template><template v-else>{{ r.name }}<div v-if="r.phone" class="lg-subtext">{{ r.phone }}</div></template></td>
               <td :data-label="$t('Category')"><category-chip :name="r.category" :color="r.color" :ink="r.ink" :icon="r.icon" /></td>
               <td :data-label="$t('Details')">{{ r.title || '-' }}<div v-if="r.vehicle" class="lg-subtext">{{ r.vehicle }}</div><div v-if="r.host" class="lg-subtext">{{ $t('Host') }}: {{ r.host }}</div></td>
-              <td :data-label="$t('Status')"><span class="lg-chip" :class="statusChip(r.status)"><icons :name="statusIcon(r.status)" class="w-3 h-3" /> {{ $t(r.status) }}</span></td>
+              <td :data-label="$t('Status')"><span class="lg-chip lg-tip tip-left" :class="statusChip(r.status)" :data-tip="statusTip(r.status)"><icons :name="statusIcon(r.status)" class="w-3 h-3" /> {{ $t(r.status) }}</span></td>
               <td :data-label="$t('Valid until')">{{ r.expires_at ? $date(r.expires_at) : $t('No expiry') }}<div v-if="r.days_left !== null && r.days_left >= 0 && r.days_left <= 30 && r.status === 'Active'" class="lg-subtext idl-soon">{{ $t(':n days left', { n: r.days_left }) }}</div></td>
               <td :data-label="$t('Printed')">{{ r.print_count }}<div v-if="r.last_printed_at" class="lg-subtext">{{ $datetime(r.last_printed_at) }}</div></td>
               <td class="lg-sticky-end" @click.stop>
@@ -67,7 +67,7 @@ import SimpleAutocomplete from '@/Shared/SimpleAutocomplete.vue';
 import ScTabs from '../../Subcontracts/ScTabs.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import Pager from '@/Pages/Accounts/Pager.vue';
-import { statusChip, statusIcon } from '../Parts/status';
+import { statusChip, statusIcon, statusTipText } from '../Parts/status';
 import CategoryChip from '../Parts/CategoryChip.vue';
 import IdMakeOverlay from '../Parts/IdMakeOverlay.vue';
 import { idMakeFile } from '@/Core/idMake';
@@ -91,7 +91,7 @@ export default {
       const ok = await idMakeFile(route('id-passes.' + this.info.route + '.' + kind, [r.id]), { mode: kind, color: r.color, title: kind === 'print' ? this.$t('Preparing :n for printing', { n: r.number }) : this.$t('Creating the PDF of :n', { n: r.number }), doneText: r.number, fail: this.$t('The file could not be made.') });
       if (ok) router.reload({ preserveScroll: true });
     },
-    statusChip, statusIcon,
+    statusChip, statusIcon, statusTip(s) { return this.$t(statusTipText(s)); },
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('id-passes.' + this.info.route + '.index'), q, { preserveState: true }); },
     setStatus(s) { this.f.status = s; this.go(); },
     reset() { this.f = { sort: this.f.sort, dir: this.f.dir }; this.go(); },
@@ -109,6 +109,10 @@ export default {
 .idl-sort { cursor: pointer; user-select: none; white-space: nowrap; } .idl-sort i { font-style: normal; font-size: 0.7em; }
 .idl-ph { width: 54px; } .idl-ph img, .idl-ph span { width: 40px; height: 50px; object-fit: cover; border-radius: 10px; background: #afb3b6; display: grid; place-items: center; color: #fff; box-shadow: 0 6px 12px -8px rgba(15, 37, 64, 0.6); }
 .idl-row td:first-child { box-shadow: inset 5px 0 0 var(--c); }
+.idl-row { transition: background-color 0.15s; } .idl-row:hover { background: color-mix(in srgb, var(--c) 7%, transparent); }
+.idl-ph img { transition: transform 0.2s ease, box-shadow 0.2s ease; transform-origin: 0 50%; } .idl-row:hover .idl-ph img { transform: scale(1.55); box-shadow: 0 12px 22px -8px rgba(15, 37, 64, 0.7); position: relative; z-index: 2; }
+.idl-no { display: inline-block; transition: transform 0.15s; } .idl-row:hover .idl-no { transform: translateX(2px); }
+@media (hover: none), (prefers-reduced-motion: reduce) { .idl-row:hover .idl-ph img, .idl-row:hover .idl-no { transform: none; } .idl-ph img, .idl-row { transition: none; } }
 .idl-hold { text-transform: none; }
 .idl-no { letter-spacing: 0.04em; font-weight: 800; color: #1e4467; } .idl-soon { color: #b45309; font-weight: 700; }
 .idl-empty { display: grid; justify-items: center; gap: 6px; padding: 26px 8px; color: var(--lg-mute, #64748b); }

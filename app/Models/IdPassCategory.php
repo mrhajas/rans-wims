@@ -11,7 +11,7 @@ class IdPassCategory extends Model
 
     protected $table = 'idpass_categories';
 
-    protected $fillable = ['account_id', 'kind', 'key', 'name', 'label', 'prefix', 'digits', 'next_number', 'band_color', 'arrow_color', 'icon', 'contact_categories', 'validity_value', 'validity_unit',
+    protected $fillable = ['account_id', 'kind', 'key', 'name', 'label', 'prefix', 'digits', 'next_number', 'band_color', 'arrow_color', 'photo_background', 'icon', 'contact_categories', 'validity_value', 'validity_unit',
         'requires_approval', 'photo_required', 'vehicle_required', 'pooled', 'is_active', 'sort_order'];
 
     public $casts = ['contact_categories' => 'array', 'requires_approval' => 'bool', 'photo_required' => 'bool', 'vehicle_required' => 'bool', 'pooled' => 'bool', 'is_active' => 'bool', 'digits' => 'int', 'next_number' => 'int', 'validity_value' => 'int'];

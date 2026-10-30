@@ -638,6 +638,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
             Route::put('qr', [$set, 'qr'])->middleware('throttle:30,1,id-passes.settings.qr')->name('qr');
             Route::post('categories', [$set, 'store'])->middleware('throttle:30,1,id-passes.settings.categories.store')->name('categories.store');
             Route::put('categories/{category}', [$set, 'update'])->whereNumber('category')->middleware('throttle:60,1,id-passes.settings.categories.update')->name('categories.update');
+            Route::post('categories/{category}/photo-background', [$set, 'applyPhotoBackground'])->whereNumber('category')->middleware('throttle:20,1,id-passes.settings.categories.photo-background')->name('categories.photo-background');
             Route::delete('categories/{category}', [$set, 'destroy'])->whereNumber('category')->middleware('throttle:20,1,id-passes.settings.categories.destroy')->name('categories.destroy');
         });
 

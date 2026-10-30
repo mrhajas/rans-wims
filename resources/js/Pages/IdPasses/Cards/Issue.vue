@@ -64,13 +64,13 @@
 
           <section v-if="showPhoto && !(cat && cat.pooled)" class="lg-card">
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="camera" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Photograph') }} <b v-if="cat && cat.photo_required" class="wims-req">*</b></h2><p class="lg-card-sub">{{ $t('Upload a picture or take one now. The original is kept; the card gets the part inside the frame.') }}</p></div></header>
-            <photo-cropper v-model="photo" :staff-photo-url="staffPhotoUrl" :min-width="minPhotoWidth" />
+            <photo-cropper v-model="photo" :staff-photo-url="staffPhotoUrl" :min-width="minPhotoWidth" :background="(cat && cat.photo_bg) || ''" @busy="photoBusy = $event" />
             <span class="ac-err">{{ err('photo') || photoMissing }}</span>
           </section>
 
           <div class="lg-actionbar"><span class="lg-actionbar-note">{{ cat && cat.requires_approval ? $t('Saved as waiting for approval.') : $t('The ID is active as soon as it is saved.') }}</span>
             <div class="lg-actionbar-btns"><Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn tone t-slate" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</Link>
-              <button type="submit" class="lg-btn tone tone-solid" :disabled="form.processing || !canSave" style="--tone: #16a34a"><span class="tone-ico"><icons name="send" class="w-4 h-4" /></span>{{ form.processing ? $t('Saving...') : (cat && cat.pooled ? $t('Make the passes') : cat && cat.requires_approval ? $t('Submit for approval') : $t('Issue ID')) }}</button></div></div>
+              <button type="submit" class="lg-btn tone tone-solid" :disabled="form.processing || !canSave || photoBusy" :title="photoBusy ? $t('Wait until the photograph background is ready.') : ''" style="--tone: #16a34a"><span class="tone-ico"><icons name="send" class="w-4 h-4" /></span>{{ form.processing ? $t('Saving...') : (cat && cat.pooled ? $t('Make the passes') : cat && cat.requires_approval ? $t('Submit for approval') : $t('Issue ID')) }}</button></div></div>
         </form>
 
         <aside class="idi-preview">
@@ -105,7 +105,7 @@ export default {
     return {
       form: this.$inertia.form({ category_id: first ? first.id : null, staff_id: null, contact_id: null, visitor_id: null, full_name: '', title: '', phone: '', company: '', issued_at: this.today, expires_at: null, host_name: '', purpose: '', authorisation_type: null,
         vehicle_registration: '', vehicle_description: '', restrictions: '', notes: '', manual_number: '', quantity: 10 }),
-      person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, manual: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
+      person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, photoBusy: false, manual: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
     };
   },
   computed: {
@@ -191,7 +191,7 @@ export default {
       const f = this.form;
       f.transform(d => {
         const o = { ...d }; if (!this.manual) o.manual_number = '';
-        if (this.photo) { o.photo = this.photo.file; if (this.photo.original) o.photo_original = this.photo.original; }
+        if (this.photo) { o.photo = this.photo.file; if (this.photo.original) o.photo_original = this.photo.original; if (this.photo.cutout) o.photo_cutout = this.photo.cutout; }
         Object.keys(o).forEach(k => { if (o[k] === null || o[k] === undefined) delete o[k]; });
         return o;
       }).post(route('id-passes.' + this.info.route + '.store'), {

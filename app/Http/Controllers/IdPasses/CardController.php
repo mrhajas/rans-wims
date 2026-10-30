@@ -82,7 +82,7 @@ class CardController extends Controller
         $next = CardService::suggest($c);
 
         return ['id' => $c->id, 'name' => $c->name, 'label' => $c->label, 'next' => $next['number'], 'next_seq' => $next['seq'], 'prefix' => $c->prefix, 'digits' => $c->digits, 'validity_value' => $c->validity_value, 'validity_unit' => $c->validity_unit,
-            'pooled' => $c->pooled, 'requires_approval' => $c->requires_approval, 'photo_required' => $c->photo_required, 'vehicle_required' => $c->vehicle_required, 'contact_categories' => $c->contact_categories ?: [], 'band' => $c->band_color, 'arrow' => $c->arrow_color, 'icon' => $c->icon];
+            'pooled' => $c->pooled, 'requires_approval' => $c->requires_approval, 'photo_required' => $c->photo_required, 'vehicle_required' => $c->vehicle_required, 'contact_categories' => $c->contact_categories ?: [], 'band' => $c->band_color, 'arrow' => $c->arrow_color, 'icon' => $c->icon, 'photo_bg' => $c->photo_background];
     }
 
     private function rules(string $kind): array
@@ -91,7 +91,7 @@ class CardController extends Controller
             'category_id' => 'required|integer', 'staff_id' => 'nullable|integer', 'visitor_id' => 'nullable|integer', 'full_name' => 'nullable|string|max:190', 'title' => 'nullable|string|max:120',
             'phone' => 'nullable|string|max:60', 'company' => 'nullable|string|max:150', 'issued_at' => 'required|date', 'expires_at' => 'nullable|date', 'host_name' => 'nullable|string|max:150', 'purpose' => 'nullable|string|max:255',
             'authorisation_type' => 'nullable|string|max:80', 'vehicle_registration' => 'nullable|string|max:40', 'vehicle_description' => 'nullable|string|max:150', 'restrictions' => 'nullable|string|max:2000', 'notes' => 'nullable|string|max:2000',
-            'manual_number' => 'nullable|integer|min:1|max:99999999', 'quantity' => 'nullable|integer|min:1|max:200', 'contact_id' => 'nullable|integer', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB,
+            'manual_number' => 'nullable|integer|min:1|max:99999999', 'quantity' => 'nullable|integer|min:1|max:200', 'contact_id' => 'nullable|integer', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 
         ];
     }
 
@@ -113,14 +113,17 @@ class CardController extends Controller
         }
         $photo = null;
         if ($request->hasFile('photo')) {
-            $photo = PhotoService::store($request->file('photo'), $request->file('photo_original'));
+            $photo = PhotoService::store($request->file('photo'), $request->file('photo_original'), $request->file('photo_cutout'), $cat->photo_background);
         } elseif ($kind === 'staff' && ! empty($d['staff_id']) && ($s = Staff::query()->find((int) $d['staff_id']))) {
-            $photo = PhotoService::fromStaff($s);
+            $photo = PhotoService::fromStaff($s, $cat->photo_background);
         }
         $card = CardService::issue($cat, $d, $photo, $request->user(), $manual);
         $msg = $card->status === IdPassCard::PENDING ? __(':n is waiting for approval.', ['n' => $card->number]) : __(':n was issued to :p.', ['n' => $card->number, 'p' => $card->full_name]);
         if ($photo && ! empty($photo['low'])) {
             $msg .= ' ' . __('The photograph is small, so the print may look soft.');
+        }
+        if ($photo && $cat->photo_background && empty($photo['bg'])) {
+            $msg .= ' ' . __('The photograph background could not be changed to the colour of this ID, so the photograph is as it was taken.');
         }
 
         return redirect()->route('id-passes.' . IdPassKinds::get($kind)['route'] . '.show', ['card' => $card->id])->with('message', $msg);
@@ -248,11 +251,16 @@ class CardController extends Controller
         $card = $this->cardOf($request, $kind);
         $this->must($kind, 'update');
         abort_unless(in_array($card->status, IdPassCard::OPEN, true), 422, __('This ID can no longer be changed.'));
-        $request->validate(['photo' => 'required|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB]);
-        $p = PhotoService::store($request->file('photo'), $request->file('photo_original'));
+        $request->validate(['photo' => 'required|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 'keep_original' => 'nullable|boolean']);
+        $p = PhotoService::store($request->file('photo'), $request->file('photo_original'), $request->file('photo_cutout'), $card->category->photo_background);
+        if ($request->boolean('keep_original')) {       // the colour was re-done on a photograph already on the card: the picture first taken stays as the original
+            PhotoService::delete($p['original']);
+            $p['original'] = null;
+        }
         CardService::setPhoto($card, $p, $request->user());
+        $note = $card->category->photo_background && empty($p['bg']) ? ' ' . __('The background could not be changed to the colour of this ID.') : '';
 
-        return back()->with('message', ! empty($p['low']) ? __('Photograph changed. It is small, so the print may look soft.') : __('Photograph changed.'));
+        return back()->with('message', (! empty($p['low']) ? __('Photograph changed. It is small, so the print may look soft.') : __('Photograph changed.')) . $note);
     }
 
     /** Both sides of a card as HTML for the cut-out viewer (the staff profile loads them after the page is shown, so the profile itself stays light). */
@@ -358,8 +366,8 @@ class CardController extends Controller
         $kind = $this->kindOf($request);
         $card = $this->cardOf($request, $kind);
         $this->must($kind, 'create');
-        $d = $request->validate(['reason' => 'required|string|max:500', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB], ['reason.required' => __('Say why it is replaced (lost, damaged, changed).')]);
-        $photo = $request->hasFile('photo') ? PhotoService::store($request->file('photo'), $request->file('photo_original')) : null;
+        $d = $request->validate(['reason' => 'required|string|max:500', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB], ['reason.required' => __('Say why it is replaced (lost, damaged, changed).')]);
+        $photo = $request->hasFile('photo') ? PhotoService::store($request->file('photo'), $request->file('photo_original'), $request->file('photo_cutout'), $card->category->photo_background) : null;
         $new = CardService::replace($card, $request->user(), $d['reason'], $photo);
 
         return redirect()->route('id-passes.' . IdPassKinds::get($kind)['route'] . '.show', ['card' => $new->id])->with('message', __(':o was replaced by :n.', ['o' => $card->number, 'n' => $new->number]));

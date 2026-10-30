@@ -48,6 +48,24 @@ The QR holds `/id-verify/{40 random characters}` (never a database number). Anyb
 * **Printed/PDF reports are limited to 600 rows** (`IdPassReports::PDF_MAX`): DomPDF needs memory for every row and a report of 1,000+ rows ends in a server error. The page warns, the server answers with a clear message, the CSV has no limit.
 * Phone layouts checked at 375 px for every page: grids use `minmax(min(Npx, 100%), 1fr)` and `minmax(0, 1fr)` so nothing runs past the screen.
 
+## Photo background (per category)
+
+Each category has a **Photo background** colour (ID Settings > edit a category > Photo background; needs the template permission). Today: Staff white, Aluminium blue (#1e6fd9), Carpenter yellow orange (#ffa800); Visitor and Gate Pass are "Keep as taken".
+
+- **How it is made.** The cut-out engine (U-2-Net, runs in the browser, nothing leaves the device) separates the person once per picture; the framing tool shows the person on the colour while you place the face. The card gets the framed picture on the colour (`card.jpg`) and the transparent cut-out (`cutout.png`, kept on the card). Used when issuing, changing the photograph and replacing an ID. The staff profile photograph goes through the same steps when the category has a colour.
+- **Already on the colour: skipped.** The border of the picture (top and sides) is sampled; if 88% of it is within a small distance of the colour, nothing is cut. The same check runs on the server (`PhotoBackground::matches`).
+- **Changing the colour later.** "Apply to the N IDs already issued" (same dialog) re-colours every open ID of the category: cards that kept a cut-out are re-coloured on the server instantly; photographs already on the colour are left alone; the rest are cut out one by one in the browser (progress bar, Stop button). The originals are never touched. Each change shows in the card history (Photograph changed) and the activity log.
+- **Limits.** The person is found automatically: busy backgrounds or a person holding something may need a retake. If the engine fails the photograph is used as taken and the page says so. Server alone cannot cut out (no segmentation model in PHP), so an ID issued without a browser (API) keeps its photograph unless it already stands on the colour.
+- **Tables.** Migration `2026_12_22_100000_idpass_photo_background` (category `photo_background`; card `photo_cutout`, `photo_bg`). Run it on the live and simulation databases; it also sets the three starting colours.
+
+## Sample IDs
+
+`php artisan id-passes:samples` makes 5 Staff IDs (staff members without an ID and without their own photograph), 5 Aluminium and 5 Carpenter worker IDs (with sample contacts), 8 Visitor Passes (3 with a visitor, 1 taken back) and 6 Gate Passes of people, in different states (active, soon to expire, expired, suspended, revoked, rejected), with drawn photographs on each category colour and a little print history. Nobody is notified while it runs. `php artisan id-passes:samples --remove` deletes them, their history and the sample contacts and gives the numbers back. Cards carry the note SAMPLE.
+
+## Hover and tooltips
+
+The card viewer lifts, glows in the colour of the ID and a band of light crosses it on hover; its buttons, the ID number and status chips in lists, the dashboard counts and the My ID badge have CSS tooltips (`lg-tip` + `data-tip`, no JavaScript). Tooltips and tilt are off on touch screens; motion is off with "reduce motion".
+
 ## Deploy
 1. Deploy as usual (cPanel Git: Update from Remote, Deploy HEAD). The deploy copies `resources/idpass` and `public/fonts/idpass`, runs `migrate` (`2026_12_20_100000_create_id_passes`, `2026_12_21_100000_idpass_pool_and_assignments`) and clears the caches.
 2. Run both migrations on the **simulation** database too (they also seed the five starting categories, the Gate Pass contact category and grant the permissions to Super Admin).
