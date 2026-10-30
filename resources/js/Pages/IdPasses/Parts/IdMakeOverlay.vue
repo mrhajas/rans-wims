@@ -75,9 +75,9 @@
           </div>
 
           <div v-if="s.phase === 'error' || (s.phase === 'done' && s.openUrl) || (s.phase === 'working' && s.hideable && late)" class="idm-actions">
-            <a v-if="s.phase === 'done' && s.openUrl" :href="s.openUrl" target="_blank" rel="noopener" class="lg-btn lg-btn-primary" @click="close"><icons name="printer" class="w-4 h-4" />{{ $t('Open for printing') }}</a>
-            <button v-else-if="s.phase === 'working'" type="button" class="lg-btn lg-btn-soft" @click="close">{{ $t('Keep working in the background') }}</button>
-            <button v-else type="button" class="lg-btn lg-btn-soft" @click="close">{{ $t('Close') }}</button>
+            <a v-if="s.phase === 'done' && s.openUrl" :href="s.openUrl" target="_blank" rel="noopener" class="lg-btn tone tone-solid" @click="close" style="--tone: #4f46e5"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span>{{ $t('Open for printing') }}</a>
+            <button v-else-if="s.phase === 'working'" type="button" class="lg-btn tone" @click="close" style="--tone: #d97706"><span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span>{{ $t('Keep working in the background') }}</button>
+            <button v-else type="button" class="lg-btn tone" @click="close" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Close') }}</button>
           </div>
         </div>
       </div>

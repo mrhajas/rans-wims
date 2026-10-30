@@ -2,8 +2,8 @@
   <admin-layout :title="$t('ID Print History')">
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header icon="clock" :title="$t('ID Print History')" :subtitle="$t('Every print and PDF export of an ID: what WIMS made, for whom, by whom and when.')">
-        <Link :href="route('id-passes.print-centre.index')" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print Centre') }}</span></Link>
-        <a :href="route('id-passes.reports.print', { type: 'prints' })" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="doc-text" class="w-4 h-4" /><span>{{ $t('Print report') }}</span></a>
+        <Link :href="route('id-passes.print-centre.index')" class="lg-btn tone" style="--tone: #4f46e5"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span><span>{{ $t('Print Centre') }}</span></Link>
+        <a :href="route('id-passes.reports.print', { type: 'prints' })" target="_blank" rel="noopener" class="lg-btn tone" style="--tone: #0d9488"><span class="tone-ico"><icons name="doc-text" class="w-4 h-4" /></span><span>{{ $t('Print report') }}</span></a>
       </page-header>
       <p class="lg-note lg-note-blue" style="margin-bottom: 14px"><icons name="info" class="w-4 h-4" /><span>{{ $t('"Print initiated" means the PDF was made and opened for printing. WIMS cannot see the printer, so it never says paper came out.') }}</span></p>
       <form class="lg-card" @submit.prevent="go">
@@ -15,7 +15,7 @@
           <div class="ac-f"><label>{{ $t('Batch') }}</label><input v-model="f.batch" placeholder="IDB-0001" /></div>
           <div class="ac-f"><label>{{ $t('From') }}</label><date-picker v-model="f.from" /></div>
           <div class="ac-f"><label>{{ $t('To') }}</label><date-picker v-model="f.to" /></div>
-          <div class="ac-f hs-act"><label aria-hidden="true">&nbsp;</label><div><button type="submit" class="lg-btn lg-btn-primary"><icons name="search" class="w-4 h-4" />{{ $t('Filter') }}</button><button type="button" class="lg-btn t-slate" @click="reset"><icons name="cross" class="w-4 h-4" />{{ $t('Clear') }}</button></div></div>
+          <div class="ac-f hs-act"><label aria-hidden="true">&nbsp;</label><div><button type="submit" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="search" class="w-4 h-4" /></span>{{ $t('Filter') }}</button><button type="button" class="lg-btn tone t-slate" @click="reset" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Clear') }}</button></div></div>
         </div>
       </form>
       <div class="lg-table-wrap"><table class="lg-table lg-responsive">

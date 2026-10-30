@@ -38,23 +38,26 @@
         </div>
       </section>
 
-      <section v-if="ransId" class="lg-card sh-rans">
-        <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="qr-code" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('RANS Identification') }}</h2><p class="lg-card-sub">{{ $t('The ID card of this staff member. The WIMS staff reference above is a different number.') }}</p></div></header>
-        <template v-if="ransId.card">
-          <div class="sh-rans-row">
-            <a :href="ransId.card.url" class="sh-rans-no" :title="$t('Open the ID')">{{ ransId.card.number }}</a>
-            <span class="lg-chip" :class="{ Active: 'lg-chip-green', Expired: 'lg-chip-amber', 'Pending Approval': 'lg-chip-amber', Suspended: 'lg-chip-orange', Revoked: 'lg-chip-red', Replaced: 'lg-chip-slate' }[ransId.card.status] || 'lg-chip-slate'">{{ $t(ransId.card.status) }}</span>
-            <dl class="sh-rans-dl">
-              <div><dt>{{ $t('Issued') }}</dt><dd>{{ $date(ransId.card.issued_at) }}</dd></div>
-              <div><dt>{{ $t('Expires') }}</dt><dd>{{ ransId.card.expires_at ? $date(ransId.card.expires_at) : $t('No expiry') }}</dd></div>
-              <div><dt>{{ $t('Last printed') }}</dt><dd>{{ ransId.card.last_printed_at ? $datetime(ransId.card.last_printed_at) : $t('Never') }}</dd></div>
-              <div><dt>{{ $t('Printed') }}</dt><dd>{{ ransId.card.print_count }} {{ $t('times') }}</dd></div>
-            </dl>
-            <a :href="ransId.card.url" class="lg-btn lg-btn-primary"><icons name="eye-flat" class="w-4 h-4" />{{ $t('View ID') }}</a>
-          </div>
-        </template>
+      <section v-if="ransId" class="sh-rans">
+        <header class="sh-rans-head">
+          <span class="sh-rans-ico"><icons name="qr-code" class="w-5 h-5" /></span>
+          <div class="min-w-0"><h2>{{ $t('RANS Identification') }}</h2><p>{{ $t('The ID card of this staff member. The WIMS staff reference above is a different number.') }}</p></div>
+          <a v-if="ransId.card" :href="ransId.card.url" class="lg-btn tone" style="--tone: #2563eb"><span class="tone-ico"><icons name="eye-flat" class="w-4 h-4" /></span>{{ $t('View ID') }}</a>
+          <a v-if="ransId.assign_url" :href="ransId.assign_url" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Assign RANS Staff ID') }}</a>
+        </header>
+        <div v-if="ransId.card" class="sh-rans-body">
+          <id-cutout :front="faces.front" :back="faces.back" :css="faces.css" :color="ransId.card.color" :size="230" :can-print="ransId.card.can_print" :can-download="ransId.card.can_download" :blocked="!ransId.card.active" :blocked-text="$t('Only an active ID can be printed or downloaded.')" @print="makeId('print')" @download="makeId('pdf')" />
+          <dl class="sh-rans-dl">
+            <div><dt>{{ $t('ID number') }}</dt><dd><a :href="ransId.card.url" class="sh-rans-no">{{ ransId.card.number }}</a></dd></div>
+            <div><dt>{{ $t('Status') }}</dt><dd><span class="lg-chip" :class="{ Active: 'lg-chip-green', Expired: 'lg-chip-amber', 'Pending Approval': 'lg-chip-amber', Suspended: 'lg-chip-orange', Revoked: 'lg-chip-red', Replaced: 'lg-chip-slate' }[ransId.card.status] || 'lg-chip-slate'">{{ $t(ransId.card.status) }}</span></dd></div>
+            <div><dt>{{ $t('Issued') }}</dt><dd>{{ $date(ransId.card.issued_at) }}</dd></div>
+            <div><dt>{{ $t('Expires') }}</dt><dd>{{ ransId.card.expires_at ? $date(ransId.card.expires_at) : $t('No expiry') }}</dd></div>
+            <div><dt>{{ $t('Last printed') }}</dt><dd>{{ ransId.card.last_printed_at ? $datetime(ransId.card.last_printed_at) : $t('Never') }}</dd></div>
+            <div><dt>{{ $t('Printed') }}</dt><dd>{{ ransId.card.print_count }} {{ $t('times') }}</dd></div>
+          </dl>
+        </div>
         <p v-else class="lg-sub">{{ $t('No RANS Staff ID has been assigned yet.') }}</p>
-        <a v-if="ransId.assign_url" :href="ransId.assign_url" class="lg-btn lg-btn-primary" style="margin-top: 10px"><icons name="plus" class="w-4 h-4" />{{ $t('Assign RANS Staff ID') }}</a>
+        <id-make-overlay />
       </section>
 
       <stat-tiles :items="statTiles" />
@@ -234,9 +237,12 @@ import StaffContracts from '@/Shared/Staff/StaffContracts.vue';
 import AttachmentViewer from '@/Shared/AttachmentViewer.vue';
 import RetireStaff from '@/Shared/Staff/RetireStaff.vue';
 import StaffHistory from '@/Shared/Staff/StaffHistory.vue';
+import IdCutout from '@/Pages/IdPasses/Parts/IdCutout.vue';
+import IdMakeOverlay from '@/Pages/IdPasses/Parts/IdMakeOverlay.vue';
+import { idMakeFile } from '@/Core/idMake';
 
 export default {
-  components: { AdminLayout, PageHeader, StatTiles, StaffContracts, RetireStaff, StaffHistory, AttachmentViewer },
+  components: { AdminLayout, PageHeader, StatTiles, StaffContracts, RetireStaff, StaffHistory, AttachmentViewer, IdCutout, IdMakeOverlay },
 
   props: {
     staff: Object,
@@ -261,7 +267,7 @@ export default {
 
   data() {
     return {
-      preview: null, photoFailed: false, activeTab: ['contracts', 'vouchers', 'history'].includes(new URLSearchParams(window.location.search).get('tab')) ? new URLSearchParams(window.location.search).get('tab') : 'details' };
+      faces: { front: null, back: null, css: '' }, preview: null, photoFailed: false, activeTab: ['contracts', 'vouchers', 'history'].includes(new URLSearchParams(window.location.search).get('tab')) ? new URLSearchParams(window.location.search).get('tab') : 'details' };
   },
 
   computed: {
@@ -290,7 +296,19 @@ export default {
     },
   },
 
+  mounted() {
+    // the card pictures come after the page is shown, so the profile itself is not slowed down
+    if (this.ransId && this.ransId.card) window.axios.get(this.ransId.card.faces_url).then(r => { this.faces = r.data; }).catch(() => {});
+  },
+
   methods: {
+    // print / download with the "ID press" animation; an ID that was printed before needs a reason, which is asked on its own page
+    async makeId(kind) {
+      const c = this.ransId.card;
+      if (c.print_count > 0) { window.location = c.url; return; }
+      const ok = await idMakeFile(kind === 'print' ? c.print_url : c.pdf_url, { mode: kind, color: c.color, title: kind === 'print' ? this.$t('Preparing :n for printing', { n: c.number }) : this.$t('Creating the PDF of :n', { n: c.number }), doneText: c.number, fail: this.$t('The file could not be made.') });
+      if (ok) this.$inertia.reload({ only: ['ransId'], preserveScroll: true });
+    },
     statusBadgeClass(status) {
       const map = { Active: 'lg-chip-green', 'Retired Active': 'lg-chip-amber', Retired: 'lg-chip-violet', Inactive: 'lg-chip-slate', Terminated: 'lg-chip-red' };
       return map[status] || 'lg-chip-slate';
@@ -350,8 +368,10 @@ export default {
 .sh-file__btns { display: inline-flex; gap: 6px; flex: none; }
 .sh-details > .lg-card { margin-bottom: 1rem; }
 @media (prefers-reduced-motion: reduce) { .sh-photo-wrap { animation: none; } }
-.sh-rans { margin-bottom: 14px; }
-.sh-rans-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.sh-rans-no { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.06em; color: #1e4467; text-decoration: none; padding: 4px 14px; border-radius: 14px; background: rgba(30, 68, 103, 0.08); }
-.sh-rans-dl { display: flex; gap: 22px; flex-wrap: wrap; margin: 0; flex: 1; } .sh-rans-dl div { display: grid; } .sh-rans-dl dt { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; color: var(--lg-mute, #64748b); } .sh-rans-dl dd { margin: 0; font-weight: 700; }
+.sh-rans { margin-bottom: 18px; }
+.sh-rans-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; } .sh-rans-head > div { flex: 1; min-width: 200px; } .sh-rans-head h2 { margin: 0; font-size: 1.05rem; font-weight: 800; } .sh-rans-head p { margin: 2px 0 0; font-size: 0.8rem; color: var(--lg-mute, #64748b); }
+.sh-rans-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 14px; color: #fff; background: linear-gradient(145deg, #2f6fb3, #0f2540); box-shadow: 0 10px 16px -10px rgba(15, 37, 64, 0.8); }
+.sh-rans-body { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 6vw, 70px); flex-wrap: wrap; padding: 14px 0 6px; }
+.sh-rans-no { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.06em; color: #1e4467; text-decoration: none; }
+.sh-rans-dl { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 16px 30px; margin: 0; } .sh-rans-dl div { display: grid; gap: 2px; } .sh-rans-dl dt { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute, #64748b); } .sh-rans-dl dd { margin: 0; font-weight: 700; }
 </style>

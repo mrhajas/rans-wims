@@ -15,9 +15,13 @@ class IdPassPanels
         return IdPassCard::query()->where('kind', $kind)->where($col, $id)->whereIn('status', array_merge(IdPassCard::OPEN, [IdPassCard::REVOKED, IdPassCard::REPLACED]))->orderByRaw("FIELD(status, 'Active', 'Suspended', 'Pending Approval', 'Revoked', 'Replaced')")->latest('id')->first();
     }
 
-    private static function describe(IdPassCard $c): array
+    private static function describe(IdPassCard $c, $user = null): array
     {
-        return ['number' => $c->number, 'status' => $c->effective_status, 'issued_at' => optional($c->issued_at)->toDateString(), 'expires_at' => optional($c->expires_at)->toDateString(), 'last_printed_at' => optional($c->last_printed_at)->toIso8601String(), 'print_count' => (int) $c->print_count,
+        $r = IdPassKinds::get($c->kind)['route'];
+
+        return ['id' => $c->id, 'color' => $c->category ? $c->category->uiColor() : '#1565c0', 'can_print' => IdPassKinds::can($c->kind, 'print', $user), 'can_download' => IdPassKinds::can($c->kind, 'download', $user), 'active' => $c->effective_status === IdPassCard::ACTIVE,
+            'faces_url' => route('id-passes.' . $r . '.faces', ['card' => $c->id]), 'print_url' => route('id-passes.' . $r . '.print', ['card' => $c->id]), 'pdf_url' => route('id-passes.' . $r . '.pdf', ['card' => $c->id]),
+            'number' => $c->number, 'status' => $c->effective_status, 'issued_at' => optional($c->issued_at)->toDateString(), 'expires_at' => optional($c->expires_at)->toDateString(), 'last_printed_at' => optional($c->last_printed_at)->toIso8601String(), 'print_count' => (int) $c->print_count,
             'url' => route('id-passes.' . IdPassKinds::get($c->kind)['route'] . '.show', ['card' => $c->id])];
     }
 
@@ -29,7 +33,7 @@ class IdPassPanels
         }
         $c = self::card('staff', 'staff_id', $s->id);
 
-        return ['card' => $c ? self::describe($c) : null, 'assign_url' => IdPassKinds::can('staff', 'create', $user) && (! $c || ! in_array($c->status, IdPassCard::OPEN, true)) ? route('id-passes.staff.create', ['staff' => $s->id]) : null, 'list_url' => route('id-passes.staff.index')];
+        return ['card' => $c ? self::describe($c, $user) : null, 'assign_url' => IdPassKinds::can('staff', 'create', $user) && (! $c || ! in_array($c->status, IdPassCard::OPEN, true)) ? route('id-passes.staff.create', ['staff' => $s->id]) : null, 'list_url' => route('id-passes.staff.index')];
     }
 
     /** @return array{label:string,url:string}[] links for the contact's panel: the pass it holds now, since when, the passes it held before, and the way to give one */

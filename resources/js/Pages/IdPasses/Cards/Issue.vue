@@ -3,7 +3,7 @@
     <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header :icon="info.icon" :title="pageTitle" :subtitle="$t('Choose the person, check the details, add a photograph and look at the card before it is issued.')">
-        <Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" /><span>{{ $t('Back') }}</span></Link>
+        <Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn tone" style="--tone: #2563eb"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span><span>{{ $t('Back') }}</span></Link>
       </page-header>
 
       <div class="idi-grid">
@@ -69,8 +69,8 @@
           </section>
 
           <div class="lg-actionbar"><span class="lg-actionbar-note">{{ cat && cat.requires_approval ? $t('Saved as waiting for approval.') : $t('The ID is active as soon as it is saved.') }}</span>
-            <div class="lg-actionbar-btns"><Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn t-slate"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</Link>
-              <button type="submit" class="lg-btn lg-btn-primary" :disabled="form.processing || !canSave"><icons name="send" class="w-4 h-4" />{{ form.processing ? $t('Saving...') : (cat && cat.pooled ? $t('Make the passes') : cat && cat.requires_approval ? $t('Submit for approval') : $t('Issue ID')) }}</button></div></div>
+            <div class="lg-actionbar-btns"><Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn tone t-slate" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</Link>
+              <button type="submit" class="lg-btn tone tone-solid" :disabled="form.processing || !canSave" style="--tone: #16a34a"><span class="tone-ico"><icons name="send" class="w-4 h-4" /></span>{{ form.processing ? $t('Saving...') : (cat && cat.pooled ? $t('Make the passes') : cat && cat.requires_approval ? $t('Submit for approval') : $t('Issue ID')) }}</button></div></div>
         </form>
 
         <aside class="idi-preview">

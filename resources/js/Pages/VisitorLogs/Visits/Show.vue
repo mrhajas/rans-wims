@@ -57,8 +57,8 @@
         <section v-if="idPass || (idPassForm && idPassForm.enabled)" class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="qr-code" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Visitor Pass') }}</h2><p class="lg-card-sub">{{ $t('The numbered pass this visitor holds. It is taken back at check-out.') }}</p></div></header>
           <div v-if="idPass" class="vl-pass"><b class="vl-pass-no">{{ idPass.number }}</b><span>{{ $t('Given') }} {{ $datetime(idPass.from) }}<template v-if="idPass.to"> · {{ $t('taken back') }} {{ $datetime(idPass.to) }}</template><template v-else> · {{ $t('still with the visitor') }}</template></span>
-            <a v-if="idPass.url" :href="idPass.url" class="lg-btn lg-btn-soft"><icons name="eye-flat" class="w-4 h-4" />{{ $t('Open the pass') }}</a></div>
-          <div v-else class="vl-pass-give"><acct-select v-model="passPick" :options="idPassForm.free" :placeholder="$t('Choose a free pass')" /><button type="button" class="lg-btn lg-btn-primary" :disabled="!passPick || busy" @click="givePass"><icons name="plus" class="w-4 h-4" />{{ $t('Give the pass') }}</button></div>
+            <a v-if="idPass.url" :href="idPass.url" class="lg-btn tone" style="--tone: #2563eb"><span class="tone-ico"><icons name="eye-flat" class="w-4 h-4" /></span>{{ $t('Open the pass') }}</a></div>
+          <div v-else class="vl-pass-give"><acct-select v-model="passPick" :options="idPassForm.free" :placeholder="$t('Choose a free pass')" /><button type="button" class="lg-btn tone tone-solid" style="--tone: #16a34a" :disabled="!passPick || busy" @click="givePass"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Give the pass') }}</button></div>
         </section>
       <section v-if="visit.items.length" class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-amber"><icons name="email" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Items Received With This Visit') }}</h2></div></header>

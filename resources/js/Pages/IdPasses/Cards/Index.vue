@@ -3,9 +3,9 @@
     <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header :icon="info.icon" :title="info.label" :subtitle="$t('Every :k with its number, status and validity.', { k: info.singular })">
-        <Link v-if="can.create" :href="route('id-passes.' + info.route + '.create')" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" /><span>{{ $t('Issue :k', { k: info.singular }) }}</span></Link>
-        <Link v-if="can.batch" :href="route('id-passes.print-centre.index')" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print Centre') }}</span></Link>
-        <Link :href="route('id-passes.dashboard')" class="lg-btn lg-btn-soft"><icons name="chart-bar" class="w-4 h-4" /><span>{{ $t('Overview') }}</span></Link>
+        <Link v-if="can.create" :href="route('id-passes.' + info.route + '.create')" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span><span>{{ $t('Issue :k', { k: info.singular }) }}</span></Link>
+        <Link v-if="can.batch" :href="route('id-passes.print-centre.index')" class="lg-btn tone" style="--tone: #4f46e5"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span><span>{{ $t('Print Centre') }}</span></Link>
+        <Link :href="route('id-passes.dashboard')" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="chart-bar" class="w-4 h-4" /></span><span>{{ $t('Overview') }}</span></Link>
       </page-header>
 
       <sc-tabs :tabs="tabs" :model-value="f.status || ''" @update:model-value="setStatus" />
@@ -18,7 +18,7 @@
           <div class="ac-f"><label>{{ $t('Issued from') }}</label><date-picker v-model="f.issued_from" /></div>
           <div class="ac-f"><label>{{ $t('Issued to') }}</label><date-picker v-model="f.issued_to" /></div>
           <div class="ac-f"><label>{{ $t('Expires to') }}</label><date-picker v-model="f.expires_to" /></div>
-          <div class="ac-f idl-actions"><label aria-hidden="true">&nbsp;</label><div><button type="submit" class="lg-btn lg-btn-primary"><icons name="search" class="w-4 h-4" />{{ $t('Filter') }}</button><button type="button" class="lg-btn t-slate" @click="reset"><icons name="cross" class="w-4 h-4" />{{ $t('Clear') }}</button></div></div>
+          <div class="ac-f idl-actions"><label aria-hidden="true">&nbsp;</label><div><button type="submit" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="search" class="w-4 h-4" /></span>{{ $t('Filter') }}</button><button type="button" class="lg-btn tone t-slate" @click="reset" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Clear') }}</button></div></div>
         </div>
       </form>
 
@@ -44,9 +44,9 @@
               <td :data-label="$t('Valid until')">{{ r.expires_at ? $date(r.expires_at) : $t('No expiry') }}<div v-if="r.days_left !== null && r.days_left >= 0 && r.days_left <= 30 && r.status === 'Active'" class="lg-subtext idl-soon">{{ $t(':n days left', { n: r.days_left }) }}</div></td>
               <td :data-label="$t('Printed')">{{ r.print_count }}<div v-if="r.last_printed_at" class="lg-subtext">{{ $datetime(r.last_printed_at) }}</div></td>
               <td class="lg-sticky-end" @click.stop>
-                <a v-if="can.print && r.status === 'Active'" :href="route('id-passes.' + info.route + '.print', [r.id])" target="_blank" rel="noopener" @click.prevent="make(r, 'print')" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
-                <a v-if="can.download && r.status === 'Active'" :href="route('id-passes.' + info.route + '.pdf', [r.id])" @click.prevent="make(r, 'pdf')" class="lg-icon-btn lg-tip" :data-tip="$t('Download PDF')" :aria-label="$t('Download PDF')"><icons name="download" class="w-4 h-4" /></a>
-                <Link :href="route('id-passes.' + info.route + '.show', [r.id])" class="lg-icon-btn lg-tip" :data-tip="$t('Open')" :aria-label="$t('Open')"><icons name="eye-flat" class="w-4 h-4" /></Link>
+                <a v-if="can.print && r.status === 'Active'" :href="route('id-passes.' + info.route + '.print', [r.id])" target="_blank" rel="noopener" @click.prevent="make(r, 'print')" class="lg-icon-btn idl-ib lg-tip" style="--ib: #4f46e5" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
+                <a v-if="can.download && r.status === 'Active'" :href="route('id-passes.' + info.route + '.pdf', [r.id])" @click.prevent="make(r, 'pdf')" class="lg-icon-btn idl-ib lg-tip" style="--ib: #0d9488" :data-tip="$t('Download PDF')" :aria-label="$t('Download PDF')"><icons name="download" class="w-4 h-4" /></a>
+                <Link :href="route('id-passes.' + info.route + '.show', [r.id])" class="lg-icon-btn idl-ib lg-tip" style="--ib: #2563eb" :data-tip="$t('Open')" :aria-label="$t('Open')"><icons name="eye-flat" class="w-4 h-4" /></Link>
               </td>
             </tr>
             <tr v-if="!rows.data.length" class="lg-empty-row"><td class="lg-empty" colspan="9"><div class="idl-empty"><icons :name="info.icon" class="w-8 h-8" /><b>{{ $t('No :k yet.', { k: info.label }) }}</b><span v-if="can.create">{{ $t('Issue the first one with the button above.') }}</span></div></td></tr>
@@ -112,4 +112,6 @@ export default {
 .idl-hold { text-transform: none; }
 .idl-no { letter-spacing: 0.04em; font-weight: 800; color: #1e4467; } .idl-soon { color: #b45309; font-weight: 700; }
 .idl-empty { display: grid; justify-items: center; gap: 6px; padding: 26px 8px; color: var(--lg-mute, #64748b); }
+.idl-ib { color: var(--ib); background: color-mix(in srgb, var(--ib) 10%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib) 26%, transparent), 0 8px 12px -8px color-mix(in srgb, var(--ib) 75%, transparent); transition: transform 0.15s, box-shadow 0.15s; }
+.idl-ib:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib) 50%, transparent), 0 12px 16px -8px color-mix(in srgb, var(--ib) 85%, transparent); }
 </style>

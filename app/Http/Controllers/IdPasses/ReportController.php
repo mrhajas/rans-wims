@@ -48,7 +48,7 @@ class ReportController extends Controller
         $types = collect(IdPassReports::types())->map(fn ($t, $k) => ['value' => $k, 'label' => $t['title']])->values();
 
         return Inertia::render('IdPasses/Reports', ['filters' => $f, 'types' => $types, 'report' => ['title' => $r['title'], 'subtitle' => $r['subtitle'], 'tiles' => $r['tiles'], 'columns' => $r['columns'], 'rows' => array_slice($r['rows'], 0, 300), 'total' => $r['total_rows'], 'truncated' => $r['truncated'], 'sections' => $r['sections'], 'notes' => $r['notes']],
-            'categories' => IdPassCategory::query()->whereIn('kind', $kinds)->orderBy('sort_order')->get()->map(fn ($c) => ['value' => $c->id, 'label' => $c->name])->values(), 'can' => ['print' => true]]);
+            'categories' => IdPassCategory::query()->whereIn('kind', $kinds)->orderBy('sort_order')->get()->map(fn ($c) => ['value' => $c->id, 'label' => $c->name])->values(), 'pdfMax' => IdPassReports::PDF_MAX, 'can' => ['print' => true]]);
     }
 
     private function report(Request $request, string $format): array
@@ -61,6 +61,9 @@ class ReportController extends Controller
 
     private function pdfOf(array $r)
     {
+        if (count($r['rows']) > IdPassReports::PDF_MAX) {
+            abort(422, __('This report has :n rows, which is too many for a printed page or PDF (the limit is :m). Narrow the dates or the filters, or download the CSV, which has no limit.', ['n' => count($r['rows']), 'm' => IdPassReports::PDF_MAX]));
+        }
         $pdf = Pdf::loadView('signatories.report-print', ['report' => $r, 'landscape' => true, 'isPdf' => true, 'autoPrint' => false, 'signatures' => ['enabled' => false],
             'companyName' => preg_replace('/tecdiary\s*wims/i', 'RANS WIMS', (string) optional(auth()->user()->account)->name), 'printedBy' => auth()->user()->name, 'printedAt' => now()->format('d M Y, H:i')])->setPaper('a4', 'landscape');
         $pdf->render();

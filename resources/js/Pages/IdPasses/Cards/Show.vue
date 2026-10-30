@@ -2,9 +2,7 @@
   <admin-layout :title="card.number">
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header :icon="info.icon" :title="card.number + ' · ' + card.name" :subtitle="info.singular + (card.category && card.category !== info.singular ? ' · ' + card.category : '')">
-        <Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" /><span>{{ $t('Back') }}</span></Link>
-        <button v-if="can.print" type="button" class="lg-btn lg-btn-primary" :disabled="card.status_raw !== 'Active'" @click="printOpen = true"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print') }}</span></button>
-        <button v-if="can.download" type="button" class="lg-btn lg-btn-soft" :disabled="card.status_raw !== 'Active'" @click="download"><icons name="download" class="w-4 h-4" /><span>{{ $t('Download PDF') }}</span></button>
+        <Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn tone" style="--tone: #2563eb"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span><span>{{ $t('Back') }}</span></Link>
       </page-header>
 
       <div class="ids-chip"><category-chip large :name="card.category" :color="card.color" :ink="card.ink" :icon="card.icon" /><span class="lg-chip" :class="statusChip(card.status)">{{ $t(card.status) }}</span></div>
@@ -12,27 +10,23 @@
       <section v-if="statusNote" class="lg-note" :class="'lg-note-' + statusNote.tone" style="margin-bottom: 14px"><icons :name="statusIcon(card.status)" class="w-4 h-4" /><span>{{ statusNote.text }}</span></section>
 
       <div class="ids-grid">
-        <section class="lg-card ids-cards">
-          <div class="ids-pair">
-            <figure><card-face :html="front" :css="css" /><figcaption>{{ $t('Front') }}</figcaption></figure>
-            <figure><card-face :html="back" :css="css" /><figcaption>{{ $t('Back') }}</figcaption></figure>
-          </div>
-          <p class="ids-size">{{ $t('Card size 55 x 85 mm. The back is the same for every kind of ID.') }}</p>
+        <section class="ids-cards">
+          <id-cutout :front="front" :back="back" :css="css" :color="card.color" :can-print="can.print" :can-download="can.download" :blocked="card.status !== 'Active'" :blocked-text="$t('Only an active ID can be printed or downloaded.')" @print="printOpen = true" @download="download" />
           <div v-if="pooled" class="ids-holder" :class="holder ? 'is-with' : 'is-free'">
             <icons :name="holder ? 'user' : 'tick'" class="w-5 h-5" />
             <div v-if="holder"><b>{{ $t('With :n', { n: holder.name }) }}</b><small>{{ holder.company }}<template v-if="holder.host"> · {{ $t('visiting') }} {{ holder.host }}</template> · {{ $t('since') }} {{ $datetime(holder.from) }}</small></div>
             <div v-else><b>{{ $t('Free') }}</b><small>{{ $t('Not with anybody. It can be given to a visitor.') }}</small></div>
-            <button v-if="can.give && !holder" type="button" class="lg-btn lg-btn-primary" @click="openGive"><icons name="plus" class="w-4 h-4" />{{ $t('Give to a visitor') }}</button>
-            <button v-if="can.give && holder" type="button" class="lg-btn lg-btn-soft" @click="backOpen = true"><icons name="refresh" class="w-4 h-4" />{{ $t('Take back') }}</button>
+            <button v-if="can.give && !holder" type="button" class="lg-btn tone tone-solid" @click="openGive" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Give to a visitor') }}</button>
+            <button v-if="can.give && holder" type="button" class="lg-btn tone" @click="backOpen = true" style="--tone: #d97706"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Take back') }}</button>
           </div>
           <div class="ids-actions">
-            <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="ask('approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
-            <button v-if="can.approve" type="button" class="lg-btn lg-btn-red" @click="ask('reject')"><icons name="x-circle" class="w-4 h-4" />{{ $t('Reject') }}</button>
-            <button v-if="can.renew" type="button" class="lg-btn lg-btn-soft" @click="ask('renew')"><icons name="refresh" class="w-4 h-4" />{{ $t('Renew') }}</button>
-            <button v-if="can.replace" type="button" class="lg-btn lg-btn-soft" @click="ask('replace')"><icons name="duplicate" class="w-4 h-4" />{{ $t('Replace') }}</button>
-            <button v-if="can.suspend" type="button" class="lg-btn lg-btn-soft" @click="ask('suspend')"><icons name="pause" class="w-4 h-4" />{{ $t('Suspend') }}</button>
-            <button v-if="can.reactivate" type="button" class="lg-btn lg-btn-green" @click="ask('reactivate')"><icons name="play" class="w-4 h-4" />{{ $t('Reactivate') }}</button>
-            <button v-if="can.revoke" type="button" class="lg-btn lg-btn-red" @click="ask('revoke')"><icons name="x-circle" class="w-4 h-4" />{{ $t('Revoke') }}</button>
+            <button v-if="can.approve" type="button" class="lg-btn tone tone-solid" @click="ask('approve')" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Approve') }}</button>
+            <button v-if="can.approve" type="button" class="lg-btn tone tone-solid" @click="ask('reject')" style="--tone: #dc2626"><span class="tone-ico"><icons name="x-circle" class="w-4 h-4" /></span>{{ $t('Reject') }}</button>
+            <button v-if="can.renew" type="button" class="lg-btn tone" @click="ask('renew')" style="--tone: #d97706"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Renew') }}</button>
+            <button v-if="can.replace" type="button" class="lg-btn tone" @click="ask('replace')" style="--tone: #7c3aed"><span class="tone-ico"><icons name="duplicate" class="w-4 h-4" /></span>{{ $t('Replace') }}</button>
+            <button v-if="can.suspend" type="button" class="lg-btn tone" @click="ask('suspend')" style="--tone: #d97706"><span class="tone-ico"><icons name="pause" class="w-4 h-4" /></span>{{ $t('Suspend') }}</button>
+            <button v-if="can.reactivate" type="button" class="lg-btn tone tone-solid" @click="ask('reactivate')" style="--tone: #16a34a"><span class="tone-ico"><icons name="play" class="w-4 h-4" /></span>{{ $t('Reactivate') }}</button>
+            <button v-if="can.revoke" type="button" class="lg-btn tone tone-solid" @click="ask('revoke')" style="--tone: #dc2626"><span class="tone-ico"><icons name="x-circle" class="w-4 h-4" /></span>{{ $t('Revoke') }}</button>
           </div>
         </section>
 
@@ -41,7 +35,7 @@
 
           <section v-show="tab === 'details'" class="lg-card">
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="info" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('RANS Identification') }}</h2></div>
-              <button v-if="can.edit" type="button" class="lg-btn lg-btn-soft ids-edit" @click="openEdit"><icons name="edit" class="w-4 h-4" />{{ $t('Edit') }}</button></header>
+              <button v-if="can.edit" type="button" class="lg-btn tone ids-edit" @click="openEdit" style="--tone: #0891b2"><span class="tone-ico"><icons name="edit" class="w-4 h-4" /></span>{{ $t('Edit') }}</button></header>
             <dl class="ac-kv">
               <div><dt>{{ $t('ID number') }}</dt><dd><b>{{ card.number }}</b></dd></div>
               <div><dt>{{ $t('Status') }}</dt><dd><span class="lg-chip" :class="statusChip(card.status)">{{ $t(card.status) }}</span></dd></div>
@@ -71,7 +65,7 @@
               <a v-for="h in cardHistory" :key="h.id" :href="h.url"><span>{{ h.number }}</span><em>{{ h.from ? $date(h.from) : '' }} - {{ h.to ? $date(h.to) : $t('now') }}</em><i class="lg-chip" :class="statusChip(h.status)">{{ $t(h.status) }}</i><small v-if="h.reason">{{ h.reason }}</small></a></div>
             <div v-if="can.edit && !pooled" class="ids-photo"><b>{{ $t('Photograph') }}</b>
               <img v-if="card.has_photo" :src="route('id-passes.' + info.route + '.photo-file', [card.id]) + '?w=160&v=' + photoV" alt="" />
-              <button type="button" class="lg-btn lg-btn-soft" @click="photoOpen = true"><icons name="camera" class="w-4 h-4" />{{ card.has_photo ? $t('Change photo') : $t('Add photo') }}</button></div>
+              <button type="button" class="lg-btn tone" @click="photoOpen = true" style="--tone: #0284c7"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ card.has_photo ? $t('Change photo') : $t('Add photo') }}</button></div>
           </section>
 
           <section v-if="pooled" v-show="tab === 'holders'" class="lg-card">
@@ -108,14 +102,14 @@
         <div class="idi-src ids-reasons"><button v-for="r in reasons" :key="r" type="button" :class="{ 'is-on': reason === r }" @click="reason = r">{{ r }}</button></div><input v-model="note" maxlength="150" :placeholder="$t('More about it (optional)')" /></div>
       <p v-if="layout === 'a4_duplex'" class="lg-note lg-note-amber"><icons name="info" class="w-4 h-4" /><span>{{ $t('Print both pages on one sheet of paper, double sided, and choose "flip on the long edge". Print at 100% (actual size): do not use "fit to page".') }}</span></p>
       <p v-else class="ids-size">{{ $t('Print at 100% (actual size). Do not use "fit to page": the card must stay 55 x 85 mm.') }}</p>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" @click="printOpen = false">{{ $t('Cancel') }}</button><button type="button" class="lg-btn lg-btn-primary" :disabled="needReason" @click="doPrint"><icons name="printer" class="w-4 h-4" />{{ $t('Open for printing') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" @click="printOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="needReason" @click="doPrint" style="--tone: #4f46e5"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span>{{ $t('Open for printing') }}</button></template>
     </travel-modal>
 
     <id-make-overlay />
     <travel-modal :show="dlOpen" :title="$t('Download :n', { n: card.number })" :subtitle="$t('The card as two pages of 55 x 85 mm: front, then back.')" icon="download" @close="dlOpen = false">
       <div class="ac-f"><label>{{ $t('This ID was printed before. Why is it printed again?') }} <b class="wims-req">*</b></label>
         <div class="idi-src ids-reasons"><button v-for="r in reasons" :key="r" type="button" :class="{ 'is-on': reason === r }" @click="reason = r">{{ r }}</button></div><input v-model="note" maxlength="150" :placeholder="$t('More about it (optional)')" /></div>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" @click="dlOpen = false">{{ $t('Cancel') }}</button><button type="button" class="lg-btn lg-btn-primary" :disabled="!reason" @click="doDownload"><icons name="download" class="w-4 h-4" />{{ $t('Download PDF') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" @click="dlOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="!reason" @click="doDownload" style="--tone: #0d9488"><span class="tone-ico"><icons name="download" class="w-4 h-4" /></span>{{ $t('Download PDF') }}</button></template>
     </travel-modal>
 
     <travel-modal :show="giveOpen" :title="$t('Give :n to a visitor', { n: card.number })" :subtitle="$t('The visitor holds it until it is taken back.')" icon="users" :busy="gf.processing" @close="giveOpen = false">
@@ -124,12 +118,12 @@
         <div class="lg-fields"><div class="ac-f"><label>{{ $t('Name') }} <b class="wims-req">*</b></label><input v-model="gf.name" maxlength="190" /><span class="ac-err">{{ errs.name }}</span></div><div class="ac-f"><label>{{ $t('Company') }}</label><input v-model="gf.company" maxlength="150" /></div><div class="ac-f"><label>{{ $t('Phone') }}</label><input v-model="gf.phone" maxlength="60" /></div><div class="ac-f"><label>{{ $t('Person visited') }}</label><input v-model="gf.host" maxlength="150" /></div></div>
         <span class="ac-err">{{ errs.pass }}</span>
       </form>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" @click="giveOpen = false">{{ $t('Cancel') }}</button><button type="submit" form="ids-give" class="lg-btn lg-btn-primary" :disabled="gf.processing || !gf.name"><icons name="tick" class="w-4 h-4" />{{ $t('Give the pass') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" @click="giveOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-give" class="lg-btn tone tone-solid" :disabled="gf.processing || !gf.name" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Give the pass') }}</button></template>
     </travel-modal>
 
     <travel-modal :show="backOpen" :title="$t('Take back :n', { n: card.number })" :subtitle="holder ? $t('It is with :n.', { n: holder.name }) : ''" icon="refresh" :busy="backForm.processing" @close="backOpen = false">
       <div class="ac-f"><label>{{ $t('Note (optional)') }}</label><input v-model="backForm.reason" maxlength="200" :placeholder="$t('For example: returned, lost by the visitor')" /></div>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" @click="backOpen = false">{{ $t('Cancel') }}</button><button type="button" class="lg-btn lg-btn-primary" :disabled="backForm.processing" @click="takeBack"><icons name="tick" class="w-4 h-4" />{{ $t('Take it back') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" @click="backOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="backForm.processing" @click="takeBack" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Take it back') }}</button></template>
     </travel-modal>
 
     <!-- one dialog for every reason-giving action -->
@@ -141,7 +135,7 @@
         <div v-if="ac.key === 'replace'" class="ac-f"><label>{{ $t('New photograph (optional)') }}</label><input type="file" accept="image/*" @change="af.photo = $event.target.files[0]" /><small class="lg-subtext">{{ $t('The old photograph is used if you do not choose one.') }}</small></div>
         <p v-if="ac.warn" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ ac.warn }}</span></p>
       </form>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" :disabled="af.processing" @click="ac = null">{{ $t('Cancel') }}</button><button type="submit" form="ids-act" class="lg-btn lg-btn-primary" :class="ac && ac.danger ? 'lg-btn-red' : ''" :disabled="af.processing"><icons name="tick" class="w-4 h-4" />{{ ac ? ac.button : '' }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="af.processing" @click="ac = null" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-act" class="lg-btn tone tone-solid" :disabled="af.processing" :style="{ '--tone': ac && ac.danger ? '#dc2626' : '#16a34a' }"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ ac ? ac.button : '' }}</button></template>
     </travel-modal>
 
     <!-- edit details -->
@@ -160,13 +154,13 @@
         <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Restrictions') }}</label><textarea v-model="ef.restrictions" rows="2" maxlength="2000"></textarea></div>
         <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Notes') }}</label><textarea v-model="ef.notes" rows="2" maxlength="2000"></textarea></div>
       </form>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" :disabled="ef.processing" @click="editOpen = false">{{ $t('Cancel') }}</button><button type="submit" form="ids-edit" class="lg-btn lg-btn-primary" :disabled="ef.processing"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="ef.processing" @click="editOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-edit" class="lg-btn tone tone-solid" :disabled="ef.processing" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save') }}</button></template>
     </travel-modal>
 
     <travel-modal :show="photoOpen" :title="$t('Photograph')" :subtitle="$t('Choose or take a picture; the part inside the frame goes on the card.')" icon="camera" max-width="2xl" :busy="photoBusy" @close="photoOpen = false">
       <photo-cropper v-model="newPhoto" :min-width="minPhotoWidth" />
       <span class="ac-err">{{ errs.photo }}</span>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" @click="photoOpen = false">{{ $t('Cancel') }}</button><button type="button" class="lg-btn lg-btn-primary" :disabled="!newPhoto || photoBusy" @click="savePhoto"><icons name="tick" class="w-4 h-4" />{{ $t('Save photograph') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" @click="photoOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="!newPhoto || photoBusy" @click="savePhoto" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save photograph') }}</button></template>
     </travel-modal>
   </admin-layout>
 </template>
@@ -179,7 +173,7 @@ import DatePicker from '@/Shared/DatePicker.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import TravelModal from '@/Pages/Travels/TravelModal.vue';
 import ScTabs from '../../Subcontracts/ScTabs.vue';
-import CardFace from '../Parts/CardFace.vue';
+import IdCutout from '../Parts/IdCutout.vue';
 import PhotoCropper from '../Parts/PhotoCropper.vue';
 import { statusChip, statusIcon } from '../Parts/status';
 import CategoryChip from '../Parts/CategoryChip.vue';
@@ -188,7 +182,7 @@ import { idMakeFile } from '@/Core/idMake';
 import PersonSearch from '../Parts/PersonSearch.vue';
 
 export default {
-  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, CardFace, PhotoCropper, CategoryChip, PersonSearch, IdMakeOverlay },
+  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, IdCutout, PhotoCropper, CategoryChip, PersonSearch, IdMakeOverlay },
   props: { info: Object, card: Object, front: String, back: String, css: String, events: Array, prints: Array, canHistory: Boolean, gateTypes: Array, can: Object, layouts: Array, minPhotoWidth: Number, pooled: Boolean, holder: Object, assignments: { type: Array, default: () => [] }, cardHistory: { type: Array, default: () => [] } },
   data() {
     return { tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
@@ -276,7 +270,8 @@ export default {
 
 <style scoped>
 .ids-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@media (min-width: 1100px) { .ids-grid { grid-template-columns: 560px minmax(0, 1fr); } }
+@media (min-width: 1000px) { .ids-grid { grid-template-columns: 340px minmax(0, 1fr); } }
+.ids-cards { display: grid; justify-items: center; gap: 4px; padding: 6px 0 4px; } .ids-cards .ids-holder, .ids-cards .ids-actions { width: 100%; }
 .ids-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; } .ids-pair figure { margin: 0; } .ids-pair figcaption { text-align: center; margin-top: 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lg-mute, #64748b); }
 .ids-chip { display: flex; gap: 10px; align-items: center; margin: -4px 0 14px; }
 .ids-size { margin: 12px 0 0; font-size: 0.76rem; color: var(--lg-mute, #64748b); text-align: center; }

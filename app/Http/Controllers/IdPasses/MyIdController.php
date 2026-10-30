@@ -5,6 +5,7 @@ namespace App\Http\Controllers\IdPasses;
 use App\Http\Controllers\Controller;
 use App\Models\IdPassCard;
 use App\Services\IdPass\CardRenderer;
+use App\Services\IdPass\IdPassKinds;
 use App\Services\IdPass\IdPassQuery;
 use App\Services\IdPass\IdPassSettings;
 use Illuminate\Http\Request;
@@ -45,7 +46,9 @@ class MyIdController extends Controller
 
         return Inertia::render('IdPasses/MyId', [
             'linked' => true,
-            'card' => IdPassQuery::row($card) + ['status_raw' => $card->status, 'title' => $card->title, 'validity_text' => $card->expires_at ? $card->expires_at->locale('en')->translatedFormat('j F Y') : IdPassSettings::get('idpass_no_expiry_text')],
+            'card' => IdPassQuery::row($card) + ['status_raw' => $card->status, 'title' => $card->title, 'validity_text' => $card->expires_at ? $card->expires_at->locale('en')->translatedFormat('j F Y') : IdPassSettings::get('idpass_no_expiry_text'),
+                'can_print' => IdPassKinds::can('staff', 'print'), 'can_download' => IdPassKinds::can('staff', 'download'), 'print_url' => route('id-passes.staff.print', ['card' => $card->id]), 'pdf_url' => route('id-passes.staff.pdf', ['card' => $card->id]),
+                'detail_url' => IdPassKinds::canRead('staff') ? route('id-passes.staff.show', ['card' => $card->id]) : null, 'span_days' => $card->expires_at && $card->issued_at ? max(1, $card->issued_at->diffInDays($card->expires_at)) : null],
             'front' => CardRenderer::front($data, 'web'), 'back' => CardRenderer::back($data, 'web'), 'css' => CardRenderer::stylesheet('web'),
         ]);
     }

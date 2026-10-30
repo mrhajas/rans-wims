@@ -13,6 +13,9 @@ class IdPassReports
 {
     public const LIMIT = 3000;
 
+    /** The most rows a printed or PDF report holds: DomPDF needs memory for every row of the table, so a bigger report would stop with a server error. The CSV has no limit. */
+    public const PDF_MAX = 600;
+
     public static function types(): array
     {
         return [

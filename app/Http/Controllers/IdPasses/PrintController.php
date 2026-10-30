@@ -28,7 +28,7 @@ class PrintController extends Controller
     /** Only a card that is active (not waiting, rejected, suspended, revoked or replaced) is made into paper. */
     private function printable(IdPassCard $card): void
     {
-        abort_unless($card->status === IdPassCard::ACTIVE, 422, __('Only an active ID can be printed (this one is :s).', ['s' => strtolower($card->effective_status)]));
+        abort_unless($card->effective_status === IdPassCard::ACTIVE, 422, __('Only an active ID can be printed (this one is :s).', ['s' => strtolower($card->effective_status)]));
     }
 
     /** A card that was printed before can only be printed again with a reason (lost, broken, changed...); the reason goes to the history of the card and of the printing. */

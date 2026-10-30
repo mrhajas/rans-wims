@@ -97,7 +97,8 @@ class PrintCentreController extends Controller
             IdPassQuery::apply($q, IdPassQuery::filters((array) ($d['filters'] ?? [])), $kinds);
         }
         $matched = (clone $q)->count();
-        $active = (clone $q)->where('status', IdPassCard::ACTIVE)->limit(BatchRunner::MAX + 1)->pluck('id')->all();
+        $today = \Carbon\Carbon::today(config('app.timezone'))->toDateString();
+        $active = (clone $q)->where('status', IdPassCard::ACTIVE)->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>=', $today))->limit(BatchRunner::MAX + 1)->pluck('id')->all();
         $landscape = ($d['orientation'] ?? 'landscape') !== 'portrait';
         if ($d['layout'] === 'a4_duplex') {
             $landscape = false;

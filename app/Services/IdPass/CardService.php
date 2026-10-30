@@ -66,7 +66,7 @@ class CardService
      * Issues a card. $in: staff_id | contact_id | visitor_id, full_name, title, phone, company, issued_at, expires_at, host_name, purpose, authorisation_type, vehicle_registration,
      * vehicle_description, restrictions, notes. $photo: the result of PhotoService. $manualSeq: a number typed by someone who may (never one that was used before).
      */
-    public static function issue(IdPassCategory $cat, array $in, ?array $photo, User $by, ?int $manualSeq = null): IdPassCard
+    public static function issue(IdPassCategory $cat, array $in, ?array $photo, User $by, ?int $manualSeq = null, bool $quiet = false): IdPassCard
     {
         abort_unless($cat->is_active, 422, __('This category is switched off.'));
         $staff = $contact = null;
@@ -146,8 +146,10 @@ class CardService
 
             return $card;
         });
-        self::log($card->status === IdPassCard::PENDING ? 'RANS ID requested' : 'RANS ID issued', $card, ['category' => $cat->name, 'expires' => $card->expires_at?->toDateString(), 'manual_number' => (bool) $manualSeq]);
-        IdPassNotifier::fire($card->status === IdPassCard::PENDING ? 'approval_needed' : 'issued', $card, $by);
+        if (! $quiet) {     // a stock of passes made in one go is logged once, not once per pass
+            self::log($card->status === IdPassCard::PENDING ? 'RANS ID requested' : 'RANS ID issued', $card, ['category' => $cat->name, 'expires' => $card->expires_at?->toDateString(), 'manual_number' => (bool) $manualSeq]);
+            IdPassNotifier::fire($card->status === IdPassCard::PENDING ? 'approval_needed' : 'issued', $card, $by);
+        }
 
         return $card;
     }
@@ -159,8 +161,9 @@ class CardService
         $count = max(1, min(200, $count));
         $made = [];
         for ($i = 0; $i < $count; $i++) {
-            $made[] = self::issue($cat, ['issued_at' => self::today()->toDateString(), 'expires_at' => $expires], null, $by);
+            $made[] = self::issue($cat, ['issued_at' => self::today()->toDateString(), 'expires_at' => $expires], null, $by, null, true);
         }
+        log_activity('RANS passes made', ['category' => $cat->name, 'count' => count($made), 'from' => $made[0]->number, 'to' => end($made)->number], $made[0], 'RANS ID & Pass Management');
 
         return $made;
     }

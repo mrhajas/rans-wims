@@ -3,8 +3,8 @@
     <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header icon="printer" :title="$t('ID Print Centre')" :subtitle="$t('Choose the IDs, see how many cards and sheets they make, and generate the PDF.')">
-        <Link :href="route('id-passes.dashboard')" class="lg-btn lg-btn-soft"><icons name="chart-bar" class="w-4 h-4" /><span>{{ $t('Overview') }}</span></Link>
-        <Link v-if="can.history" :href="route('id-passes.print-centre.history')" class="lg-btn lg-btn-soft"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Print History') }}</span></Link>
+        <Link :href="route('id-passes.dashboard')" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="chart-bar" class="w-4 h-4" /></span><span>{{ $t('Overview') }}</span></Link>
+        <Link v-if="can.history" :href="route('id-passes.print-centre.history')" class="lg-btn tone" style="--tone: #d97706"><span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span><span>{{ $t('Print History') }}</span></Link>
       </page-header>
 
       <div class="pcn-grid">
@@ -40,7 +40,7 @@
               </tbody>
             </table>
           </div>
-          <div v-if="last > 1" class="pcn-pages"><button type="button" class="lg-btn lg-btn-soft" :disabled="page <= 1" @click="load(page - 1)">{{ $t('Previous') }}</button><span>{{ page }} / {{ last }}</span><button type="button" class="lg-btn lg-btn-soft" :disabled="page >= last" @click="load(page + 1)">{{ $t('Next') }}</button></div>
+          <div v-if="last > 1" class="pcn-pages"><button type="button" class="lg-btn tone" :disabled="page <= 1" @click="load(page - 1)" style="--tone: #2563eb"><span class="tone-ico"><icons name="arrow-left" class="w-4 h-4" /></span>{{ $t('Previous') }}</button><span>{{ page }} / {{ last }}</span><button type="button" class="lg-btn tone" :disabled="page >= last" @click="load(page + 1)" style="--tone: #2563eb"><span class="tone-ico"><icons name="forward" class="w-4 h-4" /></span>{{ $t('Next') }}</button></div>
         </div>
 
         <aside class="pcn-right">
@@ -62,7 +62,7 @@
               <div class="pcn-seg pcn-reasons"><button v-for="r in reasons" :key="r" type="button" :class="{ 'is-on': reason === r }" @click="reason = r">{{ r }}</button></div>
               <input v-model="note" maxlength="150" :placeholder="$t('More about it (optional)')" /></div>
             <p v-if="layout === 'a4_duplex'" class="lg-note lg-note-amber"><icons name="info" class="w-4 h-4" /><span>{{ $t('Print double sided, flip on the long edge, at 100% (actual size).') }}</span></p>
-            <button type="button" class="lg-btn lg-btn-primary pcn-go" :disabled="working || !pv || !pv.cards || pv.over || (pv.reprints > 0 && !reason)" @click="generate"><icons :name="working ? 'refresh' : 'printer'" class="w-4 h-4" :class="{ 'animate-spin': working }" />{{ working ? $t('Working...') : (action === 'pdf' ? $t('Generate PDF') : $t('Generate sheets')) }}</button>
+            <button type="button" class="lg-btn tone tone-solid pcn-go" :disabled="working || !pv || !pv.cards || pv.over || (pv.reprints > 0 && !reason)" @click="generate" style="--tone: #4f46e5"><span class="tone-ico"><icons :name="working ? 'refresh' : 'printer'" class="w-4 h-4" :class="{ 'animate-spin': working }" /></span>{{ working ? $t('Working...') : (action === 'pdf' ? $t('Generate PDF') : $t('Generate sheets')) }}</button>
             <span class="ac-err">{{ error }}</span>
           </section>
 
@@ -70,7 +70,7 @@
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ batch.reference }}</h2><p class="lg-card-sub">{{ batch.cards }} {{ $t('cards') }} · {{ batch.status }}</p></div></header>
             <div class="pcn-bar"><i :style="{ width: batch.progress + '%' }"></i></div>
             <p v-if="batch.status === 'Failed'" class="ac-err">{{ batch.error }}</p>
-            <div v-if="batch.status === 'Done'" class="pcn-files"><a v-for="p in batch.parts" :key="p" :href="route('id-passes.batch.download', [batch.id]) + '?part=' + p" :target="batch.action === 'print' ? '_blank' : null" class="lg-btn lg-btn-soft"><icons :name="batch.action === 'print' ? 'printer' : 'download'" class="w-4 h-4" />{{ batch.parts > 1 ? $t('Part :n', { n: p }) : (batch.action === 'print' ? $t('Open for printing') : $t('Download')) }}</a></div>
+            <div v-if="batch.status === 'Done'" class="pcn-files"><a v-for="p in batch.parts" :key="p" :href="route('id-passes.batch.download', [batch.id]) + '?part=' + p" :target="batch.action === 'print' ? '_blank' : null" class="lg-btn tone" style="--tone: #4f46e5"><span class="tone-ico"><icons :name="batch.action === 'print' ? 'printer' : 'download'" class="w-4 h-4" /></span>{{ batch.parts > 1 ? $t('Part :n', { n: p }) : (batch.action === 'print' ? $t('Open for printing') : $t('Download')) }}</a></div>
           </section>
 
           <section v-if="batches.length" class="lg-card">
@@ -154,7 +154,7 @@ export default {
 .pcn-left { display: grid; gap: 14px; } .pcn-right { display: grid; gap: 14px; }
 .pcn-kinds { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; } .pcn-kinds button { border: 0; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.82rem; cursor: pointer; background: var(--lg-soft, #f1f5f9); color: var(--lg-ink, #0f172a); transition: all 0.2s; }
 .pcn-kinds button.is-on { background: var(--c); color: #fff; box-shadow: 0 10px 18px -10px var(--c); }
-.pcn-filters { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.pcn-filters { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
 .pcn-mode { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--lg-line, #e2e8f0); font-weight: 700; } .pcn-mode label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
 .pcn-chk { width: 38px; } tr.is-sel td { background: rgba(21, 101, 192, 0.07); }
 .pcn-row td:first-child { box-shadow: inset 5px 0 0 var(--c); }

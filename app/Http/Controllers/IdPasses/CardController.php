@@ -255,6 +255,16 @@ class CardController extends Controller
         return back()->with('message', ! empty($p['low']) ? __('Photograph changed. It is small, so the print may look soft.') : __('Photograph changed.'));
     }
 
+    /** Both sides of a card as HTML for the cut-out viewer (the staff profile loads them after the page is shown, so the profile itself stays light). */
+    public function faces(Request $request)
+    {
+        $kind = $this->kindOf($request);
+        $card = $this->cardOf($request, $kind);
+        $data = CardRenderer::data($card);
+
+        return response()->json(['front' => CardRenderer::front($data, 'web'), 'back' => CardRenderer::back($data, 'web'), 'css' => CardRenderer::stylesheet('web')])->header('Cache-Control', 'private, max-age=60');
+    }
+
     /** The photograph of a card (a small copy with ?w=120 for lists). Private: only people who may read this kind see it. */
     public function photoFile(Request $request)
     {

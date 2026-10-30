@@ -2,9 +2,9 @@
   <admin-layout :title="$t('ID Settings')">
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header icon="cog" :title="$t('ID Settings')" :subtitle="$t('Categories and numbering, the back of the card, validity, notices and QR verification.')">
-        <Link :href="route('id-passes.dashboard')" class="lg-btn lg-btn-soft"><icons name="qr-code" class="w-4 h-4" /><span>{{ $t('Overview') }}</span></Link>
-        <Link v-if="can.alerts" :href="route('id-passes.workflow')" class="lg-btn lg-btn-soft"><icons name="bell" class="w-4 h-4" /><span>{{ $t('Alerts') }}</span></Link>
-        <button v-if="can.settings && can.templates && can.numbering" type="button" class="lg-btn lg-btn-primary" @click="openNew"><icons name="plus" class="w-4 h-4" /><span>{{ $t('New category') }}</span></button>
+        <Link :href="route('id-passes.dashboard')" class="lg-btn tone" style="--tone: #1e4467"><span class="tone-ico"><icons name="qr-code" class="w-4 h-4" /></span><span>{{ $t('Overview') }}</span></Link>
+        <Link v-if="can.alerts" :href="route('id-passes.workflow')" class="lg-btn tone" style="--tone: #e11d48"><span class="tone-ico"><icons name="bell" class="w-4 h-4" /></span><span>{{ $t('Alerts') }}</span></Link>
+        <button v-if="can.settings && can.templates && can.numbering" type="button" class="lg-btn tone tone-solid" @click="openNew" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span><span>{{ $t('New category') }}</span></button>
       </page-header>
 
       <section class="lg-card">
@@ -39,7 +39,7 @@
             <div class="ac-f"><label>{{ $t('Batch made at once up to (cards)') }} <b class="wims-req">*</b></label><input v-model.number="g.idpass_sync_batch" type="number" min="5" max="200" /><small class="lg-subtext">{{ $t('Larger batches are made in the background.') }}</small></div>
             <div class="ac-f st-all"><label>{{ $t('Gate pass authorisation types (one on each line)') }}</label><textarea v-model="g.idpass_gate_types" rows="4" maxlength="600"></textarea></div>
           </div>
-          <div class="lg-actionbar"><span class="lg-actionbar-note">{{ $t('Changes show on the next card that is printed.') }}</span><div class="lg-actionbar-btns"><button type="button" class="lg-btn t-slate" @click="resetGeneral"><icons name="refresh" class="w-4 h-4" />{{ $t('Start again from the supplied wording') }}</button><button type="submit" class="lg-btn lg-btn-primary" :disabled="gf.processing"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button></div></div>
+          <div class="lg-actionbar"><span class="lg-actionbar-note">{{ $t('Changes show on the next card that is printed.') }}</span><div class="lg-actionbar-btns"><button type="button" class="lg-btn tone t-slate" @click="resetGeneral" style="--tone: #d97706"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Start again from the supplied wording') }}</button><button type="submit" class="lg-btn tone tone-solid" :disabled="gf.processing" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save') }}</button></div></div>
         </form>
         <aside class="st-prev"><b>{{ $t('Back of the card (as it prints now)') }}</b><card-face :html="backHtml" :css="css" /></aside>
       </div>
@@ -48,7 +48,7 @@
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="qr-code" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('QR verification') }}</h2><p class="lg-card-sub">{{ $t('The QR code holds a long random token, never a database number. Revoked, suspended, expired and replaced IDs never show as valid.') }}</p></div></header>
         <label class="st-opt" :class="{ 'is-on': q.idpass_qr_mode === 'public' }"><input v-model="q.idpass_qr_mode" type="radio" value="public" /><span><b>{{ $t('Anybody who scans sees the status') }}</b><small>{{ $t('Valid or not, type, number, dates and the holder’s first name with an initial. Signed-in staff also see the photograph and details.') }}</small></span></label>
         <label class="st-opt" :class="{ 'is-on': q.idpass_qr_mode === 'login' }"><input v-model="q.idpass_qr_mode" type="radio" value="login" /><span><b>{{ $t('Only signed-in staff') }}</b><small>{{ $t('Everybody else is asked to sign in first and sees nothing.') }}</small></span></label>
-        <div class="lg-actionbar"><span class="lg-actionbar-note"></span><div class="lg-actionbar-btns"><button type="submit" class="lg-btn lg-btn-primary" :disabled="qf.processing"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button></div></div>
+        <div class="lg-actionbar"><span class="lg-actionbar-note"></span><div class="lg-actionbar-btns"><button type="submit" class="lg-btn tone tone-solid" :disabled="qf.processing" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save') }}</button></div></div>
       </form>
     </div>
 
@@ -74,7 +74,7 @@
           <div class="ac-f st-all st-checks"><label><input v-model="cf.requires_approval" type="checkbox" /> {{ $t('Needs approval before it can be printed') }}</label><label><input v-model="cf.photo_required" type="checkbox" /> {{ $t('A photograph is required') }}</label><label><input v-model="cf.vehicle_required" type="checkbox" /> {{ $t('The vehicle registration is required') }}</label><label v-if="(cf.kind || '') === 'visitor'"><input v-model="cf.pooled" type="checkbox" /> {{ $t('A stock of numbered passes: handed to a visitor at check-in, taken back at check-out') }}</label><label v-if="!isNew"><input v-model="cf.is_active" type="checkbox" /> {{ $t('This category is switched on') }}</label></div>
         </template>
       </form>
-      <template #footer><button type="button" class="lg-btn lg-btn-soft" :disabled="cf.processing" @click="open = false">{{ $t('Cancel') }}</button><button type="submit" form="st-cat" class="lg-btn lg-btn-primary" :disabled="cf.processing"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button></template>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="cf.processing" @click="open = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="st-cat" class="lg-btn tone tone-solid" :disabled="cf.processing" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save') }}</button></template>
     </travel-modal>
   </admin-layout>
 </template>
@@ -117,7 +117,7 @@ export default {
 <style scoped>
 .st-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 3px 8px -2px rgba(15, 37, 64, 0.5); }
 tr.is-off td { opacity: 0.55; }
-.st-two { display: grid; gap: 18px; align-items: start; margin: 18px 0; } @media (min-width: 1100px) { .st-two { grid-template-columns: minmax(0, 1fr) 300px; } .st-prev { position: sticky; top: 84px; } }
+.st-two { display: grid; gap: 18px; align-items: start; margin: 18px 0; grid-template-columns: minmax(0, 1fr); } @media (min-width: 1100px) { .st-two { grid-template-columns: minmax(0, 1fr) 300px; } .st-prev { position: sticky; top: 84px; } }
 .st-prev { display: grid; gap: 10px; padding: 16px; border-radius: 22px; background: var(--lg-card, #fff); box-shadow: 0 18px 34px -22px rgba(15, 37, 64, 0.5), 0 0 0 1px var(--lg-line, #e2e8f0); }
 .st-all { grid-column: 1 / -1; }
 .st-color { height: 42px; padding: 3px 6px; width: 100%; border-radius: 12px; cursor: pointer; }

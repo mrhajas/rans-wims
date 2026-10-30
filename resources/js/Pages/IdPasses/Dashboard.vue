@@ -2,11 +2,11 @@
   <admin-layout :title="$t('RANS ID & Pass Management')">
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header icon="qr-code" :title="$t('RANS ID & Pass Management')" :subtitle="$t('Staff IDs, compound worker IDs, visitor passes and gate passes in one place.')">
-        <Link v-if="links.print_centre" :href="links.print_centre" class="lg-btn lg-btn-primary"><icons name="printer" class="w-4 h-4" /><span>{{ $t('Print Centre') }}</span></Link>
-        <Link v-if="links.history" :href="links.history" class="lg-btn lg-btn-soft"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Print History') }}</span></Link>
-        <Link v-if="links.reports" :href="links.reports" class="lg-btn lg-btn-soft"><icons name="chart-bar" class="w-4 h-4" /><span>{{ $t('Reports') }}</span></Link>
-        <Link v-if="links.alerts" :href="links.alerts" class="lg-btn lg-btn-soft"><icons name="bell" class="w-4 h-4" /><span>{{ $t('Alerts') }}</span></Link>
-        <Link v-if="links.settings" :href="links.settings" class="lg-btn lg-btn-soft"><icons name="cog" class="w-4 h-4" /><span>{{ $t('Settings') }}</span></Link>
+        <Link v-if="links.print_centre" :href="links.print_centre" class="lg-btn tone tone-solid" style="--tone: #4f46e5"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span><span>{{ $t('Print Centre') }}</span></Link>
+        <Link v-if="links.history" :href="links.history" class="lg-btn tone" style="--tone: #d97706"><span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span><span>{{ $t('Print History') }}</span></Link>
+        <Link v-if="links.reports" :href="links.reports" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="chart-bar" class="w-4 h-4" /></span><span>{{ $t('Reports') }}</span></Link>
+        <Link v-if="links.alerts" :href="links.alerts" class="lg-btn tone" style="--tone: #e11d48"><span class="tone-ico"><icons name="bell" class="w-4 h-4" /></span><span>{{ $t('Alerts') }}</span></Link>
+        <Link v-if="links.settings" :href="links.settings" class="lg-btn tone" style="--tone: #475569"><span class="tone-ico"><icons name="cog" class="w-4 h-4" /></span><span>{{ $t('Settings') }}</span></Link>
       </page-header>
 
       <div class="idd-tiles">
@@ -22,7 +22,7 @@
             <div><b>{{ c.counts.pending }}</b><span>{{ $t('Waiting') }}</span></div>
             <div><b>{{ c.counts.suspended + c.counts.revoked }}</b><span>{{ $t('Suspended / revoked') }}</span></div>
           </div>
-          <footer><Link :href="c.url" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" />{{ $t('Open') }}</Link><Link v-if="c.create_url" :href="c.create_url" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" />{{ $t('Issue') }}</Link></footer>
+          <footer><Link :href="c.url" class="lg-btn tone" style="--tone: #2563eb"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span>{{ $t('Open') }}</Link><Link v-if="c.create_url" :href="c.create_url" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Issue') }}</Link></footer>
         </article>
       </div>
 
@@ -63,10 +63,10 @@ export default {
 </script>
 
 <style scoped>
-.idd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.idd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(128px, 100%), 1fr)); gap: 12px; margin-bottom: 18px; }
 .idd-tile { padding: 16px 18px; border-radius: 20px; background: var(--lg-card, #fff); box-shadow: 0 14px 26px -20px rgba(15, 37, 64, 0.55), 0 0 0 1px var(--lg-line, #e2e8f0); border-bottom: 3px solid var(--c); transition: transform 0.2s; }
 .idd-tile:hover { transform: translateY(-2px); } .idd-tile b { display: block; font-size: 1.9rem; line-height: 1.1; color: var(--c); font-variant-numeric: tabular-nums; } .idd-tile > span { font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--lg-mute, #64748b); }
-.idd-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 18px; }
+.idd-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 16px; margin-bottom: 18px; }
 .idd-kind { border-radius: 24px; padding: 18px; background: var(--lg-card, #fff); box-shadow: 0 20px 34px -24px rgba(15, 37, 64, 0.6), 0 0 0 1px var(--lg-line, #e2e8f0); position: relative; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
 .idd-kind::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 6px; background: var(--tone); }
 .idd-kind:hover { transform: translateY(-3px); box-shadow: 0 28px 40px -24px rgba(15, 37, 64, 0.6), 0 0 0 1px var(--tone); }
@@ -74,8 +74,8 @@ export default {
 .idd-ico { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; color: #fff; background: var(--tone); box-shadow: 0 12px 20px -12px var(--tone); }
 .idd-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; text-align: center; } .idd-nums b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; } .idd-nums span { font-size: 0.64rem; font-weight: 800; text-transform: uppercase; color: var(--lg-mute, #64748b); line-height: 1.2; display: block; }
 .idd-kind footer { display: flex; gap: 8px; flex-wrap: wrap; }
-.idd-two { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-.idd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; } .idd-list a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; color: inherit; text-decoration: none; } .idd-list a:hover { background: rgba(21, 101, 192, 0.08); }
+.idd-two { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+.idd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; grid-template-columns: minmax(0, 1fr); } .idd-list li { min-width: 0; } .idd-list a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; color: inherit; text-decoration: none; } .idd-list a:hover { background: rgba(21, 101, 192, 0.08); }
 .idd-list b { letter-spacing: 0.04em; color: #1e4467; min-width: 64px; } .idd-list span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .idd-row { display: grid; padding: 6px 10px; } .idd-row small { color: var(--lg-mute, #64748b); }
 .idd-list a > .idc { flex: none; min-width: 84px; }
 .idd-none { padding: 14px; color: var(--lg-mute, #64748b); }

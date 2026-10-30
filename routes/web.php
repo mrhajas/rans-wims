@@ -650,6 +650,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
                 Route::get('{card}', [$card, 'show'])->whereNumber('card')->defaults('kind', $kind)->name('show');
                 Route::put('{card}', [$card, 'update'])->whereNumber('card')->middleware('throttle:60,1,id-passes.' . $k['route'] . '.update')->defaults('kind', $kind)->name('update');
                 Route::post('{card}/photo', [$card, 'photo'])->whereNumber('card')->middleware('throttle:30,1,id-passes.' . $k['route'] . '.photo')->defaults('kind', $kind)->name('photo');
+                Route::get('{card}/faces', [$card, 'faces'])->whereNumber('card')->middleware('throttle:240,1,id-passes.' . $k['route'] . '.faces')->defaults('kind', $kind)->name('faces');
                 Route::get('{card}/photo-file', [$card, 'photoFile'])->whereNumber('card')->middleware('throttle:600,1,id-passes.' . $k['route'] . '.photo-file')->defaults('kind', $kind)->name('photo-file');
                 foreach (['approve', 'reject', 'suspend', 'reactivate', 'revoke', 'renew', 'replace'] as $action) {
                     Route::post('{card}/' . $action, [$card, $action])->whereNumber('card')->middleware('throttle:30,1,id-passes.' . $k['route'] . '.' . $action)->defaults('kind', $kind)->name($action);

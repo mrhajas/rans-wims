@@ -87,7 +87,7 @@ class LookupController extends Controller
         }
         $issued = ! empty($d['issued_at']) ? Carbon::parse($d['issued_at'], config('app.timezone')) : Carbon::today(config('app.timezone'));
         $data = CardRenderer::draft(['full_name' => $d['full_name'] ?? '', 'title' => $d['title'] ?? null, 'issued' => $issued, 'expires' => ! empty($d['expires_at']) ? Carbon::parse($d['expires_at'], config('app.timezone')) : null, 'host_name' => $d['host_name'] ?? null,
-            'vehicle_registration' => $d['vehicle_registration'] ?? null, 'authorisation_type' => $d['authorisation_type'] ?? null], $cat, $d['number'] ?: CardService::suggest($cat)['number'], $photo, 'https://wims.invalid/id-verify/preview');
+            'vehicle_registration' => $d['vehicle_registration'] ?? null, 'authorisation_type' => $d['authorisation_type'] ?? null], $cat, ($d['number'] ?? '') ?: CardService::suggest($cat)['number'], $photo, 'https://wims.invalid/id-verify/preview');
 
         return response()->json(['front' => CardRenderer::front($data, 'web'), 'back' => CardRenderer::back($data, 'web')]);
     }

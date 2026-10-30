@@ -22,7 +22,7 @@ class BatchRunner
         $ids = (array) $b->card_ids;
         $order = ['staff' => 1, 'compound' => 2, 'visitor' => 3, 'gate' => 4];
 
-        return IdPassCard::query()->with(['category', 'staff'])->whereIn('id', $ids ?: [0])->where('status', IdPassCard::ACTIVE)->get()
+        return IdPassCard::query()->with(['category', 'staff'])->whereIn('id', $ids ?: [0])->where('status', IdPassCard::ACTIVE)->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>=', \Carbon\Carbon::today(config('app.timezone'))->toDateString()))->get()
             ->sortBy(fn ($c) => sprintf('%d-%08d-%s', $order[$c->kind] ?? 9, $c->category_id, $c->number))->values();
     }
 

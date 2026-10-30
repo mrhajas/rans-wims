@@ -11,10 +11,10 @@
     <div class="pc-side">
       <input ref="file" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="pick" />
       <div class="pc-btns">
-        <button type="button" class="lg-btn lg-btn-soft" @click="$refs.file.click()"><icons name="upload" class="w-4 h-4" />{{ $t('Choose photo') }}</button>
-        <button v-if="!cam" type="button" class="lg-btn lg-btn-soft" @click="openCamera"><icons name="camera" class="w-4 h-4" />{{ $t('Take photo') }}</button>
-        <button v-else type="button" class="lg-btn lg-btn-primary" @click="snap"><icons name="camera" class="w-4 h-4" />{{ $t('Capture') }}</button>
-        <button v-if="img || cam" type="button" class="lg-btn t-slate" @click="reset"><icons name="cross" class="w-4 h-4" />{{ $t('Remove') }}</button>
+        <button type="button" class="lg-btn tone" @click="$refs.file.click()" style="--tone: #0284c7"><span class="tone-ico"><icons name="upload" class="w-4 h-4" /></span>{{ $t('Choose photo') }}</button>
+        <button v-if="!cam" type="button" class="lg-btn tone" @click="openCamera" style="--tone: #0284c7"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ $t('Take photo') }}</button>
+        <button v-else type="button" class="lg-btn tone tone-solid" @click="snap" style="--tone: #0284c7"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ $t('Capture') }}</button>
+        <button v-if="img || cam" type="button" class="lg-btn tone t-slate" @click="reset" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Remove') }}</button>
       </div>
       <label v-if="img" class="pc-zoom"><span>{{ $t('Zoom') }}</span><input v-model.number="zoom" type="range" min="1" max="4" step="0.01" @input="redraw(true)" /></label>
       <p v-if="img" class="pc-hint">{{ $t('Drag the picture to place the face; the frame is the shape of the card photograph.') }}</p>

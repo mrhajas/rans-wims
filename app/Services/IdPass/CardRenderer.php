@@ -66,8 +66,8 @@ class CardRenderer
             return $path;
         }
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if ($ext === 'svg') {
-            // a vector logo is a file the browser keeps (no copy inside every card)
+        if ($ext === 'svg' || basename($path) === 'wave.jpg') {
+            // the vector logos and the paper texture are files the browser keeps (no copy inside every card)
             return url('/images/idpass/' . basename($path));
         }
         $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'svg' => 'image/svg+xml'][$ext] ?? 'application/octet-stream';
@@ -296,18 +296,25 @@ class CardRenderer
         return $h . '</div>';
     }
 
-    /** The big yellow arrow shape in the lower corner of the back: a rounded bar and a thick diagonal bar with round ends, drawn as shapes (not a picture), so it is sharp at any resolution and costs the PDF nothing. */
+    /** The big yellow arrow in the lower corner of the back: the very same arrow as on the front (three strokes with round ends: along the top, down the side and the diagonal), scaled up and let run off the card. Drawn as shapes, so it is sharp at any resolution and costs the PDF nothing. */
     private static function backArrow(): string
     {
         $y = '#fff200';
-        $bar = self::box(41.3, 56.8, 20.0, 10.3, ['background' => $y, 'border-radius' => 3.35]);
-        $len = 50.96;
-        $th = 10.06;
-        $cx = 58.2;
-        $cy = 75.2;
-        $diag = self::box($cx - $len / 2, $cy - $th / 2, $len, $th, ['background' => $y, 'border-radius' => $th / 2, 'transform' => 'rotate(48.1deg)', 'transform-origin' => '50% 50%']);
+        $w = 26.7;                // the arrow's own square, mm (the front one is 13.3)
+        $x0 = 41.0;
+        $y0 = 56.1;
+        $th = 0.21 * $w;          // stroke thickness, as in the front arrow
+        $pad = 0.125 * $w;        // from the square's edge to the stroke centres
+        $ax = $x0 + $pad;
+        $ay = $y0 + $pad;
+        $len = $w - 2 * $pad;     // length of an arm between its centres
+        $round = ['background' => $y, 'border-radius' => $th / 2];
+        $top = self::box($ax - $th / 2, $ay - $th / 2, $len + $th, $th, $round);
+        $side = self::box($ax - $th / 2, $ay - $th / 2, $th, $len + $th + 8, $round);    // runs off the bottom of the card
+        $d = $len * M_SQRT2 + $th;   // the diagonal with its two round ends
+        $diag = self::box($ax + $len / 2 - $d / 2, $ay + $len / 2 - $th / 2, $d, $th, $round + ['transform' => 'rotate(45deg)', 'transform-origin' => '50% 50%']);
 
-        return $bar . $diag;
+        return $top . $side . $diag;
     }
 
     /** The faint outlines of tall buildings behind the back of the card: plain boxes in a slightly lighter tone of the back colour (no big picture to decode). */
