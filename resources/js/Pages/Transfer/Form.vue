@@ -182,6 +182,9 @@
                         :suggestions="itemSearchUrl"
                         :placeholder="$t('Search item or scan barcode')"
                         :defaultText="$t('Type an item name, code or barcode')"
+                        scan
+                        @scan-start="scanStart(row._key)"
+                        @scan-miss="scanMissed(row._key)"
                         @update:model-value="pickItem(row._key, $event)"
                       />
                       <div v-if="rowError(ii, 'item_id')" class="text-red-600 text-xs mt-1 wims-field-error">{{ rowError(ii, 'item_id') }}</div>
@@ -553,6 +556,7 @@ export default {
       select_variant: false,
       unknown_variation: null,
       variantRowKey: null,
+      scanKeys: {}, // the empty rows a handheld scan is being looked up for
       stockSet: {}, // the errors the live stock check has put on the page, by key
       scanTooltip: { show: false, x: 0, y: 0 },
       receiving: false,
@@ -888,11 +892,35 @@ export default {
     },
     // an item chosen in the picker of an empty row
     pickItem(key, v) {
+      const scanned = !!this.scanKeys[key];
+      delete this.scanKeys[key];
       if (!v || typeof v !== 'object') return;
-      this.placeItem(v, key);
+      this.placeItem(v, key, scanned);
+    },
+    // A handheld scan: the next empty row takes the cursor at once, so the following scan is never lost while this one is looked up,
+    // and the item then lands on its row with quantity 1 (or one more) without the cursor leaving the item field.
+    scanStart(key) {
+      if (!this.warehousesReady) return;
+      this.scanKeys[key] = true;
+      let spare = this.form.items.find(i => i.blank && i._key !== key);
+      if (!spare) {
+        spare = this.blankRow();
+        this.form.items.push(spare);
+        this.clearItemsError();
+      }
+      this.focusSoon('tr-item-' + spare._key);
+    },
+    // a code that matches no item: its empty row goes if there is another empty row to take the cursor
+    scanMissed(key) {
+      delete this.scanKeys[key];
+      this.dropSpareBlank(key);
+    },
+    dropSpareBlank(key) {
+      const at = this.rowIndex(key);
+      if (at >= 0 && this.form.items[at].blank && this.form.items.filter(i => i.blank).length > 1) this.removeItem(at);
     },
     // Puts a found item on the list: an item already there gets one more, otherwise it takes the empty row `key` (or the first empty row, or a new one)
-    placeItem(v, key = null) {
+    placeItem(v, key = null, quiet = false) {
       if (!this.warehousesReady) {
         this.$alert(this.warehouseHint);
         return;
@@ -908,7 +936,8 @@ export default {
       if (existing) {
         existing.quantity = (parseFloat(existing.quantity) || 0) + 1;
         if (this.trackWeight && existing.track_weight == 1) existing.weight = (parseFloat(existing.weight) || 0) + 1;
-        this.focusSoon('tr-qty-' + existing._key);
+        if (quiet) this.dropSpareBlank(key);
+        else this.focusSoon('tr-qty-' + existing._key);
         return;
       }
       const row = this.rowFromItem(v);
@@ -920,7 +949,7 @@ export default {
         this.form.items.push(row);
       }
       this.clearItemsError();
-      this.focusSoon('tr-qty-' + row._key);
+      if (!quiet) this.focusSoon('tr-qty-' + row._key);
     },
     // the empty row to fill: the one asked for, else the first empty one, else -1 (a new row is added)
     slotFor(key) {

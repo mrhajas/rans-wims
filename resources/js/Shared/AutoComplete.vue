@@ -142,7 +142,7 @@ import TecInputError from '@/Jetstream/InputError.vue';
 import { isFullWarehouseList, orderWarehouses, groupKeyOf, groupMeta, progressOf } from '@/Core/warehouseGroups';
 
 export default {
-  emits: ['update:modelValue', 'scan-miss'],
+  emits: ['update:modelValue', 'scan-miss', 'scan-start', 'scanned'],
 
   components: { TecLabel, TecInputError },
 
@@ -222,6 +222,11 @@ export default {
     search: function (search) {
       if (this._quiet) {
         this._quiet = false;
+        return;
+      }
+      // the keys of a scanner are coming in: no list, no search; the scan is looked up once when Enter arrives
+      if (this.scan && this._streak >= 3 && this._last && performance.now() - this._last < 80) {
+        this.open = false;
         return;
       }
       if (this.searchable) {
@@ -497,6 +502,7 @@ export default {
       this.loading = false;
       this.selected = null;
       this.open = false;
+      this.$emit('scan-start', code);
       this._cache = this._cache || new Map();
       const hit = this._cache.get(code);
       const found = hit
@@ -512,6 +518,7 @@ export default {
         if (item) {
           this.flashScan('ok');
           this.$emit('update:modelValue', JSON.parse(JSON.stringify(item)));
+          this.$emit('scanned', item);
         } else {
           this.flashScan('miss');
           if (this.$page && this.$page.props.flash) this.$page.props.flash.error = this.$t('No item matches the code :code. Check that it is saved as the Item Code or SKU.', { code });

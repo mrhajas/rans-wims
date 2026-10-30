@@ -46,8 +46,9 @@
         <aside class="pcn-right">
           <div class="pcn-stick">
           <section class="lg-card pcn-sheets">
-            <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Selected sheets') }}</h2><p class="lg-card-sub">{{ shown.example ? $t('An example with the first IDs of your list. Tick an ID and it moves onto the sheet.') : $t(':n cards, as they will be printed', { n: selected.length }) }}</p></div></header>
-            <div class="pcn-sheetbox"><sheet-preview :ids="shown.ids" :faces="faces" :meta="meta" :css="faceCss" :layout="layout" :orientation="orientation" :horizontal="sideBySide" :locate="locate" /></div>
+            <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Selected sheets') }}</h2><p class="lg-card-sub">{{ shown.example ? (mode === 'filter' && total ? $t('Nothing ticked: all :n IDs that match are made. Tick IDs to see them here.', { n: total }) : $t('Nothing ticked yet. Tick an ID and it moves onto the sheet.')) : $t(':n cards, as they will be printed', { n: selected.length }) }}</p></div></header>
+            <div class="pcn-sheetbox" :class="{ 'is-empty': shown.example }"><sheet-preview :ids="shown.ids" :faces="faces" :meta="meta" :css="faceCss" :layout="layout" :orientation="orientation" :horizontal="sideBySide" :locate="locate" /></div>
+            <p v-if="shown.example" class="pcn-hint"><icons name="collection" class="w-4 h-4" /><span>{{ $t('Ticked IDs appear on the sheet.') }}</span></p>
             <div v-if="shown.spreads > 1" class="pcn-pager">
               <button type="button" class="pcn-pg" :disabled="spread <= 0" :aria-label="$t('Previous')" @click="spread--"><icons name="arrow-left" class="w-4 h-4" /></button>
               <span :key="spread" class="pcn-pop">{{ $t('Cards :a to :b of :n', { a: shown.from, b: shown.to, n: selected.length }) }}</span>
@@ -153,7 +154,7 @@ export default {
         const cap = this.drawCap, n = this.selected.length, sp = Math.min(this.spread, Math.ceil(n / cap) - 1);
         return { example: false, ids: this.selected.slice(sp * cap, sp * cap + cap), spreads: Math.ceil(n / cap), from: sp * cap + 1, to: Math.min(n, sp * cap + cap) };
       }
-      return { example: true, ids: this.examples.slice(0, this.drawCap), spreads: 1, from: 0, to: 0 };
+      return { example: true, ids: [], spreads: 1, from: 0, to: 0 };
     },
     thumbIds() { return (this.mode === 'ids' && this.selected.length ? this.selected : this.examples).slice(0, 4); },
     sumLine() {
