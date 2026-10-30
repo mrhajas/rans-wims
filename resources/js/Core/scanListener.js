@@ -59,6 +59,7 @@ async function open(code) {
       if (!w) toast(t('Allow pop-ups for WIMS to open scanned records in a new tab.'), 'warn');
       else toast((data.kind ? data.kind + ': ' : '') + t('opened in a new tab'), 'ok');
     } else if (data.status === 'no_permission') toast(t('You do not have permission to open this :kind.', { kind: (data.kind || t('record')).toLowerCase() }), 'warn');
+    else if (data.status === 'foreign') toast(t('This code leads to another website, so it is not opened.'), 'warn');
     else if (data.status === 'not_found' || data.status === 'invalid') toast(t('No record matches the code :code.', { code }), 'bad');
     else toast(t('This code cannot be opened (:s).', { s: data.status }), 'warn');
   } catch (e) {
