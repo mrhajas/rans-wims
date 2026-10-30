@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 class VerifyController extends Controller
 {
     private const STATES = [
-        'Active' => ['VALID', '#15803d', 'The ID is valid.'], 'Expired' => ['EXPIRED', '#b45309', 'The validity of this ID has ended.'], 'Suspended' => ['SUSPENDED', '#b45309', 'This ID is suspended. Do not let the holder through.'],
+        'Active' => ['VALID', '#15803d', 'The ID is valid.'], 'Expired' => ['EXPIRED', '#b45309', 'The validity of this ID has ended.'], 'Suspended' => ['SUSPENDED', '#b91c1c', 'This ID is suspended. Do not let the holder through.'],
         'Revoked' => ['REVOKED', '#b91c1c', 'This ID has been revoked. Do not accept it.'], 'Replaced' => ['REPLACED', '#b91c1c', 'This ID was replaced by a newer one. Do not accept it.'], 'Pending Approval' => ['NOT YET VALID', '#b45309', 'This pass has not been approved yet.'],
         'Rejected' => ['REJECTED', '#b91c1c', 'This pass was rejected. Do not accept it.'],
     ];
@@ -31,7 +31,7 @@ class VerifyController extends Controller
 
     public function show(Request $request, string $token)
     {
-        $notFound = fn () => response()->view('idpass.verify', ['state' => 'notfound'], 404);
+        $notFound = fn () => response()->view('idpass.verify', ['state' => 'notfound'] + $this->shell(), 404);
         if (! \Schema::hasTable('idpass_cards') || ! preg_match('/^[A-Za-z0-9]{20,64}$/', $token)) {
             return $notFound();
         }
@@ -41,10 +41,10 @@ class VerifyController extends Controller
             return $notFound();
         }
         if (! FeatureManager::canAccess('id_verify', $user)) {
-            return response()->view('idpass.verify', ['state' => 'off'], 503);
+            return response()->view('idpass.verify', ['state' => 'off'] + $this->shell(), 503);
         }
         if (IdPassSettings::qrMode() === 'login' && ! $user) {
-            return response()->view('idpass.verify', ['state' => 'login'], 401);
+            return response()->view('idpass.verify', ['state' => 'login'] + $this->shell(), 401);
         }
         $eff = $card->effective_status;
         [$word, $color, $note] = self::STATES[$eff] ?? [strtoupper($eff), '#64748b', ''];
@@ -70,11 +70,32 @@ class VerifyController extends Controller
             }
         }
 
+        // how far through its validity the ID is, for the meter (an ID without an end date shows a full, calm bar)
+        $today = \Carbon\Carbon::today(config('app.timezone'));
+        $daysLeft = $card->expires_at ? (int) $today->diffInDays($card->expires_at->copy()->startOfDay(), false) : null;
+        $pct = 100;
+        if ($card->expires_at) {
+            $total = max(1, $card->issued_at->copy()->startOfDay()->diffInDays($card->expires_at->copy()->startOfDay()));
+            $pct = (int) max(0, min(100, round(($daysLeft / $total) * 100))); // what is left of the validity
+        }
+        $phones = array_values(array_filter(array_map('trim', preg_split('/\s*\/\s*/', IdPassSettings::get('idpass_phones')))));
+        $contact = ['address' => IdPassSettings::get('idpass_address'), 'pobox' => IdPassSettings::get('idpass_pobox'), 'phones' => $phones, 'email' => IdPassSettings::get('idpass_email'), 'website' => IdPassSettings::get('idpass_website')];
+
         return response()->view('idpass.verify', [
+            'contact' => $contact, 'intro' => IdPassSettings::get('idpass_intro'), 'terms' => IdPassSettings::terms(), 'band' => $cat ? $cat->uiColor() : '#1565c0', 'bandInk' => $cat ? $cat->uiInk() : '#ffffff',
+            'daysLeft' => $daysLeft, 'pct' => $pct, 'hasEnd' => (bool) $card->expires_at, 'initials' => mb_strtoupper(mb_substr($parts[0] ?? '?', 0, 1) . (count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')),
             'state' => 'card', 'word' => $word, 'color' => $color, 'note' => __($note), 'kind' => __(\App\Models\IdPassCategory::KINDS[$card->kind] ?? ''), 'category' => optional($cat)->name, 'number' => $card->number,
             'holder' => ! empty($with) ? $with : (optional($cat)->pooled ? __('Visitor Pass (not in use)') : ($full ? $name : $short)), 'title' => $full ? $card->title : null, 'issued' => $card->issued_at->format('j F Y'), 'expires' => $card->expires_at ? $card->expires_at->format('j F Y') : IdPassSettings::get('idpass_no_expiry_text'),
             'photo' => $photo, 'vehicle' => $full ? $card->vehicle_registration : null, 'host' => $full ? ($host ?? $card->host_name) : null, 'restrictions' => $full ? $card->restrictions : null, 'full' => $full,
             'replacedBy' => $card->replaced_by_id ? IdPassCard::query()->withoutGlobalScope('account')->whereKey($card->replaced_by_id)->value('number') : null, 'signedIn' => (bool) $user,
         ])->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex, nofollow');
+    }
+
+    /** What every version of the page needs besides the card: the contacts of RANS for the footer. */
+    private function shell(): array
+    {
+        $phones = array_values(array_filter(array_map('trim', preg_split('/\s*\/\s*/', IdPassSettings::get('idpass_phones')))));
+
+        return ['contact' => ['address' => IdPassSettings::get('idpass_address'), 'pobox' => IdPassSettings::get('idpass_pobox'), 'phones' => $phones, 'email' => IdPassSettings::get('idpass_email'), 'website' => IdPassSettings::get('idpass_website')]];
     }
 }
