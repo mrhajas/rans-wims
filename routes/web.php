@@ -83,6 +83,9 @@ Route::middleware(['throttle:20,1,wims.ctx'])->prefix('auth')->group(function ()
     Route::delete('ctx', [Controllers\Auth\EnvironmentChoiceController::class, 'cancel'])->name('ctx.cancel');
 });
 
+// RANS ID & Pass: the page a scanned QR code opens (public and rate limited; what it shows depends on who is looking and on the ID settings)
+Route::get('id-verify/{token}', [Controllers\IdPasses\VerifyController::class, 'show'])->where('token', '[A-Za-z0-9]{20,64}')->middleware(['web', 'throttle:60,1,id-passes.verify'])->name('id-passes.verify.show');
+
 Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.download.print', 'reject.offline.mutations'])->group(function () {
     Route::redirect('/dashboard', '/');
 
@@ -593,6 +596,72 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::post('{travel}/files', [$tr, 'attach'])->whereNumber('travel')->middleware('throttle:60,1,travels.attach')->name('attach');
         Route::get('{travel}/files/{file}', [$tr, 'download'])->whereNumber(['travel', 'file'])->middleware('throttle:120,1,travels.download')->name('download');
         Route::delete('{travel}/files/{file}', [$tr, 'removeFile'])->whereNumber(['travel', 'file'])->middleware('throttle:60,1,travels.remove-file')->name('remove-file');
+    });
+
+    // RANS ID & Pass Management: Staff IDs, Compound Worker IDs, Visitor Passes and Gate Passes of people. Names start "id-passes." (parent), then "id-passes.staff." / ".compound." / ".visitors." / ".gates."
+    // (one kind each), ".print-centre.", ".batch.", ".settings.", ".reports." and ".verify." so Global Feature Control can switch each part off. The QR page is outside this group (public, rate limited).
+    Route::prefix('id-passes')->name('id-passes.')->group(function () {
+        $dash = Controllers\IdPasses\DashboardController::class;
+        $card = Controllers\IdPasses\CardController::class;
+        $prn = Controllers\IdPasses\PrintController::class;
+        $look = Controllers\IdPasses\LookupController::class;
+        $pc = Controllers\IdPasses\PrintCentreController::class;
+        $set = Controllers\IdPasses\SettingsController::class;
+        $rep = Controllers\IdPasses\ReportController::class;
+        Route::get('/', [$dash, 'index'])->name('dashboard');
+        Route::get('lookup/people', [$look, 'people'])->middleware('throttle:240,1,id-passes.lookup')->name('lookup.people');
+        Route::get('lookup/staff/{staff}/photo', [$look, 'staffPhoto'])->whereNumber('staff')->middleware('throttle:240,1,id-passes.lookup.photo')->name('lookup.staff-photo');
+        Route::post('lookup/preview', [$look, 'preview'])->middleware('throttle:90,1,id-passes.preview')->name('lookup.preview');
+        Route::get('card.css', [$look, 'css'])->name('lookup.css');
+
+        Route::prefix('print-centre')->name('print-centre.')->group(function () use ($pc) {
+            Route::get('/', [$pc, 'index'])->name('index');
+            Route::get('cards', [$pc, 'cards'])->middleware('throttle:240,1,id-passes.print-centre.cards')->name('cards');
+            Route::get('history', [$pc, 'history'])->name('history');
+        });
+        Route::prefix('batch')->name('batch.')->group(function () use ($pc) {
+            Route::post('preview', [$pc, 'preview'])->middleware('throttle:90,1,id-passes.batch.preview')->name('preview');
+            Route::post('/', [$pc, 'store'])->middleware('throttle:20,1,id-passes.batch.store')->name('store');
+            Route::get('{batch}', [$pc, 'batch'])->whereNumber('batch')->middleware('throttle:240,1,id-passes.batch.show')->name('show');
+            Route::get('{batch}/download', [$pc, 'download'])->whereNumber('batch')->middleware('throttle:60,1,id-passes.batch.download')->name('download');
+        });
+        Route::prefix('reports')->name('reports.')->group(function () use ($rep) {
+            Route::get('/', [$rep, 'index'])->name('index');
+            Route::get('print', [$rep, 'print'])->middleware('throttle:30,1,id-passes.reports.print')->name('print');
+            Route::get('pdf', [$rep, 'pdf'])->middleware('throttle:20,1,id-passes.reports.pdf')->name('pdf');
+            Route::get('csv', [$rep, 'csv'])->middleware('throttle:20,1,id-passes.reports.csv')->name('csv');
+        });
+        Route::prefix('settings')->name('settings.')->group(function () use ($set) {
+            Route::get('/', [$set, 'index'])->name('index');
+            Route::put('general', [$set, 'general'])->middleware('throttle:30,1,id-passes.settings.general')->name('general');
+            Route::put('qr', [$set, 'qr'])->middleware('throttle:30,1,id-passes.settings.qr')->name('qr');
+            Route::post('categories', [$set, 'store'])->middleware('throttle:30,1,id-passes.settings.categories.store')->name('categories.store');
+            Route::put('categories/{category}', [$set, 'update'])->whereNumber('category')->middleware('throttle:60,1,id-passes.settings.categories.update')->name('categories.update');
+            Route::delete('categories/{category}', [$set, 'destroy'])->whereNumber('category')->middleware('throttle:20,1,id-passes.settings.categories.destroy')->name('categories.destroy');
+        });
+
+        // one group of routes per kind of ID: the same controllers, the kind comes from the route
+        foreach (\App\Services\IdPass\IdPassKinds::ALL as $kind => $k) {
+            Route::prefix($k['slug'])->name($k['route'] . '.')->group(function () use ($card, $prn, $k, $kind) {
+                Route::get('/', [$card, 'index'])->defaults('kind', $kind)->name('index');
+                Route::get('create', [$card, 'create'])->defaults('kind', $kind)->name('create');
+                Route::post('/', [$card, 'store'])->middleware('throttle:60,1,id-passes.' . $k['route'] . '.store')->defaults('kind', $kind)->name('store');
+                Route::get('{card}', [$card, 'show'])->whereNumber('card')->defaults('kind', $kind)->name('show');
+                Route::put('{card}', [$card, 'update'])->whereNumber('card')->middleware('throttle:60,1,id-passes.' . $k['route'] . '.update')->defaults('kind', $kind)->name('update');
+                Route::post('{card}/photo', [$card, 'photo'])->whereNumber('card')->middleware('throttle:30,1,id-passes.' . $k['route'] . '.photo')->defaults('kind', $kind)->name('photo');
+                Route::get('{card}/photo-file', [$card, 'photoFile'])->whereNumber('card')->middleware('throttle:600,1,id-passes.' . $k['route'] . '.photo-file')->defaults('kind', $kind)->name('photo-file');
+                foreach (['approve', 'reject', 'suspend', 'reactivate', 'revoke', 'renew', 'replace'] as $action) {
+                    Route::post('{card}/' . $action, [$card, $action])->whereNumber('card')->middleware('throttle:30,1,id-passes.' . $k['route'] . '.' . $action)->defaults('kind', $kind)->name($action);
+                }
+                if ($kind === 'visitor') {
+                    Route::post('visit/{visit}/give', [$card, 'giveToVisit'])->whereNumber('visit')->middleware('throttle:60,1,id-passes.visitors.give-visit')->defaults('kind', $kind)->name('give-visit');
+                    Route::post('{card}/give', [$card, 'give'])->whereNumber('card')->middleware('throttle:60,1,id-passes.visitors.give')->defaults('kind', $kind)->name('give');
+                    Route::post('{card}/take-back', [$card, 'takeBack'])->whereNumber('card')->middleware('throttle:60,1,id-passes.visitors.take-back')->defaults('kind', $kind)->name('take-back');
+                }
+                Route::get('{card}/print', [$prn, 'print'])->whereNumber('card')->middleware('throttle:40,1,id-passes.' . $k['route'] . '.print')->defaults('kind', $kind)->name('print');
+                Route::get('{card}/pdf', [$prn, 'pdf'])->whereNumber('card')->middleware('throttle:40,1,id-passes.' . $k['route'] . '.pdf')->defaults('kind', $kind)->name('pdf');
+            });
+        }
     });
 
     // Visitor Logs: reception. Visitors (directory), visits (check-in / check-out), incoming mail & deliveries, reports, settings. Names all start "visitor-logs." so Global Feature Control covers them

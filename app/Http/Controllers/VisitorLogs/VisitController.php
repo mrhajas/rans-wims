@@ -98,7 +98,7 @@ class VisitController extends Controller
         }
 
         return Inertia::render('VisitorLogs/Visits/Form', [
-            'visit' => null, 'visitor' => $visitor ? $visitor->summary($me, $me->can('view-visitor-history')) : null, 'purposes' => VisitorOption::listOf('purpose'), 'departments' => VisitorOption::names('department'), 'categories' => VisitorOption::names('visitor_category'),
+            'idPass' => \App\Services\IdPass\PassAssignments::formProps($me), 'visit' => null, 'visitor' => $visitor ? $visitor->summary($me, $me->can('view-visitor-history')) : null, 'purposes' => VisitorOption::listOf('purpose'), 'departments' => VisitorOption::names('department'), 'categories' => VisitorOption::names('visitor_category'),
             'now' => now()->toIso8601String(), 'timezone' => config('app.timezone'), 'fields' => VisitorSettings::fields(), 'requirePhone' => VisitorSettings::requirePhone(), 'canCorrectTime' => $me->can('correct-visitor-logs'),
             'warehouses' => $wh = VisitorSettings::warehouseChoices($me), 'defaultWarehouse' => VisitorSettings::defaultWarehouseId($wh),
             'can' => ['createVisitor' => $me->can('create-visitors'), 'updateVisitor' => $me->can('update-visitors'), 'duplicates' => $me->can('create-duplicate-visitors'), 'sensitive' => $me->can('view-visitor-sensitive'), 'history' => $me->can('view-visitor-history'), 'visitors' => $me->can('read-visitors')],
@@ -192,8 +192,19 @@ class VisitController extends Controller
         if ($open) {
             throw ValidationException::withMessages(['visitor_id' => __('This visitor is already checked in (:r, since :t). Check them out first.', ['r' => $open->reference, 't' => $open->check_in_at->format('d M Y, H:i')])]);
         }
+        $passId = \App\Services\IdPass\PassAssignments::enabledFor($me) ? (int) $request->input('id_pass_id', 0) : 0;
+        if ($passId && ! \App\Services\IdPass\PassAssignments::free(500)->contains('id', $passId)) {
+            throw ValidationException::withMessages(['id_pass_id' => __('That visitor pass is not free. Choose another one.')]);
+        }
         $this->addNewEntries($fields);
         $visit = ReferenceLock::run('visitor_visits', fn () => VisitorVisit::create($fields + ['reference' => VisitorVisit::nextReference(), 'status' => VisitorVisit::IN, 'check_in_at' => $at, 'visit_date' => $at->toDateString(), 'registered_by_user_id' => $me->id]));
+        if ($passId) {
+            try {
+                $given = \App\Services\IdPass\PassAssignments::assignToVisit($visit, $passId, $me);
+            } catch (\Throwable $e) {
+                \Log::warning('Visitor pass not given at check-in', ['visit' => $visit->id, 'error' => $e->getMessage()]);
+            }
+        }
         $files = $this->saveFiles($visit, $request, 'visitor-visits');
         VisitorLogEvent::record('visit', $visit, 'checked_in', [], ['check_in_at' => $at->toDateTimeString(), 'host' => $visit->host_name, 'purpose' => $visit->purpose, 'time_set_by_hand' => $reason !== null], $reason);
         log_activity('Visitor checked in: ' . $visit->reference, ['visitor_id' => $visit->visitor_id, 'host' => $visit->host_name, 'purpose' => $visit->purpose, 'check_in_at' => $at->toDateTimeString(), 'time_set_by_hand' => $reason !== null, 'files' => $files], $visit, 'Visitor Logs');
@@ -217,7 +228,10 @@ class VisitController extends Controller
             'host_user_id' => $v->host_user_id, 'checked_out_by' => optional($v->checkedOutBy)->name, 'cancelled_at' => optional($v->cancelled_at)->toIso8601String(), 'cancel_reason' => $v->cancel_reason,
             'items' => $me->can('read-incoming-items') ? $v->items->map(fn ($i) => ['id' => $i->id, 'reference' => $i->reference, 'type' => $i->item_type, 'status' => $i->status])->values() : []];
 
-        return Inertia::render('VisitorLogs/Visits/Show', ['visit' => $data, 'visitor' => $card, 'events' => $events, 'files' => $this->filesOf($v), 'can' => $this->can($me) + ['visitorPage' => $me->can('read-visitors'), 'itemCreate' => $me->can('create-incoming-items')], 'overstayHours' => VisitorSettings::overstayHours(),
+        $idPass = \App\Services\IdPass\PassAssignments::forVisit($v->id, $me);
+        $idPassForm = ! $idPass && $v->status === VisitorVisit::IN ? \App\Services\IdPass\PassAssignments::formProps($me) : ['enabled' => false, 'free' => []];
+
+        return Inertia::render('VisitorLogs/Visits/Show', ['idPass' => $idPass, 'idPassForm' => $idPassForm, 'visit' => $data, 'visitor' => $card, 'events' => $events, 'files' => $this->filesOf($v), 'can' => $this->can($me) + ['visitorPage' => $me->can('read-visitors'), 'itemCreate' => $me->can('create-incoming-items')], 'overstayHours' => VisitorSettings::overstayHours(),
             'purposes' => VisitorOption::listOf('purpose'), 'departments' => VisitorOption::names('department')]);
     }
 
@@ -282,6 +296,7 @@ class VisitController extends Controller
             return $request->wantsJson() ? response()->json(['message' => $result['error']], 409) : back()->withErrors(['checkout' => $result['error']]);
         }
         $v = $result['visit'];
+        \App\Services\IdPass\PassAssignments::releaseVisit($v, $request->user(), __('Checked out'));
         log_activity('Visitor checked out: ' . $v->reference, ['check_in_at' => $v->check_in_at->toDateTimeString(), 'check_out_at' => $v->check_out_at->toDateTimeString(), 'minutes' => $v->duration_minutes], $v, 'Visitor Logs');
         VisitorNotifier::visit('visitor_checked_out', $v, $request->user());
         $msg = __(':v checked out. Time on premises: :d.', ['v' => optional($v->visitor)->full_name ?: $v->reference, 'd' => VisitorVisit::durationText((int) $v->duration_minutes)]);
@@ -315,6 +330,9 @@ class VisitController extends Controller
             $upd += ['check_out_at' => $out, 'status' => VisitorVisit::OUT, 'duration_minutes' => max(0, (int) $in->diffInMinutes($out)), 'checked_out_by_user_id' => $v->checked_out_by_user_id ?: $request->user()->id, 'long_stay_alerted_at' => null];
         }
         $v->update($upd);
+        if (($upd['status'] ?? null) === VisitorVisit::OUT) {
+            \App\Services\IdPass\PassAssignments::releaseVisit($v, $request->user(), __('Check-out corrected'));
+        }
         $new = ['check_in_at' => $in->toDateTimeString(), 'check_out_at' => optional($out)->toDateTimeString(), 'status' => $v->status];
         VisitorLogEvent::record('visit', $v, 'corrected', $old, $new, $d['reason']);
         log_activity('Visit ' . $v->reference . ' times corrected', ['before' => $old, 'after' => $new, 'reason' => $d['reason']], $v, 'Visitor Logs');
@@ -330,6 +348,7 @@ class VisitController extends Controller
         abort_if($v->status === VisitorVisit::CANCELLED, 422, __('This visit is already cancelled.'));
         $old = ['status' => $v->status];
         $v->update(['status' => VisitorVisit::CANCELLED, 'cancelled_by_user_id' => $request->user()->id, 'cancelled_at' => now(), 'cancel_reason' => $d['reason']]);
+        \App\Services\IdPass\PassAssignments::releaseVisit($v, $request->user(), __('Visit cancelled'));
         VisitorLogEvent::record('visit', $v, 'cancelled', $old, ['status' => VisitorVisit::CANCELLED], $d['reason']);
         log_activity('Visit ' . $v->reference . ' cancelled', ['reason' => $d['reason'], 'was' => $old['status']], $v, 'Visitor Logs');
 

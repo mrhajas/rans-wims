@@ -74,6 +74,54 @@ class AiNativeIntentCatalog
                     ? ($r['state'] === 'not_sent' ? "The {$r['name']} greetings (".$r['date'].') have not been sent yet.' : "The {$r['name']} greetings: {$r['emailSent']} of {$r['emailTotal']} emails and {$r['smsSent']} of {$r['smsTotal']} SMS went through".($r['failed'] ? ", {$r['failed']} failed" : '').($r['pending'] ? ", {$r['pending']} still sending" : '').'.')
                     : ($r['message'] ?? null),
             ],
+            'idpass_counts' => [
+                'patterns' => ['/how\s+many\s+(?<status>active|expired|suspended|revoked|pending)?\s*(?<kind>staff\s+ids?|compound\s+worker\s+ids?|workers?\s+ids?|visitor\s+passes|gate\s+passes|ids|passes)(?:\s+(?:do\s+we\s+have|are\s+there|are\s+(?:currently\s+)?(?<status2>active|expired|suspended|revoked)))?\s*\??$/i'],
+                'map' => fn (array $m) => ['kind' => preg_match('/^(ids|passes)$/i', $m['kind']) ? '' : $m['kind'], 'status' => ($m['status'] ?? '') ?: ($m['status2'] ?? '')],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'counts'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? ($r['status'] ? "There are {$r['count']} {$r['status']} {$r['kind']}." : "There are {$r['count']} {$r['kind']} in all (".$r['counts']['active'].' active, '.$r['counts']['expired'].' expired, '.$r['counts']['suspended'].' suspended, '.$r['counts']['revoked'].' revoked).') : ($r['message'] ?? null),
+            ],
+            'idpass_missing' => [
+                'patterns' => ['/who\s+(?:has|have)\s+not\s+(?:yet\s+)?been\s+(?:issued|given)\s+(?:a\s+)?(?:rans\s+)?staff\s+id\s*\??$/i', '/(?:staff|who)\s+(?:without|with\s+no)\s+(?:a\s+)?(?:rans\s+)?(?:staff\s+)?id\s*\??$/i'],
+                'map' => fn (array $m) => [],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'missing'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? ($r['total'] === 0 ? 'Every working staff member has a Staff ID.' : "{$r['total']} staff members have no Staff ID yet: ".implode(', ', $r['names']).($r['total'] > count($r['names']) ? ', and others.' : '.')) : ($r['message'] ?? null),
+            ],
+            'idpass_list_category' => [
+                'patterns' => ['/(?:show|list)\s+(?:me\s+)?(?:all\s+)?(?<category>[a-z ]+?)\s+workers?\s+(?:with\s+)?(?<status>active\s+)?ids?\s*\??$/i'],
+                'map' => fn (array $m) => ['kind' => 'compound', 'category' => trim($m['category']), 'status' => trim($m['status'] ?? '') ?: 'active'],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'list'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? "{$r['total']} found: ".implode('; ', $r['items']).'.' : ($r['message'] ?? null),
+            ],
+            'idpass_issued_period' => [
+                'patterns' => ['/which\s+(?<kind>visitor\s+passes|gate\s+passes|staff\s+ids|ids)\s+(?:were|was|have\s+been)\s+issued\s+(?<period>today|this\s+week|this\s+month)\s*\??$/i'],
+                'map' => fn (array $m) => ['kind' => preg_match('/^ids$/i', $m['kind']) ? '' : $m['kind'], 'period' => strtolower(preg_replace('/\s+/', ' ', $m['period']))],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'list'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? "{$r['total']} issued: ".implode('; ', $r['items']).'.' : ($r['message'] ?? null),
+            ],
+            'idpass_status_list' => [
+                'patterns' => ['/(?:which|show|list)\s+(?:me\s+)?(?:the\s+)?ids?\s+(?:that\s+)?(?:have\s+been\s+|are\s+)?(?<status>suspended|revoked)(?:\s+or\s+(?<s2>revoked|suspended))?\s*\??$/i'],
+                'map' => fn (array $m) => ['status' => strtolower($m['status']) . (! empty($m['s2']) ? ',' . strtolower($m['s2']) : '')],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'list'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? "{$r['total']} found: ".implode('; ', $r['items']).'.' : ($r['message'] ?? null),
+            ],
+            'idpass_expired' => [
+                'patterns' => ['/(?:which|show|list)\s+(?:me\s+)?(?:the\s+)?ids?\s+(?:have\s+|that\s+have\s+)?expired\s*\??$/i', '/(?:show|list)\s+(?:me\s+)?expired\s+ids?\s*\??$/i'],
+                'map' => fn (array $m) => ['scope' => 'expired'],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'expiring'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? "{$r['total']} expired: ".implode('; ', $r['items']).'.' : ($r['message'] ?? null),
+            ],
+            'idpass_expiring' => [
+                'patterns' => ['/(?:show|list|which)\s+(?:me\s+)?(?<kind>gate\s+passes|visitor\s+passes|staff\s+ids|ids)\s+(?:are\s+)?expiring\s+(?<period>this\s+month|soon)\s*\??$/i'],
+                'map' => fn (array $m) => ['scope' => 'expiring', 'kind' => preg_match('/^ids$/i', $m['kind']) ? '' : $m['kind'], 'period' => stripos($m['period'], 'month') !== false ? 'this month' : ''],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'expiring'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? "{$r['total']} expiring: ".implode('; ', $r['items']).'.' : ($r['message'] ?? null),
+            ],
+            'idpass_printed' => [
+                'patterns' => ['/when\s+was\s+(?<number>[a-z0-9-]{2,20})\s+(?:last\s+)?printed\s*\??$/i', '/who\s+printed\s+(?<number>[a-z0-9-]{2,20})\s*\??$/i'],
+                'map' => fn (array $m) => ['number' => strtoupper($m['number'])],
+                'handler' => [\App\Services\AiTools\IdPassTool::class, 'printed'],
+                'format' => fn (array $r) => ($r['found'] ?? false) ? (($r['printed'] ?? false) ? "{$r['number']} ({$r['holder']}) was last printed by {$r['last_by']} on {$r['last_at']}; printed {$r['times']} time(s) in all." : "{$r['number']} ({$r['holder']}) has not been printed yet.") : ($r['message'] ?? null),
+            ],
             'site_diary_today' => [
                 'patterns' => [
                     '/(?:show|list|what are)\s+(?:me\s+)?(?:today\'?s|the\s+today\'?s)\s+site\s+diar(?:y|ies)(?:\s+(?:for|at|in)\s+(?<warehouse>.+?))?\s*\??$/i',

@@ -25,6 +25,7 @@
             <div class="ac-f"><label>{{ $t('Appointment / reference') }}</label><input v-model="form.appointment_ref" maxlength="80" autocomplete="off" /></div>
             <div class="ac-f"><label>{{ $t('Accompanying visitors') }}</label><input v-model="form.companions" type="number" min="0" max="500" inputmode="numeric" /><span class="ac-err">{{ err('companions') }}</span></div>
             <div v-if="fields.includes('vehicle_registration')" class="ac-f"><label>{{ $t('Vehicle registration') }}</label><input v-model="form.vehicle_registration" maxlength="40" autocomplete="off" /></div>
+            <div v-if="idPass && idPass.enabled" class="ac-f"><label>{{ $t('Visitor pass') }}</label><acct-select v-model="form.id_pass_id" :options="idPass.free" :placeholder="idPass.free.length ? $t('No pass') : $t('No free pass')" clearable /><small class="lg-subtext">{{ idPass.free.length ? $t('The lowest free number is suggested. The pass is taken back when the visitor checks out.') : $t('Make more passes in RANS ID & Pass.') }}</small><span class="ac-err">{{ err('id_pass_id') }}</span></div>
           </div>
         </section>
 
@@ -76,7 +77,7 @@ const pad = n => String(n).padStart(2, '0');
 
 export default {
   components: { Link, AdminLayout, PageHeader, DatePicker, AcctSelect, AttachCamera, ListPicker, VisitorPicker, PersonPicker, TimeField },
-  props: { visit: Object, visitor: Object, warehouses: { type: Array, default: () => [] }, defaultWarehouse: { type: [Number, String], default: null }, purposes: Array, departments: Array, categories: Array, now: String, timezone: String, fields: Array, requirePhone: Boolean, canCorrectTime: Boolean, can: Object },
+  props: { idPass: { type: Object, default: () => ({ enabled: false, free: [] }) }, visit: Object, visitor: Object, warehouses: { type: Array, default: () => [] }, defaultWarehouse: { type: [Number, String], default: null }, purposes: Array, departments: Array, categories: Array, now: String, timezone: String, fields: Array, requirePhone: Boolean, canCorrectTime: Boolean, can: Object },
   data() {
     const v = this.visit || {};
     const t = new Date(this.now);
@@ -84,7 +85,7 @@ export default {
       offset: new Date(this.now).getTime() - Date.now(), tick: Date.now(), timer: null, setTime: false,
       form: this.$inertia.form({
         visitor_id: v.visitor_id || (this.visitor ? this.visitor.id : ''), host_user_id: v.host_user_id || '', purpose: v.id ? v.purpose || '' : this.firstOf(this.purposes.map(x => x.name), 'Business meeting'), purpose_other: v.purpose_other || '', department: v.id ? v.department || '' : this.firstOf(this.departments, 'Management'), appointment_ref: v.appointment_ref || '',
-        warehouse_id: v.warehouse_id || this.defaultWarehouse || '', companions: v.companions || 0, vehicle_registration: v.vehicle_registration || '', remarks: v.remarks || '', attachments: [],
+        warehouse_id: v.warehouse_id || this.defaultWarehouse || '', companions: v.companions || 0, vehicle_registration: v.vehicle_registration || '', remarks: v.remarks || '', attachments: [], id_pass_id: !this.visit && this.idPass && this.idPass.suggested ? this.idPass.suggested : '',
         check_in_date: t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()), check_in_time: pad(t.getHours()) + ':' + pad(t.getMinutes()), time_reason: '',
       }),
     };

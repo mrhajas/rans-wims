@@ -11,7 +11,7 @@ class Contact extends Model
     public const CATEGORIES = [
         'Engineers', 'Technicians', 'Suppliers', 'Foreman', 'SubContractors', 'Workers', 'General',
         'Drivers', 'Dispatchers', 'Movers', 'Logistics', 'Consultants', 'Architects', 'Surveyors', 'Security', 'Equipment Rental',
-        'Clients', 'Loading & UnLoading', 'External Personnel', 'Ticket Agent', 'Visa Agent', 'Visitors',
+        'Clients', 'Loading & UnLoading', 'External Personnel', 'Ticket Agent', 'Visa Agent', 'Visitors', 'Aluminium', 'Carpenter', 'Gate Pass',
     ];
 
     /** Visitors (Visitor Logs) and the senders of incoming mail are Contacts in this category. */

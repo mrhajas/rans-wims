@@ -47,6 +47,7 @@ class ActivityModules
         'visitor_logs' => ['Visitor Logs', '/^(visitor|incomingitem)/'],
         'mr_reminders' => ['Material Request Reminders', '/^(mrreminder|materialrequestreminder)/'],
         'holiday_greetings' => ['Holiday Greetings', '/^holiday/'],
+        'id_passes' => ['RANS ID & Pass Management', '/^(idpass)/'],
         'weekly_administration' => ['Administration (Weekly)', '/^(administration|admindocument|adminitem|admincharity)/'],
         'compliance' => ['Compliance', '/^(boqmaterialcompliance|compliance|projectcertificate|labour)/'],
         'delivery_gate' => ['Delivery Notes & Gate Passes', '/^(deliverynote|gatepass)/'],

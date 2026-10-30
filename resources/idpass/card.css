@@ -1,0 +1,19 @@
+@font-face{font-family:'IpGluten';src:url('%FONTS%/Gebuk-Regular.ttf') format('truetype');font-weight:normal;font-style:normal}
+@font-face{font-family:'IpGlutenB';src:url('%FONTS%/Gebuk-Regular.ttf') format('truetype');font-weight:normal;font-style:normal}
+@font-face{font-family:'IpSaira';src:url('%FONTS%/PillGothic-600.ttf') format('truetype');font-weight:normal;font-style:normal}
+@font-face{font-family:'IpSairaB';src:url('%FONTS%/PillGothic-600.ttf') format('truetype');font-weight:normal;font-style:normal}
+@font-face{font-family:'IpSairaBB';src:url('%FONTS%/PillGothic-600.ttf') format('truetype');font-weight:normal;font-style:normal}
+.ip-card{position:relative;width:55mm;height:85mm;overflow:hidden;background:#1e4467;margin:0;padding:0}
+.ip-card *{box-sizing:border-box}
+.ip-b{position:absolute;display:block;margin:0;padding:0}
+.ip-i{position:absolute;display:block;margin:0;padding:0}
+.ip-t{position:absolute;display:block;margin:0;padding:0;white-space:nowrap}
+.ip-g{font-family:'IpGluten',sans-serif}
+.ip-gb{font-family:'IpGlutenB',sans-serif}
+.ip-s{font-family:'IpSaira',sans-serif}
+.ip-sb{font-family:'IpSairaB',sans-serif}
+.ip-sbb{font-family:'IpSairaBB',sans-serif}
+.ip-c{text-align:center}
+.ip-r{text-align:right}
+.ip-card img,.ip-card .ip-i{max-width:none !important;height:auto}
+.ip-card .ip-i{height:auto}

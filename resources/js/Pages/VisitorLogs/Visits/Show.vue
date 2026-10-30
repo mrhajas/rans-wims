@@ -54,6 +54,12 @@
         </section>
       </div>
 
+        <section v-if="idPass || (idPassForm && idPassForm.enabled)" class="lg-card">
+          <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="qr-code" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Visitor Pass') }}</h2><p class="lg-card-sub">{{ $t('The numbered pass this visitor holds. It is taken back at check-out.') }}</p></div></header>
+          <div v-if="idPass" class="vl-pass"><b class="vl-pass-no">{{ idPass.number }}</b><span>{{ $t('Given') }} {{ $datetime(idPass.from) }}<template v-if="idPass.to"> · {{ $t('taken back') }} {{ $datetime(idPass.to) }}</template><template v-else> · {{ $t('still with the visitor') }}</template></span>
+            <a v-if="idPass.url" :href="idPass.url" class="lg-btn lg-btn-soft"><icons name="eye-flat" class="w-4 h-4" />{{ $t('Open the pass') }}</a></div>
+          <div v-else class="vl-pass-give"><acct-select v-model="passPick" :options="idPassForm.free" :placeholder="$t('Choose a free pass')" /><button type="button" class="lg-btn lg-btn-primary" :disabled="!passPick || busy" @click="givePass"><icons name="plus" class="w-4 h-4" />{{ $t('Give the pass') }}</button></div>
+        </section>
       <section v-if="visit.items.length" class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-amber"><icons name="email" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Items Received With This Visit') }}</h2></div></header>
         <ul class="vl-list"><li v-for="i in visit.items" :key="i.id"><Link :href="route('visitor-logs.items.show', i.id)" target="_blank" class="vl-link">{{ i.reference }}</Link> <span>{{ i.type }}</span> <span class="lg-chip lg-chip-slate" style="text-transform: none">{{ i.status }}</span></li></ul>
@@ -96,7 +102,8 @@
 </template>
 
 <script>
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
+import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
@@ -107,14 +114,15 @@ import TimeField from '../Parts/TimeField.vue';
 import { visitChip, eventLabel, eventIcon, changeText } from '../Parts/vl.js';
 
 export default {
-  components: { Link, AdminLayout, PageHeader, DatePicker, AttachCamera, AcctFileList, TravelModal, TimeField },
-  props: { visit: Object, visitor: Object, events: Array, files: Array, can: Object, overstayHours: Number },
-  data() { return { busy: false, correctOpen: false, cancelOpen: false, reason: '', newFiles: [], c: { in_date: '', in_time: '', out_date: '', out_time: '', reason: '' } }; },
+  components: { Link, AdminLayout, PageHeader, DatePicker, AttachCamera, AcctFileList, TravelModal, TimeField, AcctSelect },
+  props: { visit: Object, visitor: Object, events: Array, files: Array, can: Object, overstayHours: Number, idPass: { type: Object, default: null }, idPassForm: { type: Object, default: () => ({ enabled: false, free: [] }) } },
+  data() { return { passPick: null, busy: false, correctOpen: false, cancelOpen: false, reason: '', newFiles: [], c: { in_date: '', in_time: '', out_date: '', out_time: '', reason: '' } }; },
   computed: {
     errors() { return this.$page.props.errors || {}; },
     longStay() { return this.visit.status === 'Checked In' && this.overstayHours > 0 && this.visit.minutes >= this.overstayHours * 60; },
   },
   methods: {
+    givePass() { this.busy = true; router.post(route('id-passes.visitors.give-visit', [this.visit.id]), { id_pass_id: this.passPick }, { preserveScroll: true, onFinish: () => { this.busy = false; this.passPick = null; } }); },
     chip: visitChip,
     icon: eventIcon,
     label(e) { return eventLabel(k => this.$t(k), e); },
@@ -157,4 +165,6 @@ export default {
 .vl-tl__dot.is-checked_in { background: #059669; } .vl-tl__dot.is-checked_out { background: #0369a1; } .vl-tl__dot.is-corrected { background: #d97706; } .vl-tl__dot.is-cancelled { background: #dc2626; }
 .vl-tl b { display: block; } .vl-tl small { display: block; color: var(--lg-mute, #64748b); font-size: 0.78rem; }
 .vl-tl p { margin: 3px 0 0; font-size: 0.84rem; overflow-wrap: anywhere; } .vl-reason { font-style: italic; color: #92400e; }
+.vl-pass { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; } .vl-pass-no { font-size: 1.5rem; letter-spacing: 0.06em; padding: 4px 16px; border-radius: 14px; background: #3d0563; color: #fff; }
+.vl-pass-give { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .vl-pass-give > :first-child { min-width: 220px; }
 </style>

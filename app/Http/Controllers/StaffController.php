@@ -179,6 +179,7 @@ class StaffController extends Controller
             'contracts' => request()->user()->can('read-staff-contracts') ? $staff->contracts->map(fn (StaffContract $c) => $c->present(true))->values() : [],
             'contractTypes' => StaffContract::TYPES,
             'contractRules' => ['soon' => StaffContract::SOON_DAYS, 'urgent' => StaffContract::URGENT_DAYS],
+            'ransId' => \App\Services\IdPass\IdPassPanels::staff($staff, request()->user()),
             'canUpdate' => request()->user()->can('update-staffs'),
             'canDelete' => request()->user()->can('delete-staffs'),
             'canPrint' => request()->user()->can('print-staffs'),

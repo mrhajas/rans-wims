@@ -703,6 +703,80 @@ class PermissionRegistry
                 ],
             ],
 
+            // RANS ID & Pass Management: staff IDs, compound worker IDs, visitor passes and gate passes of people (not the goods Gate Pass of Delivery & Gate), their cards, printing and history.
+            'id_passes' => [
+                'label' => __('RANS ID & Pass Management'),
+                'abilities' => [
+                    'read-id-passes' => __('Open RANS ID & Pass Management and see its dashboard'),
+                ],
+            ],
+            'id_staff' => [
+                'label' => __('RANS ID: Staff IDs'),
+                'abilities' => [
+                    'read-staff-ids' => __('See the Staff IDs'),
+                    'assign-staff-ids' => __('Assign a RANS Staff ID to a staff member (and renew or replace it)'),
+                    'update-staff-ids' => __('Change the details and photograph of a Staff ID'),
+                    'print-staff-ids' => __('Print Staff IDs'),
+                    'download-staff-ids' => __('Download Staff ID PDFs'),
+                    'revoke-staff-ids' => __('Suspend, revoke or reactivate Staff IDs'),
+                ],
+            ],
+            'id_compound' => [
+                'label' => __('RANS ID: Compound Worker IDs'),
+                'abilities' => [
+                    'read-compound-ids' => __('See the Compound Worker IDs'),
+                    'assign-compound-ids' => __('Assign a Compound Worker ID to a contact (and renew or replace it)'),
+                    'update-compound-ids' => __('Change the details and photograph of a Compound Worker ID'),
+                    'print-compound-ids' => __('Print Compound Worker IDs'),
+                    'download-compound-ids' => __('Download Compound Worker ID PDFs'),
+                    'revoke-compound-ids' => __('Suspend, revoke or reactivate Compound Worker IDs'),
+                ],
+            ],
+            'id_visitor' => [
+                'label' => __('RANS ID: Visitor Passes'),
+                'abilities' => [
+                    'read-visitor-passes' => __('See the Visitor Passes'),
+                    'assign-visitor-passes' => __('Give a Visitor Pass to a visitor at check-in and take it back (from the Visitor Logs forms too)'),
+                    'create-visitor-passes' => __('Issue Visitor Passes'),
+                    'update-visitor-passes' => __('Change the details of a Visitor Pass'),
+                    'print-visitor-passes' => __('Print Visitor Passes'),
+                    'download-visitor-passes' => __('Download Visitor Pass PDFs'),
+                    'revoke-visitor-passes' => __('Suspend, revoke or reactivate Visitor Passes'),
+                ],
+            ],
+            'id_gate' => [
+                'label' => __('RANS ID: Gate Passes (people)'),
+                'abilities' => [
+                    'read-people-gate-passes' => __('See the Gate Passes of people and vehicles'),
+                    'create-people-gate-passes' => __('Issue Gate Passes'),
+                    'update-people-gate-passes' => __('Change the details of a Gate Pass'),
+                    'approve-people-gate-passes' => __('Approve or reject a Gate Pass that needs approval'),
+                    'print-people-gate-passes' => __('Print Gate Passes'),
+                    'download-people-gate-passes' => __('Download Gate Pass PDFs'),
+                    'revoke-people-gate-passes' => __('Suspend, revoke or reactivate Gate Passes'),
+                ],
+            ],
+            'id_print_centre' => [
+                'label' => __('RANS ID: Print Centre'),
+                'abilities' => [
+                    'access-id-print-centre' => __('Open the Print Centre'),
+                    'batch-print-ids' => __('Print IDs and passes in batches (A4 sheets)'),
+                    'batch-export-ids' => __('Export IDs and passes in batches as PDF'),
+                    'read-id-print-history' => __('See who printed or exported which ID and when'),
+                    'read-id-reports' => __('See and print the RANS ID reports'),
+                ],
+            ],
+            'id_settings' => [
+                'label' => __('RANS ID: Settings'),
+                'abilities' => [
+                    'manage-id-settings' => __('Change the ID settings: categories, validity, back of the card'),
+                    'manage-id-templates' => __('Change the card templates (colours, icons, labels, shared back)'),
+                    'manage-id-numbering' => __('Change numbering prefixes and sequences, and type an ID number by hand'),
+                    'manage-id-qr-settings' => __('Change how the QR code of a card is verified'),
+                    'manage-id-notifications' => __('Choose who is told about issued, expiring, suspended and revoked IDs'),
+                ],
+            ],
+
             'material_reallocations' => [
                 'label' => __('Material Reallocation'),
                 'abilities' => [

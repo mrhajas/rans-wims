@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('id-passes:watch')->dailyAt('06:10')->withoutOverlapping();
         // "Send in the background" (Settings > Performance & Data): the beat tells WIMS the worker is alive; the worker itself runs for ~55 seconds each minute, in the
         // background so the other scheduled tasks never wait for it
         \App\Support\Performance\QueueMode::apply();

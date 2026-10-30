@@ -66,6 +66,9 @@ class ContactPanels
                 $link(__('Open the supplier record'), 'supplier-records.suppliers.show', ['supplier' => $c->id], $can('read-supplier-records', 'supplier_records')),
             ]);
         }
+        // RANS ID & Pass: the compound worker ID of this contact, or the way to give one
+        $panel('rans-id', __('RANS Identification'), __('The Compound Worker ID of this person: its number, status and card, and the way to issue one.'), 'user', 'indigo',
+            array_map(fn ($l) => $l, \App\Services\IdPass\IdPassPanels::contactLinks($c, $user)));
         if ($showPayments && $can('read-payment-vouchers')) {
             $panel('vouchers', __('Payment Vouchers'), __('Payment vouchers made out to this contact.'), 'doc-text', 'pink', [$link(__('View'), 'payment-vouchers.index', ['payee_contact_id' => $c->id])]);
         }

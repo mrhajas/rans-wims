@@ -38,6 +38,25 @@
         </div>
       </section>
 
+      <section v-if="ransId" class="lg-card sh-rans">
+        <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="qr-code" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('RANS Identification') }}</h2><p class="lg-card-sub">{{ $t('The ID card of this staff member. The WIMS staff reference above is a different number.') }}</p></div></header>
+        <template v-if="ransId.card">
+          <div class="sh-rans-row">
+            <a :href="ransId.card.url" class="sh-rans-no" :title="$t('Open the ID')">{{ ransId.card.number }}</a>
+            <span class="lg-chip" :class="{ Active: 'lg-chip-green', Expired: 'lg-chip-amber', 'Pending Approval': 'lg-chip-amber', Suspended: 'lg-chip-orange', Revoked: 'lg-chip-red', Replaced: 'lg-chip-slate' }[ransId.card.status] || 'lg-chip-slate'">{{ $t(ransId.card.status) }}</span>
+            <dl class="sh-rans-dl">
+              <div><dt>{{ $t('Issued') }}</dt><dd>{{ $date(ransId.card.issued_at) }}</dd></div>
+              <div><dt>{{ $t('Expires') }}</dt><dd>{{ ransId.card.expires_at ? $date(ransId.card.expires_at) : $t('No expiry') }}</dd></div>
+              <div><dt>{{ $t('Last printed') }}</dt><dd>{{ ransId.card.last_printed_at ? $datetime(ransId.card.last_printed_at) : $t('Never') }}</dd></div>
+              <div><dt>{{ $t('Printed') }}</dt><dd>{{ ransId.card.print_count }} {{ $t('times') }}</dd></div>
+            </dl>
+            <a :href="ransId.card.url" class="lg-btn lg-btn-primary"><icons name="eye-flat" class="w-4 h-4" />{{ $t('View ID') }}</a>
+          </div>
+        </template>
+        <p v-else class="lg-sub">{{ $t('No RANS Staff ID has been assigned yet.') }}</p>
+        <a v-if="ransId.assign_url" :href="ransId.assign_url" class="lg-btn lg-btn-primary" style="margin-top: 10px"><icons name="plus" class="w-4 h-4" />{{ $t('Assign RANS Staff ID') }}</a>
+      </section>
+
       <stat-tiles :items="statTiles" />
 
       <div class="sh-tabs mb-4" role="tablist">
@@ -223,6 +242,7 @@ export default {
     staff: Object,
     paymentVouchers: { type: Array, default: () => [] },
     paymentVouchersSummary: { type: Object, default: () => ({ count: 0, total: 0 }) },
+    ransId: { type: Object, default: null },
     contracts: { type: Array, default: () => [] },
     contractTypes: { type: Array, default: () => [] },
     history: { type: Array, default: () => [] },
@@ -330,4 +350,8 @@ export default {
 .sh-file__btns { display: inline-flex; gap: 6px; flex: none; }
 .sh-details > .lg-card { margin-bottom: 1rem; }
 @media (prefers-reduced-motion: reduce) { .sh-photo-wrap { animation: none; } }
+.sh-rans { margin-bottom: 14px; }
+.sh-rans-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sh-rans-no { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.06em; color: #1e4467; text-decoration: none; padding: 4px 14px; border-radius: 14px; background: rgba(30, 68, 103, 0.08); }
+.sh-rans-dl { display: flex; gap: 22px; flex-wrap: wrap; margin: 0; flex: 1; } .sh-rans-dl div { display: grid; } .sh-rans-dl dt { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; color: var(--lg-mute, #64748b); } .sh-rans-dl dd { margin: 0; font-weight: 700; }
 </style>
