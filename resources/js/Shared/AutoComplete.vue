@@ -20,6 +20,7 @@
         @focus="show"
         @click="show"
         @keyup.up="up"
+        @keydown="trackKey"
         v-model="search"
         autocomplete="off"
         @keyup.down="down"
@@ -27,7 +28,7 @@
         :readonly="!searchable"
         :placeholder="placeholder || label"
         :title="currentLabel || ''"
-        :class="{ 'border-red-500': error, 'pr-8': !clearable, 'pr-16': clearable }"
+        :class="{ 'border-red-500': error, 'pr-8': !clearable, 'pr-16': clearable, 'ac-scan-ok': scanFlash === 'ok', 'ac-scan-miss': scanFlash === 'miss' }"
         class="
           w-full
           block
@@ -141,7 +142,7 @@ import TecInputError from '@/Jetstream/InputError.vue';
 import { isFullWarehouseList, orderWarehouses, groupKeyOf, groupMeta, progressOf } from '@/Core/warehouseGroups';
 
 export default {
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'scan-miss'],
 
   components: { TecLabel, TecInputError },
 
@@ -155,6 +156,7 @@ export default {
       selected: null,
       optionTooltip: { visible: false, text: '', top: 0, left: null, right: null },
       dropdownStyle: {},
+      scanFlash: '',
     };
   },
   props: {
@@ -187,6 +189,9 @@ export default {
     group: { type: Boolean, default: true },
     // set on the warehouse pickers of the forms that move stock: a warehouse whose stock movement is halted (Adjustment Session) is shown locked and cannot be chosen
     stockMove: { type: Boolean, default: false },
+    // a field that takes a handheld (keyboard-wedge) barcode scanner: a code that arrives as a quick burst of keys ending in Enter is looked up at once and picked,
+    // one scan = one pick, whatever the list was showing; the same code scanned twice is picked twice
+    scan: { type: Boolean, default: false },
   },
 
   watch: {
@@ -215,6 +220,10 @@ export default {
       }
     },
     search: function (search) {
+      if (this._quiet) {
+        this._quiet = false;
+        return;
+      }
       if (this.searchable) {
         this.open = true;
         if (Array.isArray(this.suggestions)) {
@@ -338,12 +347,22 @@ export default {
       }
     },
     getSuggestions: throttle(function (search) {
+      // a late call for text that has since been replaced (a scan clears the field) is dropped
+      if (search !== this.search) {
+        this.loading = false;
+        return;
+      }
       if ((search && !this.result) || (this.result && (!this.result.length || this.modelValue != this.result[0].id))) {
         axios
           .post(this.suggestions, { search })
           .then(res => {
+            // an answer for text that was replaced meanwhile (more typing, a scan) is of no use
+            if (search !== this.search) return;
             this.result = res.data;
-            if (this.result.length == 1) {
+            // Enter was pressed before the list arrived: take the first suggestion as soon as it is here
+            const wait = this._enterWait;
+            this._enterWait = false;
+            if (this.result.length == 1 || (wait && this.result.length)) {
               this.suggestionClick(0, true);
             }
           })
@@ -449,10 +468,76 @@ export default {
         setTimeout(() => (this.open = false), 100);
       }, 200);
     },
+    // --- handheld scanner -------------------------------------------------------------------------------------------------------------
+    // keys of a scanner come a few milliseconds apart; a person types slower. Only a fast burst that ends in Enter is a scan.
+    trackKey(e) {
+      if (!this.scan) return;
+      if (e.key === 'Enter') {
+        const code = (this.search || '').trim();
+        const now = performance.now();
+        const burst = this._last && now - this._last < 150 && this._streak >= 4 && this._streak >= code.length - 1;
+        this._streak = 0;
+        if (!burst || !code) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this._scanKey = true;
+        this.runScan(code);
+        return;
+      }
+      if (!e.key || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+      const now = performance.now();
+      this._streak = this._last && now - this._last < 60 ? (this._streak || 0) + 1 : 1;
+      this._last = now;
+    },
+    // the field is free for the next scan at once; the item is asked for in the background and picked in the order it was scanned
+    runScan(code) {
+      this._quiet = this.search !== '';
+      this.search = '';
+      this.result = [];
+      this.loading = false;
+      this.selected = null;
+      this.open = false;
+      this._cache = this._cache || new Map();
+      const hit = this._cache.get(code);
+      const found = hit
+        ? Promise.resolve(hit)
+        : axios.post(route('items.scan'), { code, full: 1 }).then(res => {
+            if (res.data && res.data.found && res.data.item) {
+              this._cache.set(code, res.data.item);
+              return res.data.item;
+            }
+            return null;
+          }).catch(() => null);
+      this._chain = (this._chain || Promise.resolve()).then(() => found).then(item => {
+        if (item) {
+          this.flashScan('ok');
+          this.$emit('update:modelValue', JSON.parse(JSON.stringify(item)));
+        } else {
+          this.flashScan('miss');
+          if (this.$page && this.$page.props.flash) this.$page.props.flash.error = this.$t('No item matches the code :code. Check that it is saved as the Item Code or SKU.', { code });
+          this.$emit('scan-miss', code);
+        }
+      });
+    },
+    flashScan(kind) {
+      this.scanFlash = kind;
+      clearTimeout(this._flashT);
+      this._flashT = setTimeout(() => (this.scanFlash = ''), 450);
+    },
     enter() {
+      if (this._scanKey) {
+        // the Enter of a scan was already taken on key down
+        this._scanKey = false;
+        return false;
+      }
       if (this.freeform && (!this.result || !this.result.length)) {
         this.$emit('update:modelValue', this.search);
         this.open = false;
+        return false;
+      }
+      if (!this.result || !this.result[this.current]) {
+        // the list for what was typed is not here yet: it is taken the moment it arrives
+        this._enterWait = !!this.search && this.searchable;
         return false;
       }
       this.suggestionClick(this.current);
@@ -564,6 +649,8 @@ export default {
 </script>
 
 <style scoped>
+.ac-scan-ok { border-color: #22c55e !important; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.28) !important; transition: box-shadow 0.15s; }
+.ac-scan-miss { border-color: #ef4444 !important; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.28) !important; }
 .ac-status-dot {
   display: inline-block;
   height: 0.5rem;

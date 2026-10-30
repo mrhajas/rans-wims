@@ -72,6 +72,25 @@ class SettingsController extends Controller
         ]);
     }
 
+    /** How a card of each category looks with the settings it has now (a sample holder, the number that comes next): the small ID in the Categories table zooms into this. */
+    public function samples(Request $request)
+    {
+        $this->gate();
+        $today = Carbon::today(config('app.timezone'));
+        $out = [];
+        foreach (IdPassCategory::query()->orderBy('sort_order')->get() as $c) {
+            $with = IdPassCard::query()->where('category_id', $c->id)->whereNotNull('photo_path')->latest('id')->first();
+            $expires = $c->validity_value ? match ($c->validity_unit) {
+                'days' => $today->copy()->addDays((int) $c->validity_value), 'weeks' => $today->copy()->addWeeks((int) $c->validity_value), 'months' => $today->copy()->addMonths((int) $c->validity_value), default => $today->copy()->addYears((int) $c->validity_value),
+            } : null;
+            $data = CardRenderer::draft(['full_name' => __('Sample Holder'), 'title' => $c->kind === 'staff' ? __('Position') : null, 'issued' => $today, 'expires' => $expires ? $expires->subDay() : null, 'host_name' => $c->kind === 'visitor' ? __('Host name') : null,
+                'vehicle_registration' => $c->vehicle_required ? 'T 000 AAA' : null, 'authorisation_type' => $c->kind === 'gate' ? __('Access') : null], $c, $c->format((int) $c->next_number), $with ? CardAssets::photo($with) : null, 'https://wims.invalid/id-verify/preview');
+            $out[$c->id] = ['front' => CardRenderer::front($data, 'web'), 'back' => CardRenderer::back($data, 'web')];
+        }
+
+        return response()->json(['css' => CardRenderer::stylesheet('web'), 'cards' => (object) $out])->header('Cache-Control', 'private, no-store');
+    }
+
     public function general(Request $request)
     {
         $this->gate();

@@ -618,6 +618,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::prefix('print-centre')->name('print-centre.')->group(function () use ($pc) {
             Route::get('/', [$pc, 'index'])->name('index');
             Route::get('cards', [$pc, 'cards'])->middleware('throttle:240,1,id-passes.print-centre.cards')->name('cards');
+            Route::get('faces', [$pc, 'faces'])->middleware('throttle:240,1,id-passes.print-centre.faces')->name('faces');
             Route::get('history', [$pc, 'history'])->name('history');
         });
         Route::prefix('batch')->name('batch.')->group(function () use ($pc) {
@@ -634,6 +635,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         });
         Route::prefix('settings')->name('settings.')->group(function () use ($set) {
             Route::get('/', [$set, 'index'])->name('index');
+            Route::get('samples', [$set, 'samples'])->middleware('throttle:60,1,id-passes.settings.samples')->name('samples');
             Route::put('general', [$set, 'general'])->middleware('throttle:30,1,id-passes.settings.general')->name('general');
             Route::put('qr', [$set, 'qr'])->middleware('throttle:30,1,id-passes.settings.qr')->name('qr');
             Route::post('categories', [$set, 'store'])->middleware('throttle:30,1,id-passes.settings.categories.store')->name('categories.store');

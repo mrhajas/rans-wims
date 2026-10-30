@@ -82,3 +82,12 @@ The card viewer lifts, glows in the colour of the ID and a band of light crosses
 * The logo is the 819-pixel `public/images/logo.png`: about 700 dots per inch at the size it is printed; a vector logo would be crisper.
 * Page 2 of the Staff front uses the supplied vertical logo made by rotating that file.
 * Printing is only ever claimed as "PDF generated" or "print initiated".
+
+## Print Centre sheets, floating bar, category icons (2026-10-30)
+
+- **Selected sheets** (right column, sticky): the real faces of the ticked IDs on the real sheet geometry (same arithmetic as `CardPdf::grid`, drawn in `Parts/SheetPreview.vue`). Ticking an ID flies it from its row onto the sheet, removing the tick flies it back; with more cards than one view holds there is a pager. Faces come from `GET id-passes/print-centre/faces` (max 40 ids). Nothing ticked: an example with the first IDs of the list. Hover a card on the sheet to zoom it.
+- **2. How** answers a tick at once (cards, sheets, per sheet are computed in the browser, the server count follows). Layout choices are tiles with a thumbnail of the real IDs.
+- **Generate bar**: floating bar at the bottom (sticky on desktop, fixed on phones) with the count, the reason for printing again (when needed) and the Generate button.
+- **Settings > Categories**: an ID icon in the colour of the category; hover or focus and the ID (front and back, sample holder, next number, current colours and photo background) grows out of it. Data: `GET id-passes/settings/samples`, reloaded when a category is saved.
+- **Flicker**: hover effects that moved an element away from the pointer (`translateY` on hover) made it jump in and out of hover; they are now `scale` (module pages and Visitor Logs dashboard). The glare layer of the ID viewer no longer uses `mix-blend-mode`.
+- **Handheld scanner** (`AutoComplete` prop `scan`, on Check-in, Check-out, Adjustment, Super Adjustment, Multi Transfer, External Stock): a quick burst of keys ending in Enter is one scan; the item is looked up once (`items.scan` with `full=1` returns the whole item), picked once, the field is free at once. Same code twice = quantity +1; unknown code = red flash and a message. Typing by hand and Enter still works and no longer picks a stale suggestion.

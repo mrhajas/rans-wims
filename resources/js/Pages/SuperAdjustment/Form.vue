@@ -119,6 +119,7 @@
                     json
                     keep-focus
                     reset-search
+                  scan
                     id="add-item"
                     @update:model-value="itemSelected"
                     :suggestions="route('items.search')"

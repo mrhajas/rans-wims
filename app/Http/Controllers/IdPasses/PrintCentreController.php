@@ -85,6 +85,22 @@ class PrintCentreController extends Controller
         return response()->json(['data' => $p->getCollection()->map(fn ($c) => IdPassQuery::row($c))->values(), 'total' => $p->total(), 'page' => $p->currentPage(), 'last' => $p->lastPage()]);
     }
 
+    /** The real faces (front and back) of some cards, for the sheet preview of the Print Centre. Only cards of kinds the person may print or export, at most 40 at a time. */
+    public function faces(Request $request)
+    {
+        $this->centre();
+        $d = $request->validate(['ids' => 'required|array|max:40', 'ids.*' => 'integer', 'action' => 'nullable|in:print,pdf']);
+        $kinds = $this->kindsFor(($d['action'] ?? 'print') === 'pdf' ? 'pdf' : 'print');
+        $cards = IdPassCard::query()->with(['category', 'staff', 'contact'])->whereIn('kind', $kinds ?: ['-'])->whereIn('id', array_map('intval', $d['ids']))->get();
+        $out = [];
+        foreach ($cards as $c) {
+            $data = \App\Services\IdPass\CardRenderer::data($c);
+            $out[$c->id] = ['front' => \App\Services\IdPass\CardRenderer::front($data, 'web'), 'back' => \App\Services\IdPass\CardRenderer::back($data, 'web'), 'number' => $c->number];
+        }
+
+        return response()->json(['css' => \App\Services\IdPass\CardRenderer::stylesheet('web'), 'cards' => (object) $out])->header('Cache-Control', 'private, max-age=60');
+    }
+
     /** The ids of a request: the ticked ones, or everything the filters match; never more than the person may print, never more than the limit. */
     private function selection(Request $request, string $action): array
     {
@@ -127,13 +143,10 @@ class PrintCentreController extends Controller
         $this->authorise($action);
         [$d, $matched, $active, $landscape] = $this->selection($request, $action);
         $n = count($active);
+        $grid = CardPdf::grid($d['layout'], $landscape);
 
         return response()->json(['matched' => $matched, 'cards' => min($n, BatchRunner::MAX), 'skipped' => $matched - $n, 'over' => $n > BatchRunner::MAX, 'sheets' => $d['layout'] === 'card' ? $n * 2 : CardPdf::sheets($d['layout'], $landscape, $n),
-            'pages' => $d['layout'] === 'card' ? $n * 2 : null, 'reprints' => $this->reprints, 'parts' => (int) ceil(max(1, $n) / BatchRunner::PART), 'background' => $n > IdPassSettings::syncBatch(), 'landscape' => $landscape, 'per_sheet' => $d['layout'] === 'card' ? null : (function () use ($d, $landscape) {
-                [$c, $r] = CardPdf::grid($d['layout'], $landscape);
-
-                return $c * $r;
-            })()]);
+            'pages' => $d['layout'] === 'card' ? $n * 2 : null, 'reprints' => $this->reprints, 'parts' => (int) ceil(max(1, $n) / BatchRunner::PART), 'background' => $n > IdPassSettings::syncBatch(), 'landscape' => $landscape, 'per_sheet' => $d['layout'] === 'card' ? null : $grid[0] * $grid[1], 'cols' => $d['layout'] === 'card' ? 1 : $grid[0], 'rows' => $d['layout'] === 'card' ? 1 : $grid[1]]);
     }
 
     public function store(Request $request)

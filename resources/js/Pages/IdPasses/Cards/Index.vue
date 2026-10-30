@@ -117,5 +117,5 @@ export default {
 .idl-no { letter-spacing: 0.04em; font-weight: 800; color: #1e4467; } .idl-soon { color: #b45309; font-weight: 700; }
 .idl-empty { display: grid; justify-items: center; gap: 6px; padding: 26px 8px; color: var(--lg-mute, #64748b); }
 .idl-ib { color: var(--ib); background: color-mix(in srgb, var(--ib) 10%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib) 26%, transparent), 0 8px 12px -8px color-mix(in srgb, var(--ib) 75%, transparent); transition: transform 0.15s, box-shadow 0.15s; }
-.idl-ib:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib) 50%, transparent), 0 12px 16px -8px color-mix(in srgb, var(--ib) 85%, transparent); }
+.idl-ib:hover { transform: scale(1.12); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib) 50%, transparent), 0 12px 16px -8px color-mix(in srgb, var(--ib) 85%, transparent); }
 </style>

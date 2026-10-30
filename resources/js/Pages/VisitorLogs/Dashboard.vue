@@ -104,7 +104,7 @@ export default {
 .vl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px; margin-bottom: 14px; }
 @media (max-width: 420px) { .vl-stat { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px; } .vl-stat b { font-size: 1.25rem; } }
 .vl-stat { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; text-decoration: none; background: var(--sc-card, #fff); color: var(--sc-ink, #0f2540); box-shadow: 0 0 0 1px var(--sc-line, #e3e9f2), 0 10px 16px -14px rgba(31, 70, 130, 0.55); transition: transform 0.15s ease, box-shadow 0.15s ease; }
-.vl-stat:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px #0369a1, 0 14px 22px -14px rgba(3, 105, 161, 0.6); }
+.vl-stat:hover { transform: scale(1.025); box-shadow: 0 0 0 1px #0369a1, 0 14px 22px -14px rgba(3, 105, 161, 0.6); }
 .vl-stat > svg { flex: none; color: #0369a1; } .vl-stat.is-green > svg { color: #0d8a5a; } .vl-stat.is-slate > svg { color: #64748b; } .vl-stat.is-violet > svg { color: #7c3aed; } .vl-stat.is-amber > svg { color: #b45309; } .vl-stat.is-cyan > svg { color: #0e7490; } .vl-stat.is-red > svg { color: #b91c1c; }
 .vl-stat > span { display: grid; font-size: 0.78rem; font-weight: 700; color: var(--sc-mute, #64748b); min-width: 0; } .vl-stat b { font-size: 1.4rem; line-height: 1.1; color: var(--sc-ink, #0f2540); }
 @media (prefers-reduced-motion: reduce) { .vl-stat { transition: none; } .vl-stat:hover { transform: none; } }

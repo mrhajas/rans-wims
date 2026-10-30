@@ -18,7 +18,7 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="bag" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Items') }}</h2><p class="lg-card-sub">{{ $t('Search an item, then choose the warehouse it comes from. Add the same item again to take the rest from another warehouse.') }}</p></div></header>
           <div class="mt-add flex items-start gap-2">
-            <div class="flex-1 min-w-0"><auto-complete json keep-focus reset-search id="mt-add-item" @update:model-value="addItem" :suggestions="route('items.search')" :placeholder="$t('Scan barcode or search items')" :defaultText="$t('Scan barcode or search items for next')" /></div>
+            <div class="flex-1 min-w-0"><auto-complete json keep-focus reset-search scan id="mt-add-item" @update:model-value="addItem" :suggestions="route('items.search')" :placeholder="$t('Scan barcode or search items')" :defaultText="$t('Scan barcode or search items for next')" /></div>
             <button type="button" class="lg-btn lg-btn-soft flex-none" :aria-label="$t('Scan barcode with camera')" @click="$refs.scanner.show()"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" /><circle cx="12" cy="13" r="4" /></svg>{{ $t('Scan') }}</button>
           </div>
           <camera-barcode-scanner ref="scanner" @resolved="addItem" />

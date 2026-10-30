@@ -152,7 +152,7 @@ export default {
 .myid-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 12px; }
 .myid-tiles .t { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: var(--lg-card, #fff); box-shadow: 0 0 0 1px color-mix(in srgb, var(--t) 18%, transparent), 0 14px 22px -18px color-mix(in srgb, var(--t) 70%, transparent); animation: myid-in 0.5s both; transition: transform 0.18s, box-shadow 0.18s; }
 .myid-tiles .t:nth-child(2) { animation-delay: 0.06s; } .myid-tiles .t:nth-child(3) { animation-delay: 0.12s; } .myid-tiles .t:nth-child(4) { animation-delay: 0.18s; } .myid-tiles .t:nth-child(5) { animation-delay: 0.24s; }
-.myid-tiles .t:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--t) 40%, transparent), 0 18px 26px -16px color-mix(in srgb, var(--t) 80%, transparent); }
+.myid-tiles .t:hover { transform: scale(1.03); box-shadow: 0 0 0 1px color-mix(in srgb, var(--t) 40%, transparent), 0 18px 26px -16px color-mix(in srgb, var(--t) 80%, transparent); }
 .myid-tiles .t > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; flex: none; color: #fff; background: linear-gradient(145deg, var(--t), color-mix(in srgb, var(--t) 60%, #000)); box-shadow: 0 10px 14px -8px var(--t); }
 .myid-tiles .t div { display: grid; min-width: 0; } .myid-tiles small { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute, #64748b); } .myid-tiles b { font-weight: 800; color: var(--lg-ink, #0f2540); overflow-wrap: anywhere; }
 

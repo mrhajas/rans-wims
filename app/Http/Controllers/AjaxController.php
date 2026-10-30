@@ -256,6 +256,11 @@ class AjaxController extends Controller
             }
         }
 
+        if ($item && $request->boolean('full')) {
+            // a handheld scanner wants the whole item in this one answer (the same as items.search with an id)
+            return response()->json(['found' => true, 'id' => $item->id, 'item' => Item::with('variations')->find($item->id)]);
+        }
+
         return $item
             ? response()->json(['found' => true, 'id' => $item->id])
             : response()->json(['found' => false]);

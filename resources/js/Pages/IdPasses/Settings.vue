@@ -12,7 +12,7 @@
         <div class="lg-table-wrap"><table class="lg-table lg-responsive">
           <thead><tr><th>{{ $t('Category') }}</th><th>{{ $t('Kind') }}</th><th>{{ $t('Numbering') }}</th><th>{{ $t('Validity') }}</th><th>{{ $t('Rules') }}</th><th>{{ $t('Cards') }}</th><th></th></tr></thead>
           <tbody><tr v-for="c in categories" :key="c.id" :class="{ 'is-off': !c.is_active }">
-            <td :data-label="$t('Category')"><span class="st-dot" :style="{ background: c.band_color }"></span><b>{{ c.name }}</b><span v-if="c.photo_background" class="st-bgdot lg-tip tip-left" :data-tip="$t('Photo background') + ': ' + c.photo_background" :style="{ background: c.photo_background }"></span><div v-if="c.label" class="lg-subtext">{{ $t('Card says') }}: {{ c.label }}</div></td>
+            <td :data-label="$t('Category')"><category-sample :sample="samples[c.id]" :css="sampleCss || css" :color="iconColour(c.band_color)" :name="c.name" /><b>{{ c.name }}</b><span v-if="c.photo_background" class="st-bgdot lg-tip tip-left" :data-tip="$t('Photo background') + ': ' + c.photo_background" :style="{ background: c.photo_background }"></span><div v-if="c.label" class="lg-subtext">{{ $t('Card says') }}: {{ c.label }}</div></td>
             <td :data-label="$t('Kind')">{{ kindName(c.kind) }}</td>
             <td :data-label="$t('Numbering')"><b>{{ c.example }}</b><div class="lg-subtext">{{ $t('prefix') }} {{ c.prefix || '-' }} · {{ c.digits }} {{ $t('digits') }}</div></td>
             <td :data-label="$t('Validity')">{{ c.validity_value ? c.validity_value + ' ' + $t(c.validity_unit) : $t('No expiry') }}</td>
@@ -104,13 +104,14 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import TravelModal from '@/Pages/Travels/TravelModal.vue';
 import CardFace from './Parts/CardFace.vue';
+import CategorySample from './Parts/CategorySample.vue';
 import { removeBackground } from '../../Core/removeBackground';
 
 export default {
-  components: { AdminLayout, PageHeader, Link, AcctSelect, TravelModal, CardFace },
+  components: { AdminLayout, PageHeader, Link, AcctSelect, TravelModal, CardFace, CategorySample },
   props: { categories: Array, kinds: Array, icons: Array, values: Object, defaults: Object, contactCategories: Array, backHtml: String, css: String, can: Object },
   data() {
-    return { g: { ...this.values }, gf: this.$inertia.form({}), q: { idpass_qr_mode: this.values.idpass_qr_mode }, qf: this.$inertia.form({}), open: false, isNew: false, editId: null, cf: this.$inertia.form({}), bgSaved: null, ab: { running: false, stop: false, done: 0, total: 0, msg: '' } };
+    return { g: { ...this.values }, gf: this.$inertia.form({}), q: { idpass_qr_mode: this.values.idpass_qr_mode }, qf: this.$inertia.form({}), open: false, isNew: false, editId: null, cf: this.$inertia.form({}), bgSaved: null, samples: {}, sampleCss: '', ab: { running: false, stop: false, done: 0, total: 0, msg: '' } };
   },
   computed: {
     errs() { return this.$page.props.errors || {}; },
@@ -119,7 +120,20 @@ export default {
     bgColour: { get() { return this.cf.photo_background || '#ffffff'; }, set(v) { this.cf.photo_background = v; } },
     iconOptions() { return this.icons.map(i => ({ value: i, label: i })); },
   },
+  watch: {
+    // the small IDs follow the settings: drawn again whenever a category is saved
+    categories: { handler() { this.loadSamples(); } },
+  },
+  mounted() { this.loadSamples(); },
   methods: {
+    async loadSamples() { try { const { data } = await window.axios.get(route('id-passes.settings.samples'), { headers: { 'X-Quiet': '1' } }); this.sampleCss = data.css; this.samples = data.cards; } catch (e) { /* the icon still shows */ } },
+    // a band that is white or very light would make an invisible icon: it takes a slate blue instead
+    iconColour(hex) {
+      const h = String(hex || '').replace('#', ''), v = h.length === 3 ? h.split('').map(x => x + x).join('') : h;
+      if (!/^[0-9a-f]{6}$/i.test(v)) return '#1565c0';
+      const l = (0.299 * parseInt(v.slice(0, 2), 16) + 0.587 * parseInt(v.slice(2, 4), 16) + 0.114 * parseInt(v.slice(4, 6), 16)) / 255;
+      return l > 0.8 ? '#475569' : '#' + v;
+    },
     kindName(k) { return (this.kinds.find(x => x.value === k) || {}).label || k; },
     resetGeneral() { this.g = { ...this.g, ...this.defaults }; },
     saveGeneral() { this.gf = this.$inertia.form({ ...this.g }); this.gf.put(route('id-passes.settings.general'), { preserveScroll: true }); },

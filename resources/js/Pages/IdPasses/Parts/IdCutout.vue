@@ -57,7 +57,7 @@ export default {
 .idc-side { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .idc-rear { transform: rotateY(180deg); }
 .idc-side :deep(.idp-face) { box-shadow: 0 30px 40px -24px rgba(8, 20, 40, 0.75), 0 0 0 1px rgba(8, 20, 40, 0.06); border-radius: 5%; }
-.idc-glare { position: absolute; inset: 0; border-radius: 5%; pointer-events: none; opacity: 0; transition: opacity 0.25s; mix-blend-mode: soft-light; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, 0.85), transparent 55%); transform: translateZ(1px); }
+.idc-glare { position: absolute; inset: 0; border-radius: 5%; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, 0.28), transparent 55%); transform: translateZ(1px); }
 .idc-skel { position: absolute; inset: 0; border-radius: 5%; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--idc-c) 22%, #e8eef6), #dfe7f2); box-shadow: 0 30px 40px -24px rgba(8, 20, 40, 0.5); }
 .idc-skel i { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%); transform: translateX(-100%); animation: idc-sheen 1.3s ease-in-out infinite; }
 @keyframes idc-sheen { to { transform: translateX(100%); } }
@@ -73,7 +73,7 @@ export default {
 .idc-stage:hover .idc-side :deep(.idp-face) { box-shadow: 0 34px 44px -22px rgba(8, 20, 40, 0.8), 0 0 0 3px color-mix(in srgb, var(--idc-c) 55%, transparent), 0 0 34px -4px color-mix(in srgb, var(--idc-c) 60%, transparent); }
 .idc-glare::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); }
 .idc-stage:hover .idc-glare::after { transform: translateX(120%); transition: transform 0.9s ease; }
-.idc-btns .lg-btn { transition: transform 0.15s, box-shadow 0.2s; } .idc-btns .lg-btn:not(:disabled):hover { transform: translateY(-2px); } .idc-btns .lg-btn:not(:disabled):active { transform: translateY(0) scale(0.97); }
+.idc-btns .lg-btn { transition: transform 0.15s, box-shadow 0.2s; } .idc-btns .lg-btn:not(:disabled):hover { transform: scale(1.05); } .idc-btns .lg-btn:not(:disabled):active { transform: translateY(0) scale(0.97); }
 @media (hover: none) { .idc-stage.lg-tip::after { display: none; } }
 .idc-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; }
 @media (max-width: 420px) { .idc-btns { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 320px; } .idc-btns .lg-btn { justify-content: center; } }
