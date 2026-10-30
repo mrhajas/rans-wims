@@ -66,7 +66,11 @@ class CardRenderer
             return $path;
         }
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png'][$ext] ?? 'application/octet-stream';
+        if ($ext === 'svg') {
+            // a vector logo is a file the browser keeps (no copy inside every card)
+            return url('/images/idpass/' . basename($path));
+        }
+        $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'svg' => 'image/svg+xml'][$ext] ?? 'application/octet-stream';
 
         return 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($path));
     }
@@ -106,6 +110,7 @@ class CardRenderer
     /** A line of text centred (by its capital letters) in a box of the given height. */
     private static function text(string $text, float $x, float $y, float $w, float $h, string $font, float $pt, string $color, string $align = 'left'): string
     {
+        $text = FontMeasure::safe($text, self::fontKey($font));
         $cls = 'ip-t ip-' . $font . ($align === 'center' ? ' ip-c' : ($align === 'right' ? ' ip-r' : ''));
         $s = $pt * 25.4 / 72;
         $cap = (self::CAP[$font] ?? 0.65);
@@ -152,7 +157,7 @@ class CardRenderer
         } else {
             // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows a silhouette
             $photo = self::src($d['photo'], $mode);
-            $frame = $photo !== '' ? self::img($photo, 0, 0, 31.0, 38.75) : self::img(self::src(CardAssets::tinted('icons/user.png', '#ffffff', 300), $mode), 7.0, 7.5, 17.0, 17.0, ['opacity' => 0.9]);
+            $frame = $photo !== '' ? self::img($photo, 0, 0, 31.0, 38.75) : self::img(self::src(CardAssets::tinted('icons/user.png', '#ffffff', 540), $mode), 7.0, 7.5, 17.0, 17.0, ['opacity' => 0.9]);
             $h .= self::box(19.4, 6.1, 31.0, 38.75, ['background' => '#afb3b6', 'border-radius' => 2.9, 'overflow' => 'hidden'], $frame);
             if ($d['template'] === 'staff') {
                 $h .= self::img(self::src(CardAssets::logoUp(), $mode), 5.7, 7.0, 10.4, 27.9);
@@ -164,7 +169,7 @@ class CardRenderer
         // the colour band: the name and the title, or the number on a pass
         $h .= self::box(0, 38.0, 40.5, 12.6, ['background' => $band, 'border-top-right-radius' => 3.4]);
         if ($d['template'] === 'pass') {
-            $n = NameFitter::fitLine((string) $d['number'], 'gluten', 36.0, 33, 18);
+            $n = NameFitter::fitLine((string) $d['number'], 'gluten', 34.6, 33, 18);
             $h .= self::text($n['text'], 3.2, 38.4, 36.5, 11.8, 'g', $n['pt'], '#ffffff');
         } else {
             $name = NameFitter::fitName((string) $d['name'], 'gluten', 37.0, 12.5, 8.0);
@@ -193,7 +198,7 @@ class CardRenderer
     private static function passDetails(array $d, string $mode): string
     {
         $x = 33.3;
-        $w = 19.6;
+        $w = 18.8;
         $y = 50.9;
         $h = '';
         $name = ! empty($d['pooled']) ? '' : NameFitter::display((string) $d['name']);
@@ -236,7 +241,7 @@ class CardRenderer
         $bg = CardAssets::hex(IdPassSettings::get('idpass_back_color'), '#cf7d1c');
         $h = '<div class="ip-card" style="background:' . $bg . '">';
         $h .= self::skyline($bg);
-        $h .= self::img(self::src(CardAssets::art('back-arrow.png'), $mode), 40.2, 55.7, 14.8, 29.3);
+        $h .= self::backArrow();
         $h .= self::img(self::src(CardAssets::logo(), $mode), 13.6, 4.2, 28.0, 10.4);
         $intro = IdPassSettings::get('idpass_intro');
         foreach (self::wrap($intro, 'saira', 6.3, 40.5, 2) as $i => $line) {
@@ -289,6 +294,20 @@ class CardRenderer
         }
 
         return $h . '</div>';
+    }
+
+    /** The big yellow arrow shape in the lower corner of the back: a rounded bar and a thick diagonal bar with round ends, drawn as shapes (not a picture), so it is sharp at any resolution and costs the PDF nothing. */
+    private static function backArrow(): string
+    {
+        $y = '#fff200';
+        $bar = self::box(41.3, 56.8, 20.0, 10.3, ['background' => $y, 'border-radius' => 3.35]);
+        $len = 50.96;
+        $th = 10.06;
+        $cx = 58.2;
+        $cy = 75.2;
+        $diag = self::box($cx - $len / 2, $cy - $th / 2, $len, $th, ['background' => $y, 'border-radius' => $th / 2, 'transform' => 'rotate(48.1deg)', 'transform-origin' => '50% 50%']);
+
+        return $bar . $diag;
     }
 
     /** The faint outlines of tall buildings behind the back of the card: plain boxes in a slightly lighter tone of the back colour (no big picture to decode). */

@@ -38,6 +38,28 @@ class FontMeasure
         return self::$maps[$font] = ['upm' => $upm, 'w' => $widths, 'default' => $default];
     }
 
+    /** The text with every letter the font has no picture for turned into its plain letter (İ -> I, Ş -> S), or "?" when there is none, so nothing is printed as an empty gap. */
+    public static function safe(string $text, string $font): string
+    {
+        $m = self::load($font);
+        $out = '';
+        foreach (mb_str_split($text) as $ch) {
+            if (isset($m['w'][mb_ord($ch)]) || preg_match('/^\s$/u', $ch)) {
+                $out .= $ch;
+
+                continue;
+            }
+            $base = class_exists(\Normalizer::class) ? preg_replace('/\p{Mn}/u', '', (string) \Normalizer::normalize($ch, \Normalizer::FORM_D)) : '';
+            if ($base === '' || ! isset($m['w'][mb_ord(mb_substr($base, 0, 1))])) {
+                $t = @iconv('UTF-8', 'ASCII//TRANSLIT', $ch);
+                $base = $t !== false && preg_match('/^[A-Za-z]+$/', $t) ? $t : '?';
+            }
+            $out .= $base;
+        }
+
+        return $out;
+    }
+
     /** Width of $text in em. */
     public static function em(string $text, string $font): float
     {

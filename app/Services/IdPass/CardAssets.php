@@ -3,7 +3,6 @@
 namespace App\Services\IdPass;
 
 use App\Models\IdPassCard;
-use App\Support\PrintQrCode;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -72,31 +71,50 @@ class CardAssets
         return $out;
     }
 
-    /** The RANS logo turned a quarter to read upwards, as on the Staff ID. */
+    /** The RANS logo turned a quarter to read upwards, as on the Staff ID. A vector picture (traced from the supplied logo), so it is sharp at any print size. */
     public static function logoUp(): string
     {
-        $out = self::dir('cache') . '/logo-up.png';
-        if (! is_file($out)) {
-            $src = imagecreatefrompng(public_path('images/logo.png'));
-            $rot = imagerotate($src, 90, imagecolorallocatealpha($src, 0, 0, 0, 127));
-            imagesavealpha($rot, true);
-            imagepng($rot, $out, 6);
-        }
-
-        return $out;
+        return self::art('logo-up.svg');
     }
 
+    /** The RANS logo as a vector picture: it never goes soft, whatever size or resolution the card is printed at. */
     public static function logo(): string
     {
-        return public_path('images/logo.png');
+        return self::art('logo.svg');
     }
 
-    /** The QR code of a card: its verification address, navy on white, drawn large (each square is 16 pixels) so it stays sharp when printed. */
+    /** A QR code of two colours (navy on white), drawn with whole squares of enough pixels to give about 830 pixels across the 24.9 mm it is printed at (over 800 per inch). Saved as a plain RGB picture: the PDF engine places that about eight times faster than a palette picture. */
+    public static function qrPng(string $text): string
+    {
+        $matrix = \BaconQrCode\Encoder\Encoder::encode($text, \BaconQrCode\Common\ErrorCorrectionLevel::M())->getMatrix();
+        $n = $matrix->getWidth();
+        $mod = (int) ceil(830 / ($n + 2));
+        $px = ($n + 2) * $mod;
+        $img = imagecreatetruecolor($px, $px);
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $navy = imagecolorallocate($img, 0x1e, 0x44, 0x67);
+        imagefilledrectangle($img, 0, 0, $px, $px, $white);
+        for ($y = 0; $y < $n; $y++) {
+            for ($x = 0; $x < $n; $x++) {
+                if ($matrix->get($x, $y) === 1) {
+                    imagefilledrectangle($img, ($x + 1) * $mod, ($y + 1) * $mod, ($x + 2) * $mod - 1, ($y + 2) * $mod - 1, $navy);
+                }
+            }
+        }
+        ob_start();
+        imagepng($img, null, 6);
+        $png = (string) ob_get_clean();
+        imagedestroy($img);
+
+        return $png;
+    }
+
+    /** The QR code of a card: its verification address, navy on white, drawn large so it stays sharp when printed. */
     public static function qr(IdPassCard $card): string
     {
         $out = self::dir('cache') . '/qr-' . substr(hash('sha256', $card->token . '|' . $card->verifyUrl()), 0, 24) . '.png';
         if (! is_file($out)) {
-            file_put_contents($out, PrintQrCode::png($card->verifyUrl(), 16, 1, '#1e4467', 'M'));
+            file_put_contents($out, self::qrPng($card->verifyUrl()));
         }
 
         return $out;
@@ -107,7 +125,7 @@ class CardAssets
     {
         $out = self::dir('cache') . '/qrt-' . substr(sha1($text), 0, 24) . '.png';
         if (! is_file($out)) {
-            file_put_contents($out, PrintQrCode::png($text, 16, 1, '#1e4467', 'M'));
+            file_put_contents($out, self::qrPng($text));
         }
 
         return $out;

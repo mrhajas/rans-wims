@@ -50,7 +50,7 @@ class NameFitter
      */
     public static function fitName(string $name, string $font, float $maxMm, float $startPt, float $minPt): array
     {
-        $shapes = self::shapes($name);
+        $shapes = self::shapes(FontMeasure::safe($name, $font));
         $last = count($shapes) - 1;
         foreach ($shapes as $i => $shape) {
             // a little smaller first; the shortest shape may shrink further before the text is cut
@@ -68,7 +68,7 @@ class NameFitter
     /** One line (a designation, a vehicle, a number): smaller until it fits, then cut with "...". */
     public static function fitLine(string $text, string $font, float $maxMm, float $startPt, float $minPt): array
     {
-        $text = trim($text);
+        $text = FontMeasure::safe(trim($text), $font);
         $pt = $startPt;
         while ($pt > $minPt && FontMeasure::mm($text, $font, $pt) > $maxMm) {
             $pt = round($pt - 0.25, 2);

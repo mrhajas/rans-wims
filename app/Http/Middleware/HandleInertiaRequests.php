@@ -35,6 +35,7 @@ class HandleInertiaRequests extends Middleware
             'myWarehouses'     => fn () => $this->managedWarehouses($request),
             'currentWarehouse' => fn () => $this->currentWarehouse($request),
             'enabledFeatures'  => fn () => FeatureManager::enabledMap(),
+            'hasMyRansId'      => fn () => $request->user() && FeatureManager::isEnabled('id_passes') ? \App\Http\Controllers\IdPasses\MyIdController::cardFor($request->user()) !== null : false,
             // True when this person ticked "Remember me": the long-lived remember cookie came with the request. The
             // 30-minute idle auto-logout is skipped for them (it would sign them out and cancel the remembered login).
             'rememberedLogin'  => fn () => $request->user() ? $request->hasCookie(\Illuminate\Support\Facades\Auth::guard('web')->getRecallerName()) : false,

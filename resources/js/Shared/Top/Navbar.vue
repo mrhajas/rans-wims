@@ -358,6 +358,10 @@
                   <span class="profile-menu-icon-chip chip-teal"><icons name="doc-text" class="h-4 w-4" /></span>
                   <span class="min-w-0"><span class="pm-title">{{ $t('Knowledge Base') }}</span><span class="pm-sub">{{ kbLive ? $t('Guides for every function') : $t('Under development, opens soon') }}</span></span>
                 </a>
+                <Link v-if="$page.props.hasMyRansId" :href="route('id-passes.my-id')" class="pm-item">
+                  <span class="profile-menu-icon-chip chip-blue"><icons name="user" class="h-4 w-4" /></span>
+                  <span class="min-w-0"><span class="pm-title">{{ $t('My ID') }}</span><span class="pm-sub">{{ $t('See your RANS Staff ID card') }}</span></span>
+                </Link>
                 <!-- Install WIMS as an app: knows whether it is already installed on this device -->
                 <button type="button" class="pm-item" :class="{ 'pm-installed': pwa.standalone || (pwa.installed && !pwa.canPrompt) }" @click="installPwa">
                   <span class="profile-menu-icon-chip" :class="pwa.standalone || (pwa.installed && !pwa.canPrompt) ? 'chip-emerald' : 'chip-blue'"><icons :name="pwa.standalone || (pwa.installed && !pwa.canPrompt) ? 'tick' : 'download'" class="h-4 w-4" /></span>
