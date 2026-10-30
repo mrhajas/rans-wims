@@ -84,7 +84,7 @@ class BundleController extends Controller
         $b = HolidayBundle::query()->findOrFail($bundle);
         $inUse = HolidayDay::query()->whereNull('send_started_at')->get()->filter(fn ($h) => $h->autoPlan()['enabled'] && $h->autoPlan()['bundle_id'] === $b->id)->pluck('name');
         if ($inUse->isNotEmpty()) {
-            return back()->withErrors(['bundle' => __(':n is chosen for the automatic sending of :h. Choose another list there first.', ['n' => $b->name, 'h' => $inUse->take(3)->implode(', ')])]);
+            return back()->withErrors(['bundle' => __(':n is chosen in the schedule of :h. Choose another list there first.', ['n' => $b->name, 'h' => $inUse->take(3)->implode(', ')])]);
         }
         log_activity('Holiday greeting bundle removed', ['name' => $b->name], $b, 'Holiday Greetings');
         DB::table('holiday_bundle_contacts')->where('bundle_id', $b->id)->delete();

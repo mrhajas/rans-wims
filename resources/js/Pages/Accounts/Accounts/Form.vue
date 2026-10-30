@@ -8,9 +8,9 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="info" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Account Details') }}</h2></div></header>
           <div class="lg-fields">
-            <div class="ac-f"><label>{{ $t('Name') }} *</label><input v-model="form.name" required :disabled="isLinked" /><span class="ac-err">{{ err('name') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Type') }} *</label><acct-select v-model="form.kind" :options="kinds" :disabled="locked" /><span class="ac-err">{{ err('kind') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Currency') }} *</label><acct-select v-model="form.currency" :options="curOptionsActive" :disabled="locked || isLinked" /><span class="ac-err">{{ err('currency') }}</span><small v-if="locked" class="lg-subtext">{{ $t('Type and currency cannot change once the account has transactions.') }}</small></div>
+            <div class="ac-f"><label>{{ $t('Name') }} <b class="wims-req">*</b></label><input v-model="form.name" required :disabled="isLinked" /><span class="ac-err">{{ err('name') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Type') }} <b class="wims-req">*</b></label><acct-select v-model="form.kind" :options="kinds" :disabled="locked" /><span class="ac-err">{{ err('kind') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="form.currency" :options="curOptionsActive" :disabled="locked || isLinked" /><span class="ac-err">{{ err('currency') }}</span><small v-if="locked" class="lg-subtext">{{ $t('Type and currency cannot change once the account has transactions.') }}</small></div>
             <div class="ac-f"><label>{{ $t('Code') }}</label><input v-model="form.code" :placeholder="$t('Made automatically')" /><span class="ac-err">{{ err('code') }}</span></div>
             <div class="ac-f"><label>{{ $t('Custodian') }}</label><acct-select v-model="form.custodian_user_id" :options="users" :placeholder="'-'" clearable /></div>
             <div class="ac-f"><label>{{ $t('Project / warehouse') }}</label><acct-select v-model="form.warehouse_id" :options="projects" :placeholder="'-'" clearable /></div>

@@ -10,10 +10,9 @@
           <header class="lg-card-head"><span class="lg-card-ico" :class="{ withdrawal: 'lg-ico-rose', deposit: 'lg-ico-emerald', opening: 'lg-ico-violet' }[form.kind]"><icons :name="form.kind === 'withdrawal' ? 'out' : form.kind === 'deposit' ? 'in' : 'plus'" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Movement Details') }}</h2><p class="lg-card-sub">{{ $t('Who, where and when') }}</p></div></header>
           <sc-tabs :tabs="kindTabs" :model-value="form.kind" @update:model-value="k => (form.kind = k)" />
           <div class="lg-fields ex-top">
-            <div class="ac-f"><label>{{ $t('External person') }} *</label><acct-select v-model="form.contact_id" :options="peopleAll" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('contact_id') }}</span><div class="ex-addwrap"><small class="lg-subtext">{{ $t('Not in the list? Add them here: they are saved in Contacts as External Personnel.') }}</small><button type="button" class="lg-btn lg-btn-soft ex-addp" @click="personOpen = true"><icons name="plus" class="w-4 h-4" />{{ $t('Add External Personnel') }}</button></div></div>
+            <div class="ac-f"><label>{{ $t('External person') }} <b class="wims-req">*</b></label><acct-select v-model="form.contact_id" :options="peopleAll" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('contact_id') }}</span><div class="ex-addwrap"><small class="lg-subtext">{{ $t('Not in the list? Add them here: they are saved in Contacts as External Personnel.') }}</small><button type="button" class="lg-btn lg-btn-soft ex-addp" @click="personOpen = true"><icons name="plus" class="w-4 h-4" />{{ $t('Add External Personnel') }}</button></div></div>
             <div class="ac-f"><label>{{ $t('Location') }}</label><input :value="personLocation" readonly tabindex="-1" class="ex-ro" :placeholder="form.contact_id ? $t('No location on this contact') : $t('Choose a person first')" /><small class="lg-subtext">{{ $t('Taken from the contact of the External person.') }}</small></div>
-            <div class="ac-f"><label>{{ $t('Project(s) / Warehouse(s)') }} <b v-if="!out">*</b></label><acct-select v-model="form.warehouse_id" :options="warehouses" :placeholder="out ? $t('Any warehouse') : $t('Choose...')" clearable /><span class="ac-err">{{ err('warehouse_id') }}</span><small v-if="out" class="lg-subtext">{{ $t('Optional. Leave empty and the stock comes from the warehouse that holds it for this person.') }}</small></div>
-            <div class="ac-f"><label>{{ $t('Date') }} *</label><date-picker v-model="form.date" :clearable="false" /><span class="ac-err">{{ err('date') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Date') }} <b class="wims-req">*</b></label><date-picker v-model="form.date" :clearable="false" /><span class="ac-err">{{ err('date') }}</span></div>
             <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Purpose / notes') }}</label><textarea v-model="form.purpose" :placeholder="$t('Why the stock is taken or brought')"></textarea></div>
           </div>
         </section>
@@ -40,7 +39,7 @@
         </section>
 
         <section class="lg-card">
-          <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="bag" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Items') }}</h2><p class="lg-card-sub">{{ out ? $t('Search an item. For a Stock Out you see how much this person holds and can still take.') : $t('Search an item and enter the quantity.') }}</p></div></header>
+          <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="bag" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Items') }}</h2><p class="lg-card-sub">{{ out ? $t('Search an item. The warehouse that holds this person\'s stock of it is chosen for you, and you see how much they can still take.') : $t('Search an item, choose its warehouse and enter the quantity.') }}</p></div></header>
           <div class="flex items-start gap-2" style="margin-bottom: 12px">
             <div class="flex-1 min-w-0"><auto-complete json keep-focus reset-search id="ex-add-item" :suggestions="route('items.search')" :placeholder="$t('Scan barcode or search items')" :defaultText="$t('Scan barcode or search items for next')" @update:model-value="addItem" /></div>
             <button type="button" class="lg-btn lg-btn-soft flex-none" :aria-label="$t('Scan barcode with camera')" @click="$refs.scanner.show()"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" /><circle cx="12" cy="13" r="4" /></svg>{{ $t('Scan') }}</button>
@@ -52,8 +51,11 @@
               <span class="ac-rico is-sm"><icons name="bag" class="w-4 h-4" /></span>
               <div class="ex-name"><b>{{ l.name }}</b><small>{{ l.code }}<template v-if="l.unit"> · {{ l.unit }}</template></small>
                 <small v-if="out && l.pos" :class="{ 'ac-neg': lineBad(l) }">{{ $t('Held:') }} {{ qty(l.pos.balance) }} · {{ $t('promised:') }} {{ qty(l.pos.reserved) }} · <b>{{ $t('can take:') }} {{ qty(l.pos.available) }}</b></small>
+                <small v-if="out && l.holders && l.holders.length > 1" class="lg-subtext">{{ $t('Also held in:') }} {{ l.holders.filter(h => h.warehouse_id !== l.warehouse_id).map(h => h.warehouse + ' (' + qty(h.available) + ')').join(', ') }}</small>
+                <small v-if="out && form.contact_id && l.holders && !l.holders.length && l.loaded" class="ac-neg">{{ $t('This person holds none of it in a warehouse you can use.') }}</small>
                 <small v-if="lineErr(i)" class="ac-neg">{{ lineErr(i) }}</small></div>
-              <input v-model="l.quantity" class="ex-qty" inputmode="decimal" :aria-label="$t('Quantity')" />
+              <div class="ex-wh ac-f"><label class="ex-whlab">{{ $t('Warehouse') }} <b>*</b></label><acct-select :model-value="l.warehouse_id" :options="warehouses" :placeholder="$t('Choose...')" @update:model-value="v => setWarehouse(l, v)" /></div>
+              <div class="ex-qtywrap ac-f"><label class="ex-whlab">{{ $t('Quantity') }} <b>*</b></label><input v-model="l.quantity" class="ex-qty" inputmode="decimal" :aria-label="$t('Quantity')" /></div>
               <button type="button" class="lg-icon-btn is-red" :aria-label="$t('Remove')" @click="form.lines.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button>
             </li>
           </ul>
@@ -101,10 +103,10 @@ export default {
       personOpen: false, addedPeople: [],
       typeDriver: !!(m.driver_name && !m.driver_contact_id), typeVehicle: !!(m.vehicle_plate && !m.asset_id),
       form: this.$inertia.form({
-        kind: m.kind || this.kind, date: m.date || this.today, contact_id: m.contact_id || null, warehouse_id: m.warehouse_id || null, purpose: m.purpose || '',
+        kind: m.kind || this.kind, date: m.date || this.today, contact_id: m.contact_id || null, purpose: m.purpose || '',
         collector_name: m.collector_name || '', collector_phone: m.collector_phone || '', collector_id_no: m.collector_id_no || '', driver_contact_id: m.driver_contact_id || null, driver_name: m.driver_name || '', driver_phone: m.driver_phone || '',
         asset_id: m.asset_id || null, vehicle_plate: m.vehicle_plate || '', vehicle_details: m.vehicle_details || '', attachments: [],
-        lines: (m.lines || []).map(l => ({ key: ++seq, item_id: l.item_id, name: l.name, code: l.code, unit: l.unit, quantity: String(l.quantity), pos: null })),
+        lines: (m.lines || []).map(l => ({ key: ++seq, item_id: l.item_id, warehouse_id: l.warehouse_id || null, touched: true, auto: false, loaded: false, holders: [], name: l.name, code: l.code, unit: l.unit, quantity: String(l.quantity), pos: null })),
       }),
     };
   },
@@ -115,37 +117,45 @@ export default {
     kindTabs() { return [{ key: 'withdrawal', label: this.$t('Stock Out'), icon: 'out', tone: 'rose' }, { key: 'deposit', label: this.$t('Stock In'), icon: 'in', tone: 'emerald' }, { key: 'opening', label: this.$t('Opening Stock'), icon: 'plus', tone: 'violet' }]; },
     peopleAll() { return [...this.people, ...this.addedPeople.filter(a => !this.people.some(p => p.value === a.value))]; },
     personLocation() { const p = this.peopleAll.find(x => x.value === this.form.contact_id); return p && p.location ? p.location : ''; },
-    canSave() { return this.form.lines.length > 0 && this.form.lines.every(l => Number(l.quantity) > 0 && !this.lineBad(l)); },
+    canSave() { return this.form.lines.length > 0 && this.form.lines.every(l => Number(l.quantity) > 0 && !!l.warehouse_id && !this.lineBad(l)); },
   },
   watch: {
     'form.contact_id'() { this.refreshAll(); },
-    'form.warehouse_id'() { this.refreshAll(); },
     'form.kind'() { this.refreshAll(); },
   },
   mounted() { this.refreshAll(); },
   methods: {
     personSaved(p) { if (!this.addedPeople.some(a => a.value === p.value)) this.addedPeople.push(p); this.form.contact_id = p.value; this.personOpen = false; },
     err(k) { return (this.$page.props.errors || {})[k]; },
-    lineErr(i) { return (this.$page.props.errors || {})['lines.' + i + '.quantity'] || (this.$page.props.errors || {})['lines.' + i + '.item_id'] || ''; },
+    lineErr(i) { return (this.$page.props.errors || {})['lines.' + i + '.quantity'] || (this.$page.props.errors || {})['lines.' + i + '.warehouse_id'] || (this.$page.props.errors || {})['lines.' + i + '.item_id'] || ''; },
     qty(v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 }); },
     lineBad(l) { return this.out && l.pos && Number(l.quantity) > Number(l.pos.available) + 0.00005; },
+    setWarehouse(l, v) { l.warehouse_id = v || null; l.touched = true; l.auto = false; this.position(l); },
+    // what this person holds of the item: in the chosen warehouse, or (a Stock Out with none chosen yet) the warehouse that holds it, picked for them
     async position(l) {
       l.pos = null;
-      if (!this.form.contact_id) return;
-      try { const { data } = await window.axios.get(route('external-stock.availability'), { params: { contact_id: this.form.contact_id, warehouse_id: this.form.warehouse_id || undefined, item_id: l.item_id, except: this.m ? this.m.id : undefined } }); l.pos = data; if (data.item && data.item.blocked) l.blocked = true; } catch (e) { l.pos = null; }
+      if (!this.form.contact_id) { l.holders = []; l.loaded = false; return; }
+      if (l.auto && !l.touched) l.warehouse_id = null; // the person changed: pick again
+      try {
+        const { data } = await window.axios.get(route('external-stock.availability'), { params: { contact_id: this.form.contact_id, warehouse_id: l.warehouse_id || undefined, item_id: l.item_id, except: this.m ? this.m.id : undefined } });
+        l.holders = data.holders || []; l.loaded = true;
+        if (data.item && data.item.blocked) l.blocked = true;
+        if (this.out && !l.warehouse_id && l.holders.length) { const h = l.holders[0]; l.warehouse_id = h.warehouse_id; l.auto = true; l.pos = h; } else l.pos = data;
+      } catch (e) { l.pos = null; }
     },
     removeFile(f) { router.delete(route('external-stock.remove-file', [this.m.id, f.id]), { preserveScroll: true }); },
     refreshAll() { this.form.lines.forEach(l => this.position(l)); },
     addItem(v) {
       if (!v || !v.id) return;
-      const ex = this.form.lines.find(l => l.item_id === v.id);
+      // the same item again adds one to its line; for Stock In / Opening Stock a line that already has its warehouse stays, and the item gets a new line (another warehouse)
+      const ex = this.form.lines.find(l => l.item_id === v.id && (this.out || !l.warehouse_id));
       if (ex) { ex.quantity = String(Number(ex.quantity || 0) + 1); return; }
-      const l = { key: ++seq, item_id: v.id, name: v.name, code: v.code, unit: v.unit ? v.unit.name || v.unit : '', quantity: '1', pos: null };
+      const l = { key: ++seq, item_id: v.id, warehouse_id: null, touched: false, auto: false, loaded: false, holders: [], name: v.name, code: v.code, unit: v.unit ? v.unit.name || v.unit : '', quantity: '1', pos: null };
       this.form.lines.push(l);
       this.position(this.form.lines[this.form.lines.length - 1]);
     },
     save() {
-      const t = d => ({ ...d, lines: d.lines.map(l => ({ item_id: l.item_id, quantity: l.quantity })) });
+      const t = d => ({ ...d, lines: d.lines.map(l => ({ item_id: l.item_id, warehouse_id: l.warehouse_id, quantity: l.quantity })) });
       // files travel as a multipart form, so a change is sent as a POST that the server reads as a PUT
       if (this.m) this.form.transform(d => ({ ...t(d), _method: 'put' })).post(route('external-stock.update', this.m.id), { preserveScroll: true, forceFormData: true });
       else this.form.transform(t).post(route('external-stock.store'), { preserveScroll: true, forceFormData: true });
@@ -165,5 +175,7 @@ export default {
 .ex-lines li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--lg-card); box-shadow: 0 10px 18px -14px rgba(15, 37, 64, 0.6), 0 0 0 1px var(--lg-line); }
 .ex-lines li.is-bad { box-shadow: 0 10px 18px -14px rgba(190, 18, 60, 0.5), 0 0 0 1.5px #e11d48; }
 .ex-name { flex: 1; min-width: 0; display: grid; gap: 1px; } .ex-name b { overflow-wrap: anywhere; } .ex-name small { font-size: 0.74rem; color: var(--lg-mute); }
+.ex-wh { width: 240px; flex: none; margin: 0; } .ex-qtywrap { margin: 0; flex: none; } .ex-whlab { display: block; font-size: 0.7rem; margin-bottom: 2px; color: var(--lg-mute); }
+@media (max-width: 767.98px) { .ex-lines li { flex-wrap: wrap; } .ex-wh { width: 100%; order: 3; } .ex-qtywrap { order: 4; } }
 .ex-qty { width: 120px; min-height: 42px; padding: 0 12px; text-align: right; border-radius: 12px; border: 1px solid var(--lg-line); background: var(--lg-card); font-variant-numeric: tabular-nums; box-shadow: 0 8px 16px -10px rgba(15, 37, 64, 0.5); }
 </style>

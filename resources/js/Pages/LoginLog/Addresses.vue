@@ -23,7 +23,7 @@
           <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ tab === 'blacklist' ? $t('Block an address') : $t('Trust an address') }}</h2><p class="lg-card-sub">{{ $t('Your address now:') }} <b>{{ myIp }}</b></p></div>
         </header>
         <form class="lga-form" @submit.prevent="add">
-          <div class="ac-f"><label for="lga-ip">{{ $t('IP address') }} *</label><input id="lga-ip" v-model="form.ip" type="text" inputmode="text" autocomplete="off" placeholder="102.xx.xx.xx" /><span class="ac-err">{{ form.errors.ip }}</span></div>
+          <div class="ac-f"><label for="lga-ip">{{ $t('IP address') }} <b class="wims-req">*</b></label><input id="lga-ip" v-model="form.ip" type="text" inputmode="text" autocomplete="off" placeholder="102.xx.xx.xx" /><span class="ac-err">{{ form.errors.ip }}</span></div>
           <div class="ac-f"><label for="lga-reason">{{ $t('Reason') }}</label><input id="lga-reason" v-model="form.reason" type="text" maxlength="190" autocomplete="off" /><span class="ac-err">{{ form.errors.reason }}</span></div>
           <div class="ac-f"><label>{{ $t('Until (optional)') }}</label><date-picker v-model="form.expires_at" :placeholder="$t('No end date')" clearable /><span class="ac-err">{{ form.errors.expires_at }}</span></div>
           <div class="ac-f lga-go"><label aria-hidden="true">&nbsp;</label><button type="submit" class="lg-btn" :class="tab === 'blacklist' ? 'lg-btn-red' : 'lg-btn-green'" :disabled="form.processing"><icons :name="tab === 'blacklist' ? 'lock-closed' : 'tick'" class="w-4 h-4" />{{ tab === 'blacklist' ? $t('Blacklist') : $t('Whitelist') }}</button></div>

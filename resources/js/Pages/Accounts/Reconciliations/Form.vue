@@ -9,8 +9,8 @@
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="info" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Reconciliation Details') }}</h2></div></header>
           <div class="lg-fields">
             <div class="ac-f"><label>{{ $t('Type') }}</label><acct-select v-model="form.kind" :options="[{ value: 'cash', label: $t('Cash count') }, { value: 'bank', label: $t('Bank statement') }]" /></div>
-            <div class="ac-f"><label>{{ $t('Account') }} *</label><acct-select v-model="form.account_id" :options="options" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('account_id') }}</span></div>
-            <div class="ac-f"><label>{{ $t('As of (end of day)') }} *</label><date-picker v-model="form.period_to" :max="today" :clearable="false" /><span class="ac-err">{{ err('period_to') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Account') }} <b class="wims-req">*</b></label><acct-select v-model="form.account_id" :options="options" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('account_id') }}</span></div>
+            <div class="ac-f"><label>{{ $t('As of (end of day)') }} <b class="wims-req">*</b></label><date-picker v-model="form.period_to" :max="today" :clearable="false" /><span class="ac-err">{{ err('period_to') }}</span></div>
             <div class="ac-f" v-if="form.kind === 'bank'"><label>{{ $t('Statement from') }}</label><date-picker v-model="form.period_from" /></div>
             <div class="ac-f"><label>{{ $t('WIMS says the balance is') }}</label><input :value="expected === null ? '...' : mc(expected, currency)" readonly /></div>
           </div>
@@ -22,13 +22,13 @@
             <label v-for="d in faces" :key="d">{{ currency }} {{ d.toLocaleString() }}<input v-model.number="counts[d]" type="number" min="0" inputmode="numeric" placeholder="0" /></label>
           </div>
           <div class="lg-fields" style="margin-top: 12px">
-            <div class="ac-f"><label>{{ $t('Total counted') }} *</label><input v-model="form.counted_balance" inputmode="decimal" required /><span class="ac-err">{{ err('counted_balance') }}</span><small v-if="denomTotal !== null" class="lg-subtext">{{ $t('Notes and coins add up to') }} {{ mc(denomTotal, currency) }}</small></div>
+            <div class="ac-f"><label>{{ $t('Total counted') }} <b class="wims-req">*</b></label><input v-model="form.counted_balance" inputmode="decimal" required /><span class="ac-err">{{ err('counted_balance') }}</span><small v-if="denomTotal !== null" class="lg-subtext">{{ $t('Notes and coins add up to') }} {{ mc(denomTotal, currency) }}</small></div>
             <div class="ac-f"><label>{{ $t('Witness (name)') }}</label><input v-model="form.witness_name" /></div>
           </div>
         </section>
         <section v-else class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="cash" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Bank Statement Balance') }}</h2></div></header>
-          <div class="lg-fields"><div class="ac-f"><label>{{ $t('Closing balance on the statement') }} *</label><input v-model="form.counted_balance" inputmode="decimal" required /><span class="ac-err">{{ err('counted_balance') }}</span></div></div>
+          <div class="lg-fields"><div class="ac-f"><label>{{ $t('Closing balance on the statement') }} <b class="wims-req">*</b></label><input v-model="form.counted_balance" inputmode="decimal" required /><span class="ac-err">{{ err('counted_balance') }}</span></div></div>
         </section>
 
         <section class="lg-card" v-if="diff !== null && Number(diff) !== 0">

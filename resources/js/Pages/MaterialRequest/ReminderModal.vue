@@ -16,9 +16,10 @@
       <form v-if="info.canSend" id="mrr-form" class="mrr-form" @submit.prevent="send">
         <div class="mrr-who">
           <icons name="users" class="w-4 h-4" />
-          <span v-if="info.audience.length"><b>{{ $t('Will be told (:n)', { n: info.audience.length }) }}:</b> {{ info.audience.map(a => a.name).join(', ') }}<em> · {{ channelText }}</em></span>
+          <span v-if="told.length"><b>{{ $t('Will be told (:n)', { n: told.length }) }}:</b> {{ told.map(a => a.name + (a.me ? ' (' + $t('you') + ')' : '')).join(', ') }}<em> · {{ channelText }}</em></span>
           <span v-else class="is-none">{{ $t('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.') }}</span>
         </div>
+        <label v-if="info.audience.some(a => a.me)" class="mrr-leave"><input type="checkbox" v-model="leaveOut" /><span>{{ $t('Do not send this reminder to me') }}</span></label>
         <div class="ac-f"><label>{{ $t('Notes & Remarks') }}</label><textarea v-model="note" maxlength="2000" rows="4" :placeholder="$t('Why is this request being chased? What must happen next?')"></textarea></div>
         <div class="mrr-attach">
           <label>{{ $t('Files') }}</label>
@@ -45,7 +46,7 @@
     </template>
     <template #footer>
       <button type="button" class="lg-btn lg-btn-soft" :disabled="sending" @click="$emit('close')">{{ $t('Close') }}</button>
-      <button v-if="info && info.canSend" type="submit" form="mrr-form" class="lg-btn tone tone-solid" style="--tone: #d97706" :disabled="sending || !info.audience.length"><span class="tone-ico"><icons :name="sending ? 'refresh' : 'bell'" class="w-4 h-4" :class="{ 'animate-spin': sending }" /></span>{{ $t('Send Reminder') }}</button>
+      <button v-if="info && info.canSend" type="submit" form="mrr-form" class="lg-btn tone tone-solid" style="--tone: #d97706" :disabled="sending || !told.length"><span class="tone-ico"><icons :name="sending ? 'refresh' : 'bell'" class="w-4 h-4" :class="{ 'animate-spin': sending }" /></span>{{ $t('Send Reminder') }}</button>
     </template>
   </travel-modal>
 </template>
@@ -58,8 +59,9 @@ export default {
   components: { TravelModal, ReminderCard },
   props: { show: Boolean, requestId: { type: Number, default: null } },
   emits: ['close', 'sent'],
-  data() { return { loading: false, sending: false, info: null, note: '', files: [], problems: [], done: '' }; },
+  data() { return { loading: false, sending: false, info: null, note: '', leaveOut: false, files: [], problems: [], done: '' }; },
   computed: {
+    told() { return (this.info?.audience || []).filter(a => !(this.leaveOut && a.me)); },
     channelText() {
       const c = this.info.channels;
       return [c.app && this.$t('App alert'), c.email && this.$t('Email'), c.sms && this.$t('SMS')].filter(Boolean).join(' + ') || this.$t('no channel is on');
@@ -68,7 +70,7 @@ export default {
   watch: { show(v) { if (v) this.load(); } },
   methods: {
     async load() {
-      this.loading = true; this.info = null; this.note = ''; this.files = []; this.problems = []; this.done = '';
+      this.loading = true; this.info = null; this.note = ''; this.leaveOut = false; this.files = []; this.problems = []; this.done = '';
       try { this.info = (await window.axios.get(route('material-request-reminders.form', this.requestId))).data; } catch (e) { this.problems = [e.response?.data?.message || this.$t('The reminder window could not be opened.')]; this.$emit('close'); } finally { this.loading = false; }
     },
     sizeText(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; },
@@ -89,6 +91,7 @@ export default {
       this.sending = true; this.problems = [];
       const fd = new FormData();
       if (this.note.trim()) fd.append('note', this.note.trim());
+      if (this.leaveOut) fd.append('leave_me_out', '1');
       this.files.forEach(f => fd.append('files[]', f));
       try {
         const r = await window.axios.post(route('material-request-reminders.store', this.requestId), fd);
@@ -113,6 +116,8 @@ export default {
 .mrr-tiles b { font-size: 0.9rem; color: var(--lg-ink); overflow-wrap: anywhere; }
 .mrr-form { display: grid; gap: 14px; margin-top: 16px; }
 .mrr-who { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 14px; background: rgba(217, 119, 6, 0.1); color: var(--lg-ink); font-size: 0.84rem; line-height: 1.5; }
+.mrr-leave { display: flex; align-items: center; gap: 8px; margin: 2px 0 12px; font-size: 0.84rem; font-weight: 600; color: var(--lg-ink); cursor: pointer; }
+.mrr-leave input[type='checkbox'] { width: 1.05rem !important; height: 1.05rem !important; flex: none; accent-color: #b45309; cursor: pointer; }
 .mrr-who em { color: var(--lg-mute); font-style: normal; } .mrr-who .is-none { color: #be123c; font-weight: 700; }
 .mrr-form textarea { width: 100%; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--lg-line); background: var(--lg-card); color: var(--lg-ink); font: inherit; line-height: 1.5; box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.3); }
 .mrr-form textarea:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18); }

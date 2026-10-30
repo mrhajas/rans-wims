@@ -54,19 +54,19 @@
           <div class="lg-page ac sc-ui tp-form">
             <div v-if="editing" class="lg-note lg-note-blue"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Every change of the amounts and rates is kept in the history of this package, with the date and who made it.') }}</span></div>
             <div class="lg-fields">
-              <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Package name') }} *</label><input v-model="form.name" :placeholder="$t('e.g. Unguja to Pemba')" /><span class="ac-err">{{ form.errors.name }}</span></div>
+              <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Package name') }} <b class="wims-req">*</b></label><input v-model="form.name" :placeholder="$t('e.g. Unguja to Pemba')" /><span class="ac-err">{{ form.errors.name }}</span></div>
             </div>
             <sc-tabs :tabs="tripTabs" :model-value="form.trip_type" @update:model-value="k => (form.trip_type = k)" />
             <div class="lg-fields" style="margin-top: 8px">
               <div class="ac-f"><label>{{ $t('From (place)') }}</label><input v-model="form.from_place" :placeholder="$t('e.g. Unguja')" /></div>
               <div class="ac-f"><label>{{ $t('From (country)') }}</label><input v-model="form.from_country" :placeholder="$t('Tanzania')" /></div>
-              <div class="ac-f"><label>{{ $t('To (place)') }} *</label><input v-model="form.to_place" :placeholder="$t('e.g. Pemba')" /><span class="ac-err">{{ form.errors.to_place }}</span></div>
+              <div class="ac-f"><label>{{ $t('To (place)') }} <b class="wims-req">*</b></label><input v-model="form.to_place" :placeholder="$t('e.g. Pemba')" /><span class="ac-err">{{ form.errors.to_place }}</span></div>
               <div class="ac-f"><label>{{ $t('To (country)') }}</label><input v-model="form.to_country" :placeholder="$t('Tanzania')" /></div>
             </div>
             <h4 class="tp-h"><icons name="cash" class="w-4 h-4" />{{ $t('What it costs for ONE person') }}</h4>
             <div class="lg-fields">
               <div class="ac-f"><label>{{ $t('Currency') }}</label><acct-select v-model="form.currency" :options="currencies.map(c => ({ value: c, label: c }))" /></div>
-              <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} *</label><input v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><span class="ac-err">{{ form.errors.exchange_rate }}</span></div>
+              <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} <b class="wims-req">*</b></label><input v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><span class="ac-err">{{ form.errors.exchange_rate }}</span></div>
             </div>
             <div class="tp-money">
               <div v-for="a in amountCols" :key="a.k" class="ac-f tp-mf" :style="{ '--c': a.c }"><label><icons :name="a.i" class="w-3.5 h-3.5" />{{ a.l }}</label><input v-model="form[a.k]" inputmode="decimal" placeholder="0" /><span class="ac-err">{{ form.errors[a.k] }}</span></div>

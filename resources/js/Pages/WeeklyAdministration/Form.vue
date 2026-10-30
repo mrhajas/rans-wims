@@ -37,7 +37,7 @@
             <div><small>{{ $t('Currency') }}</small><b>{{ currency }}</b></div>
           </div>
           <div class="tr-fbar" style="margin-top: 12px">
-            <div class="ac-f"><label>{{ $t('Date') }} *</label><date-picker v-model="form.doc_date" /><span class="ac-err">{{ err('doc_date') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Date') }} <b class="wims-req">*</b></label><date-picker v-model="form.doc_date" /><span class="ac-err">{{ err('doc_date') }}</span></div>
             <div class="ac-f"><label>{{ $t('Requested by (beneficiary)') }}</label><acct-select v-model="form.beneficiary_user_id" :options="users" :placeholder="me.name" /><span class="ac-err">{{ err('beneficiary_user_id') }}</span></div>
             <div class="ac-f tr-wide"><label>{{ $t('Notes') }}</label><input v-model="form.notes" maxlength="2000" :placeholder="$t('Anything the approver should know (optional)')" /></div>
           </div>

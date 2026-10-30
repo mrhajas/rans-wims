@@ -48,7 +48,7 @@
           <button v-if="can.voucher" type="button" class="lg-btn lg-btn-primary" @click="starting = !starting"><icons name="plus" class="w-4 h-4" />{{ $t('Start Payment Voucher') }}</button></header>
         <form v-if="starting && can.voucher" class="sc-approve" @submit.prevent="startVoucher">
           <div class="ac-filters"><div class="ac-f"><label>{{ $t('Amount to pay now') }} ({{ r.currency }})</label><input v-model="vf.amount" inputmode="decimal" /><span class="ac-err">{{ err('amount') }}</span><small class="lg-subtext">{{ $t('At most :l (what is left on this request).', { l: figures ? m(figures.left) : '' }) }}</small></div>
-            <template v-if="!currency_is_tzs"><div class="ac-f"><label>{{ $t('Exchange rate to TZS') }} *</label><input v-model="vf.exchange_rate" inputmode="decimal" /><span class="ac-err">{{ err('exchange_rate') }}</span></div><div class="ac-f"><label>{{ $t('Rate date') }} *</label><date-picker v-model="vf.rate_date" /></div></template></div>
+            <template v-if="!currency_is_tzs"><div class="ac-f"><label>{{ $t('Exchange rate to TZS') }} <b class="wims-req">*</b></label><input v-model="vf.exchange_rate" inputmode="decimal" /><span class="ac-err">{{ err('exchange_rate') }}</span></div><div class="ac-f"><label>{{ $t('Rate date') }} <b class="wims-req">*</b></label><date-picker v-model="vf.rate_date" /></div></template></div>
           <div class="ac-actions"><button type="submit" class="lg-btn lg-btn-primary" :disabled="vf.processing"><icons name="send" class="w-4 h-4" />{{ $t('Continue to the voucher') }}</button><button type="button" class="lg-btn lg-btn-soft" @click="starting = false"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button></div>
         </form>
         <div v-if="payments.length > 6" class="sc-tfind"><search-bar v-model="tq" :placeholder="$t('Find a voucher by number or state...')" :count="payRows.length" /></div>
@@ -91,7 +91,7 @@ import { sc, tableFind } from '../sc';
 export default {
   components: { SearchBar, CustomView, ExportButtons, AdminLayout, PageHeader, Link, DatePicker, AcctDropzone, AcctFileList },
   mixins: [sc, tableFind],
-  props: { balance_note: String, fields: Object, custom: Object, r: Object, items: Array, figures: Object, agreement_figures: Object, payments: Array, attachments: Array, history: Array, money: Boolean, can: Object, settings: Object, currency_is_tzs: Boolean, today: String },
+  props: { balance_note: String, fields: Object, custom: Object, r: Object, items: Array, figures: Object, agreement_figures: Object, payments: Array, attachments: Array, history: Array, money: Boolean, can: Object, requestSettings: Object, currency_is_tzs: Boolean, today: String },
   data() {
     return { asking: '', reason: '', busy: false, approving: false, starting: false, ap: { approved_amount: this.r.requested, reason: '', override_reason: '' }, up: this.$inertia.form({ attachments: [] }), vf: this.$inertia.form({ amount: this.figures ? this.figures.left : '', exchange_rate: '', rate_date: this.today }) };
   },

@@ -94,7 +94,7 @@
           <div v-if="reviewing && canPick(l)" class="cl-pick">
             <div class="cl-seg" role="radiogroup" :aria-label="$t('Decision for :r', { r: l.agreement })">
               <button v-if="l.can.approve" type="button" role="radio" class="cl-opt o-approve" :class="{ 'is-on': rv[l.id].action === 'approve' }" :aria-checked="rv[l.id].action === 'approve'" @click="choose(l, 'approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve full') }}</button>
-              <button v-if="l.can.approve && money && settings.allow_partial" type="button" role="radio" class="cl-opt o-partial" :class="{ 'is-on': rv[l.id].action === 'partial' }" :aria-checked="rv[l.id].action === 'partial'" @click="choose(l, 'partial')"><icons name="check-double" class="w-4 h-4" />{{ $t('Approve partial') }}</button>
+              <button v-if="l.can.approve && money && claimSettings.allow_partial" type="button" role="radio" class="cl-opt o-partial" :class="{ 'is-on': rv[l.id].action === 'partial' }" :aria-checked="rv[l.id].action === 'partial'" @click="choose(l, 'partial')"><icons name="check-double" class="w-4 h-4" />{{ $t('Approve partial') }}</button>
               <button v-if="l.can.reject" type="button" role="radio" class="cl-opt o-reject" :class="{ 'is-on': rv[l.id].action === 'reject' }" :aria-checked="rv[l.id].action === 'reject'" @click="choose(l, 'reject')"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
               <button v-if="l.can.return" type="button" role="radio" class="cl-opt o-return" :class="{ 'is-on': rv[l.id].action === 'return' }" :aria-checked="rv[l.id].action === 'return'" @click="choose(l, 'return')"><icons name="refresh" class="w-4 h-4" />{{ $t('Return') }}</button>
               <button v-if="l.can.defer" type="button" role="radio" class="cl-opt o-defer" :class="{ 'is-on': rv[l.id].action === 'defer' }" :aria-checked="rv[l.id].action === 'defer'" @click="choose(l, 'defer')"><icons name="pause" class="w-4 h-4" />{{ $t('Defer') }}</button>
@@ -113,7 +113,7 @@
           <!-- one line at a time -->
           <div v-if="!reviewing && hasActions(l)" class="cl-acts">
             <button v-if="l.can.approve" type="button" class="lg-btn lg-btn-green" :disabled="busy" @click="approveFull(l)"><icons name="tick" class="w-4 h-4" />{{ $t('Approve full') }}</button>
-            <button v-if="l.can.approve && money && settings.allow_partial" type="button" class="lg-btn lg-btn-soft t-green" @click="mode(l, 'partial')"><icons name="check-double" class="w-4 h-4" />{{ $t('Approve partial') }}</button>
+            <button v-if="l.can.approve && money && claimSettings.allow_partial" type="button" class="lg-btn lg-btn-soft t-green" @click="mode(l, 'partial')"><icons name="check-double" class="w-4 h-4" />{{ $t('Approve partial') }}</button>
             <button v-if="l.can.reject" type="button" class="lg-btn lg-btn-soft t-red" @click="mode(l, 'reject')"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="l.can.return" type="button" class="lg-btn lg-btn-soft t-violet" @click="mode(l, 'return')"><icons name="refresh" class="w-4 h-4" />{{ $t('Return') }}</button>
             <button v-if="l.can.defer" type="button" class="lg-btn lg-btn-soft t-amber" @click="mode(l, 'defer')"><icons name="pause" class="w-4 h-4" />{{ $t('Defer') }}</button>
@@ -146,7 +146,7 @@
             <div v-if="money" class="ac-f"><label>{{ $t('Amount to pay now') }} ({{ claim.currency }})</label><input v-model="vsel[l.id].amount" :disabled="!vsel[l.id].on" inputmode="decimal" /><small class="lg-subtext">{{ $t('At most :l (left to pay).', { l: mc(l.payment.left, claim.currency) }) }}</small><span class="ac-err">{{ err('lines.' + l.id) }}</span></div>
           </div>
           <div class="cl-vsum"><span><b>{{ vCount }}</b> {{ $t('line(s) ticked') }}</span><span v-if="money">{{ $t('Total') }}: <b class="amt-appr">{{ mc(vTotal, claim.currency) }}</b></span></div>
-          <div v-if="!currency_is_tzs" class="ac-filters"><div class="ac-f"><label>{{ $t('Exchange rate to TZS') }} *</label><input v-model="vf.exchange_rate" inputmode="decimal" /><span class="ac-err">{{ err('exchange_rate') }}</span></div><div class="ac-f"><label>{{ $t('Rate date') }} *</label><date-picker v-model="vf.rate_date" :clearable="false" /></div></div>
+          <div v-if="!currency_is_tzs" class="ac-filters"><div class="ac-f"><label>{{ $t('Exchange rate to TZS') }} <b class="wims-req">*</b></label><input v-model="vf.exchange_rate" inputmode="decimal" /><span class="ac-err">{{ err('exchange_rate') }}</span></div><div class="ac-f"><label>{{ $t('Rate date') }} <b class="wims-req">*</b></label><date-picker v-model="vf.rate_date" :clearable="false" /></div></div>
           <span class="ac-err">{{ err('lines') }}</span>
           <div class="ac-actions"><button type="submit" class="lg-btn lg-btn-primary" :disabled="busy || !vCount"><icons name="send" class="w-4 h-4" />{{ $t('Continue to the voucher') }}</button><button type="button" class="lg-btn lg-btn-soft" @click="starting = false"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button></div>
         </form>
@@ -205,7 +205,7 @@ import { toCents, fromCents, ZERO } from './money';
 export default {
   components: { CollapseSection, AdminLayout, PageHeader, Link, DatePicker, AcctDropzone, AcctFileList },
   mixins: [sc],
-  props: { claim: Object, lines: Array, vouchers: Array, open_payment: Object, attachments: Array, history: Array, money: Boolean, settings: Object, currency_is_tzs: Boolean, today: String, actions: Array, can: Object },
+  props: { claim: Object, lines: Array, vouchers: Array, open_payment: Object, attachments: Array, history: Array, money: Boolean, claimSettings: Object, currency_is_tzs: Boolean, today: String, actions: Array, can: Object },
   data() {
     const ui = {}; const rv = {}; const vsel = {};
     this.lines.forEach(l => {

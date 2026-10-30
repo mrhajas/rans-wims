@@ -276,8 +276,9 @@ class ImpersonationController extends Controller
             return __('This account has been deleted and cannot be impersonated.');
         }
 
-        if ($target->hasRole('Super Admin') && ! config('impersonation.allow_super_admin_targets', false)) {
-            return __('Impersonating another Super Admin is disabled by security policy.');
+        // A Super Admin account can be entered only by Dr Hajas, really signed in as himself (not through a "Login as user" session).
+        if ($target->hasRole('Super Admin') && ! \App\Services\Licensing\LicenceService::isManager($actor)) {
+            return __('Only Dr Hajas can sign in as a Super Admin.');
         }
 
         return null;

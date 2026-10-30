@@ -92,6 +92,9 @@ class SendController extends Controller
     {
         $this->need('send-holiday-greetings');
         $h = $this->holiday($holiday);
+        if ($h->isPast()) {
+            return back()->withErrors(['send' => __('This holiday has passed. Its greetings can be read, but no greeting can be sent for it any more.')]);
+        }
         if (! $h->counts()) {
             return back()->withErrors(['send' => __('This holiday does not count: it is switched off, or it falls on a Saturday or Sunday. Include it on the holiday page first.')]);
         }
@@ -120,14 +123,17 @@ class SendController extends Controller
     {
         $this->need('send-holiday-greetings');
         $h = $this->holiday($holiday);
+        if ($h->isPast()) {
+            return back()->withErrors(['auto' => __('This holiday has passed. Greetings can no longer be scheduled for it.')]);
+        }
         if ($h->locked()) {
             return back()->withErrors(['auto' => __('The greetings of this holiday have already been sent.')]);
         }
         if ($request->boolean('follow')) {
             $h->forceFill(['auto_plan' => null, 'auto_attempted_at' => null])->save();
-            log_activity('Holiday automatic sending put back to the Settings', ['holiday' => $h->name], $h, 'Holiday Greetings');
+            log_activity('Holiday greetings schedule put back to the Settings', ['holiday' => $h->name], $h, 'Holiday Greetings');
 
-            return back()->with('message', __('This holiday now follows the automatic sending of the Settings.'));
+            return back()->with('message', __('This holiday now follows the schedule of the Settings.'));
         }
         $d = $request->validate(['enabled' => 'required|boolean', 'minutes' => 'required|integer|min:0|max:' . HolidaySettings::AUTO_MAX_MINUTES, 'bundle_id' => 'nullable|integer|min:0'],
             ['minutes.required' => __('Enter how long before the holiday the greetings are sent.'), 'minutes.max' => __('The greetings can be sent at most 7 days before the holiday.')]);
@@ -137,9 +143,9 @@ class SendController extends Controller
         }
         $before = $h->autoPlan();
         $h->forceFill(['auto_plan' => ['enabled' => (bool) $d['enabled'], 'minutes' => (int) $d['minutes'], 'bundle_id' => $bundleId], 'auto_attempted_at' => null])->save();
-        log_activity('Holiday automatic sending changed', ['holiday' => $h->name, 'before' => $before, 'after' => $h->autoPlan(), 'sends_at' => $h->autoSendAt()->toDateTimeString()], $h, 'Holiday Greetings');
+        log_activity('Holiday greetings schedule changed', ['holiday' => $h->name, 'before' => $before, 'after' => $h->autoPlan(), 'sends_at' => $h->autoSendAt()->toDateTimeString()], $h, 'Holiday Greetings');
 
-        return back()->with('message', $d['enabled'] ? __('The greetings will be sent automatically on :t.', ['t' => $h->autoSendAt()->locale('en')->translatedFormat('l j F Y, H:i')]) : __('Automatic sending is off for this holiday.'));
+        return back()->with('message', $d['enabled'] ? __('The greetings are scheduled to be sent on :t.', ['t' => $h->autoSendAt()->locale('en')->translatedFormat('l j F Y, H:i')]) : __('Scheduling is off for this holiday.'));
     }
 
     public function retryFailed(Request $request, int $holiday)

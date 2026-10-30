@@ -72,7 +72,7 @@ class HolidayNotifier
         }
 
         $plan = $h->autoPlan();
-        $autoText = $plan['enabled'] && $h->autoSendAt()->gt(now(config('app.timezone'))) ? __('They will be sent automatically on :t.', ['t' => $h->autoSendAt()->locale('en')->translatedFormat('D j M, H:i')]) : null;
+        $autoText = $plan['enabled'] && $h->autoSendAt()->gt(now(config('app.timezone'))) ? __('They are scheduled to be sent on :t.', ['t' => $h->autoSendAt()->locale('en')->translatedFormat('D j M, H:i')]) : null;
         $title = __(':holiday is coming', ['holiday' => $h->name]);
         $sms = GreetingTemplates::plain(__('WIMS: :holiday is :when. The greetings are ready to review: :e emails and :s SMS. Please open Holiday Greetings in WIMS, check the message and the lists, then send.', [
             'holiday' => $h->name, 'when' => self::whenShort($h), 'e' => $counts['email'], 's' => $counts['sms']]) . ($autoText ? ' ' . $autoText : ''));
@@ -82,7 +82,7 @@ class HolidayNotifier
                 try {
                     $data = ['title' => $title, 'whenText' => $when, 'recipient' => $p['name'], 'holiday' => $h->name, 'hours' => $hours, 'emoji' => $theme['emoji'], 'icon' => $theme['icon'] ?? 'sparkle', 'palette' => $theme['palette'], 'counts' => $counts, 'url' => $url,
                         'details' => [__('Holiday') => $h->name, __('Date') => $when, __('People who will receive the email') => $counts['email'], __('People who will receive the SMS') => $counts['sms'],
-                            __('Repeated addresses removed') => $counts['duplicates']] + ($autoText ? [__('Automatic sending') => $h->autoSendAt()->locale('en')->translatedFormat('D j M Y, H:i')] : [])];
+                            __('Repeated addresses removed') => $counts['duplicates']] + ($autoText ? [__('Scheduled for') => $h->autoSendAt()->locale('en')->translatedFormat('D j M Y, H:i')] : [])];
                     (GreetingSender::$mailer ? Mail::mailer(GreetingSender::$mailer) : Mail::mailer())->to($p['email'], $p['name'])->send(new HolidayReminderMail($data));
                     $results[] = ['who' => $p['email'], 'channel' => 'email', 'ok' => true, 'error' => null];
                 } catch (\Throwable $e) {
@@ -125,7 +125,7 @@ class HolidayNotifier
         }
         $url = route('holiday-greetings.holidays.show', $h->id);
         foreach (self::recipients((int) $h->account_id) as $u) {
-            $u->notify(new AppNotification(['module' => 'holiday_greetings', 'type' => 'holiday_auto_sent', 'title' => __(':holiday greetings were sent automatically', ['holiday' => $h->name]),
+            $u->notify(new AppNotification(['module' => 'holiday_greetings', 'type' => 'holiday_auto_sent', 'title' => __(':holiday greetings were sent as scheduled', ['holiday' => $h->name]),
                 'message' => __(':e emails and :s SMS went to :b.', ['e' => $queued['email'], 's' => $queued['sms'], 'b' => $bundleName ?: __('the whole greeting list')]), 'url' => $url, 'created_at' => now()->toDateTimeString()]));
         }
     }

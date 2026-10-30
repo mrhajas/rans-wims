@@ -20,7 +20,7 @@ class SettingsController extends AcctController
         $me = $this->me();
 
         return Inertia::render('Accounts/Settings', $this->shared() + [
-            'settings' => AcctSettings::get(), 'rules' => AcctApprovalRule::query()->orderBy('applies_to')->orderBy('sort_order')->orderBy('min_amount')->get(), 'accounts' => AcctAccount::query()->orderBy('name')->get(['id', 'name', 'currency'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->name . ' (' . $a->currency . ')']),
+            'acctSettings' => AcctSettings::get(), 'rules' => AcctApprovalRule::query()->orderBy('applies_to')->orderBy('sort_order')->orderBy('min_amount')->get(), 'accounts' => AcctAccount::query()->orderBy('name')->get(['id', 'name', 'currency'])->map(fn ($a) => ['value' => $a->id, 'label' => $a->name . ' (' . $a->currency . ')']),
             'categories' => AcctCategory::query()->orderBy('sort_order')->orderBy('name')->get(), 'currencyCodes' => AcctCurrency::query()->where('is_active', true)->pluck('code'),
             'can' => ['settings' => $me->can('manage-acct-settings'), 'rules' => $me->can('manage-acct-approval-rules'), 'controls' => $me->can('manage-acct-settings') && $me->hasRole('Super Admin')],
         ]);

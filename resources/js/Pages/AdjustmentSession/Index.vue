@@ -60,7 +60,7 @@
       <div class="asn-dlg">
         <header class="asn-dlg__head"><icons name="adjustments" class="w-5 h-5" /><div><h3>{{ $t('Start Adjustment Session') }}</h3><p>{{ $t('Every Super Adjustment of the chosen Project / Warehouse is added to the session until you end it.') }}</p></div></header>
         <div class="asn-dlg__body">
-          <div class="ac-f"><label>{{ $t('Project / Warehouse') }} *</label><auto-complete v-model="startForm.warehouse_id" :suggestions="startOptions" :placeholder="$t('Choose the Project / Warehouse to count')" /><span class="ac-err">{{ startForm.errors.warehouse_id }}</span></div>
+          <div class="ac-f"><label>{{ $t('Project / Warehouse') }} <b class="wims-req">*</b></label><auto-complete v-model="startForm.warehouse_id" :suggestions="startOptions" :placeholder="$t('Choose the Project / Warehouse to count')" /><span class="ac-err">{{ startForm.errors.warehouse_id }}</span></div>
           <p v-if="busyWarehouses.length" class="asn-hint">{{ $t('Not listed: Project / Warehouses that already have an open session (:n).', { n: busyWarehouses.length }) }}</p>
           <text-input v-model="startForm.name" :label="$t('Name (optional)')" :placeholder="$t('For example: Godown 1 year-end count')" :error="startForm.errors.name" />
           <div class="ac-f"><label>{{ $t('Note (optional)') }}</label><textarea v-model="startForm.note" rows="3" maxlength="2000" :placeholder="$t('Who counts, which days, anything to remember')"></textarea></div>
@@ -68,7 +68,7 @@
           <div v-if="can.stop" class="asn-halt-opt" :class="{ 'is-on': startForm.halt_stock }">
             <label class="asn-chk"><input v-model="startForm.halt_stock" type="checkbox" /><icons name="lock-closed" class="w-4 h-4" /> {{ $t('Stop stock movement of this Project / Warehouse during the session') }}</label>
             <p class="asn-hint">{{ $t('Nobody can then check in, check out, transfer, reallocate, issue or return stock to or from it, and it is marked locked in the lists, until the session ends or you release it. The Super Adjustments of the count are not affected.') }}</p>
-            <div v-if="startForm.halt_stock" class="ac-f"><label>{{ $t('Your password') }} *</label><input v-model="startForm.password" type="password" autocomplete="current-password" class="asn-input" :placeholder="$t('Enter your password to confirm')" /><span class="ac-err">{{ startForm.errors.password }}</span></div>
+            <div v-if="startForm.halt_stock" class="ac-f"><label>{{ $t('Your password') }} <b class="wims-req">*</b></label><input v-model="startForm.password" type="password" autocomplete="current-password" class="asn-input" :placeholder="$t('Enter your password to confirm')" /><span class="ac-err">{{ startForm.errors.password }}</span></div>
           </div>
         </div>
         <footer class="asn-dlg__foot">

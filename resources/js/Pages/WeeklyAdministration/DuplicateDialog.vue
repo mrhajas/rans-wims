@@ -3,7 +3,7 @@
     <form id="wa-dup" class="wa-ui" @submit.prevent="go">
       <p class="lg-sub" style="margin: 0 0 12px">{{ $t('A new document is made with the same lines and charity section. Its date moves to the next week by itself. You can change anything before it is approved.') }}</p>
       <div class="ac-f">
-        <label>{{ $t('Your password') }} *</label>
+        <label>{{ $t('Your password') }} <b class="wims-req">*</b></label>
         <input v-model="password" type="password" autocomplete="current-password" :placeholder="$t('Type your own password to confirm')" required />
         <span class="ac-err">{{ err('password') }}</span>
       </div>

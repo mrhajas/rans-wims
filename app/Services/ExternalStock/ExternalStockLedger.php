@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\DB;
  */
 class ExternalStockLedger
 {
+    /** The warehouse of a line: its own, and the movement's for lines saved before each item had one. */
+    public const WH = 'COALESCE(i.warehouse_id, m.warehouse_id)';
+
     private static function base()
     {
         return DB::table('external_stock_items as i')->join('external_stock_movements as m', 'm.id', '=', 'i.movement_id')->whereNull('i.deleted_at')->whereNull('m.deleted_at');
@@ -22,7 +25,7 @@ class ExternalStockLedger
     /** @return array{in:float,out:float,balance:float,reserved:float,available:float} for one person / warehouse / item (optionally leaving one movement out). */
     public static function position(int $contactId, int $warehouseId, int $itemId, ?int $exceptMovementId = null): array
     {
-        $rows = self::base()->where('m.contact_id', $contactId)->where('m.warehouse_id', $warehouseId)->where('i.item_id', $itemId)
+        $rows = self::base()->where('m.contact_id', $contactId)->whereRaw(self::WH . ' = ?', [$warehouseId])->where('i.item_id', $itemId)
             ->when($exceptMovementId, fn ($q) => $q->where('m.id', '<>', $exceptMovementId))
             ->selectRaw("m.status, m.kind, SUM(i.quantity) q")->groupBy('m.status', 'm.kind')->get();
 
@@ -40,24 +43,27 @@ class ExternalStockLedger
     }
 
     /**
-     * Which warehouse does a Stock Out come from when nobody chose one? The first warehouse (by name) where this person's available stock covers every line.
-     * Returns the warehouse id, or null when no single warehouse covers it all (the person must then choose, or ask for less).
+     * Where does this person hold this item? One row per warehouse that still has available stock, the one with the most first.
      *
-     * @param array<int,array{item_id:int,quantity:float|string}> $lines
      * @param array<int,int>|null $allowedWarehouseIds null = all
+     * @return array<int,array{warehouse_id:int,warehouse:string,balance:float,reserved:float,available:float}>
      */
-    public static function resolveWarehouse(int $contactId, array $lines, ?array $allowedWarehouseIds, ?int $exceptMovementId = null): ?int
+    public static function holders(int $contactId, int $itemId, ?array $allowedWarehouseIds = null, ?int $exceptMovementId = null): array
     {
-        $ids = self::base()->where('m.contact_id', $contactId)->whereIn('m.status', [ExternalStockMovement::APPROVED, ExternalStockMovement::PENDING])
-            ->when($allowedWarehouseIds !== null, fn ($q) => $q->whereIn('m.warehouse_id', $allowedWarehouseIds ?: [0]))
-            ->join('warehouses as w', 'w.id', '=', 'm.warehouse_id')->distinct()->orderBy('w.name')->pluck('m.warehouse_id');
-        foreach ($ids as $wid) {
-            if (! self::shortfalls($contactId, (int) $wid, $lines, $exceptMovementId)) {
-                return (int) $wid;
+        $wids = self::base()->where('m.contact_id', $contactId)->where('i.item_id', $itemId)->whereIn('m.status', [ExternalStockMovement::APPROVED, ExternalStockMovement::PENDING])
+            ->when($allowedWarehouseIds !== null, fn ($q) => $q->whereIn(DB::raw(self::WH), $allowedWarehouseIds ?: [0]))
+            ->selectRaw(self::WH . ' as wid')->distinct()->pluck('wid');
+        $names = DB::table('warehouses')->whereIn('id', $wids)->pluck('name', 'id');
+        $out = [];
+        foreach ($wids as $wid) {
+            $p = self::position($contactId, (int) $wid, $itemId, $exceptMovementId);
+            if ($p['available'] > 0.00005) {
+                $out[] = ['warehouse_id' => (int) $wid, 'warehouse' => (string) ($names[$wid] ?? '#' . $wid)] + $p;
             }
         }
+        usort($out, fn ($a, $b) => $b['available'] <=> $a['available'] ?: strcmp($a['warehouse'], $b['warehouse']));
 
-        return null;
+        return $out;
     }
 
     private static function fold($rows): array
@@ -81,22 +87,22 @@ class ExternalStockLedger
      */
     public static function balances(array $f = [])
     {
-        $q = self::base()->join('items as it', 'it.id', '=', 'i.item_id')->join('contacts as c', 'c.id', '=', 'm.contact_id')->join('warehouses as w', 'w.id', '=', 'm.warehouse_id')
+        $q = self::base()->join('items as it', 'it.id', '=', 'i.item_id')->join('contacts as c', 'c.id', '=', 'm.contact_id')->join('warehouses as w', 'w.id', '=', DB::raw(self::WH))
             ->whereIn('m.status', [ExternalStockMovement::APPROVED, ExternalStockMovement::PENDING])
             ->when(! empty($f['contact_id']), fn ($w) => $w->where('m.contact_id', (int) $f['contact_id']))
-            ->when(! empty($f['warehouse_id']), fn ($w) => $w->where('m.warehouse_id', (int) $f['warehouse_id']))
-            ->when(isset($f['warehouse_ids']) && $f['warehouse_ids'] !== null, fn ($w) => $w->whereIn('m.warehouse_id', $f['warehouse_ids'] ?: [0]))
+            ->when(! empty($f['warehouse_id']), fn ($w) => $w->whereRaw(self::WH . ' = ?', [(int) $f['warehouse_id']]))
+            ->when(isset($f['warehouse_ids']) && $f['warehouse_ids'] !== null, fn ($w) => $w->whereIn(DB::raw(self::WH), $f['warehouse_ids'] ?: [0]))
             ->when(! empty($f['item_id']), fn ($w) => $w->where('i.item_id', (int) $f['item_id']))
             ->when(! empty($f['as_of']), fn ($w) => $w->whereDate('m.date', '<=', $f['as_of']))
             ->when(trim((string) ($f['search'] ?? '')) !== '', fn ($w) => $w->where(fn ($x) => $x->where('c.name', 'like', '%' . trim($f['search']) . '%')->orWhere('it.name', 'like', '%' . trim($f['search']) . '%')->orWhere('it.code', 'like', '%' . trim($f['search']) . '%')))
             // the report's Item filter: only the item's own name or code (a person's name must not pull in their other items)
             ->when(trim((string) ($f['item_search'] ?? '')) !== '', fn ($w) => $w->where(fn ($x) => $x->where('it.name', 'like', '%' . trim($f['item_search']) . '%')->orWhere('it.code', 'like', '%' . trim($f['item_search']) . '%')))
-            ->selectRaw("m.contact_id, c.name as contact, m.warehouse_id, w.name as warehouse, i.item_id, it.name as item, it.code as code, it.unit_id,
+            ->selectRaw("m.contact_id, c.name as contact, w.id as warehouse_id, w.name as warehouse, i.item_id, it.name as item, it.code as code, it.unit_id,
                 SUM(CASE WHEN m.status = 'Approved' AND m.kind <> 'withdrawal' THEN i.quantity ELSE 0 END) as q_in,
                 SUM(CASE WHEN m.status = 'Approved' AND m.kind = 'withdrawal' THEN i.quantity ELSE 0 END) as q_out,
                 SUM(CASE WHEN m.status = 'Pending Approval' AND m.kind = 'withdrawal' THEN i.quantity ELSE 0 END) as q_reserved,
                 MAX(CASE WHEN m.status = 'Approved' THEN m.date END) as last_date")
-            ->groupBy('m.contact_id', 'c.name', 'm.warehouse_id', 'w.name', 'i.item_id', 'it.name', 'it.code', 'it.unit_id')
+            ->groupBy('m.contact_id', 'c.name', 'w.id', 'w.name', 'i.item_id', 'it.name', 'it.code', 'it.unit_id')
             ->orderBy('c.name')->orderBy('w.name')->orderBy('it.name');
 
         $rows = $q->get()->map(function ($r) {
@@ -110,24 +116,28 @@ class ExternalStockLedger
     }
 
     /**
-     * Would these lines be covered? $lines = [[item_id, quantity], ...] for one person and warehouse. Returns the problems (empty = fine).
-     * $exceptMovementId leaves a movement out (an edit, or the movement being approved, must not count against itself).
+     * Would these lines be covered? $lines = [[item_id, quantity, warehouse_id?], ...] for one person; a line without a warehouse uses $warehouseId.
+     * Returns the problems keyed "warehouse|item" (empty = fine). $exceptMovementId leaves a movement out (an edit, or the movement being approved, must not count against itself).
      *
-     * @return array<int,string>
+     * @return array<string,string>
      */
-    public static function shortfalls(int $contactId, int $warehouseId, array $lines, ?int $exceptMovementId = null, bool $useAvailable = true): array
+    public static function shortfalls(int $contactId, ?int $warehouseId, array $lines, ?int $exceptMovementId = null, bool $useAvailable = true): array
     {
         $need = [];
         foreach ($lines as $l) {
-            $need[(int) $l['item_id']] = ($need[(int) $l['item_id']] ?? 0) + (float) $l['quantity'];
+            $wid = (int) (($l['warehouse_id'] ?? null) ?: $warehouseId);
+            $k = $wid . '|' . (int) $l['item_id'];
+            $need[$k] = ($need[$k] ?? 0) + (float) $l['quantity'];
         }
-        $names = DB::table('items')->whereIn('id', array_keys($need))->pluck('name', 'id');
+        $names = DB::table('items')->whereIn('id', collect(array_keys($need))->map(fn ($k) => (int) explode('|', $k)[1])->all())->pluck('name', 'id');
+        $whs = DB::table('warehouses')->whereIn('id', collect(array_keys($need))->map(fn ($k) => (int) explode('|', $k)[0])->all())->pluck('name', 'id');
         $out = [];
-        foreach ($need as $itemId => $qty) {
-            $p = self::position($contactId, $warehouseId, $itemId, $exceptMovementId);
+        foreach ($need as $k => $qty) {
+            [$wid, $itemId] = array_map('intval', explode('|', $k));
+            $p = self::position($contactId, $wid, $itemId, $exceptMovementId);
             $have = $useAvailable ? $p['available'] : $p['balance'];
             if ($qty > $have + 0.00005) {
-                $out[$itemId] = __(':item: :n requested but only :have is held for this person in this warehouse.', ['item' => $names[$itemId] ?? '#' . $itemId, 'n' => self::fmt($qty), 'have' => self::fmt(max(0, $have))]);
+                $out[$k] = __(':item: :n requested but only :have is held for this person in :wh.', ['item' => $names[$itemId] ?? '#' . $itemId, 'n' => self::fmt($qty), 'have' => self::fmt(max(0, $have)), 'wh' => $whs[$wid] ?? __('this warehouse')]);
             }
         }
 

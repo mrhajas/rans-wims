@@ -37,13 +37,13 @@ class ReminderController extends Controller
         $this->authorize('view', $material_request);
         $me = $request->user();
         $mr = $material_request->loadMissing(['warehouse:id,name', 'user:id,name', 'items']);
-        $audience = ReminderSender::audience((int) $mr->account_id ?: (int) $me->account_id, $me);
+        $audience = ReminderSender::audience((int) $mr->account_id ?: (int) $me->account_id);
 
         return response()->json([
             'request' => ['id' => $mr->id, 'reference' => $mr->reference, 'status' => MaterialRequest::statusLabel($mr->status), 'project' => optional($mr->warehouse)->name, 'requester' => optional($mr->user)->name,
                 'date' => optional($mr->date_requested)->format('d M Y'), 'items' => $mr->items->count()],
             'eligible' => ReminderSender::eligible($mr), 'canSend' => ReminderSender::canSend($me, $mr),
-            'audience' => $audience->map(fn ($u) => ['name' => $u->name])->values(),
+            'audience' => $audience->map(fn ($u) => ['name' => $u->name, 'me' => $u->id === $me->id])->values(),
             'channels' => ['email' => ReminderSettings::email(), 'sms' => ReminderSettings::sms(), 'app' => ReminderSettings::app()],
             'limits' => ['files' => ReminderSender::MAX_FILES, 'mb' => ReminderSender::MAX_KB / 1024],
             'history' => $mr->reminders()->with(['sender:id,name', 'attachments'])->latest('id')->get()->map(fn ($r) => ReminderSender::present($r))->values(),
@@ -56,7 +56,7 @@ class ReminderController extends Controller
         $this->need('send-mr-reminders');
         $this->authorize('view', $material_request);
         $d = $request->validate([
-            'note' => 'nullable|string|max:2000', 'files' => 'nullable|array|max:' . ReminderSender::MAX_FILES, 'files.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:' . ReminderSender::MAX_KB,
+            'note' => 'nullable|string|max:2000', 'leave_me_out' => 'nullable|boolean', 'files' => 'nullable|array|max:' . ReminderSender::MAX_FILES, 'files.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:' . ReminderSender::MAX_KB,
         ], [
             'files.max' => __('A reminder holds up to :max files.', ['max' => ReminderSender::MAX_FILES]), 'files.*.max' => __('Each file can be up to 5 MB.'),
             'files.*.mimes' => __('Only PDF, DOC, DOCX, JPG or PNG files can be attached.'), 'files.*.uploaded' => __('A file could not be uploaded. Keep each file under 5 MB.'),
@@ -64,10 +64,11 @@ class ReminderController extends Controller
         if (! ReminderSender::canSend($me, $material_request)) {
             return response()->json(['message' => __('A reminder can only be sent for an approved request that has not reached its final status (Cleared).')], 422);
         }
-        if (ReminderSender::audience((int) $material_request->account_id ?: (int) $me->account_id, $me)->isEmpty()) {
+        $leaveOut = $request->boolean('leave_me_out');
+        if (ReminderSender::audience((int) $material_request->account_id ?: (int) $me->account_id, $me, $leaveOut)->isEmpty()) {
             return response()->json(['message' => __('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.')], 422);
         }
-        $r = ReminderSender::send($material_request, $me, $d['note'] ?? null, $request->file('files', []));
+        $r = ReminderSender::send($material_request, $me, $d['note'] ?? null, $request->file('files', []), $leaveOut);
         $c = $r['counts'];
 
         return response()->json(['message' => __('Reminder sent to :n people: :e emails, :s SMS and :a app alerts.', ['n' => $c['people'], 'e' => $c['email']['sent'], 's' => $c['sms']['sent'], 'a' => $c['app']['sent']]),
@@ -109,7 +110,7 @@ class ReminderController extends Controller
             'senders' => User::withoutGlobalScope('account')->whereIn('id', MaterialRequestReminder::query()->distinct()->pluck('created_by_user_id'))->orderBy('name')->get(['id', 'name'])->map(fn ($u) => ['value' => $u->id, 'label' => $u->name])->values(),
             'recipients' => User::withoutGlobalScope('account')->whereIn('id', MaterialRequestReminderDelivery::query()->whereNotNull('user_id')->distinct()->pluck('user_id'))->orderBy('name')->get(['id', 'name'])->map(fn ($u) => ['value' => $u->id, 'label' => $u->name])->values(),
             'statuses' => collect(ReminderSender::eligibleStatuses())->push(MaterialRequest::STATUS_CLEARED)->map(fn ($s) => ['value' => $s, 'label' => MaterialRequest::statusLabel($s)])->values(),
-            'settings' => $me->can('manage-mr-reminder-settings') ? ReminderSettings::forPage($account) + ['audience' => ReminderSettings::recipients($account)->map(fn ($u) => $u->name)->values()] : null,
+            'mrSettings' => $me->can('manage-mr-reminder-settings') ? ReminderSettings::forPage($account) + ['audience' => ReminderSettings::recipients($account)->map(fn ($u) => $u->name)->values()] : null,
             'can' => ['print' => $me->can('print-mr-reminders'), 'settings' => $me->can('manage-mr-reminder-settings')],
         ]);
     }

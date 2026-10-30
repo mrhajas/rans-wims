@@ -33,7 +33,7 @@
                 <td class="label">Status</td><td class="value"><span class="status-pill status-{{ $statusClass }}">{{ $m->status }}</span></td>
             </tr>
             <tr>
-                <td class="label">Project(s) / Warehouse(s)</td><td class="value">{{ optional($m->warehouse)->name ?? '-' }}</td>
+                <td class="label">Project(s) / Warehouse(s)</td><td class="value">{{ $m->warehouseNames() ?: '-' }}</td>
                 <td class="label">Recorded By</td><td class="value">{{ optional($m->user)->name ?? '-' }}</td>
             </tr>
             @if($m->kind === 'withdrawal')
@@ -53,18 +53,19 @@
     </div>
 
     <table class="items">
-        <thead><tr><th style="width:26px;">#</th><th>Item</th><th>Unit</th><th class="num">Quantity</th><th>Note</th></tr></thead>
+        <thead><tr><th style="width:26px;">#</th><th>Item</th><th>Warehouse</th><th>Unit</th><th class="num">Quantity</th><th>Note</th></tr></thead>
         <tbody>
             @foreach($m->items as $i => $line)
                 <tr>
                     <td>{{ $i + 1 }}</td>
                     <td>{{ optional($line->item)->name }} <span style="color:#94a3b8">({{ optional($line->item)->code }})</span></td>
+                    <td>{{ optional($line->warehouse)->name ?: optional($m->warehouse)->name ?: '-' }}</td>
                     <td>{{ optional($line->unit)->name ?: '-' }}</td>
                     <td class="num">{{ rtrim(rtrim(number_format((float) $line->quantity, 4, '.', ','), '0'), '.') }}</td>
                     <td>{{ $line->note }}</td>
                 </tr>
             @endforeach
-            <tr><td colspan="3" style="text-align:right;font-weight:bold;">Total quantity</td><td class="num" style="font-weight:bold;">{{ rtrim(rtrim(number_format((float) $m->items->sum('quantity'), 4, '.', ','), '0'), '.') }}</td><td></td></tr>
+            <tr><td colspan="4" style="text-align:right;font-weight:bold;">Total quantity</td><td class="num" style="font-weight:bold;">{{ rtrim(rtrim(number_format((float) $m->items->sum('quantity'), 4, '.', ','), '0'), '.') }}</td><td></td></tr>
         </tbody>
     </table>
 

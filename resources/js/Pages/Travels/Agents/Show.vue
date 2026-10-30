@@ -145,9 +145,9 @@
     <travel-modal :show="paying" :title="$t('Make a payment')" :subtitle="agent.name" icon="cash" max-width="lg" :busy="paying_busy" @close="paying = false">
       <p class="lg-note lg-note-blue"><icons name="info" class="w-4 h-4" /><span>{{ $t('This starts a Payment Voucher in the Payment Vouchers module. It waits there for approval and is marked paid there. The balance of the agent falls only when the voucher is paid.') }}</span></p>
       <div class="tm-grid">
-        <div class="ac-f"><label>{{ $t('Currency') }} *</label><acct-select v-model="pay.currency" :options="currencyOptions" /></div>
-        <div class="ac-f"><label>{{ $t('Amount') }} ({{ pay.currency }}) *</label><input v-model="pay.amount" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ perr('amount') }}</span><small>{{ $t('Up to :a', { a: pay.currency + ' ' + money(availableOf(pay.currency)) }) }} · <a href="#" @click.prevent="pay.amount = String(availableOf(pay.currency))">{{ $t('use all') }}</a></small></div>
-        <div v-if="pay.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: pay.currency }) }} *</label><input v-model="pay.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><span class="ac-err">{{ perr('exchange_rate') }}</span><small v-if="rates[pay.currency]">{{ $t('Offered from this agent\'s travels (rate :r). You can change it; the voucher uses the rate you confirm.', { r: rates[pay.currency] }) }}</small></div>
+        <div class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="pay.currency" :options="currencyOptions" /></div>
+        <div class="ac-f"><label>{{ $t('Amount') }} ({{ pay.currency }}) <b class="wims-req">*</b></label><input v-model="pay.amount" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ perr('amount') }}</span><small>{{ $t('Up to :a', { a: pay.currency + ' ' + money(availableOf(pay.currency)) }) }} · <a href="#" @click.prevent="pay.amount = String(availableOf(pay.currency))">{{ $t('use all') }}</a></small></div>
+        <div v-if="pay.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: pay.currency }) }} <b class="wims-req">*</b></label><input v-model="pay.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><span class="ac-err">{{ perr('exchange_rate') }}</span><small v-if="rates[pay.currency]">{{ $t('Offered from this agent\'s travels (rate :r). You can change it; the voucher uses the rate you confirm.', { r: rates[pay.currency] }) }}</small></div>
         <div class="ac-f" :class="{ 'tm-full': pay.currency === 'TZS' }"><label>{{ $t('For a travel (optional)') }}</label><acct-select v-model="pay.travel_id" :options="travelOptions" :placeholder="$t('Not for one travel')" clearable /><span class="ac-err">{{ perr('travel_id') }}</span></div>
         <div class="ac-f tm-full"><label>{{ $t('Notes') }}</label><input v-model="pay.notes" :placeholder="$t('Shown on the voucher')" /></div>
       </div>
@@ -162,9 +162,9 @@
     <travel-modal :show="opening.open" :title="$t('Opening balance')" :subtitle="agent.name" icon="clock" tone="amber" max-width="md" :busy="opening.busy" @close="opening.open = false">
       <p class="lg-note lg-note-amber"><icons name="info" class="w-4 h-4" /><span>{{ $t('What the agent was owed before Travels started. Travels booked before the date below are already inside it.') }}</span></p>
       <div class="tm-grid">
-        <div class="ac-f"><label>{{ $t('Currency') }} *</label><acct-select v-model="opening.currency" :options="currencyOptions" /></div>
-        <div class="ac-f"><label>{{ $t('Amount Owed') }} *</label><input v-model="opening.amount" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ perr('amount') }}</span></div>
-        <div class="ac-f tm-full"><label>{{ $t('As of') }} *</label><date-picker v-model="opening.as_of_date" :clearable="false" /><span class="ac-err">{{ perr('as_of_date') }}</span></div>
+        <div class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="opening.currency" :options="currencyOptions" /></div>
+        <div class="ac-f"><label>{{ $t('Amount Owed') }} <b class="wims-req">*</b></label><input v-model="opening.amount" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ perr('amount') }}</span></div>
+        <div class="ac-f tm-full"><label>{{ $t('As of') }} <b class="wims-req">*</b></label><date-picker v-model="opening.as_of_date" :clearable="false" /><span class="ac-err">{{ perr('as_of_date') }}</span></div>
         <div class="ac-f tm-full"><label>{{ $t('Notes') }}</label><input v-model="opening.notes" :placeholder="$t('Where the figure comes from')" /></div>
       </div>
       <template #footer>

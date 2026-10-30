@@ -8,11 +8,11 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-navy"><icons name="refresh" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Transfer Details') }}</h2></div></header>
           <div class="lg-fields">
-            <div class="ac-f"><label>{{ $t('From account') }} *</label><acct-select v-model="form.from_account_id" :options="accounts.filter(a => a.value !== form.to_account_id)" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('from_account_id') }}</span><small v-if="from" class="lg-subtext">{{ $t('Balance now') }}: {{ mc(from.balance, from.currency) }}</small></div>
-            <div class="ac-f"><label>{{ $t('To account') }} *</label><acct-select v-model="form.to_account_id" :options="accounts.filter(a => a.value !== form.from_account_id)" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('to_account_id') }}</span></div>
+            <div class="ac-f"><label>{{ $t('From account') }} <b class="wims-req">*</b></label><acct-select v-model="form.from_account_id" :options="accounts.filter(a => a.value !== form.to_account_id)" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('from_account_id') }}</span><small v-if="from" class="lg-subtext">{{ $t('Balance now') }}: {{ mc(from.balance, from.currency) }}</small></div>
+            <div class="ac-f"><label>{{ $t('To account') }} <b class="wims-req">*</b></label><acct-select v-model="form.to_account_id" :options="accounts.filter(a => a.value !== form.from_account_id)" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('to_account_id') }}</span></div>
             <div class="ac-f"><label>{{ $t('Amount sent') }} * <b v-if="from">({{ from.currency }})</b></label><input v-model="form.from_amount" inputmode="decimal" required /><span class="ac-err">{{ err('from_amount') }}</span></div>
             <div class="ac-f"><label>{{ $t('Transfer fee') }} <b v-if="from">({{ from.currency }})</b></label><input v-model="form.fee_amount" inputmode="decimal" placeholder="0" /><small class="lg-subtext">{{ $t('Charged to the sending account') }}</small><span class="ac-err">{{ err('fee_amount') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Date') }} *</label><date-picker v-model="form.transfer_date" :max="today" :clearable="false" /></div>
+            <div class="ac-f"><label>{{ $t('Date') }} <b class="wims-req">*</b></label><date-picker v-model="form.transfer_date" :max="today" :clearable="false" /></div>
           </div>
         </section>
 
@@ -20,7 +20,7 @@
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="adjustments" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Currency Conversion') }}</h2><p class="lg-card-sub">{{ $t('From :a to :b. The rate must be approved; enter the amount that is actually credited and any difference is recorded as an exchange difference.', { a: from.currency, b: to.currency }) }}</p></div></header>
           <div v-if="!rateOptions.length" class="lg-note lg-note-amber">{{ $t('There is no approved exchange rate between :a and :b. A transfer cannot be saved without one.', { a: from.currency, b: to.currency }) }} <Link :href="route('acct.currencies.index')">{{ $t('Add a rate') }}</Link></div>
           <div class="lg-fields" v-else>
-            <div class="ac-f"><label>{{ $t('Exchange rate') }} *</label><acct-select v-model="form.rate_id" :options="(rateOptions).map(r => ({ value: r.id, label: '1 {{ r.base }} = {{ r.rate }} {{ r.quote }} ({{ r.type }}, {{ $t(\'from\') }} {{ r.from }})' }))" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('rate_id') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Exchange rate') }} <b class="wims-req">*</b></label><acct-select v-model="form.rate_id" :options="(rateOptions).map(r => ({ value: r.id, label: '1 {{ r.base }} = {{ r.rate }} {{ r.quote }} ({{ r.type }}, {{ $t(\'from\') }} {{ r.from }})' }))" :placeholder="$t('Choose...')" clearable /><span class="ac-err">{{ err('rate_id') }}</span></div>
             <div class="ac-f"><label>{{ $t('Amount credited') }} * ({{ to.currency }})</label><input v-model="form.to_amount" inputmode="decimal" required /><span class="ac-err">{{ err('to_amount') }}</span><small v-if="expected" class="lg-subtext">{{ $t('Amount x rate') }} = {{ mc(expected, to.currency) }}<template v-if="difference"> - {{ $t('difference') }} {{ mc(difference, to.currency) }}</template></small></div>
           </div>
         </section>

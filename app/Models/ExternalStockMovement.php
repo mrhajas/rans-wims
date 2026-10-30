@@ -66,6 +66,16 @@ class ExternalStockMovement extends Model
         return $this->belongsTo(User::class, 'decided_by_user_id');
     }
 
+    /** The warehouse of every line, in order, without repeats (a movement can touch several warehouses). */
+    public function warehouseNames(): string
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+        $items->loadMissing('warehouse');
+        $names = $items->map(fn ($l) => optional($l->warehouse)->name)->filter()->unique()->values();
+
+        return $names->isEmpty() ? (string) optional($this->warehouse)->name : $names->implode(', ');
+    }
+
     public function isOut(): bool
     {
         return $this->kind === 'withdrawal';
@@ -94,7 +104,7 @@ class ExternalStockMovement extends Model
         return $q->where(function ($w) use ($u, $ids) {
             $w->where('user_id', $u->id);
             if ($ids) {
-                $w->orWhereIn('warehouse_id', $ids);
+                $w->orWhereIn('warehouse_id', $ids)->orWhereHas('items', fn ($i) => $i->whereIn('warehouse_id', $ids));
             }
         });
     }

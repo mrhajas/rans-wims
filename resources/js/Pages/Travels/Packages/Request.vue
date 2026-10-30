@@ -46,8 +46,8 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-sky"><icons name="calendar" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('When and why?') }}</h2><p class="lg-card-sub">{{ $t('The dates and the reason. A date in the future is normal.') }}</p></div></header>
           <div class="lg-fields">
-            <div class="ac-f"><label>{{ $t('Departs') }} *</label><date-picker v-model="form.depart_date" :clearable="false" :min="today" /><span class="ac-err">{{ err('depart_date') }}</span></div>
-            <div v-if="package.trip_type === 'return'" class="ac-f"><label>{{ $t('Returns') }} *</label><date-picker v-model="form.return_date" :min="form.depart_date || today" /><span class="ac-err">{{ err('return_date') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Departs') }} <b class="wims-req">*</b></label><date-picker v-model="form.depart_date" :clearable="false" :min="today" /><span class="ac-err">{{ err('depart_date') }}</span></div>
+            <div v-if="package.trip_type === 'return'" class="ac-f"><label>{{ $t('Returns') }} <b class="wims-req">*</b></label><date-picker v-model="form.return_date" :min="form.depart_date || today" /><span class="ac-err">{{ err('return_date') }}</span></div>
             <div class="ac-f"><label>{{ $t('Kind of travel') }}</label><acct-select v-model="form.travel_type" :options="types.map(x => ({ value: x, label: x }))" :placeholder="$t('Choose...')" clearable /></div>
             <div class="ac-f"><label>{{ $t('Ticket agent') }}</label><acct-select v-model="form.ticket_agent_contact_id" :options="agents" :placeholder="$t('Choose the ticket agent')" clearable /><span class="ac-err">{{ err('ticket_agent_contact_id') }}</span></div>
             <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Purpose') }}</label><textarea v-model="form.purpose" rows="2" :placeholder="$t('Why are they travelling?')" /></div>

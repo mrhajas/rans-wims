@@ -2779,7 +2779,7 @@ html.dark .dashboard-liquid .liquid-lockdown { background: linear-gradient(150de
 
 /* Invalid-field highlight. Every field shows its server error through the shared `.wims-field-error` message, so the
    control that sits in the same wrapper gets a red outline + glow from that same message (no per-page code). */
-html:not(#_):not(#__) :has(> .wims-field-error:not([style*='display: none'])) :is(input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']), select, textarea, .wdp-trigger, [role='combobox']:not(input)) {
+html:not(#_):not(#__) :has(> :is(.wims-field-error:not([style*='display: none']), :is(.ac-err, .sg-error, .ar-err, .wx-error, .pf-err, .tlm-err, .mrf-err, .wc-err, .ss-err, .sm-err, .sa-err, .ps-err, .mt-err, .lic-err, .if-err, .fx-err, .rf-err, .cl-err, .bk-err, .scm-err, .ms-err, .alp-error, .cp-err, .ca-err, .an-err, .asn-err, .sdy-err, .sdf-err, .rs-err, .pm-err, .mrr-err, .lbr-err, .llu-err, .tlb-err, .ty-err, .wcs-err):not(:empty))) :is(input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']), select, textarea, .wdp-trigger, [role='combobox']:not(input)) {
   border-color: #ef4444 !important;
   outline: none !important;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.28), 0 0 16px rgba(239, 68, 68, 0.5) !important;
@@ -2790,16 +2790,16 @@ html:not(#_):not(#__) :has(> .wims-field-error:not([style*='display: none'])) :i
   50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.4), 0 0 22px rgba(239, 68, 68, 0.75); }
 }
 @media (prefers-reduced-motion: reduce) {
-  html:not(#_):not(#__) :has(> .wims-field-error:not([style*='display: none'])) :is(input, select, textarea) { animation: none; }
+  html:not(#_):not(#__) :has(> :is(.wims-field-error:not([style*='display: none']), :is(.ac-err, .sg-error, .ar-err, .wx-error, .pf-err, .tlm-err, .mrf-err, .wc-err, .ss-err, .sm-err, .sa-err, .ps-err, .mt-err, .lic-err, .if-err, .fx-err, .rf-err, .cl-err, .bk-err, .scm-err, .ms-err, .alp-error, .cp-err, .ca-err, .an-err, .asn-err, .sdy-err, .sdf-err, .rs-err, .pm-err, .mrr-err, .lbr-err, .llu-err, .tlb-err, .ty-err, .wcs-err):not(:empty))) :is(input, select, textarea) { animation: none; }
 }
 /* checkbox / radio groups: ring each box so a missing choice is obvious */
-html:not(#_):not(#__) :has(> .wims-field-error:not([style*='display: none'])) :is(input[type='checkbox'], input[type='radio']) {
+html:not(#_):not(#__) :has(> :is(.wims-field-error:not([style*='display: none']), :is(.ac-err, .sg-error, .ar-err, .wx-error, .pf-err, .tlm-err, .mrf-err, .wc-err, .ss-err, .sm-err, .sa-err, .ps-err, .mt-err, .lic-err, .if-err, .fx-err, .rf-err, .cl-err, .bk-err, .scm-err, .ms-err, .alp-error, .cp-err, .ca-err, .an-err, .asn-err, .sdy-err, .sdf-err, .rs-err, .pm-err, .mrr-err, .lbr-err, .llu-err, .tlb-err, .ty-err, .wcs-err):not(:empty))) :is(input[type='checkbox'], input[type='radio']) {
   outline: 2px solid #ef4444;
   outline-offset: 1px;
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.55);
   border-radius: 4px;
 }
-html.dark:not(#_):not(#__) :has(> .wims-field-error:not([style*='display: none'])) :is(input[type='checkbox'], input[type='radio']) {
+html.dark:not(#_):not(#__) :has(> :is(.wims-field-error:not([style*='display: none']), :is(.ac-err, .sg-error, .ar-err, .wx-error, .pf-err, .tlm-err, .mrf-err, .wc-err, .ss-err, .sm-err, .sa-err, .ps-err, .mt-err, .lic-err, .if-err, .fx-err, .rf-err, .cl-err, .bk-err, .scm-err, .ms-err, .alp-error, .cp-err, .ca-err, .an-err, .asn-err, .sdy-err, .sdf-err, .rs-err, .pm-err, .mrr-err, .lbr-err, .llu-err, .tlb-err, .ty-err, .wcs-err):not(:empty))) :is(input[type='checkbox'], input[type='radio']) {
   outline-color: #fb7185;
   box-shadow: 0 0 12px rgba(251, 113, 133, 0.6);
 }
@@ -3185,4 +3185,53 @@ html.dark .leaflet-bar a:hover { background: #312e81; color: #fff; }
   .autono-td[data-suffix] { white-space: normal; }
   .autono-td[data-suffix]::after { display: inline; content: ' (' attr(data-suffix) ')'; margin-left: 0.3em; color: var(--lg-ink, #0f172a); font-weight: 700; }
   .item-code-line { display: none; }
+}
+
+
+/* =====================================================================================================
+   Required fields (see js/Core/requiredFields.js). A compulsory field has a glowing asterisk: maroon while the field is empty
+   (or rejected), green once it holds a good value. The field itself carries a soft maroon glow while it is empty; a rejected
+   field gets the red error glow above.
+   ===================================================================================================== */
+:root { --req-bad: #800000; --req-bad-rgb: 128, 0, 0; --req-ok: #16a34a; --req-ok-rgb: 22, 163, 74; }
+html.dark { --req-bad: #e0536f; --req-bad-rgb: 224, 83, 111; --req-ok: #34d399; --req-ok-rgb: 52, 211, 153; }
+
+html:not(#_):not(#__) .wims-req,
+html:not(#_):not(#__) label[data-req-auto]::after {
+  display: inline-block;
+  margin-left: 3px;
+  font-weight: 900;
+  font-style: normal;
+  line-height: 1;
+  color: var(--req-bad) !important;
+  text-shadow: 0 0 5px rgba(var(--req-bad-rgb), 0.85), 0 0 11px rgba(var(--req-bad-rgb), 0.5);
+  animation: wims-req-glow-bad 1.5s ease-in-out infinite;
+}
+html:not(#_):not(#__) label[data-req-auto]::after { content: '*'; }
+html:not(#_):not(#__) .wims-req[data-req='ok'],
+html:not(#_):not(#__) label[data-req-auto='ok']::after {
+  color: var(--req-ok) !important;
+  text-shadow: 0 0 5px rgba(var(--req-ok-rgb), 0.9), 0 0 12px rgba(var(--req-ok-rgb), 0.55);
+  animation-name: wims-req-glow-ok;
+}
+@keyframes wims-req-glow-bad {
+  0%, 100% { text-shadow: 0 0 3px rgba(var(--req-bad-rgb), 0.55), 0 0 7px rgba(var(--req-bad-rgb), 0.3); transform: scale(1); }
+  50% { text-shadow: 0 0 7px rgba(var(--req-bad-rgb), 1), 0 0 16px rgba(var(--req-bad-rgb), 0.7); transform: scale(1.18); }
+}
+@keyframes wims-req-glow-ok {
+  0%, 100% { text-shadow: 0 0 3px rgba(var(--req-ok-rgb), 0.6), 0 0 7px rgba(var(--req-ok-rgb), 0.3); transform: scale(1); }
+  50% { text-shadow: 0 0 7px rgba(var(--req-ok-rgb), 1), 0 0 16px rgba(var(--req-ok-rgb), 0.75); transform: scale(1.18); }
+}
+/* the empty compulsory field: a soft maroon glow */
+html:not(#_):not(#__) [data-req-state='empty'] {
+  border-color: rgba(var(--req-bad-rgb), 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(var(--req-bad-rgb), 0.12), 0 0 14px rgba(var(--req-bad-rgb), 0.32) !important;
+  animation: wims-req-field 2.4s ease-in-out infinite;
+}
+@keyframes wims-req-field {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(var(--req-bad-rgb), 0.1), 0 0 9px rgba(var(--req-bad-rgb), 0.22); }
+  50% { box-shadow: 0 0 0 3px rgba(var(--req-bad-rgb), 0.18), 0 0 18px rgba(var(--req-bad-rgb), 0.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not(#_):not(#__) .wims-req, html:not(#_):not(#__) label[data-req-auto]::after, html:not(#_):not(#__) [data-req-state='empty'] { animation: none; }
 }

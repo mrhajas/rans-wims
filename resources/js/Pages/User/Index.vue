@@ -243,7 +243,7 @@ export default {
       if (user.id === this.$page.props.auth.user.id) return false;
       if (user.deleted_at) return false;
       if (!user.is_active) return false;
-      if ((user.roles || []).includes('Super Admin')) return false;
+      if ((user.roles || []).includes('Super Admin') && !this.$page.props.licenceManager) return false;
       return true;
     },
     reset() {

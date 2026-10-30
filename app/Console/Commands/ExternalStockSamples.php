@@ -59,7 +59,7 @@ class ExternalStockSamples extends Command
             $m = ExternalStockMovement::create($x + ['reference' => ExternalStockMovement::nextReference(), 'kind' => $kind, 'date' => $date, 'contact_id' => $c->id, 'location' => $c->location, 'warehouse_id' => $w->id, 'status' => $status, 'user_id' => $admin->id,
                 'decided_by_user_id' => in_array($status, ['Approved', 'Rejected'], true) ? $admin->id : null, 'decided_at' => in_array($status, ['Approved', 'Rejected'], true) ? now() : null]);
             foreach ($lines as [$item, $qty]) {
-                ExternalStockItem::create(['movement_id' => $m->id, 'item_id' => $item->id, 'unit_id' => $item->unit_id, 'quantity' => $qty]);
+                ExternalStockItem::create(['movement_id' => $m->id, 'item_id' => $item->id, 'warehouse_id' => $w->id, 'unit_id' => $item->unit_id, 'quantity' => $qty]);
             }
 
             return $m;

@@ -63,10 +63,10 @@
       <section class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="bag" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Items') }}</h2></div></header>
         <div class="lg-table-wrap"><table class="lg-table lg-responsive">
-          <thead><tr><th>{{ $t('Item') }}</th><th>{{ $t('Code') }}</th><th class="ac-num">{{ $t('Quantity') }}</th><th class="ac-num">{{ $t('Held now') }}</th><th class="ac-num">{{ $t('Promised') }}</th></tr></thead>
-          <tbody><tr v-for="l in m.lines" :key="l.id"><td :data-label="$t('Item')" class="lg-main">{{ l.name }}</td><td :data-label="$t('Code')">{{ l.code }}</td><td :data-label="$t('Quantity')" class="ac-num"><b :class="m.kind === 'withdrawal' ? 'ac-out' : 'ac-in'">{{ m.kind === 'withdrawal' ? '-' : '+' }}{{ qty(l.quantity) }}</b> {{ l.unit }}</td>
-            <td :data-label="$t('Held now')" class="ac-num">{{ positions[l.item_id] ? qty(positions[l.item_id].balance) : '-' }}</td><td :data-label="$t('Promised')" class="ac-num">{{ positions[l.item_id] ? qty(positions[l.item_id].reserved) : '-' }}</td></tr></tbody></table></div>
-        <p class="lg-sub" style="margin-top: 8px">{{ $t('"Held now" is what :p holds in this warehouse after all approved movements; "Promised" is in waiting Stock Outs.', { p: m.contact }) }}</p>
+          <thead><tr><th>{{ $t('Item') }}</th><th>{{ $t('Code') }}</th><th>{{ $t('Warehouse') }}</th><th class="ac-num">{{ $t('Quantity') }}</th><th class="ac-num">{{ $t('Held now') }}</th><th class="ac-num">{{ $t('Promised') }}</th></tr></thead>
+          <tbody><tr v-for="l in m.lines" :key="l.id"><td :data-label="$t('Item')" class="lg-main">{{ l.name }}</td><td :data-label="$t('Code')">{{ l.code }}</td><td :data-label="$t('Warehouse')">{{ l.warehouse }}</td><td :data-label="$t('Quantity')" class="ac-num"><b :class="m.kind === 'withdrawal' ? 'ac-out' : 'ac-in'">{{ m.kind === 'withdrawal' ? '-' : '+' }}{{ qty(l.quantity) }}</b> {{ l.unit }}</td>
+            <td :data-label="$t('Held now')" class="ac-num">{{ positions[l.warehouse_id + '|' + l.item_id] ? qty(positions[l.warehouse_id + '|' + l.item_id].balance) : '-' }}</td><td :data-label="$t('Promised')" class="ac-num">{{ positions[l.warehouse_id + '|' + l.item_id] ? qty(positions[l.warehouse_id + '|' + l.item_id].reserved) : '-' }}</td></tr></tbody></table></div>
+        <p class="lg-sub" style="margin-top: 8px">{{ $t('"Held now" is what :p holds in that warehouse after all approved movements; "Promised" is in waiting Stock Outs.', { p: m.contact }) }}</p>
       </section>
     </div>
   </admin-layout>

@@ -100,15 +100,15 @@ class ExternalStockReports
 
     private static function movementQuery(array $f, $user, bool $seeAll)
     {
-        return ExternalStockMovement::query()->visibleTo($user)->with(['contact:id,name', 'warehouse:id,name', 'items.item:id,name,code', 'items.unit:id,name'])
-            ->when($f['contact_id'], fn ($q, $v) => $q->where('contact_id', $v))->when($f['warehouse_id'], fn ($q, $v) => $q->where('warehouse_id', $v))->when($f['kind'], fn ($q, $v) => $q->where('kind', $v))->when($f['status'], fn ($q, $v) => $q->where('status', $v))
+        return ExternalStockMovement::query()->visibleTo($user)->with(['contact:id,name', 'warehouse:id,name', 'items.item:id,name,code', 'items.unit:id,name', 'items.warehouse:id,name'])
+            ->when($f['contact_id'], fn ($q, $v) => $q->where('contact_id', $v))->when($f['warehouse_id'], fn ($q, $v) => $q->where(fn ($w) => $w->where('warehouse_id', $v)->orWhereHas('items', fn ($i) => $i->where('warehouse_id', $v))))->when($f['kind'], fn ($q, $v) => $q->where('kind', $v))->when($f['status'], fn ($q, $v) => $q->where('status', $v))
             ->when($f['from'], fn ($q, $v) => $q->whereDate('date', '>=', $v))->when($f['to'], fn ($q, $v) => $q->whereDate('date', '<=', $v));
     }
 
     private static function register(array $f, $user, bool $seeAll): array
     {
         $ms = self::movementQuery($f, $user, $seeAll)->orderBy('date')->orderBy('id')->limit(self::LIMIT + 1)->get();
-        $rows = $ms->map(fn ($m) => ['reference' => $m->reference, 'date' => $m->date->toDateString(), 'kind' => __($m->kindLabel()), 'status' => __($m->status), 'person' => optional($m->contact)->name, 'warehouse' => optional($m->warehouse)->name,
+        $rows = $ms->map(fn ($m) => ['reference' => $m->reference, 'date' => $m->date->toDateString(), 'kind' => __($m->kindLabel()), 'status' => __($m->status), 'person' => optional($m->contact)->name, 'warehouse' => $m->warehouseNames(),
             'items' => $m->items->map(fn ($l) => optional($l->item)->name . ' x ' . ExternalStockLedger::fmt((float) $l->quantity))->implode('; '), 'qty' => $m->items->sum('quantity'), 'collector' => $m->collector_name, 'mobile' => $m->collector_phone])->all();
         $cols = [['key' => 'reference', 'label' => __('Reference')], ['key' => 'date', 'label' => __('Date')], ['key' => 'kind', 'label' => __('Kind')], ['key' => 'status', 'label' => __('Status')], ['key' => 'person', 'label' => __('Person')], ['key' => 'warehouse', 'label' => __('Warehouse')],
             ['key' => 'items', 'label' => __('Items')], ['key' => 'qty', 'label' => __('Total quantity'), 'type' => 'qty'], ['key' => 'collector', 'label' => __('Collected / brought by')], ['key' => 'mobile', 'label' => __('Mobile')]];
@@ -128,7 +128,7 @@ class ExternalStockReports
         $rows = [];
         foreach ($ms as $m) {
             foreach ($m->items as $l) {
-                $rows[] = ['date' => $m->date->toDateString(), 'reference' => $m->reference, 'status' => __($m->status), 'person' => optional($m->contact)->name, 'warehouse' => optional($m->warehouse)->name, 'item' => optional($l->item)->name, 'qty' => (float) $l->quantity, 'unit' => optional($l->unit)->name,
+                $rows[] = ['date' => $m->date->toDateString(), 'reference' => $m->reference, 'status' => __($m->status), 'person' => optional($m->contact)->name, 'warehouse' => optional($l->warehouse)->name ?: optional($m->warehouse)->name, 'item' => optional($l->item)->name, 'qty' => (float) $l->quantity, 'unit' => optional($l->unit)->name,
                     'collector' => $m->collector_name, 'mobile' => $m->collector_phone, 'driver' => $driver($m), 'vehicle' => $plate($m), 'gate' => $passes[$m->id] ?? '', 'note' => $notes[$m->id] ?? '', 'trip' => $trips[$m->id] ?? ''];
             }
         }
@@ -143,10 +143,10 @@ class ExternalStockReports
         if (! $f['contact_id']) {
             return [[['key' => 'date', 'label' => __('Date')]], [], __('Statement of one person'), __('Choose the person.'), []];
         }
-        $q = DB::table('external_stock_items as i')->join('external_stock_movements as m', 'm.id', '=', 'i.movement_id')->join('items as it', 'it.id', '=', 'i.item_id')->join('warehouses as w', 'w.id', '=', 'm.warehouse_id')
+        $q = DB::table('external_stock_items as i')->join('external_stock_movements as m', 'm.id', '=', 'i.movement_id')->join('items as it', 'it.id', '=', 'i.item_id')->join('warehouses as w', 'w.id', '=', DB::raw('COALESCE(i.warehouse_id, m.warehouse_id)'))
             ->whereNull('i.deleted_at')->whereNull('m.deleted_at')->where('m.status', ExternalStockMovement::APPROVED)->where('m.contact_id', $f['contact_id'])
-            ->when($f['warehouse_id'], fn ($x, $v) => $x->where('m.warehouse_id', $v))->when($f['warehouse_ids'] !== null, fn ($x) => $x->whereIn('m.warehouse_id', $f['warehouse_ids'] ?: [0]))
-            ->orderBy('m.date')->orderBy('m.id')->get(['m.date', 'm.reference', 'm.kind', 'w.name as warehouse', 'it.name as item', 'i.item_id', 'm.warehouse_id', 'i.quantity']);
+            ->when($f['warehouse_id'], fn ($x, $v) => $x->whereRaw('COALESCE(i.warehouse_id, m.warehouse_id) = ?', [$v]))->when($f['warehouse_ids'] !== null, fn ($x) => $x->whereIn(DB::raw('COALESCE(i.warehouse_id, m.warehouse_id)'), $f['warehouse_ids'] ?: [0]))
+            ->orderBy('m.date')->orderBy('m.id')->get(['m.date', 'm.reference', 'm.kind', 'w.name as warehouse', 'it.name as item', 'i.item_id', 'w.id as warehouse_id', 'i.quantity']);
         $run = [];
         $rows = [];
         foreach ($q as $r) {

@@ -61,12 +61,12 @@ class MovementController extends Controller
             ->when(array_key_exists($f['kind'], ExternalStockMovement::KINDS), fn ($q) => $q->where('kind', $f['kind']))
             ->when(in_array($f['status'], ExternalStockMovement::STATUSES, true), fn ($q) => $q->where('status', $f['status']))
             ->when(ctype_digit($f['contact_id']) && $f['contact_id'] !== '', fn ($q) => $q->where('contact_id', (int) $f['contact_id']))
-            ->when(ctype_digit($f['warehouse_id']) && $f['warehouse_id'] !== '', fn ($q) => $q->where('warehouse_id', (int) $f['warehouse_id']))
+            ->when(ctype_digit($f['warehouse_id']) && $f['warehouse_id'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('warehouse_id', (int) $f['warehouse_id'])->orWhereHas('items', fn ($i) => $i->where('warehouse_id', (int) $f['warehouse_id']))))
             ->when($f['from'] !== '' && strtotime($f['from']), fn ($q) => $q->whereDate('date', '>=', $f['from']))->when($f['to'] !== '' && strtotime($f['to']), fn ($q) => $q->whereDate('date', '<=', $f['to']))
             ->when($f['search'] !== '', fn ($q) => $q->where(fn ($x) => $x->where('reference', 'like', $like($f['search']))->orWhere('collector_name', 'like', $like($f['search']))->orWhere('collector_phone', 'like', $like($f['search']))
                 ->orWhere('driver_name', 'like', $like($f['search']))->orWhere('vehicle_plate', 'like', $like($f['search']))->orWhereHas('contact', fn ($c) => $c->where('name', 'like', $like($f['search'])))));
 
-        $rows = (clone $base)->with(['contact:id,name,phone', 'warehouse:id,name', 'user:id,name', 'items.item:id,name,code', 'items.unit:id,name'])->orderByDesc('id')->paginate(20)->withQueryString();
+        $rows = (clone $base)->with(['contact:id,name,phone', 'warehouse:id,name', 'user:id,name', 'items.item:id,name,code', 'items.unit:id,name', 'items.warehouse:id,name'])->orderByDesc('id')->paginate(20)->withQueryString();
         $passes = GatePassController::statesFor($rows->getCollection(), GatePass::SOURCE_EXTERNAL);
         $notes = DeliveryNoteController::statesFor($rows->getCollection(), DeliveryNote::SOURCE_EXTERNAL);
         $routes = ExternalStockRoute::statesFor($rows->getCollection(), $passes);
@@ -94,14 +94,14 @@ class MovementController extends Controller
     {
         $this->need('create-external-stock');
         $d = $this->validated($request, null);
-        if ($response = $this->rejectIfWarehouseCompleted($d['warehouse_id'])) {
+        if ($response = $this->rejectIfWarehouseCompleted(...collect($d['lines'])->pluck('warehouse_id')->unique()->all())) {
             return $response;
         }
         $m = ReferenceLock::run('external_stock', fn () => DB::transaction(function () use ($d) {
             $this->shortfallCheck($d, null);
             $m = ExternalStockMovement::create(collect($d)->except('lines')->all() + ['reference' => ExternalStockMovement::nextReference(), 'status' => ExternalStockMovement::PENDING]);
             foreach ($d['lines'] as $l) {
-                ExternalStockItem::create(['movement_id' => $m->id, 'item_id' => $l['item_id'], 'unit_id' => $l['unit_id'], 'quantity' => $l['quantity'], 'note' => $l['note'] ?? null]);
+                ExternalStockItem::create(['movement_id' => $m->id, 'item_id' => $l['item_id'], 'warehouse_id' => $l['warehouse_id'], 'unit_id' => $l['unit_id'], 'quantity' => $l['quantity'], 'note' => $l['note'] ?? null]);
             }
 
             return $m;
@@ -117,7 +117,7 @@ class MovementController extends Controller
     {
         $this->need('read-external-stock');
         $this->authorizeView($movement);
-        $movement->load(['contact', 'warehouse', 'user:id,name', 'decidedBy:id,name', 'items.item:id,name,code', 'items.unit:id,name']);
+        $movement->load(['contact', 'warehouse', 'user:id,name', 'decidedBy:id,name', 'items.item:id,name,code', 'items.unit:id,name', 'items.warehouse:id,name']);
         $me = auth()->user();
         $own = (int) $movement->user_id === (int) $me->id;
         $pending = $movement->status === ExternalStockMovement::PENDING;
@@ -129,7 +129,7 @@ class MovementController extends Controller
                 'cancel_reason' => $movement->cancel_reason, 'cancelled_at' => optional($movement->cancelled_at)->toDateTimeString(), 'created_at' => $movement->created_at->toDateTimeString(),
                 'contact_phone' => optional($movement->contact)->phone, 'driver' => $this->driverLabel($movement), 'vehicle' => $this->vehicleLabel($movement),
             ],
-            'positions' => $movement->items->mapWithKeys(fn ($l) => [$l->item_id => ExternalStockLedger::position($movement->contact_id, $movement->warehouse_id, $l->item_id)])->all(),
+            'positions' => $movement->items->mapWithKeys(fn ($l) => [$this->lineWh($l, $movement) . '|' . $l->item_id => ExternalStockLedger::position($movement->contact_id, $this->lineWh($l, $movement), $l->item_id)])->all(),
             'attachments' => $this->filesOf($movement),
             'gate_pass' => $pass, 'delivery_note' => DeliveryNoteController::stateFor($movement, DeliveryNote::SOURCE_EXTERNAL), 'transport_route' => ExternalStockRoute::stateFor($movement, $pass),
             'can' => [
@@ -155,7 +155,7 @@ class MovementController extends Controller
     {
         $this->authorizeEdit($movement);
         $d = $this->validated($request, $movement);
-        if ($response = $this->rejectIfWarehouseCompleted($d['warehouse_id'])) {
+        if ($response = $this->rejectIfWarehouseCompleted(...collect($d['lines'])->pluck('warehouse_id')->unique()->all())) {
             return $response;
         }
         DB::transaction(function () use ($movement, $d) {
@@ -165,7 +165,7 @@ class MovementController extends Controller
             $movement->update(collect($d)->except(['lines', 'kind'])->all());
             $movement->items()->forceDelete();
             foreach ($d['lines'] as $l) {
-                ExternalStockItem::create(['movement_id' => $movement->id, 'item_id' => $l['item_id'], 'unit_id' => $l['unit_id'], 'quantity' => $l['quantity'], 'note' => $l['note'] ?? null]);
+                ExternalStockItem::create(['movement_id' => $movement->id, 'item_id' => $l['item_id'], 'warehouse_id' => $l['warehouse_id'], 'unit_id' => $l['unit_id'], 'quantity' => $l['quantity'], 'note' => $l['note'] ?? null]);
             }
         });
         $added = $this->saveFiles($movement, $request);
@@ -185,8 +185,8 @@ class MovementController extends Controller
         $remarks = trim((string) $request->input('remarks', ''));
         $error = null;
         DB::transaction(function () use ($movement, $me, $remarks, &$error) {
-            // everything of this person in this warehouse is locked while the balance is checked
-            ExternalStockMovement::withoutGlobalScopes()->where('contact_id', $movement->contact_id)->where('warehouse_id', $movement->warehouse_id)->lockForUpdate()->get(['id']);
+            // everything of this person is locked while the balance is checked
+            ExternalStockMovement::withoutGlobalScopes()->where('contact_id', $movement->contact_id)->lockForUpdate()->get(['id']);
             $m = ExternalStockMovement::withoutGlobalScopes()->with('items')->find($movement->id);
             if ($m->status !== ExternalStockMovement::PENDING) {
                 $error = __('This movement has already been decided.');
@@ -194,7 +194,7 @@ class MovementController extends Controller
                 return;
             }
             if ($m->kind === 'withdrawal') {
-                $short = ExternalStockLedger::shortfalls($m->contact_id, $m->warehouse_id, $m->items->map(fn ($l) => ['item_id' => $l->item_id, 'quantity' => $l->quantity])->all(), $m->id, false);
+                $short = ExternalStockLedger::shortfalls($m->contact_id, $m->warehouse_id, $m->items->map(fn ($l) => ['item_id' => $l->item_id, 'quantity' => $l->quantity, 'warehouse_id' => $l->warehouse_id])->all(), $m->id, false);
                 if ($short) {
                     $error = implode(' ', $short);
 
@@ -248,7 +248,7 @@ class MovementController extends Controller
         $own = (int) $movement->user_id === (int) $me->id;
         $error = null;
         DB::transaction(function () use ($movement, $me, $reason, $own, &$error) {
-            ExternalStockMovement::withoutGlobalScopes()->where('contact_id', $movement->contact_id)->where('warehouse_id', $movement->warehouse_id)->lockForUpdate()->get(['id']);
+            ExternalStockMovement::withoutGlobalScopes()->where('contact_id', $movement->contact_id)->lockForUpdate()->get(['id']);
             $m = ExternalStockMovement::withoutGlobalScopes()->with('items')->find($movement->id);
             if ($m->status === ExternalStockMovement::PENDING) {
                 if (! ($own || $me->can('cancel-external-stock') || $me->can('approve-external-stock'))) {
@@ -265,7 +265,7 @@ class MovementController extends Controller
                 // taking an approved Stock In away must not leave the person with negative stock
                 if ($m->kind !== 'withdrawal') {
                     foreach ($m->items as $l) {
-                        $p = ExternalStockLedger::position($m->contact_id, $m->warehouse_id, $l->item_id);
+                        $p = ExternalStockLedger::position($m->contact_id, $this->lineWh($l, $m), $l->item_id);
                         if ($p['available'] - (float) $l->quantity < -0.00005) {
                             $error = __('This cannot be cancelled: the stock it added has already been taken out or promised.');
 
@@ -290,18 +290,28 @@ class MovementController extends Controller
         return back()->with('message', __(':r cancelled.', ['r' => $movement->reference]));
     }
 
-    /** JSON for the form: what this person holds, and could still take, of an item in a warehouse. */
+    /**
+     * JSON for the form: what this person holds, and could still take, of an item. `holders` lists the warehouses that hold it (the most first), so a Stock Out
+     * can pick the right warehouse by itself; with a warehouse given, `position` is the figure for that warehouse.
+     */
     public function availability(Request $request)
     {
         $this->need('create-external-stock');
         $r = $request->validate(['contact_id' => 'required|integer', 'warehouse_id' => 'nullable|integer', 'item_id' => 'required|integer', 'except' => 'nullable|integer']);
-        // no warehouse chosen (a Stock Out may leave it open): what the person holds across all warehouses
+        $except = $r['except'] ?? null;
+        $holders = ExternalStockLedger::holders((int) $r['contact_id'], (int) $r['item_id'], accessible_warehouse_ids(), $except);
         $p = ! empty($r['warehouse_id'])
-            ? ExternalStockLedger::position((int) $r['contact_id'], (int) $r['warehouse_id'], (int) $r['item_id'], $r['except'] ?? null)
-            : ExternalStockLedger::positionAnywhere((int) $r['contact_id'], (int) $r['item_id'], $r['except'] ?? null);
+            ? ExternalStockLedger::position((int) $r['contact_id'], (int) $r['warehouse_id'], (int) $r['item_id'], $except)
+            : ExternalStockLedger::positionAnywhere((int) $r['contact_id'], (int) $r['item_id'], $except);
         $item = Item::with('unit:id,name')->find((int) $r['item_id']);
 
-        return response()->json($p + ['item' => $item ? ['id' => $item->id, 'name' => $item->name, 'code' => $item->code, 'unit' => optional($item->unit)->name, 'unit_id' => $item->unit_id, 'blocked' => (bool) ($item->has_variants || $item->has_serials)] : null]);
+        return response()->json($p + ['holders' => $holders, 'item' => $item ? ['id' => $item->id, 'name' => $item->name, 'code' => $item->code, 'unit' => optional($item->unit)->name, 'unit_id' => $item->unit_id, 'blocked' => (bool) ($item->has_variants || $item->has_serials)] : null]);
+    }
+
+    /** The warehouse of a line (lines saved before each item had its own take the movement's). */
+    private function lineWh(ExternalStockItem $l, ExternalStockMovement $m): int
+    {
+        return (int) ($l->warehouse_id ?: $m->warehouse_id);
     }
 
     // ---- attachments, print and download ----
@@ -411,7 +421,7 @@ class MovementController extends Controller
         $this->need('read-external-stock');
         $this->need('print-external-stock');
         $this->authorizeView($movement);
-        $movement->load(['contact', 'warehouse', 'user:id,name', 'decidedBy:id,name', 'items.item:id,name,code', 'items.unit:id,name']);
+        $movement->load(['contact', 'warehouse', 'user:id,name', 'decidedBy:id,name', 'items.item:id,name,code', 'items.unit:id,name', 'items.warehouse:id,name']);
         $name = 'stock-' . ($movement->kind === 'withdrawal' ? 'out' : ($movement->kind === 'deposit' ? 'in' : 'opening')) . '-' . $movement->reference . '.pdf';
         log_activity('External Stock ' . $movement->reference . ($download ? ' downloaded' : ' printed'), ['kind' => $movement->kind, 'format' => 'pdf'], $movement, 'External Stock');
         $pdf = Pdf::loadView('external-stock.print', [
@@ -508,9 +518,9 @@ class MovementController extends Controller
         $lines = $m->items;
 
         return ['id' => $m->id, 'reference' => $m->reference, 'kind' => $m->kind, 'kind_label' => __($m->kindLabel()), 'date' => $m->date->toDateString(), 'status' => $m->status, 'status_label' => __($m->status),
-            'contact_id' => $m->contact_id, 'contact' => optional($m->contact)->name, 'location' => $m->location ?: optional($m->contact)->location, 'warehouse_id' => $m->warehouse_id, 'warehouse' => optional($m->warehouse)->name, 'by' => optional($m->user)->name,
+            'contact_id' => $m->contact_id, 'contact' => optional($m->contact)->name, 'location' => $m->location ?: optional($m->contact)->location, 'warehouse_id' => $m->warehouse_id, 'warehouse' => $m->warehouseNames(), 'by' => optional($m->user)->name,
             'collector_name' => $m->collector_name, 'collector_phone' => $m->collector_phone, 'driver' => $this->driverLabel($m), 'vehicle' => $this->vehicleLabel($m),
-            'lines' => $lines->map(fn ($l) => ['id' => $l->id, 'item_id' => $l->item_id, 'name' => optional($l->item)->name, 'code' => optional($l->item)->code, 'unit' => optional($l->unit)->name, 'unit_id' => $l->unit_id, 'quantity' => (float) $l->quantity, 'note' => $l->note])->values(),
+            'lines' => $lines->map(fn ($l) => ['id' => $l->id, 'item_id' => $l->item_id, 'warehouse_id' => $this->lineWh($l, $m), 'warehouse' => optional($l->warehouse)->name ?: optional($m->warehouse)->name, 'name' => optional($l->item)->name, 'code' => optional($l->item)->code, 'unit' => optional($l->unit)->name, 'unit_id' => $l->unit_id, 'quantity' => (float) $l->quantity, 'note' => $l->note])->values(),
             'total_qty' => round((float) $lines->sum('quantity'), 4)];
     }
 
@@ -521,7 +531,7 @@ class MovementController extends Controller
                 'id' => $m->id, 'reference' => $m->reference, 'kind' => $m->kind, 'date' => $m->date->toDateString(), 'contact_id' => $m->contact_id, 'location' => $m->location, 'warehouse_id' => $m->warehouse_id, 'purpose' => $m->purpose,
                 'collector_name' => $m->collector_name, 'collector_phone' => $m->collector_phone, 'collector_id_no' => $m->collector_id_no, 'driver_contact_id' => $m->driver_contact_id, 'driver_name' => $m->driver_name, 'driver_phone' => $m->driver_phone,
                 'asset_id' => $m->asset_id, 'vehicle_plate' => $m->vehicle_plate, 'vehicle_details' => $m->vehicle_details,
-                'lines' => $m->items->map(fn ($l) => ['item_id' => $l->item_id, 'name' => optional($l->item)->name, 'code' => optional($l->item)->code, 'unit' => optional($l->unit)->name, 'unit_id' => $l->unit_id, 'quantity' => (float) $l->quantity, 'note' => $l->note])->values(),
+                'lines' => $m->items->map(fn ($l) => ['item_id' => $l->item_id, 'warehouse_id' => $this->lineWh($l, $m), 'name' => optional($l->item)->name, 'code' => optional($l->item)->code, 'unit' => optional($l->unit)->name, 'unit_id' => $l->unit_id, 'quantity' => (float) $l->quantity, 'note' => $l->note])->values(),
             ] : null,
             'kind' => $kind, 'kinds' => collect(ExternalStockMovement::KINDS)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(), 'people' => $this->people(), 'warehouses' => $this->warehouses(),
             'drivers' => Contact::query()->where('category', 'Drivers')->orderBy('name')->get(['id', 'name', 'phone'])->map(fn ($c) => ['value' => $c->id, 'label' => $c->name . ($c->phone ? ' (' . $c->phone . ')' : '')]),
@@ -537,13 +547,13 @@ class MovementController extends Controller
         $out = $kind === 'withdrawal';
         $req = $out ? 'required' : 'nullable';
         $d = $request->validate([
-            'kind' => [$existing ? 'nullable' : 'required', 'in:withdrawal,deposit,opening'], 'date' => 'required|date', 'contact_id' => 'required|integer', 'warehouse_id' => $out ? 'nullable|integer' : 'required|integer', 'purpose' => 'nullable|string|max:2000',
+            'kind' => [$existing ? 'nullable' : 'required', 'in:withdrawal,deposit,opening'], 'date' => 'required|date', 'contact_id' => 'required|integer', 'purpose' => 'nullable|string|max:2000',
             'collector_name' => [$req, 'nullable', 'string', 'max:190'], 'collector_phone' => [$req, 'nullable', 'string', 'max:60'], 'collector_id_no' => 'nullable|string|max:80',
             'driver_contact_id' => 'nullable|integer', 'driver_name' => ['nullable', 'string', 'max:190'], 'driver_phone' => 'nullable|string|max:60',
             'asset_id' => 'nullable|integer', 'vehicle_plate' => ['nullable', 'string', 'max:60'], 'vehicle_details' => 'nullable|string|max:190',
-            'lines' => 'required|array|min:1|max:200', 'lines.*.item_id' => 'required|integer|exists:items,id', 'lines.*.quantity' => 'required|numeric|min:0.0001|max:99999999', 'lines.*.note' => 'nullable|string|max:190',
+            'lines' => 'required|array|min:1|max:200', 'lines.*.item_id' => 'required|integer|exists:items,id', 'lines.*.warehouse_id' => 'required|integer', 'lines.*.quantity' => 'required|numeric|min:0.0001|max:99999999', 'lines.*.note' => 'nullable|string|max:190',
             'attachments' => 'nullable|array|max:10', 'attachments.*' => 'file|max:8192|mimes:' . self::FILE_TYPES,
-        ], ['collector_name.required' => __('Who is collecting the stock? Their name is required.'), 'collector_phone.required' => __('The mobile number of the person collecting is required.')]);
+        ], ['lines.*.warehouse_id.required' => __('Choose the warehouse of every item.'), 'collector_name.required' => __('Who is collecting the stock? Their name is required.'), 'collector_phone.required' => __('The mobile number of the person collecting is required.')]);
 
         $errors = [];
         $person = Contact::query()->where('id', $d['contact_id'])->where('category', Contact::EXTERNAL_CATEGORY)->first();
@@ -551,10 +561,6 @@ class MovementController extends Controller
             $errors['contact_id'] = __('Choose a person from the External Personnel list.');
         }
         $allowed = accessible_warehouse_ids();
-        $warehouseId = ! empty($d['warehouse_id']) ? (int) $d['warehouse_id'] : null;
-        if ($warehouseId && (! Warehouse::ofAccount()->active()->whereKey($warehouseId)->exists() || ($allowed !== null && ! in_array($warehouseId, $allowed, true)))) {
-            $errors['warehouse_id'] = __('You may not use this warehouse.');
-        }
         // the registered driver / vehicle wins over typed text, so a record never carries two answers
         $driverId = ! empty($d['driver_contact_id']) ? (int) $d['driver_contact_id'] : null;
         if ($driverId && ! Contact::query()->where('id', $driverId)->where('category', 'Drivers')->exists()) {
@@ -579,23 +585,22 @@ class MovementController extends Controller
                 $errors["lines.$i.item_id"] = __(':item has variants or serial numbers, which External Stock does not handle yet.', ['item' => $item->name]);
                 continue;
             }
-            $k = (int) $l['item_id'];
-            $merged[$k] = ['item_id' => $k, 'unit_id' => $item ? $item->unit_id : null, 'quantity' => round(($merged[$k]['quantity'] ?? 0) + (float) $l['quantity'], 4), 'note' => $l['note'] ?? ($merged[$k]['note'] ?? null)];
+            $wid = (int) $l['warehouse_id'];
+            if (! Warehouse::ofAccount()->active()->whereKey($wid)->exists() || ($allowed !== null && ! in_array($wid, $allowed, true))) {
+                $errors["lines.$i.warehouse_id"] = __('You may not use this warehouse.');
+                continue;
+            }
+            // the same item in the same warehouse twice is added together
+            $k = $wid . '|' . (int) $l['item_id'];
+            $merged[$k] = ['item_id' => (int) $l['item_id'], 'warehouse_id' => $wid, 'unit_id' => $item ? $item->unit_id : null, 'quantity' => round(($merged[$k]['quantity'] ?? 0) + (float) $l['quantity'], 4), 'note' => $l['note'] ?? ($merged[$k]['note'] ?? null)];
         }
         if ($errors) {
             throw ValidationException::withMessages($errors);
         }
-        // A Stock Out may leave Project(s) / Warehouse(s) open: it then comes from the warehouse that holds this person's stock for every line
-        if (! $warehouseId && $out) {
-            $warehouseId = ExternalStockLedger::resolveWarehouse((int) $d['contact_id'], array_values($merged), $allowed, $existing ? $existing->id : null);
-            if (! $warehouseId) {
-                throw ValidationException::withMessages(['warehouse_id' => __('No single warehouse holds all of this stock for this person. Choose the Project(s) / Warehouse(s), or ask for less.')]);
-            }
-        }
         $clean = fn ($v) => ($v = is_string($v) ? trim($v) : $v) === '' ? null : $v;
 
         return [
-            'kind' => $kind, 'date' => $d['date'], 'contact_id' => (int) $d['contact_id'], 'location' => $clean($person->location), 'warehouse_id' => (int) $warehouseId, 'purpose' => $clean($d['purpose'] ?? null),
+            'kind' => $kind, 'date' => $d['date'], 'contact_id' => (int) $d['contact_id'], 'location' => $clean($person->location), 'warehouse_id' => (int) array_values($merged)[0]['warehouse_id'], 'purpose' => $clean($d['purpose'] ?? null),
             'collector_name' => $clean($d['collector_name'] ?? null), 'collector_phone' => $clean($d['collector_phone'] ?? null), 'collector_id_no' => $clean($d['collector_id_no'] ?? null),
             'driver_contact_id' => $driverId, 'driver_name' => $driverId ? null : $clean($d['driver_name'] ?? null), 'driver_phone' => $driverId ? null : $clean($d['driver_phone'] ?? null),
             'asset_id' => $assetId, 'vehicle_plate' => $assetId ? null : $clean($d['vehicle_plate'] ?? null), 'vehicle_details' => $assetId ? null : $clean($d['vehicle_details'] ?? null),
@@ -613,8 +618,8 @@ class MovementController extends Controller
         if ($short) {
             $errors = [];
             foreach ($d['lines'] as $i => $l) {
-                if (isset($short[$l['item_id']])) {
-                    $errors["lines.$i.quantity"] = $short[$l['item_id']];
+                if (isset($short[$l['warehouse_id'] . '|' . $l['item_id']])) {
+                    $errors["lines.$i.quantity"] = $short[$l['warehouse_id'] . '|' . $l['item_id']];
                 }
             }
             throw ValidationException::withMessages($errors);

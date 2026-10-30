@@ -109,7 +109,7 @@
         <header class="asn-dlg__head" :class="haltTo ? 'is-red' : 'is-green'"><icons :name="haltTo ? 'lock-closed' : 'tick'" class="w-5 h-5" /><div><h3>{{ haltTo ? $t('Stop stock movement') : $t('Release stock movement') }}</h3><p>{{ session.warehouse.name }} · {{ session.reference }}</p></div></header>
         <div class="asn-dlg__body">
           <p class="asn-hint">{{ haltTo ? $t('Nobody will be able to check in, check out, transfer, reallocate, issue or return stock to or from this Project / Warehouse, and it will show as locked in the lists, until the session ends or you release it. Your name is shown to everyone who tries.') : $t('Stock will be able to move again in this Project / Warehouse, even though the count is not finished.') }}</p>
-          <div class="ac-f"><label>{{ $t('Your password') }} *</label><input v-model="haltForm.password" type="password" autocomplete="current-password" class="asn-input" :placeholder="$t('Enter your password to confirm')" @keyup.enter="doHalt" /><span class="ac-err">{{ haltForm.errors.password }}</span></div>
+          <div class="ac-f"><label>{{ $t('Your password') }} <b class="wims-req">*</b></label><input v-model="haltForm.password" type="password" autocomplete="current-password" class="asn-input" :placeholder="$t('Enter your password to confirm')" @keyup.enter="doHalt" /><span class="ac-err">{{ haltForm.errors.password }}</span></div>
         </div>
         <footer class="asn-dlg__foot">
           <button type="button" class="lg-btn lg-btn-soft" :disabled="haltForm.processing" @click="haltOpen = false">{{ $t('Cancel') }}</button>

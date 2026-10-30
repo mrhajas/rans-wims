@@ -8,7 +8,7 @@
         <span v-else><small>{{ $t('What it covers') }}</small><b>{{ count === 1 ? $t('One line') : $t('The chosen lines') }}</b></span>
       </div>
       <div class="tr-fbar" style="margin-top: 12px">
-        <div class="ac-f tr-wide"><label>{{ $t('Who is paid') }} *</label><acct-select v-model="form.payee" :options="payees" :placeholder="$t('Search a user or a staff member...')" /><span class="ac-err">{{ err('payee') }}</span></div>
+        <div class="ac-f tr-wide"><label>{{ $t('Who is paid') }} <b class="wims-req">*</b></label><acct-select v-model="form.payee" :options="payees" :placeholder="$t('Search a user or a staff member...')" /><span class="ac-err">{{ err('payee') }}</span></div>
         <template v-if="!voucher">
           <div class="ac-f"><label>{{ $t('Date paid') }}</label><date-picker v-model="form.paid_on" /><span class="ac-err">{{ err('paid_on') }}</span></div>
           <div class="ac-f"><label>{{ $t('Method') }}</label><input v-model="form.method" list="wa-methods" maxlength="100" :placeholder="$t('Cash, bank transfer...')" /></div>

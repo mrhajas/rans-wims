@@ -41,10 +41,14 @@
       <!-- the send bar -->
       <section class="hg-sendbar" style="margin-bottom: 16px">
         <div class="hg-grow">
-          <template v-if="!holiday.locked">
+          <template v-if="!holiday.locked && holiday.past">
+            <b>{{ $t('This holiday has passed') }}</b><br />
+            <span class="hg-note">{{ $t('You can open it and read its information, but greetings can no longer be sent or scheduled for it.') }}</span>
+          </template>
+          <template v-else-if="!holiday.locked">
             <b>{{ $t('Ready to send') }}</b><br />
             <span class="hg-note">{{ $t(':e emails and :s SMS to :p people. :d repeated addresses were removed.', { e: lists.counts.email, s: lists.counts.sms, p: people, d: lists.counts.duplicates }) }}</span>
-            <div v-if="holiday.counts && auto.enabled" class="hg-autochip"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Sends itself on :t to :b', { t: auto.atText, b: auto.bundleName }) }}<template v-if="!auto.own"> · {{ $t('from the Settings') }}</template></span></div>
+            <div v-if="holiday.counts && auto.enabled" class="hg-autochip"><icons name="clock" class="w-4 h-4" /><span>{{ $t('Scheduled for :t to :b', { t: auto.atText, b: auto.bundleName }) }}<template v-if="!auto.own"> · {{ $t('from the Settings') }}</template></span></div>
           </template>
           <template v-else>
             <b>{{ summary.state === 'sending' ? $t('Sending...') : summary.state === 'partly' ? $t('Sent, some failed') : $t('Greetings sent') }}</b>
@@ -55,10 +59,10 @@
           </template>
         </div>
         <template v-if="can.send">
-          <button v-if="!holiday.locked || freshCount > 0" type="button" class="lg-btn tone tone-solid" style="--tone: #be185d" :disabled="busy || !holiday.counts || (!lists.counts.email && !lists.counts.sms)" @click="openSend">
+          <button v-if="!holiday.locked || freshCount > 0" type="button" class="lg-btn tone tone-solid" style="--tone: #be185d" :disabled="busy || holiday.past || !holiday.counts || (!lists.counts.email && !lists.counts.sms)" :title="holiday.past ? $t('This holiday has passed') : null" @click="openSend">
             <span class="tone-ico"><icons :name="busy ? 'refresh' : 'send'" class="w-4 h-4" :class="{ 'animate-spin': busy }" /></span>{{ holiday.locked ? $t('Send to :n new people', { n: freshCount }) : $t('Send the Greetings') }}
           </button>
-          <button v-if="!holiday.locked && holiday.counts" type="button" class="lg-btn tone" style="--tone: #7c3aed" :disabled="busy" @click="openAuto"><span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span>{{ $t('Automatic Sending') }}</button>
+          <button v-if="!holiday.locked && holiday.counts" type="button" class="lg-btn tone" style="--tone: #7c3aed" :disabled="busy || holiday.past" :title="holiday.past ? $t('This holiday has passed') : null" @click="openAuto"><span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span>{{ $t('Schedule Greetings') }}</button>
           <button v-if="summary.failed" type="button" class="lg-btn tone" style="--tone: #d97706" :disabled="busy" @click="retryAll"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Retry :n failed', { n: summary.failed }) }}</button>
         </template>
       </section>
@@ -171,10 +175,10 @@
       </template>
     </travel-modal>
 
-    <travel-modal :show="autoOpen" :title="$t('Automatic Sending')" :subtitle="$t('Let this holiday send its greetings by itself.')" icon="clock" :busy="busy" @close="autoOpen = false">
+    <travel-modal :show="autoOpen" :title="$t('Schedule Greetings')" :subtitle="$t('Choose when this holiday sends its greetings by itself.')" icon="clock" :busy="busy" @close="autoOpen = false">
       <auto-send-fields v-model="autoForm" :bundles="bundleList" :date="holiday.date" :errors="$page.props.errors" />
       <p class="hg-hint" style="margin-top: 12px">{{ $t('Settings default: :s.', { s: auto.default.enabled ? $t(':t before, to :b', { t: humanMinutes(auto.default.minutes), b: auto.default.bundleName }) : $t('off') }) }}</p>
-      <p v-if="auto.attempted" class="lg-note lg-note-amber" style="margin-top: 12px"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('Automatic sending already ran for this holiday and found nobody to send to. Change the plan to run it again.') }}</span></p>
+      <p v-if="auto.attempted" class="lg-note lg-note-amber" style="margin-top: 12px"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('The schedule already ran for this holiday and found nobody to send to. Change the plan to run it again.') }}</span></p>
       <template #footer>
         <button v-if="auto.own" type="button" class="lg-btn tone" style="--tone: #475569; margin-right: auto" :disabled="busy" @click="followSettings"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Follow the Settings') }}</button>
         <button type="button" class="lg-btn lg-btn-soft" :disabled="busy" @click="autoOpen = false">{{ $t('Cancel') }}</button>

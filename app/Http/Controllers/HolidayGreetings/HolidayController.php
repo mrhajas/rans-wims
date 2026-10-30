@@ -42,7 +42,7 @@ class HolidayController extends Controller
 
         // a "partial" reload (the page polling while messages go out) only needs the lists and the figures
         return Inertia::render('HolidayGreetings/Holiday', [
-            'holiday' => $row + ['kindLabel' => __(HolidayDay::KINDS[$h->kind] ?? $h->kind), 'themeLabel' => $theme['label'], 'note' => $h->note, 'sentBy' => optional($h->sentBy)->name ?: ($h->send_started_at ? __('Automatic sending') : null), 'sendStarted' => optional($h->send_started_at)->toIso8601String(),
+            'holiday' => $row + ['kindLabel' => __(HolidayDay::KINDS[$h->kind] ?? $h->kind), 'themeLabel' => $theme['label'], 'note' => $h->note, 'sentBy' => optional($h->sentBy)->name ?: ($h->send_started_at ? __('Scheduled sending') : null), 'sendStarted' => optional($h->send_started_at)->toIso8601String(),
                 'edited' => GreetingTemplates::edited($h), 'reminderDueText' => $h->reminderDueAt()->locale('en')->translatedFormat('D j M Y, H:i')],
             'template' => $tpl, 'defaults' => GreetingTemplates::defaults($h), 'placeholders' => GreetingTemplates::PLACEHOLDERS,
             'sample' => ['title' => $sample['title'] ?? 'Dr.', 'name' => $sample['name'] ?? 'Amina Juma'],

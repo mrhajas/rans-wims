@@ -11,9 +11,9 @@
           <div class="ac-f"><label>{{ $t('Period closed through') }}</label><date-picker v-model="c.closed_through" /><small class="lg-subtext">{{ $t('Nothing dated on or before this day can be posted or reversed.') }}</small></div>
         </div>
         <div v-else class="lg-fields">
-          <p class="lg-subtext">{{ settings.maker_checker ? $t('A person can never approve what they created or submitted') : $t('A person may approve what they created or submitted') }}</p>
-          <p class="lg-subtext">{{ settings.super_admin_self_approval ? $t('A Super Admin may approve their own entries (recorded as an exception)') : $t('A Super Admin cannot approve their own entries') }}</p>
-          <p class="lg-subtext">{{ settings.closed_through ? $t('Period closed through') + ': ' + settings.closed_through : $t('No period is closed') }}</p>
+          <p class="lg-subtext">{{ acctSettings.maker_checker ? $t('A person can never approve what they created or submitted') : $t('A person may approve what they created or submitted') }}</p>
+          <p class="lg-subtext">{{ acctSettings.super_admin_self_approval ? $t('A Super Admin may approve their own entries (recorded as an exception)') : $t('A Super Admin cannot approve their own entries') }}</p>
+          <p class="lg-subtext">{{ acctSettings.closed_through ? $t('Period closed through') + ': ' + acctSettings.closed_through : $t('No period is closed') }}</p>
         </div>
         <div v-if="can.controls" class="lg-actionbar"><span class="lg-actionbar-note">{{ $t('Changes apply to new activity only') }}</span><div class="lg-actionbar-btns">
           <tec-confirms-password :content="$t('These settings decide who may approve money movements and which dates are locked. Please confirm your password to continue.')" @confirmed="saveControls"><button type="button" class="lg-btn lg-btn-primary"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button></tec-confirms-password>
@@ -95,9 +95,9 @@ import { acct } from './acct';
 export default {
   components: { DatePicker, AcctSelect, AdminLayout, PageHeader, TecConfirmsPassword },
   mixins: [acct],
-  props: { cur: Object, settings: Object, rules: Array, accounts: Array, categories: Array, currencyCodes: Array, can: Object },
+  props: { cur: Object, acctSettings: Object, rules: Array, accounts: Array, categories: Array, currencyCodes: Array, can: Object },
   data() {
-    const s = JSON.parse(JSON.stringify(this.settings));
+    const s = JSON.parse(JSON.stringify(this.acctSettings));
     ['large_txn', 'attachment_required_over', 'discrepancy_dual_over', 'denominations'].forEach(k => { s[k] = s[k] || {}; });
     const c = { maker_checker: !!s.maker_checker, super_admin_self_approval: !!s.super_admin_self_approval, closed_through: s.closed_through || null };
     return { s, c, rfId: null, cfId: null, rf: this.blankRule(), cf: this.blankCat() };

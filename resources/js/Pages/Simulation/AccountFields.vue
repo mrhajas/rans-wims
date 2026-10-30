@@ -1,8 +1,8 @@
 <template>
   <div class="sx-fields">
     <div class="lg-fields">
-      <div class="ac-f"><label :for="id + 'u'">{{ $t('Username') }} *</label><input :id="id + 'u'" v-model="state.username" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" /><span class="ac-err">{{ errors.username }}</span></div>
-      <div class="ac-f"><label :for="id + 'n'">{{ $t('Full name') }} *</label><input :id="id + 'n'" v-model="state.name" type="text" autocomplete="off" /><span class="ac-err">{{ errors.name }}</span></div>
+      <div class="ac-f"><label :for="id + 'u'">{{ $t('Username') }} <b class="wims-req">*</b></label><input :id="id + 'u'" v-model="state.username" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" /><span class="ac-err">{{ errors.username }}</span></div>
+      <div class="ac-f"><label :for="id + 'n'">{{ $t('Full name') }} <b class="wims-req">*</b></label><input :id="id + 'n'" v-model="state.name" type="text" autocomplete="off" /><span class="ac-err">{{ errors.name }}</span></div>
       <div class="ac-f lg-span-all"><label :for="id + 'p'">{{ edit ? $t('New password (leave empty to keep the current one)') : $t('Password') + ' *' }}</label>
         <div class="sx-pw"><input :id="id + 'p'" v-model="state.password" :type="show ? 'text' : 'password'" autocomplete="new-password" /><button type="button" class="lg-btn t-slate" @click="generate"><icons name="refresh" class="w-4 h-4" />{{ $t('Generate') }}</button><button type="button" class="lg-btn t-slate" @click="show = !show"><icons name="eye-flat" class="w-4 h-4" />{{ show ? $t('Hide') : $t('Show') }}</button></div>
         <span class="ac-err">{{ errors.password }}</span><small class="lg-subtext">{{ hint }}</small></div>

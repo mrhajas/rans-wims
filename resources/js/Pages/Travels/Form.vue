@@ -17,11 +17,11 @@
             <div class="ac-f" style="grid-column: span 2"><label>{{ $t('Purpose') }}</label><input v-model="form.purpose" :placeholder="$t('Why they are travelling')" /></div>
             <div class="ac-f"><label>{{ $t('From (city / place)') }}</label><input v-model="form.from_place" :placeholder="$t('e.g. Zanzibar')" /></div>
             <div class="ac-f"><label>{{ $t('From country') }}</label><input v-model="form.from_country" list="tr-countries" :placeholder="homeCountry" /></div>
-            <div class="ac-f"><label>{{ $t('Going to (city / place)') }} *</label><input v-model="form.to_place" :placeholder="$t('e.g. Dubai')" /><span class="ac-err">{{ err('to_place') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Going to (city / place)') }} <b class="wims-req">*</b></label><input v-model="form.to_place" :placeholder="$t('e.g. Dubai')" /><span class="ac-err">{{ err('to_place') }}</span></div>
             <div class="ac-f"><label>{{ $t('Going to country') }}</label><input v-model="form.to_country" list="tr-countries" :placeholder="homeCountry" /><span class="tr-scope" :class="international ? 'is-intl' : 'is-local'"><icons :name="international ? 'plane' : 'building'" class="w-3 h-3" />{{ international ? $t('International travel') : $t('Local travel in :c', { c: homeCountry }) }}</span></div>
-            <div class="ac-f"><label>{{ $t('Departs') }} *</label><date-picker v-model="form.depart_date" :clearable="false" /><span class="ac-err">{{ err('depart_date') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Departs') }} <b class="wims-req">*</b></label><date-picker v-model="form.depart_date" :clearable="false" /><span class="ac-err">{{ err('depart_date') }}</span></div>
             <div v-if="form.trip_type === 'return'" class="ac-f"><label>{{ $t('Returns') }}</label><date-picker v-model="form.return_date" /><span class="ac-err">{{ err('return_date') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Ticket booked on') }} *</label><date-picker v-model="form.booking_date" :disabled="limited" :clearable="false" /><span class="ac-err">{{ err('booking_date') }}</span><small class="lg-subtext">{{ $t('The agent is owed from this day.') }}</small></div>
+            <div class="ac-f"><label>{{ $t('Ticket booked on') }} <b class="wims-req">*</b></label><date-picker v-model="form.booking_date" :disabled="limited" :clearable="false" /><span class="ac-err">{{ err('booking_date') }}</span><small class="lg-subtext">{{ $t('The agent is owed from this day.') }}</small></div>
           </div>
           <datalist id="tr-countries"><option v-for="c in allCountries" :key="c" :value="c" /></datalist>
         </section>
@@ -76,9 +76,9 @@
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-amber"><icons name="cash" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Ticket and Visa') }}</h2><p class="lg-card-sub">{{ $t('Who issued them, and what they cost. The ticket agent and the visa issuer are contacts; what they are owed is kept in Travels.') }}</p></div></header>
           <label class="ac-check tr-force"><input v-model="force" type="checkbox" :disabled="limited || !foreign.length" @change="onForce" /><span><b>{{ $t('Force a currency for this travel') }}</b><small>{{ force ? $t('This travel is recorded in :c at the exchange rate agreed below.', { c: form.currency }) : $t('By default every travel is recorded in TZS. Tick this to record it in another currency (for example USD) at an agreed exchange rate.') }}</small></span></label>
           <div class="lg-fields" style="margin-top: 10px">
-            <div v-if="force" class="ac-f"><label>{{ $t('Currency') }} *</label><acct-select v-model="form.currency" :options="foreign.map(c => ({ value: c, label: c }))" :disabled="limited" /><span class="ac-err">{{ err('currency') }}</span></div>
+            <div v-if="force" class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="form.currency" :options="foreign.map(c => ({ value: c, label: c }))" :disabled="limited" /><span class="ac-err">{{ err('currency') }}</span></div>
             <div v-else class="ac-f"><label>{{ $t('Currency') }}</label><div class="tr-eq">TZS</div></div>
-            <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} *</label><input v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" :disabled="limited" /><span class="ac-err">{{ err('exchange_rate') }}</span><small class="lg-subtext">{{ $t('It carries to the Payment Voucher; whoever pays can still change it.') }}</small></div>
+            <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} <b class="wims-req">*</b></label><input v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" :disabled="limited" /><span class="ac-err">{{ err('exchange_rate') }}</span><small class="lg-subtext">{{ $t('It carries to the Payment Voucher; whoever pays can still change it.') }}</small></div>
             <div class="ac-f" style="grid-column: span 2"><label>{{ $t('Ticket issued by (ticket agent)') }} <b v-if="ticketTotal > 0">*</b></label><acct-select v-model="form.ticket_agent_contact_id" :options="issuers" :placeholder="$t('Choose the ticket agent')" :disabled="limited" clearable /><span class="ac-err">{{ err('ticket_agent_contact_id') }}</span>
               <small class="lg-subtext">{{ $t('Not in the list?') }} <a :href="newAgentUrl" target="_blank" rel="noopener">{{ $t('Add the agent as a contact in the Ticket Agent category') }}</a></small></div>
           </div>
@@ -104,14 +104,14 @@
                 <button type="button" class="lg-icon-btn is-red" :aria-label="$t('Remove')" @click="form.items.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button>
               </div>
               <div class="tr-p-fields tr-i-a">
-                <div class="ac-f"><label>{{ $t('Type of cost') }} *</label><input v-model="it.category" list="tr-cats" :placeholder="$t('e.g. Hotel')" /><span class="ac-err">{{ err('items.' + i + '.category') }}</span></div>
+                <div class="ac-f"><label>{{ $t('Type of cost') }} <b class="wims-req">*</b></label><input v-model="it.category" list="tr-cats" :placeholder="$t('e.g. Hotel')" /><span class="ac-err">{{ err('items.' + i + '.category') }}</span></div>
                 <div class="ac-f tr-span2"><label>{{ $t('Description') }}</label><input v-model="it.description" :placeholder="$t('e.g. 3 nights, Hilton')" /></div>
                 <div class="ac-f"><label>{{ $t('Owed to agent (optional)') }}</label><acct-select v-model="it.contact_id" :options="issuers" :placeholder="$t('No agent')" clearable /><span class="ac-err">{{ err('items.' + i + '.contact_id') }}</span></div>
               </div>
               <div class="tr-p-fields">
-                <div class="ac-f"><label>{{ $t('Currency') }} *</label><acct-select v-model="it.currency" :options="currencies.map(c => ({ value: c, label: c }))" @update:model-value="c => itemCurrency(it, c)" /></div>
+                <div class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="it.currency" :options="currencies.map(c => ({ value: c, label: c }))" @update:model-value="c => itemCurrency(it, c)" /></div>
                 <div class="ac-f"><label>{{ it.currency !== 'TZS' ? $t('Rate (TZS per :c)', { c: it.currency }) : $t('Rate') }}</label><input v-if="it.currency !== 'TZS'" v-model="it.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><input v-else value="1" disabled /><span class="ac-err">{{ err('items.' + i + '.exchange_rate') }}</span></div>
-                <div class="ac-f"><label>{{ $t('Amount') }} ({{ it.currency }}) *</label><input v-model="it.amount" inputmode="decimal" /><span class="ac-err">{{ err('items.' + i + '.amount') }}</span></div>
+                <div class="ac-f"><label>{{ $t('Amount') }} ({{ it.currency }}) <b class="wims-req">*</b></label><input v-model="it.amount" inputmode="decimal" /><span class="ac-err">{{ err('items.' + i + '.amount') }}</span></div>
                 <div class="ac-f"><label>{{ $t('In TZS') }}</label><div class="tr-eq">TZS {{ money(itemTzs(it)) }}</div></div>
               </div>
             </li>

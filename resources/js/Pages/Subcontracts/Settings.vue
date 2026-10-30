@@ -44,7 +44,7 @@
             <div v-for="b in cur.builtin" :key="b.key" class="sc-brow"><span>{{ b.label }}</span><label class="ac-check sc-cell"><input v-model="b.on" type="checkbox" @change="b.required = b.on ? b.required : false" /><i class="sr-only">{{ $t('In use') }}</i></label><label class="ac-check sc-cell"><input v-model="b.required" type="checkbox" :disabled="!b.on" /><i class="sr-only">{{ $t('Required') }}</i></label></div>
             <h3 class="sc-h3" style="margin-top: 16px">{{ $t('Your own fields') }} <small class="lg-subtext">({{ cur.custom.length }} / {{ max_custom }})</small></h3>
             <div v-for="(c, i) in cur.custom" :key="c.key || i" class="sc-cf">
-              <div class="ac-f"><label>{{ $t('Field name') }} *</label><input v-model="c.label" maxlength="60" /><span class="ac-err">{{ err('fields.' + entity + '.custom.' + i + '.label') }}</span></div>
+              <div class="ac-f"><label>{{ $t('Field name') }} <b class="wims-req">*</b></label><input v-model="c.label" maxlength="60" /><span class="ac-err">{{ err('fields.' + entity + '.custom.' + i + '.label') }}</span></div>
               <div class="ac-f"><label>{{ $t('Kind') }}</label><acct-select v-model="c.type" :options="field_types" /></div>
               <div class="ac-f sc-cf-opts" v-if="c.type === 'select'"><label>{{ $t('Choices (one per line)') }}</label><textarea v-model="c.options_text" rows="3"></textarea><span class="ac-err">{{ err('fields.' + entity + '.custom.' + i + '.options') }}</span></div>
               <div class="ac-f"><label>{{ $t('Help text (optional)') }}</label><input v-model="c.help" maxlength="160" /></div>

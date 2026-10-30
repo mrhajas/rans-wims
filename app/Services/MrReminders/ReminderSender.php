@@ -44,14 +44,14 @@ class ReminderSender
         return self::eligible($mr) && $user->can('send-mr-reminders') && FeatureManager::canAccess('mr_reminders', $user);
     }
 
-    /** The people a reminder from $by would reach: the chosen roles and users, without the sender. */
-    public static function audience(int $accountId, ?User $by = null)
+    /** The people a reminder would reach: the chosen roles and users. The sender is one of them too, unless they chose to leave themselves out. */
+    public static function audience(int $accountId, ?User $by = null, bool $leaveOut = false)
     {
-        return ReminderSettings::recipients($accountId)->reject(fn (User $u) => $by && $u->id === $by->id)->values();
+        return ReminderSettings::recipients($accountId)->reject(fn (User $u) => $leaveOut && $by && $u->id === $by->id)->values();
     }
 
     /** @param  array<int,\Illuminate\Http\UploadedFile>  $files  @return array{reminder:MaterialRequestReminder,counts:array} */
-    public static function send(MaterialRequest $mr, User $by, ?string $note, array $files = []): array
+    public static function send(MaterialRequest $mr, User $by, ?string $note, array $files = [], bool $leaveOut = false): array
     {
         $mr->loadMissing(['warehouse:id,name', 'user:id,name', 'items']);
         $reminder = MaterialRequestReminder::create(['account_id' => $mr->account_id ?: $by->account_id, 'material_request_id' => $mr->id, 'reference' => $mr->reference, 'status_at_send' => (string) $mr->status,
@@ -78,7 +78,7 @@ class ReminderSender
         $sms = GreetingTemplates::plain(__('WIMS REMINDER: Material Request :r (:p) is :s and not yet cleared. From :by.', ['r' => $mr->reference, 'p' => $project, 's' => $status, 'by' => $by->name])
             . ($reminder->note ? ' ' . Str::limit($reminder->note, 90, '...') : ''));
 
-        foreach (self::audience((int) $reminder->account_id, $by) as $u) {
+        foreach (self::audience((int) $reminder->account_id, $by, $leaveOut) as $u) {
             $c = ReminderSettings::$addresses ?? RecipientDirectory::candidates($u);
             if (ReminderSettings::app()) {
                 self::try($reminder, $u, 'app', null, fn () => $u->notifyNow(new AppNotification(['module' => 'mr_reminders', 'type' => 'mr_reminder', 'title' => $title, 'message' => $message, 'url' => $url, 'status' => $mr->status,

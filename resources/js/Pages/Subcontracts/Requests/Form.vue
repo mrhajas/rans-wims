@@ -8,9 +8,9 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-sky"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Request') }}</h2></div></header>
           <div class="lg-fields">
-            <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Agreement') }} *</label><acct-select v-model="form.agreement_id" :options="agreements" :placeholder="$t('Choose the agreement...')" :disabled="!!r" @update:model-value="pick" /><span class="ac-err">{{ err('agreement_id') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Request date') }} *</label><date-picker v-model="form.request_date" :clearable="false" /></div>
-            <div class="ac-f"><label>{{ $t('Kind') }} *</label><acct-select v-model="form.kind" :options="kinds" /></div>
+            <div class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Agreement') }} <b class="wims-req">*</b></label><acct-select v-model="form.agreement_id" :options="agreements" :placeholder="$t('Choose the agreement...')" :disabled="!!r" @update:model-value="pick" /><span class="ac-err">{{ err('agreement_id') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Request date') }} <b class="wims-req">*</b></label><date-picker v-model="form.request_date" :clearable="false" /></div>
+            <div class="ac-f"><label>{{ $t('Kind') }} <b class="wims-req">*</b></label><acct-select v-model="form.kind" :options="kinds" /></div>
             <div v-if="!hasItems" class="ac-f"><label>{{ $t('Amount requested') }} * <span v-if="currency">({{ currency }})</span></label><input v-model="form.requested_amount" inputmode="decimal" @input="auto = false" /><span class="ac-err">{{ err('requested_amount') }}</span><small v-if="auto" class="lg-subtext">{{ $t('Filled with the balance left on this agreement. Change it to what you are asking for.') }}</small></div>
             <div v-else class="ac-f"><label>{{ $t('Amount requested') }} ({{ currency }})</label><input :value="itemsTotal" readonly class="sc-ro" /><small class="lg-subtext">{{ $t('The total of the lines below.') }}</small></div>
             <div v-if="fon(fields, 'description')" class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Description and justification') }}{{ fstar(fields, 'description') }}</label><textarea v-model="form.description" :placeholder="$t('What the request is for: the work done, the valuation or claim it comes from')"></textarea></div>

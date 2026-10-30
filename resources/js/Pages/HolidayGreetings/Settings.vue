@@ -17,7 +17,7 @@
               <label class="hg-check"><input v-model="form.remind_sms" type="checkbox" /> {{ $t('SMS') }} <span v-if="!smsReady" class="lg-chip lg-chip-amber" style="text-transform: none">{{ $t('SMS is switched off in WIMS Connect') }}</span></label>
               <label class="hg-check"><input v-model="form.remind_app" type="checkbox" /> {{ $t('The bell in WIMS') }}</label></div>
             <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--lg-line)">
-              <h3 class="lg-card-title" style="margin: 0 0 4px; font-size: 1rem">{{ $t('Automatic sending') }}</h3>
+              <h3 class="lg-card-title" style="margin: 0 0 4px; font-size: 1rem">{{ $t('Schedule Greetings') }}</h3>
               <p class="hg-hint" style="margin: 0 0 12px">{{ $t('The default for every holiday. A holiday can have its own time on its own page. Off until you turn it on.') }}</p>
               <auto-send-fields v-model="auto" :bundles="bundles" :errors="form.errors" />
             </div>

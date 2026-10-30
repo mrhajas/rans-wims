@@ -45,7 +45,7 @@
 
       <travel-modal :show="editing" :title="form.id ? $t('Edit Item') : $t('Add an Item')" :subtitle="$t('A line of the weekly document that can be used again')" icon="collection" max-width="xl" :busy="busy" @close="editing = false">
         <form id="wa-item" class="wa-ui wa-fields" @submit.prevent="save">
-          <div class="ac-f full"><label>{{ $t('Item') }} *</label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example WEEKLY FUEL - MR NASSOR')" /><span class="ac-err">{{ err('name') }}</span></div>
+          <div class="ac-f full"><label>{{ $t('Item') }} <b class="wims-req">*</b></label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example WEEKLY FUEL - MR NASSOR')" /><span class="ac-err">{{ err('name') }}</span></div>
 
           <div class="wa-group">{{ $t('Where it belongs') }}</div>
           <div class="ac-f"><label>{{ $t('Category') }}</label><input v-model="form.category" list="wa-cats" maxlength="60" :placeholder="$t('Fuel, Cleaning...')" /><datalist id="wa-cats"><option v-for="c in categories" :key="c" :value="c"></option></datalist><p class="wa-hint">{{ $t('Chosen for you from the name when left empty.') }}</p><span class="ac-err">{{ err('category') }}</span></div>

@@ -49,13 +49,13 @@
         </reminder-card>
         <div v-if="!rows.data.length" class="lg-card mrr-empty">{{ hasFilters ? $t('No reminder matches these filters.') : $t('No reminder has been sent yet. Open an approved Material Request that is not yet cleared and press Reminder.') }}</div>
       </div>
-      <pager :links="rows.links" />
+      <pager :rows="rows" />
     </div>
 
-    <travel-modal v-if="settings" :show="settingsOpen" :title="$t('Who Is Told')" :subtitle="$t('The people who receive a reminder and how.')" icon="users" max-width="2xl" :busy="sf.processing" @close="settingsOpen = false">
+    <travel-modal v-if="mrSettings" :show="settingsOpen" :title="$t('Who Is Told')" :subtitle="$t('The people who receive a reminder and how.')" icon="users" max-width="2xl" :busy="sf.processing" @close="settingsOpen = false">
       <form id="mrr-settings" @submit.prevent="saveSettings">
         <div class="mrr-fld"><span class="mrr-lab">{{ $t('Roles') }}</span>
-          <div class="mrr-chips"><button v-for="r in settings.roleOptions" :key="r" type="button" :class="{ 'is-on': sf.roles.includes(r) }" @click="toggle(sf.roles, r)">{{ r }}</button></div>
+          <div class="mrr-chips"><button v-for="r in mrSettings.roleOptions" :key="r" type="button" :class="{ 'is-on': sf.roles.includes(r) }" @click="toggle(sf.roles, r)">{{ r }}</button></div>
           <span class="mrr-hint">{{ $t('Everybody with one of these roles is told. Super Admin by default.') }}</span></div>
         <div class="mrr-fld"><span class="mrr-lab">{{ $t('Also these people') }}</span>
           <input v-model="userFind" type="search" class="mrr-search" :placeholder="$t('Find a person...')" autocomplete="off" />
@@ -67,7 +67,7 @@
           <label class="mrr-check"><input v-model="sf.app" type="checkbox" /> {{ $t('App alert (the bell in WIMS)') }}</label>
           <label class="mrr-check"><input v-model="sf.email" type="checkbox" /> {{ $t('Email (with the files)') }}</label>
           <label class="mrr-check"><input v-model="sf.sms" type="checkbox" /> {{ $t('SMS (needs WIMS Connect SMS switched on)') }}</label></div>
-        <p class="mrr-hint">{{ $t('Now :n people are told: :l', { n: settings.audience.length, l: settings.audience.slice(0, 8).join(', ') + (settings.audience.length > 8 ? '...' : '') }) }} {{ $t('The person who sends a reminder is not sent their own.') }}</p>
+        <p class="mrr-hint">{{ $t('Now :n people are told: :l', { n: mrSettings.audience.length, l: mrSettings.audience.slice(0, 8).join(', ') + (mrSettings.audience.length > 8 ? '...' : '') }) }}</p>
       </form>
       <template #footer>
         <button type="button" class="lg-btn lg-btn-soft" :disabled="sf.processing" @click="settingsOpen = false">{{ $t('Cancel') }}</button>
@@ -89,13 +89,13 @@ import ReminderCard from './ReminderCard.vue';
 
 export default {
   components: { AdminLayout, PageHeader, Link, Pager, TravelModal, SimpleAutocomplete, AcctSelect, ReminderCard },
-  props: { rows: Object, filters: Object, stats: Object, warehouses: Array, senders: Array, recipients: Array, statuses: Array, settings: Object, can: Object },
+  props: { rows: Object, filters: Object, stats: Object, warehouses: Array, senders: Array, recipients: Array, statuses: Array, mrSettings: Object, can: Object },
   data() {
     const g = k => this.filters[k] || '';
     return {
       f: { q: g('q'), warehouse_id: g('warehouse_id'), status: g('status'), sender: g('sender'), recipient: g('recipient'), channel: g('channel'), result: g('result'), from: g('from'), to: g('to') },
       busy: false, timer: null, settingsOpen: false, userFind: '',
-      sf: this.$inertia.form({ roles: this.settings ? [...this.settings.roles] : [], users: this.settings ? [...this.settings.users] : [], email: this.settings ? this.settings.email : true, sms: this.settings ? this.settings.sms : true, app: this.settings ? this.settings.app : true }),
+      sf: this.$inertia.form({ roles: this.mrSettings ? [...this.mrSettings.roles] : [], users: this.mrSettings ? [...this.mrSettings.users] : [], email: this.mrSettings ? this.mrSettings.email : true, sms: this.mrSettings ? this.mrSettings.sms : true, app: this.mrSettings ? this.mrSettings.app : true }),
     };
   },
   computed: {
@@ -104,7 +104,7 @@ export default {
     resultOptions() { return [{ value: 'Sent', label: this.$t('Sent') }, { value: 'Failed', label: this.$t('Failed') }, { value: 'Skipped', label: this.$t('Skipped') }]; },
     userShown() {
       const q = this.userFind.trim().toLowerCase();
-      return (this.settings ? this.settings.userOptions : []).filter(u => !q || u.name.toLowerCase().includes(q));
+      return (this.mrSettings ? this.mrSettings.userOptions : []).filter(u => !q || u.name.toLowerCase().includes(q));
     },
   },
   watch: {

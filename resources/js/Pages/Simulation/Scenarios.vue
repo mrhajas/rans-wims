@@ -6,7 +6,7 @@
       <section class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="plus" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('New scenario') }}</h2><p class="lg-card-sub">{{ $t('It starts as a copy of what is open now.') }}</p></div></header>
         <form class="sim-form" @submit.prevent="create">
-          <div class="ac-f"><label>{{ $t('Name') }} *</label><input v-model="nf.name" :placeholder="$t('For example: Budget Revision')" /><span class="ac-err">{{ nf.errors.name }}</span></div>
+          <div class="ac-f"><label>{{ $t('Name') }} <b class="wims-req">*</b></label><input v-model="nf.name" :placeholder="$t('For example: Budget Revision')" /><span class="ac-err">{{ nf.errors.name }}</span></div>
           <div class="ac-f sim-grow"><label>{{ $t('What is it for?') }}</label><input v-model="nf.description" /></div>
           <div class="ac-f"><label>{{ $t('Start from') }}</label><css-select v-model="nf.from"><option :value="null">{{ $t('What is open now') }}</option><option v-for="s in scenarios.filter(x => !x.current && x.checkpoints.length)" :key="s.id" :value="s.id">{{ s.name }}</option></css-select></div>
           <div class="ac-f"><label>&nbsp;</label><button type="submit" class="lg-btn lg-btn-primary" :disabled="nf.processing"><icons name="plus" class="w-4 h-4" />{{ $t('Create') }}</button></div>

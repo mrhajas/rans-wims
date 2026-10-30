@@ -155,7 +155,7 @@ class PaymentRequestController extends Controller
                 'claim' => $r->claim_line_id ? $this->claimOf($r->claim_line_id) : null],
             'items' => $r->items->map(fn ($i) => ['id' => $i->id, 'work_item_id' => $i->work_item_id, 'work' => optional($i->workItem)->description, 'description' => $i->description, 'amount' => $this->m($i->amount)])->values(),
             'figures' => $money ? $rf : null, 'agreement_figures' => $af, 'payments' => $payments->values(), 'attachments' => $this->filesOf($r),
-            'history' => $this->can('view-audit-subcontracts') ? $this->safeHistory(R::class, $r->id) : [], 'money' => $money, 'settings' => ['override_allowed' => (bool) SubcontractSettings::get()['override_allowed']],
+            'history' => $this->can('view-audit-subcontracts') ? $this->safeHistory(R::class, $r->id) : [], 'money' => $money, 'requestSettings' => ['override_allowed' => (bool) SubcontractSettings::get()['override_allowed']],
             'can' => [
                 'edit' => in_array($r->status, [R::DRAFT, R::RETURNED], true) && ($this->can('create-subcontract-requests') && ($own || $this->can('approve-subcontract-requests'))), 'submit' => in_array($r->status, [R::DRAFT, R::RETURNED], true) && $this->can('submit-subcontract-requests'),
                 'review' => $r->status === R::SUBMITTED && $this->can('review-subcontract-requests'), 'return' => in_array($r->status, [R::SUBMITTED, R::REVIEW], true) && ($this->can('review-subcontract-requests') || $this->can('approve-subcontract-requests')),

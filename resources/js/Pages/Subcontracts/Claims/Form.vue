@@ -9,9 +9,9 @@
         <collapse-section>
           <template #head><span class="lg-card-ico lg-ico-sky"><icons name="users" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Step 1. Subcontractor and project') }}</h2><p class="lg-card-sub">{{ $t('The contracts of the subcontractor that are completed and can be paid are listed below.') }}</p></div></template>
           <div class="lg-fields">
-            <div class="ac-f"><label>{{ $t('Subcontractor') }} *</label><acct-select v-model="form.contact_id" :options="contacts" :placeholder="$t('Choose the subcontractor...')" :disabled="!!claim" @update:model-value="reload(true)" /><span class="ac-err">{{ err('contact_id') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Subcontractor') }} <b class="wims-req">*</b></label><acct-select v-model="form.contact_id" :options="contacts" :placeholder="$t('Choose the subcontractor...')" :disabled="!!claim" @update:model-value="reload(true)" /><span class="ac-err">{{ err('contact_id') }}</span></div>
             <div class="ac-f"><label>{{ $t('Project(s) / Warehouse(s)') }} <small class="lg-subtext">({{ $t('optional') }})</small></label><acct-select v-model="form.warehouse_id" :options="projects" :placeholder="$t('Every project')" clearable @update:model-value="reload(false)" /><span class="ac-err">{{ err('warehouse_id') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Request date') }} *</label><date-picker v-model="form.request_date" :clearable="false" /><span class="ac-err">{{ err('request_date') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Request date') }} <b class="wims-req">*</b></label><date-picker v-model="form.request_date" :clearable="false" /><span class="ac-err">{{ err('request_date') }}</span></div>
           </div>
         </collapse-section>
 
@@ -47,7 +47,7 @@
                   <td :data-label="$t('Contract')"><div class="cl-cell"><a :href="r.url" target="_blank" rel="noopener" class="lg-main"><mark-hit :text="r.reference" :q="tq" /></a><div class="lg-subtext"><mark-hit :text="r.title" :q="tq" /></div></div></td>
                   <td v-if="money" :data-label="$t('Open to request')" class="ac-num"><b :class="neg(r.remaining_eligible_signed) ? 'amt-neg' : 'amt-out'">{{ mc(r.remaining_eligible, r.currency) }}</b></td>
                   <td v-if="money" :data-label="$t('Amount to request')" class="ac-num cl-amt">
-                    <div v-if="isSel(r)" class="cl-cell"><input v-model="sel[r.agreement_id].amount" class="cl-in" :class="{ 'is-bad': !!rowError(r) }" inputmode="decimal" :readonly="!settings.allow_partial" :aria-label="$t('Amount to request for :r', { r: r.reference })" /><div v-if="rowError(r)" class="cl-err">{{ rowError(r) }}</div><div v-else-if="isPartial(r)" class="lg-subtext">{{ $t('Partial: :n left', { n: leftAfter(r) }) }}</div></div>
+                    <div v-if="isSel(r)" class="cl-cell"><input v-model="sel[r.agreement_id].amount" class="cl-in" :class="{ 'is-bad': !!rowError(r) }" inputmode="decimal" :readonly="!claimSettings.allow_partial" :aria-label="$t('Amount to request for :r', { r: r.reference })" /><div v-if="rowError(r)" class="cl-err">{{ rowError(r) }}</div><div v-else-if="isPartial(r)" class="lg-subtext">{{ $t('Partial: :n left', { n: leftAfter(r) }) }}</div></div>
                     <span v-else class="lg-subtext">-</span>
                   </td>
                   <td :data-label="$t('Project / location')"><mark-hit :text="r.project || '-'" :q="tq" /><div v-if="r.projects && r.projects.length > 1" class="lg-subtext">+{{ r.projects.length - 1 }}</div></td>
@@ -118,7 +118,7 @@ const MarkHit = {
 export default {
   components: { MarkHit, CollapseSection, SearchBar, SortTh, AdminLayout, PageHeader, Link, DatePicker, AcctSelect, AcctDropzone, AcctFileList },
   mixins: [sc],
-  props: { claim: Object, contacts: Array, projects: Array, eligible_url: String, money: Boolean, today: String, attachments: Array, preset: Object, settings: Object },
+  props: { claim: Object, contacts: Array, projects: Array, eligible_url: String, money: Boolean, today: String, attachments: Array, preset: Object, claimSettings: Object },
   data() {
     const c = this.claim || {};
     const sel = {}; const order = [];
@@ -172,7 +172,7 @@ export default {
       if (a === null) return this.$t('Enter an amount, for example 1500000.00');
       if (a <= ZERO) return this.$t('The amount must be above zero.');
       if (w !== null && a > w) return this.$t('More than the :a still open to request.', { a: this.mc(r.remaining_eligible, r.currency) });
-      if (!this.settings.allow_partial && w !== null && a !== w) return this.$t('Partial requests are off: ask for the whole balance.');
+      if (!this.claimSettings.allow_partial && w !== null && a !== w) return this.$t('Partial requests are off: ask for the whole balance.');
       return '';
     },
     toggle(r, on) {

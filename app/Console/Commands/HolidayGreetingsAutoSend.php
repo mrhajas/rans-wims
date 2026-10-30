@@ -37,7 +37,7 @@ class HolidayGreetingsAutoSend extends Command
                 $bundle = $plan['bundle_id'] ? HolidayBundle::withoutGlobalScope('account')->where('account_id', $accountId)->find($plan['bundle_id']) : null;
                 if ($plan['bundle_id'] && ! $bundle) {
                     $h->forceFill(['auto_attempted_at' => $now])->save();
-                    log_activity('Holiday automatic sending skipped: the bundle no longer exists', ['holiday' => $h->name], $h, 'Holiday Greetings');
+                    log_activity('Holiday scheduled sending skipped: the bundle no longer exists', ['holiday' => $h->name], $h, 'Holiday Greetings');
                     $this->warn($h->name . ': the bundle no longer exists, nothing sent.');
                     continue;
                 }
@@ -48,12 +48,12 @@ class HolidayGreetingsAutoSend extends Command
                 $h->forceFill(['auto_attempted_at' => $now])->save(); // first, so a slow send is never started twice
                 $lists = GreetingSender::lists($h, $bundle?->id);
                 if (! $lists['counts']['email'] && ! $lists['counts']['sms']) {
-                    log_activity('Holiday automatic sending found nobody to send to', ['holiday' => $h->name, 'greeting_list' => $bundle?->name ?? 'The whole greeting list'], $h, 'Holiday Greetings');
+                    log_activity('Holiday scheduled sending found nobody to send to', ['holiday' => $h->name, 'greeting_list' => $bundle?->name ?? 'The whole greeting list'], $h, 'Holiday Greetings');
                     $this->warn($h->name . ': nobody to send to.');
                     continue;
                 }
                 $q = GreetingSender::start($h, null, null, $bundle?->id);
-                log_activity('Holiday greetings sent automatically', ['holiday' => $h->name, 'date' => $h->date->format('Y-m-d'), 'emails' => $q['email'], 'sms' => $q['sms'], 'greeting_list' => $bundle?->name ?? 'The whole greeting list',
+                log_activity('Holiday greetings sent as scheduled', ['holiday' => $h->name, 'date' => $h->date->format('Y-m-d'), 'emails' => $q['email'], 'sms' => $q['sms'], 'greeting_list' => $bundle?->name ?? 'The whole greeting list',
                     'sends_at' => $h->autoSendAt()->toDateTimeString()], $h, 'Holiday Greetings');
                 HolidayNotifier::autoSent($h, $q, $bundle?->name);
                 $this->info($h->name . ': ' . $q['email'] . ' emails and ' . $q['sms'] . ' SMS queued.');

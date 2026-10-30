@@ -24,6 +24,7 @@ import { initOfflineSync } from '@/Core/offlineSync';
 import { trackSectionVisit } from '@/Core/quickMenuTracking';
 import tooltipDirective from '@/Core/tooltipDirective';
 import { initFieldErrors } from '@/Core/fieldErrors';
+import { initRequiredFields } from '@/Core/requiredFields';
 import { initAutoNumber, setPagination } from '@/Core/autoNumber';
 import { initSaveProgress } from '@/Core/saveProgress';
 import SaveProgress from '@/Shared/SaveProgress.vue';
@@ -223,6 +224,7 @@ createInertiaApp({
       window.location.reload();
     });
     initFieldErrors(router);
+    initRequiredFields(router);
     // every data table gets a No column; the numbers of a paginated list continue from page to page (props of each visit tell where a page starts)
     initAutoNumber();
     setPagination(props && props.initialPage ? props.initialPage.props : null);

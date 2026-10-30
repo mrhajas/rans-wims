@@ -51,7 +51,7 @@ trait Guards
             'month' => $date->locale('en')->translatedFormat('M'), 'dom' => $date->format('j'), 'daysAway' => (int) $today->diffInDays($date, false), 'kind' => $h->kind, 'theme' => $h->theme, 'emoji' => $theme['emoji'], 'palette' => $theme['palette'],
             'confirmed' => (bool) $h->date_confirmed, 'enabled' => (bool) $h->is_enabled, 'weekend' => $h->isWeekend(), 'counts' => $h->counts(), 'forced' => (bool) $h->force_include,
             'phase' => $this->phase($h, $counts['state'] ?? null), 'sent' => $counts['sent'] ?? 0, 'failed' => $counts['failed'] ?? 0, 'pending' => $counts['pending'] ?? 0, 'total' => $counts['total'] ?? 0,
-            'reminded_at' => optional($h->reminder_sent_at)->toIso8601String(), 'locked' => $h->locked(),
+            'reminded_at' => optional($h->reminder_sent_at)->toIso8601String(), 'locked' => $h->locked(), 'past' => $h->isPast(),
         ];
     }
 

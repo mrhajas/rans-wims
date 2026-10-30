@@ -244,7 +244,8 @@ class UserController extends Controller
 
     public function update(UserRequest $request, User $user)
     {
-        if ($user->id == auth()->id()) {
+        $self = $user->id == auth()->id();
+        if ($self && ! \App\Services\Licensing\LicenceService::isManager(auth()->user())) {
             return back()->with('error', __('You should not update your own account.'));
         }
         if (demo() && $user->id == 1) {
@@ -270,7 +271,11 @@ class UserController extends Controller
         $rolesBefore = $user->getRoleNames()->all();
         $warehousesBefore = $user->warehouses()->withoutGlobalScopes()->pluck('warehouses.name')->all();
         $user->update($data);
-        $user->syncRoles($this->guardedRoles($request->input('roles')));
+        $roles = $this->guardedRoles($request->input('roles'));
+        if ($self && ! in_array('Super Admin', $roles, true)) {
+            $roles[] = 'Super Admin'; // Dr Hajas edits himself but can never lock himself out of the system
+        }
+        $user->syncRoles($roles);
         $user->warehouses()->sync($request->input('warehouses', []));
         \App\Support\AllWarehouseRoles::apply($user); // a role with "All warehouses" means every warehouse
         \App\Support\UserAudit::roles($user, $rolesBefore, $user->fresh()->getRoleNames()->all());

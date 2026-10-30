@@ -77,6 +77,12 @@ class HolidayDay extends Model
         return $this->startsAt()->copy()->subMinutes($this->autoPlan()['minutes']);
     }
 
+    /** The holiday day is over: its greetings can still be read, but no new greeting can be sent or scheduled. */
+    public function isPast(): bool
+    {
+        return $this->startsAt()->lt(now(config('app.timezone'))->startOfDay());
+    }
+
     public function locked(): bool
     {
         return $this->send_started_at !== null;

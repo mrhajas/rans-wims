@@ -12,7 +12,7 @@ class ExternalStockItem extends Model
 
     protected $table = 'external_stock_items';
 
-    protected $fillable = ['movement_id', 'item_id', 'unit_id', 'quantity', 'note'];
+    protected $fillable = ['movement_id', 'item_id', 'warehouse_id', 'unit_id', 'quantity', 'note'];
 
     public $casts = ['quantity' => 'float'];
 
@@ -24,6 +24,11 @@ class ExternalStockItem extends Model
     public function item()
     {
         return $this->belongsTo(Item::class)->withTrashed();
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class)->withoutGlobalScopes()->withTrashed();
     }
 
     public function unit()

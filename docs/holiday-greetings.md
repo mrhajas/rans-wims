@@ -58,3 +58,8 @@ Calendar for 2026 to 2028 (Easter, Eid dates), import dry run and import (162 ca
 - **Sending**: "Send the Greetings" opens a window that asks which list receives it (whole greeting list or a bundle, with people / emails / SMS / not-yet-sent counts). A holiday can be sent to several bundles in turn; nobody is sent the same greeting twice. The delivery rows keep the bundle name, and the holiday page shows "Sent to: ...". The "Who receives it" tab can be filtered by bundle.
 - **Automatic sending**: per holiday ("Automatic Sending" button) or as the default in Settings (off until turned on). Minutes before the holiday begins (00:00): presets 0, 10, 30 minutes, 1, 3, 8 hours, 1, 2 days, or any value up to 7 days; plus the bundle. `holiday-greetings:auto-send` runs every minute (scheduler), once per holiday (`auto_attempted_at`), only for a holiday that counts and is not yet sent, never after the holiday day is over. Super Admins get a bell alert, the reminder says when it will send itself. A bundle chosen for an automatic send cannot be removed.
 - **Email**: the year sits between the two rings of the calendar icon.
+
+## Schedule Greetings and past holidays (2026-10-30)
+
+- "Automatic Sending" is now called **Schedule Greetings** everywhere (holiday page, Settings, alerts, activity log).
+- A holiday whose day is over (`HolidayDay::isPast()`, `past` in the holiday row) can still be opened and read, but **Send the Greetings** and **Schedule Greetings** are disabled and the server refuses both (`SendController::start` and `auto`).

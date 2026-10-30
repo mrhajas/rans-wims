@@ -1,6 +1,6 @@
 <template>
   <div class="hg-auto">
-    <label class="hg-check hg-auto-switch"><input :checked="modelValue.enabled" type="checkbox" @change="set({ enabled: $event.target.checked })" /> {{ $t('Send the greetings automatically') }}</label>
+    <label class="hg-check hg-auto-switch"><input :checked="modelValue.enabled" type="checkbox" @change="set({ enabled: $event.target.checked })" /> {{ $t('Schedule the greetings to be sent automatically') }}</label>
     <div v-if="modelValue.enabled" class="hg-auto-body">
       <div class="hg-field">
         <label>{{ $t('How long before the holiday begins') }}</label>
