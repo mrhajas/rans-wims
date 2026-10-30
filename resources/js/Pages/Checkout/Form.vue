@@ -601,6 +601,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import _isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
@@ -704,6 +705,7 @@ export default {
   },
 
   watch: {
+    'form.items.length': onRowAdded('.co-row-in'),
     select_variant: function (show) {
       this.unknown_variation = null;
       document.body.style.overflow = show ? 'hidden' : 'auto';

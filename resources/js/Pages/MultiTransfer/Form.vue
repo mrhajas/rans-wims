@@ -61,6 +61,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
@@ -86,6 +87,10 @@ export default {
       return Object.values(by);
     },
   },
+  watch: {
+    'form.lines.length': onRowAdded('.mt-form-lines > li'),
+  },
+
   methods: {
     err(k) { return (this.$page.props.errors || {})[k]; },
     lineError(i) { const e = this.$page.props.errors || {}; return e['lines.' + i + '.quantity'] || e['lines.' + i + '.item_id'] || e['lines.' + i + '.from_warehouse_id'] || ''; },

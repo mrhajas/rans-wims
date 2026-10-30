@@ -441,6 +441,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -575,6 +576,7 @@ export default {
   },
 
   watch: {
+    'form.items.length': onRowAdded('.sa-row'),
     // The warehouse is locked only when editing. While creating, switching it must not leave the previous warehouse's items (or its import) in the list.
     'form.warehouse_id'() {
       if (this.edit) return;

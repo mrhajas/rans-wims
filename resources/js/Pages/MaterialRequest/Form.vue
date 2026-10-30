@@ -64,7 +64,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(item, index) in form.items" :key="index">
+                <tr v-for="(item, index) in form.items" :key="index" class="mr-item-row">
                   <td :data-label="$t('Remove')">
                     <button type="button" @click="removeItem(index)" class="lg-icon-btn is-red lg-tip tip-left" :data-tip="$t('Remove')">
                       <icons name="trash" class="w-4 h-4" />
@@ -211,6 +211,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import pick from 'lodash/pick';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
@@ -286,6 +287,10 @@ export default {
         label: `${item.code} - ${item.name}`,
       }));
     },
+  },
+
+  watch: {
+    'form.items.length': onRowAdded('.mr-item-row'),
   },
 
   methods: {

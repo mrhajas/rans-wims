@@ -610,6 +610,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import { printWithAnimation, printUrlInFrame, stockDocumentPrintSheet } from '@/Core/printAnimation';
 import _isEqual from 'lodash/isEqual';
 import throttle from 'lodash/throttle';
@@ -715,6 +716,7 @@ export default {
   },
 
   watch: {
+    'form.items.length': onRowAdded('.ci-row-in'),
     select_variant: function (show) {
       this.unknown_variation = null;
       document.body.style.overflow = show ? 'hidden' : 'auto';

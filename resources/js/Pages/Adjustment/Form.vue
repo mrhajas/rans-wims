@@ -588,6 +588,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import _isEqual from 'lodash/isEqual';
 import throttle from 'lodash/throttle';
 import Dialog from '@/Shared/Dialog.vue';
@@ -689,6 +690,7 @@ export default {
   },
 
   watch: {
+    'form.items.length': onRowAdded('.adj-row-in'),
     select_variant: function (show) {
       this.unknown_variation = null;
       document.body.style.overflow = show ? 'hidden' : 'auto';

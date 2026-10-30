@@ -162,7 +162,7 @@
                   <th class="tr-col-unit">{{ $t('Unit') }}</th>
                 </tr>
               </thead>
-              <tbody v-for="(row, ii) in form.items" :key="row._key">
+              <tbody v-for="(row, ii) in form.items" :key="row._key" class="tr-body">
                 <!-- an item not chosen yet -->
                 <tr v-if="row.blank" :class="{ 'tr-err-row': rowError(ii, 'item_id') }">
                   <td :data-label="$t('Remove')">
@@ -478,6 +478,7 @@
 </template>
 
 <script>
+import { onRowAdded } from '@/Core/revealLast';
 import { printWithAnimation, printUrlInFrame, transferPrintSheet } from '@/Core/printAnimation';
 import _isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
@@ -652,6 +653,7 @@ export default {
   },
 
   watch: {
+    'form.items.length': onRowAdded('.tr-body'),
     select_variant: function (show) {
       this.unknown_variation = null;
       document.body.style.overflow = show ? 'hidden' : 'auto';
