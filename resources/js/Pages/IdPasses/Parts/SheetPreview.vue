@@ -69,6 +69,8 @@ export default {
   methods: {
     u(v) { return (v / this.geo.W * 100) + 'cqw'; },
     stagger() { const n = this._st = (this._st || 0) + 1; if (!this._stReset) { this._stReset = true; requestAnimationFrame(() => { this._st = 0; this._stReset = false; }); } return Math.min(n - 1, 12) * 45; },
+    // `done` is called once, by the end of the animation or, if the browser never reports it (a tab in the background), by a timer
+    guard(done, ms) { let over = false; const end = () => { if (over) return; over = true; done(); }; setTimeout(end, ms + 400); return end; },
     reduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; },
     // a card flies from its row in the list onto the sheet, and back when the tick is taken off
     onEnter(el, done) {
@@ -76,7 +78,7 @@ export default {
       const id = Number(el.dataset.id), to = el.getBoundingClientRect(), from = this.locate ? this.locate(id) : null, delay = this.stagger();
       if (!to.width) return done();
       el.style.zIndex = 60;
-      const end = () => { el.style.zIndex = ''; done(); };
+      const end = this.guard(() => { el.style.zIndex = ''; done(); }, 900 + delay);
       if (!from) { el.animate([{ opacity: 0, transform: 'scale(.55) translateY(14px)' }, { opacity: 1, transform: 'scale(1.05)', offset: 0.7 }, { opacity: 1, transform: 'none' }], { duration: 520, delay, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }).onfinish = end; return; }
       const dx = from.x - (to.left + to.width / 2), dy = from.y - (to.top + to.height / 2), s = Math.max(0.12, Math.min(0.6, (from.w || 90) / to.width));
       el.animate([{ opacity: 0.1, transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ') rotate(-6deg)' }, { opacity: 1, offset: 0.2 }, { opacity: 1, transform: 'translate(' + (dx * 0.08) + 'px,' + (dy * 0.08) + 'px) scale(1.08) rotate(1deg)', offset: 0.82 }, { opacity: 1, transform: 'none' }],
@@ -86,6 +88,7 @@ export default {
       if (this.compact || this.reduced() || !el.animate) return done();
       const id = Number(el.dataset.id), to = el.getBoundingClientRect(), from = this.locate ? this.locate(id) : null, delay = this.stagger() * 0.5;
       el.style.zIndex = 60; el.style.pointerEvents = 'none';
+      done = this.guard(done, 700 + delay);
       if (!from || !to.width) { el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.6) translateY(-12px)' }], { duration: 320, delay, easing: 'ease-in', fill: 'forwards' }).onfinish = done; return; }
       const dx = from.x - (to.left + to.width / 2), dy = from.y - (to.top + to.height / 2), s = Math.max(0.12, Math.min(0.6, (from.w || 90) / to.width));
       el.animate([{ opacity: 1, transform: 'none' }, { opacity: 1, transform: 'scale(1.06)', offset: 0.18 }, { opacity: 0, transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ') rotate(5deg)' }], { duration: 560, delay, easing: 'cubic-bezier(.5,0,.7,.4)', fill: 'forwards' }).onfinish = done;

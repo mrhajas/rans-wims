@@ -184,8 +184,9 @@ export default {
     },
     // the sheet preview shows the lot the newest tick belongs to, and never an empty one
     followSpread(keep) {
-      const n = this.selected.length, cap = this.drawCap;
-      if (!keep && n > (this._len || 0)) this.spread = Math.floor((n - 1) / cap);
+      const n = this.selected.length, cap = this.drawCap, was = this._len || 0;
+      // one tick: the lot of that card; many at once (a whole page): the lot of the first of them, so the cards that were added are seen flying in
+      if (!keep && n > was) this.spread = n - was > 1 ? Math.floor(was / cap) : Math.floor((n - 1) / cap);
       this.spread = Math.max(0, Math.min(this.spread, Math.ceil(n / cap) - 1));
       this._len = n;
     },
