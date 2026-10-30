@@ -139,6 +139,7 @@ import { v4 as uuidv4 } from 'uuid';
 import throttle from 'lodash/throttle';
 import TecLabel from '@/Jetstream/Label.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
+import { scanFields } from '@/Core/scanListener';
 import { isFullWarehouseList, orderWarehouses, groupKeyOf, groupMeta, progressOf } from '@/Core/warehouseGroups';
 
 export default {
@@ -301,12 +302,14 @@ export default {
   },
 
   mounted() {
+    if (this.scan) scanFields.add(this);
     window.addEventListener('resize', this.onWindowReposition);
     window.addEventListener('scroll', this.onWindowReposition, true);
     this.resolveFromModelValue();
   },
 
   beforeUnmount() {
+    scanFields.delete(this);
     this.hideOptionTooltip();
     window.removeEventListener('resize', this.onWindowReposition);
     window.removeEventListener('scroll', this.onWindowReposition, true);
@@ -495,7 +498,9 @@ export default {
       this._last = now;
     },
     // the field is free for the next scan at once; the item is asked for in the background and picked in the order it was scanned
-    runScan(code) {
+    // `fromPage`: the code was caught by the background listener (nothing had the cursor); the field then takes the cursor to wait for the next scan
+    runScan(code, fromPage = false) {
+      if (fromPage && this.$refs.input) this.$refs.input.focus({ preventScroll: true });
       this._quiet = this.search !== '';
       this.search = '';
       this.result = [];

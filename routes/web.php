@@ -405,6 +405,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
 
     Route::post('search/items', [Controllers\AjaxController::class, 'items'])->name('items.search');
     Route::post('scan/item', [Controllers\AjaxController::class, 'scan'])->name('items.scan');
+    Route::post('scan/resolve', [Controllers\ScanResolveController::class, 'resolve'])->middleware('throttle:120,1,scan.resolve')->name('scan.resolve');
     Route::get('barcodes', [Controllers\ItemController::class, 'barcodes'])->name('items.barcodes');
     Route::get('barcodes/print', [Controllers\ItemController::class, 'barcodesPrint'])->middleware('throttle:30,1,items.barcodes.print')->name('items.barcodes.print');
     Route::post('barcodes/preferences', [Controllers\ItemController::class, 'saveBarcodePrefs'])->middleware('throttle:60,1,items.barcodes.preferences')->name('items.barcodes.preferences');

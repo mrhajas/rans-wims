@@ -68,6 +68,7 @@
 </template>
 
 <script>
+import { installScanListener } from '@/Core/scanListener';
 import TopBar from '@/Shared/Top/Navbar.vue';
 import AppFooter from '@/Shared/AppFooter.vue';
 import PrintAnimationHost from '@/Shared/PrintAnimationHost.vue';
@@ -175,6 +176,7 @@ export default {
   },
 
   mounted() {
+    installScanListener();
     window.addEventListener('keydown', this.onRauncherShortcut);
     this.startMenuSwipe();
     window.addEventListener('wims:rauncher', this.toggleRauncher);
