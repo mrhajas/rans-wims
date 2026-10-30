@@ -14,11 +14,14 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#0b1d36">
     <title>RANS ID Verification</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap">
     <style>
-        :root { --navy: #0b1d36; --navy2: #12335a; --gold: #f2a93b; --ink: #0f172a; --mute: #64748b; --accent: {{ $accent }}; --band: {{ $band ?? '#1565c0' }}; --bandink: {{ $bandInk ?? '#fff' }}; --ease: cubic-bezier(.2, .8, .2, 1); }
+        :root { --navy: #0b1d36; --navy2: #12335a; --gold: #f2a93b; --ink: #0f172a; --mute: #64748b; --accent: {{ $accent }}; --band: {{ $band ?? '#1565c0' }}; --bandink: {{ $bandInk ?? '#fff' }}; --ease: cubic-bezier(.2, .8, .2, 1); --font: Montserrat, ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        html, body, button, input, a, time, dl, dt, dd { font-family: var(--font); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html { background: var(--navy); }
-        body { margin: 0; min-height: 100vh; min-height: 100dvh; font-family: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--ink); overflow-x: hidden; position: relative; padding: max(18px, env(safe-area-inset-top)) 14px max(26px, env(safe-area-inset-bottom)); background: radial-gradient(120% 70% at 50% -10%, #1b4778 0%, var(--navy) 62%); }
+        body { margin: 0; min-height: 100vh; min-height: 100dvh; font-family: var(--font); color: var(--ink); overflow-x: hidden; position: relative; padding: max(18px, env(safe-area-inset-top)) 14px max(26px, env(safe-area-inset-bottom)); background: radial-gradient(120% 70% at 50% -10%, #1b4778 0%, var(--navy) 62%); }
         /* the backdrop: a drawing board (grid of a site plan) and two soft lights in the colour of the answer */
         .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
         .bg::before { content: ''; position: absolute; inset: -40px; background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px); background-size: 96px 96px, 96px 96px, 24px 24px, 24px 24px; animation: drift 38s linear infinite; mask-image: radial-gradient(75% 60% at 50% 35%, #000 30%, transparent 100%); -webkit-mask-image: radial-gradient(75% 60% at 50% 35%, #000 30%, transparent 100%); }
@@ -101,7 +104,14 @@
         @keyframes ping { 70% { box-shadow: 0 0 0 9px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
         .live time { font-variant-numeric: tabular-nums; color: var(--ink); }
 
-        .body { padding: 20px 20px 22px; }
+        .front { display: flex; flex-direction: column; } .front .body { flex: 1; display: flex; flex-direction: column; padding: 20px 20px 22px; }
+        .rear { display: flex; flex-direction: column; } .rear .in { flex: 1; display: flex; flex-direction: column; }
+        /* the sign-off at the foot of each side */
+        .tagline { margin-top: auto; padding-top: 22px; display: flex; align-items: center; justify-content: center; gap: 12px; animation: rise .7s 2.1s var(--ease) both; }
+        .tagline::before, .tagline::after { content: ''; flex: 1; height: 1px; max-width: 70px; background: linear-gradient(90deg, transparent, #e0b25c); } .tagline::after { transform: scaleX(-1); }
+        .tagline b { flex: none; font-size: .98rem; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; background: linear-gradient(105deg, #b9770e 20%, #f6b53a 40%, #ffe29a 50%, #f6b53a 60%, #b9770e 80%) 120% 0 / 250% 100% repeat-x; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: tagshine 6s 3s ease-in-out infinite; }
+        @keyframes tagshine { 0%, 15% { background-position: 120% 0; } 45%, 100% { background-position: -20% 0; } }
+        .tagline i { width: 7px; height: 7px; transform: rotate(45deg); background: #e0b25c; flex: none; }
         .who { display: flex; gap: 16px; align-items: center; margin-bottom: 18px; animation: rise .7s 1.05s var(--ease) both; }
         .avatar { position: relative; flex: none; width: 92px; height: 112px; border-radius: 18px; padding: 3px; background: linear-gradient(150deg, var(--band), color-mix(in srgb, var(--band) 40%, #fff)); box-shadow: 0 16px 24px -14px color-mix(in srgb, var(--band) 80%, #000); }
         .avatar img, .avatar .mono { width: 100%; height: 100%; border-radius: 15px; object-fit: cover; display: grid; place-items: center; background: #dde5ee; }
@@ -126,7 +136,7 @@
         dt { color: var(--mute); } dd { margin: 0; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
         dt:nth-of-type(1), dd:nth-of-type(1) { animation-delay: 1.3s; } dt:nth-of-type(2), dd:nth-of-type(2) { animation-delay: 1.4s; } dt:nth-of-type(3), dd:nth-of-type(3) { animation-delay: 1.5s; } dt:nth-of-type(4), dd:nth-of-type(4) { animation-delay: 1.6s; } dt:nth-of-type(5), dd:nth-of-type(5) { animation-delay: 1.7s; }
         dl > :nth-last-child(-n+2) { border-bottom: 0; }
-        .idno { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .08em; font-size: 1.05rem; background: none; border: 0; color: inherit; font-weight: 800; cursor: copy; padding: 2px 10px; border-radius: 10px; transition: background .2s; } .idno:hover { background: #eef3f9; }
+        .idno { font-variant-numeric: tabular-nums; letter-spacing: .08em; font-size: 1.05rem; background: none; border: 0; color: inherit; font-weight: 800; cursor: copy; padding: 2px 10px; border-radius: 10px; transition: background .2s; } .idno:hover { background: #eef3f9; }
         .note { margin-top: 16px; padding: 11px 13px; border-radius: 14px; background: #f1f5f9; color: #475569; font-size: .8rem; line-height: 1.5; animation: rise .6s 1.8s var(--ease) both; } .note a { color: #1e4467; font-weight: 800; }
         .note.warn { background: #fff7ed; color: #9a3412; }
 
@@ -172,6 +182,7 @@
         .foot { text-align: center; color: rgba(255,255,255,.5); font-size: .72rem; margin-top: 18px; animation: rise .8s 1.6s var(--ease) both; }
         .toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 30px); padding: 10px 18px; border-radius: 14px; background: #fff; color: var(--ink); font-weight: 800; font-size: .84rem; box-shadow: 0 20px 36px -16px rgba(0,0,0,.7); opacity: 0; transition: .3s var(--ease); z-index: 5; pointer-events: none; } .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
+        @media (max-width: 400px) { .tagline { gap: 8px; } .tagline b { font-size: .84rem; letter-spacing: .18em; } }
         @media (max-width: 380px) { .grid { grid-template-columns: 1fr; } .who { gap: 12px; } .avatar { width: 80px; height: 98px; } .status b { font-size: 1.85rem; } }
         @media (min-width: 700px) { body { padding-top: 34px; } .wrap { max-width: 480px; } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001s !important; animation-delay: 0s !important; transition-duration: .001s !important; transition-delay: 0s !important; } .seal .disc, .seal .mark { stroke-dashoffset: 0; } }
@@ -224,6 +235,7 @@
                     @if($restrictions)<div class="note warn"><b>{{ __('Restrictions') }}:</b> {{ $restrictions }}</div>@endif
                     @if(! $full)<div class="note">{{ __('Details such as the photograph and the full name are shown to RANS staff who are signed in to WIMS.') }}@if(! $signedIn)<br><a href="{{ url('/login') }}">{{ __('Sign in') }}</a>@endif</div>@endif
                     <div class="flipcue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>{{ __('Tap the card to see the back') }}</div>
+                    <div class="tagline"><i></i><b>{{ __('Your Contractor') }}</b><i></i></div>
                 </div>
             </section>
 
@@ -237,6 +249,7 @@
                         <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>{{ __('This page says VALID') }}</div>
                         <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>{{ __('Number matches the card') }}</div>
                     </div>
+                    <div class="tagline"><i></i><b>{{ __('Your Contractor') }}</b><i></i></div>
                 </div>
             </section>
         </div>
