@@ -1,5 +1,6 @@
 <template>
   <admin-layout :title="info.label">
+    <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header :icon="info.icon" :title="info.label" :subtitle="$t('Every :k with its number, status and validity.', { k: info.singular })">
         <Link v-if="can.create" :href="route('id-passes.' + info.route + '.create')" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" /><span>{{ $t('Issue :k', { k: info.singular }) }}</span></Link>
@@ -43,8 +44,8 @@
               <td :data-label="$t('Valid until')">{{ r.expires_at ? $date(r.expires_at) : $t('No expiry') }}<div v-if="r.days_left !== null && r.days_left >= 0 && r.days_left <= 30 && r.status === 'Active'" class="lg-subtext idl-soon">{{ $t(':n days left', { n: r.days_left }) }}</div></td>
               <td :data-label="$t('Printed')">{{ r.print_count }}<div v-if="r.last_printed_at" class="lg-subtext">{{ $datetime(r.last_printed_at) }}</div></td>
               <td class="lg-sticky-end" @click.stop>
-                <a v-if="can.print && r.status === 'Active'" :href="route('id-passes.' + info.route + '.print', [r.id])" target="_blank" rel="noopener" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
-                <a v-if="can.download && r.status === 'Active'" :href="route('id-passes.' + info.route + '.pdf', [r.id])" class="lg-icon-btn lg-tip" :data-tip="$t('Download PDF')" :aria-label="$t('Download PDF')"><icons name="download" class="w-4 h-4" /></a>
+                <a v-if="can.print && r.status === 'Active'" :href="route('id-passes.' + info.route + '.print', [r.id])" target="_blank" rel="noopener" @click.prevent="make(r, 'print')" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')"><icons name="printer" class="w-4 h-4" /></a>
+                <a v-if="can.download && r.status === 'Active'" :href="route('id-passes.' + info.route + '.pdf', [r.id])" @click.prevent="make(r, 'pdf')" class="lg-icon-btn lg-tip" :data-tip="$t('Download PDF')" :aria-label="$t('Download PDF')"><icons name="download" class="w-4 h-4" /></a>
                 <Link :href="route('id-passes.' + info.route + '.show', [r.id])" class="lg-icon-btn lg-tip" :data-tip="$t('Open')" :aria-label="$t('Open')"><icons name="eye-flat" class="w-4 h-4" /></Link>
               </td>
             </tr>
@@ -58,7 +59,7 @@
 </template>
 
 <script>
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
@@ -68,9 +69,11 @@ import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import Pager from '@/Pages/Accounts/Pager.vue';
 import { statusChip, statusIcon } from '../Parts/status';
 import CategoryChip from '../Parts/CategoryChip.vue';
+import IdMakeOverlay from '../Parts/IdMakeOverlay.vue';
+import { idMakeFile } from '@/Core/idMake';
 
 export default {
-  components: { AdminLayout, PageHeader, Link, DatePicker, SimpleAutocomplete, ScTabs, AcctSelect, Pager, CategoryChip },
+  components: { AdminLayout, PageHeader, Link, DatePicker, SimpleAutocomplete, ScTabs, AcctSelect, Pager, CategoryChip, IdMakeOverlay },
   props: { info: Object, rows: Object, filters: Object, counts: Object, categories: Array, titles: Array, statuses: Array, can: Object },
   data() { return { f: { ...this.filters } }; },
   computed: {
@@ -82,6 +85,12 @@ export default {
     },
   },
   methods: {
+    // print / download with the "ID press" animation; an ID that was printed before needs a reason, which is asked on its own page
+    async make(r, kind) {
+      if (r.print_count > 0) { router.visit(route('id-passes.' + this.info.route + '.show', [r.id])); return; }
+      const ok = await idMakeFile(route('id-passes.' + this.info.route + '.' + kind, [r.id]), { mode: kind, color: r.color, title: kind === 'print' ? this.$t('Preparing :n for printing', { n: r.number }) : this.$t('Creating the PDF of :n', { n: r.number }), doneText: r.number, fail: this.$t('The file could not be made.') });
+      if (ok) router.reload({ preserveScroll: true });
+    },
     statusChip, statusIcon,
     go() { const q = {}; Object.keys(this.f).forEach(k => { if (this.f[k]) q[k] = this.f[k]; }); this.$inertia.get(route('id-passes.' + this.info.route + '.index'), q, { preserveState: true }); },
     setStatus(s) { this.f.status = s; this.go(); },

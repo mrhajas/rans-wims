@@ -111,6 +111,7 @@
       <template #footer><button type="button" class="lg-btn lg-btn-soft" @click="printOpen = false">{{ $t('Cancel') }}</button><button type="button" class="lg-btn lg-btn-primary" :disabled="needReason" @click="doPrint"><icons name="printer" class="w-4 h-4" />{{ $t('Open for printing') }}</button></template>
     </travel-modal>
 
+    <id-make-overlay />
     <travel-modal :show="dlOpen" :title="$t('Download :n', { n: card.number })" :subtitle="$t('The card as two pages of 55 x 85 mm: front, then back.')" icon="download" @close="dlOpen = false">
       <div class="ac-f"><label>{{ $t('This ID was printed before. Why is it printed again?') }} <b class="wims-req">*</b></label>
         <div class="idi-src ids-reasons"><button v-for="r in reasons" :key="r" type="button" :class="{ 'is-on': reason === r }" @click="reason = r">{{ r }}</button></div><input v-model="note" maxlength="150" :placeholder="$t('More about it (optional)')" /></div>
@@ -182,10 +183,12 @@ import CardFace from '../Parts/CardFace.vue';
 import PhotoCropper from '../Parts/PhotoCropper.vue';
 import { statusChip, statusIcon } from '../Parts/status';
 import CategoryChip from '../Parts/CategoryChip.vue';
+import IdMakeOverlay from '../Parts/IdMakeOverlay.vue';
+import { idMakeFile } from '@/Core/idMake';
 import PersonSearch from '../Parts/PersonSearch.vue';
 
 export default {
-  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, CardFace, PhotoCropper, CategoryChip, PersonSearch },
+  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, CardFace, PhotoCropper, CategoryChip, PersonSearch, IdMakeOverlay },
   props: { info: Object, card: Object, front: String, back: String, css: String, events: Array, prints: Array, canHistory: Boolean, gateTypes: Array, can: Object, layouts: Array, minPhotoWidth: Number, pooled: Boolean, holder: Object, assignments: { type: Array, default: () => [] }, cardHistory: { type: Array, default: () => [] } },
   data() {
     return { tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
@@ -210,16 +213,20 @@ export default {
   methods: {
     statusChip, statusIcon,
     reasonParams(q) { if (this.card.print_count > 0 && this.reason) { q.set('reason', this.reason); if (this.note) q.set('note', this.note); } return q; },
-    download() { if (this.card.print_count > 0) { this.dlOpen = true; return; } window.location = route('id-passes.' + this.info.route + '.pdf', [this.card.id]); },
-    doDownload() { window.location = route('id-passes.' + this.info.route + '.pdf', [this.card.id]) + '?' + this.reasonParams(new URLSearchParams()).toString(); this.dlOpen = false; setTimeout(() => router.reload({ only: ['card', 'prints', 'events'], preserveScroll: true }), 2500); },
+    download() { if (this.card.print_count > 0) { this.dlOpen = true; return; } this.make('pdf', ''); },
+    doDownload() { this.dlOpen = false; this.make('pdf', this.reasonParams(new URLSearchParams()).toString()); },
+    // the PDF is asked for while the "ID press" animation plays; print opens it in a new tab, download saves it
+    async make(kind, qs) {
+      const ok = await idMakeFile(route('id-passes.' + this.info.route + '.' + (kind === 'print' ? 'print' : 'pdf'), [this.card.id]) + (qs ? '?' + qs : ''), { mode: kind, color: this.card.color, title: kind === 'print' ? this.$t('Preparing :n for printing', { n: this.card.number }) : this.$t('Creating the PDF of :n', { n: this.card.number }), doneText: this.card.number, fail: this.$t('The file could not be made.') });
+      if (ok) router.reload({ only: ['card', 'prints', 'events'], preserveScroll: true });
+    },
     openGive() { this.gf.reset(); this.gf.clearErrors(); this.pickedVisitor = null; this.giveOpen = true; },
     pickVisitor(p) { if (p) { this.gf.visitor_id = p.id; this.gf.name = p.name; this.gf.company = p.company || ''; this.gf.phone = p.phone || ''; } else { this.gf.visitor_id = null; } },
     submitGive() { this.gf.post(route('id-passes.' + this.info.route + '.give', [this.card.id]), { preserveScroll: true, onSuccess: () => { this.giveOpen = false; } }); },
     takeBack() { this.backForm.post(route('id-passes.' + this.info.route + '.take-back', [this.card.id]), { preserveScroll: true, onSuccess: () => { this.backOpen = false; this.backForm.reset(); } }); },
     doPrint() {
       const q = this.reasonParams(new URLSearchParams({ layout: this.layout })); if (this.layout === 'a4_side') q.set('orientation', this.orient);
-      window.open(route('id-passes.' + this.info.route + '.print', [this.card.id]) + '?' + q.toString(), '_blank', 'noopener');
-      this.printOpen = false; setTimeout(() => router.reload({ only: ['card', 'prints', 'events'], preserveScroll: true }), 2500);
+      this.printOpen = false; this.make('print', q.toString());
     },
     ask(key) {
       const n = this.card.number;

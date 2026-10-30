@@ -1,5 +1,6 @@
 <template>
   <admin-layout :title="pageTitle">
+    <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header :icon="info.icon" :title="pageTitle" :subtitle="$t('Choose the person, check the details, add a photograph and look at the card before it is issued.')">
         <Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" /><span>{{ $t('Back') }}</span></Link>
@@ -91,11 +92,13 @@ import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import CardFace from '../Parts/CardFace.vue';
 import PersonSearch from '../Parts/PersonSearch.vue';
 import PhotoCropper from '../Parts/PhotoCropper.vue';
+import IdMakeOverlay from '../Parts/IdMakeOverlay.vue';
+import { idMakeStart, idMakeDone, idMakeClose } from '@/Core/idMake';
 
 const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 export default {
-  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, CardFace, PersonSearch, PhotoCropper },
+  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, CardFace, PersonSearch, PhotoCropper, IdMakeOverlay },
   props: { info: Object, categories: Array, gateTypes: Array, today: String, presetStaff: Number, presetContact: Number, canNumber: Boolean, minPhotoWidth: Number },
   data() {
     const first = this.categories[0] || null;
@@ -191,7 +194,12 @@ export default {
         if (this.photo) { o.photo = this.photo.file; if (this.photo.original) o.photo_original = this.photo.original; }
         Object.keys(o).forEach(k => { if (o[k] === null || o[k] === undefined) delete o[k]; });
         return o;
-      }).post(route('id-passes.' + this.info.route + '.store'), { preserveScroll: true, forceFormData: true });
+      }).post(route('id-passes.' + this.info.route + '.store'), {
+        preserveScroll: true, forceFormData: true, headers: { 'X-Quiet': '1' },    // the "ID press" animation replaces the small save pill
+        onStart: () => idMakeStart({ mode: 'issue', color: this.cat.band || '#1565c0', count: this.cat.pooled ? this.form.quantity : 1, title: this.cat.pooled ? this.$t('Making :n passes', { n: this.form.quantity }) : (this.cat.requires_approval ? this.$t('Sending the ID for approval') : this.$t('Making the ID card')) }),
+        onSuccess: page => idMakeDone((page.props.flash && page.props.flash.message) || ''),
+        onError: () => idMakeClose(),
+      });
     },
   },
 };

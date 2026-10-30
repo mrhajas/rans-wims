@@ -1,5 +1,6 @@
 <template>
   <admin-layout :title="$t('ID Print Centre')">
+    <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header icon="printer" :title="$t('ID Print Centre')" :subtitle="$t('Choose the IDs, see how many cards and sheets they make, and generate the PDF.')">
         <Link :href="route('id-passes.dashboard')" class="lg-btn lg-btn-soft"><icons name="chart-bar" class="w-4 h-4" /><span>{{ $t('Overview') }}</span></Link>
@@ -91,9 +92,11 @@ import DatePicker from '@/Shared/DatePicker.vue';
 import AcctSelect from '@/Pages/Accounts/AcctSelect.vue';
 import { statusChip } from './Parts/status';
 import CategoryChip from './Parts/CategoryChip.vue';
+import IdMakeOverlay from './Parts/IdMakeOverlay.vue';
+import { idMakeStart, idMakeProgress, idMakeDone, idMakeFail } from '@/Core/idMake';
 
 export default {
-  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, CategoryChip },
+  components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, CategoryChip, IdMakeOverlay },
   props: { kinds: Array, categories: Array, statuses: Array, batches: Array, can: Object, limits: Object },
   data() {
     return { f: { kind: '', category_id: '', status: 'Active', q: '', issued_from: '', issued_to: '', expires_to: '', printed: '' }, rows: [], total: 0, page: 1, last: 1, selected: [], mode: 'filter', action: this.can.print ? 'print' : 'pdf', layout: 'a4_side', orientation: 'landscape', pv: null, working: false, busy: false, error: '', batch: null, reason: '', note: '', timer: null, pvTimer: null, poll: null };
@@ -130,12 +133,15 @@ export default {
     },
     async generate() {
       this.working = true; this.error = '';
-      try { const { data } = await window.axios.post(route('id-passes.batch.store'), this.body()); this.batch = data.batch; this.follow(); }
-      catch (e) { this.error = (e.response && e.response.data && (e.response.data.message || Object.values(e.response.data.errors || {}).flat().join(' '))) || this.$t('The batch could not be made.'); this.working = false; }
+      const cards = this.pv ? this.pv.cards : 0;
+      // the "ID press" animation runs for the whole batch, with the real progress of the background job
+      idMakeStart({ mode: this.action === 'pdf' ? 'pdf' : 'batch', color: '#1565c0', count: cards, total: cards, hideable: true, percent: 3, title: this.action === 'pdf' ? this.$t('Creating the PDF files') : this.$t('Preparing :n cards for printing', { n: cards }) });
+      try { const { data } = await window.axios.post(route('id-passes.batch.store'), this.body(), { headers: { 'X-Quiet': '1' } }); this.batch = data.batch; this.follow(); }
+      catch (e) { this.error = (e.response && e.response.data && (e.response.data.message || Object.values(e.response.data.errors || {}).flat().join(' '))) || this.$t('The batch could not be made.'); this.working = false; idMakeFail(this.error); }
     },
     follow() {
       clearInterval(this.poll);
-      const tick = async () => { try { const { data } = await window.axios.get(route('id-passes.batch.show', [this.batch.id])); this.batch = data; if (['Done', 'Failed'].includes(data.status)) { clearInterval(this.poll); this.working = false; if (data.status === 'Done' && data.parts === 1 && data.action === 'print') window.open(route('id-passes.batch.download', [data.id]) + '?part=1', '_blank', 'noopener'); this.load(this.page); } } catch (e) { /* try again */ } };
+      const tick = async () => { try { const { data } = await window.axios.get(route('id-passes.batch.show', [this.batch.id])); this.batch = data; idMakeProgress(Math.max(3, data.progress), Math.round((data.progress / 100) * data.cards), data.cards); if (['Done', 'Failed'].includes(data.status)) { clearInterval(this.poll); this.working = false; if (data.status === 'Done') idMakeDone(this.$t(':n cards', { n: data.cards })); else idMakeFail(data.error || this.$t('The batch could not be made.')); if (data.status === 'Done' && data.parts === 1 && data.action === 'print') window.open(route('id-passes.batch.download', [data.id]) + '?part=1', '_blank', 'noopener'); this.load(this.page); } } catch (e) { /* try again */ } };
       tick(); if (this.working) this.poll = setInterval(tick, 1500);
     },
   },
