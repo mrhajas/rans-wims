@@ -60,7 +60,7 @@
         .mark .lt, .mark .in { position: absolute; left: 0; top: 0; width: 100cqw; height: calc(100cqw * 263 / 765); background: linear-gradient(105deg, transparent 42%, rgba(255, 249, 220, .95) 50%, transparent 58%) no-repeat, linear-gradient(180deg, #ffdc7e 0%, #f6b53a 52%, #d8890f 100%); background-size: 320% 100%, 100% 100%; background-position: 85% 0, 0 0; animation: glint 7s ease-in-out infinite; }
         .mark .lt { -webkit-mask: url('{{ asset('images/rans-mark-letters.png') }}') center / 100% 100% no-repeat; mask: url('{{ asset('images/rans-mark-letters.png') }}') center / 100% 100% no-repeat; animation-delay: .35s; }
         .mark .in { -webkit-mask: url('{{ asset('images/rans-mark-temple.png') }}') center / 100% 100% no-repeat; mask: url('{{ asset('images/rans-mark-temple.png') }}') center / 100% 100% no-repeat; }
-        .mark .sl { position: absolute; overflow: visible; }
+        .mark .sl { position: absolute; overflow: hidden; } /* each slice shows only its own piece of the temple */
         @keyframes glint { 0%, 8% { background-position: 85% 0, 0 0; } 30%, 100% { background-position: 8% 0, 0 0; } }
         .mark .col { animation: hop 7s cubic-bezier(.3, 1.4, .5, 1) infinite; animation-delay: calc(var(--i) * 90ms); }
         .mark .roof { animation: lift 7s cubic-bezier(.3, 1.3, .5, 1) infinite; animation-delay: .75s; }
