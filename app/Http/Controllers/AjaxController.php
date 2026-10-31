@@ -43,13 +43,13 @@ class AjaxController extends Controller
             $payload = ['unread_count' => $unread];
 
             // The pop-up toasts: the newest alerts that arrived since the last check. The browser says how many seconds ago it last asked
-            // (`ago`, at most 15 minutes), so no clock of the browser is trusted and nothing is stored here; at most three rows are read, and only when something is unread.
+            // (`ago`, at most 15 minutes), so no clock of the browser is trusted and nothing is stored here; at most ten rows are read, and only when something is unread.
             if ($unread > 0 && request()->filled('ago')) {
                 $ago = max(0, min(900, (int) request()->input('ago')));
                 $payload['latest'] = $this->alertsNotificationQuery(auth()->user())
                     ->where('created_at', '>', now()->subSeconds($ago + 3))
                     ->latest()
-                    ->limit(3)
+                    ->limit(10)
                     ->get()
                     ->map(function ($n) {
                         $module = (string) data_get($n->data, 'module', '');

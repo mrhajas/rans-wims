@@ -20,4 +20,23 @@ class NotificationPreferenceController extends Controller
 
         return response()->json(['chime_enabled' => (bool) $user->fresh()->chime_enabled]);
     }
+
+    // the pop-up toasts for new alerts (Profile > Toast Alerts): on or off, how many seconds each stays, and how many show at one time.
+    // Kept in the user's extra_attributes, so there is nothing to migrate. Not named `update...` for the same reason as above.
+    public function saveToastSettings(Request $request)
+    {
+        $data = $request->validate([
+            'enabled' => 'required|boolean',
+            'seconds' => 'required|integer|min:2|max:30',
+            'max' => 'required|integer|min:1|max:5',
+        ]);
+
+        $user = $request->user();
+        $extra = $user->extra_attributes ?? [];
+        $extra['toast_alerts'] = ['enabled' => (bool) $data['enabled'], 'seconds' => (int) $data['seconds'], 'max' => (int) $data['max']];
+        $user->extra_attributes = $extra;
+        $user->save();
+
+        return response()->json($extra['toast_alerts']);
+    }
 }

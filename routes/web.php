@@ -372,6 +372,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         ->name('task-reminders.preferences.update');
     Route::put('notification-preferences', [Controllers\NotificationPreferenceController::class, 'updatePreferences'])
         ->name('notification-preferences.update');
+    Route::put('notification-preferences/toasts', [Controllers\NotificationPreferenceController::class, 'saveToastSettings'])
+        ->name('notification-preferences.toasts');
     Route::put('idle-timeout', [Controllers\IdleTimeoutController::class, 'savePreference'])->name('idle-timeout.update');
     Route::post('idle/ping', [Controllers\IdleTimeoutController::class, 'ping'])->middleware('throttle:120,1')->name('idle.ping');
     Route::post('quick-menu/track', [Controllers\QuickMenuController::class, 'track'])

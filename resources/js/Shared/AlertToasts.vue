@@ -86,11 +86,11 @@ export default {
 .at-host { position: fixed; left: 50%; transform: translateX(-50%); z-index: 999995; width: min(392px, calc(100vw - 48px)); pointer-events: none; }
 .at-stack { display: grid; gap: 9px; }
 @media (max-width: 767.98px) { .at-host { display: none; } }
-.at-card { --r: 15px; position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; margin-left: 22px; padding: 8px 12px 11px 36px; border-radius: 0 var(--r) var(--r) 0; background: #fff; color: #0f172a; cursor: pointer; pointer-events: auto; overflow: visible;
+.at-card { --r: 15px; position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; margin-left: 26px; padding: 8px 12px 8px 40px; border-radius: 26px var(--r) var(--r) 26px; background: #fff; color: #0f172a; cursor: pointer; pointer-events: auto; overflow: visible;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 12px 24px -9px color-mix(in srgb, var(--accent) 38%, rgba(15, 23, 42, 0.5)), 0 0 0 1px rgba(15, 23, 42, 0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .at-card:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 16px 28px -9px color-mix(in srgb, var(--accent) 50%, rgba(15, 23, 42, 0.5)), 0 0 0 1px rgba(15, 23, 42, 0.05); }
 /* the badge: a flat colour, the glyph exactly in the middle of it */
-.at-badge { position: absolute; left: -22px; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; width: 54px; border-radius: 999px 999px 999px 0; overflow: hidden; background: var(--accent); color: #fff; box-shadow: 0 7px 13px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
+.at-badge { position: absolute; left: -26px; top: 50%; width: 52px; height: 52px; margin-top: -26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; background: var(--accent); color: #fff; box-shadow: 0 7px 13px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
 .at-badge .at-ic, .at-badge svg { display: block; width: 20px; height: 20px; flex: none; animation: at-pop 0.7s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.5) both; }
 .at-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 45%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5), transparent); transform: translateX(-160%) skewX(-12deg); animation: at-shine 1.5s 0.5s ease-in-out both; }
 .at-body { display: grid; gap: 0; min-width: 0; flex: 1 1 auto; }

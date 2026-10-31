@@ -100,6 +100,10 @@
             <notification-chime-form />
           </section>
 
+          <section id="toasts" class="pf-section">
+            <toast-alerts-form />
+          </section>
+
           <section v-if="$page.props.superAdjustmentBypass" id="sa-bypass" class="pf-section">
             <super-adjustment-bypass-form />
           </section>
@@ -135,6 +139,7 @@ import RauncherShortcutForm from '@/Pages/Profile/RauncherShortcutForm.vue';
 import ScanShortcutForm from '@/Pages/Profile/ScanShortcutForm.vue';
 import TaskReminderPreferencesForm from '@/Pages/Profile/TaskReminderPreferencesForm.vue';
 import NotificationChimeForm from '@/Pages/Profile/NotificationChimeForm.vue';
+import ToastAlertsForm from '@/Pages/Profile/ToastAlertsForm.vue';
 import QuickMenuPreferenceForm from '@/Pages/Profile/QuickMenuPreferenceForm.vue';
 import DashboardCardsForm from '@/Pages/Profile/DashboardCardsForm.vue';
 import AutoLogoutForm from '@/Pages/Profile/AutoLogoutForm.vue';
@@ -157,6 +162,7 @@ export default {
     ScanShortcutForm,
     TaskReminderPreferencesForm,
     NotificationChimeForm,
+    ToastAlertsForm,
     QuickMenuPreferenceForm,
     DashboardCardsForm,
     AutoLogoutForm,
@@ -227,6 +233,7 @@ export default {
             { id: 'scan', label: this.$t('Scan shortcut'), icon: 'menu', show: true },
             { id: 'reminders', label: this.$t('Task reminders'), icon: 'bell', show: true },
             { id: 'chime', label: this.$t('Notification chime'), icon: 'microphone', show: true },
+            { id: 'toasts', label: this.$t('Toast Alerts'), icon: 'bell', show: true },
             { id: 'dashboard-cards', label: this.$t('Dashboard cards'), icon: 'collection', show: this.$can('customize-dashboard-cards') },
             { id: 'quick-menu', label: this.$t('Quick menu'), icon: 'sparkles', show: true },
             { id: 'sa-bypass', label: this.$t('SuperAdjustment ByPass'), icon: 'adjustments', show: !!this.$page.props.superAdjustmentBypass },
