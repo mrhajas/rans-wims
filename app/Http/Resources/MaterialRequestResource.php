@@ -84,6 +84,7 @@ class MaterialRequestResource extends JsonResource
             'can_remind' => $user ? \App\Services\MrReminders\ReminderSender::canSend($user, $this->resource) : false,
             'can_view_reminders' => $user ? ($user->can('read-mr-reminders') && \App\Services\FeatureManager::canAccess('mr_reminders', $user)) : false,
             'reminder_count' => (int) ($this->reminder_count ?? 0),
+            'reminder_unread' => (int) ($this->reminder_unread ?? 0),
             'last_reminder_at' => $this->last_reminder_at ?? null,
             'delivery_state' => $this->relationLoaded('items') ? $this->deliveryState() : null,
             // Shown before a Super Admin clears the request (see the "delivery check" setting).

@@ -11,9 +11,23 @@
     </template>
 
     <template #content>
+      <ol class="rp-steps" aria-hidden="true">
+        <li :class="{ on: !result, done: !!result }"><i>{{ result ? '' : '1' }}<icons v-if="result" name="tick" class="w-3 h-3" /></i>{{ $t('Choose user') }}</li>
+        <li class="rp-bar" :class="{ full: !!result }"></li>
+        <li :class="{ on: !!result }"><i>2</i>{{ $t('Copy password') }}</li>
+      </ol>
+
       <div v-if="!result" @keydown.enter.prevent="generate">
         <p class="rp-help">{{ $t('Choose a user and generate a new password. It is shown once, here: give it to the user, who should change it after signing in.') }}</p>
-        <auto-complete id="reset-user" :label="$t('User')" :suggestions="users" v-model="userId" :disabled="busy" />
+        <label class="rp-label" for="reset-user">{{ $t('User') }}</label>
+        <auto-complete id="reset-user" :suggestions="users" :placeholder="$t('Type a name or username')" v-model="userId" :disabled="busy" />
+        <transition name="rp-fade">
+          <div v-if="picked" :key="picked.id" class="rp-user">
+            <span class="rp-av" aria-hidden="true">{{ picked.initials }}</span>
+            <div class="min-w-0"><div class="rp-user-name">{{ picked.name }}</div><div class="rp-user-un">@{{ picked.username }}</div></div>
+            <span class="rp-user-tag"><icons name="key" class="w-3.5 h-3.5" />{{ $t('Password will be replaced') }}</span>
+          </div>
+        </transition>
         <p v-if="error" class="rp-error" role="alert"><icons name="info" class="w-4 h-4" />{{ error }}</p>
         <p class="rp-warn"><icons name="lock-closed" class="w-4 h-4" />{{ $t('The old password stops working as soon as you generate the new one.') }}</p>
       </div>
@@ -43,7 +57,7 @@
     <template #footer>
       <div class="rp-foot">
         <button type="button" class="lg-btn lg-btn-soft" @click="close">{{ result ? $t('Done') : $t('Cancel') }}</button>
-        <button v-if="!result" type="button" class="lg-btn lg-btn-primary" :disabled="busy || !userId" @click="generate">
+        <button v-if="!result" type="button" class="lg-btn tone tone-solid" style="--tone: #d97706" :disabled="busy || !userId" @click="generate">
           <icons :name="busy ? 'refresh' : 'key'" class="h-4 w-4" :class="{ 'animate-spin': busy }" />
           <span>{{ $t('Generate New Password') }}</span>
         </button>
@@ -65,6 +79,16 @@ export default {
   props: { show: Boolean, users: { type: Array, default: () => [] }, preselect: { type: Object, default: null } },
   emits: ['close'],
   data() { return { userId: null, busy: false, error: '', result: null, copied: '' }; },
+  computed: {
+    // the person chosen in the list, split from its "Name (@username)" label
+    picked() {
+      const u = this.users.find(x => x.id === this.userId);
+      if (!u) return null;
+      const m = /^(.*?)\s*\(@([^)]*)\)\s*$/.exec(u.label || '');
+      const name = m ? m[1] : u.label || '';
+      return { id: u.id, name, username: m ? m[2] : '', initials: name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() };
+    },
+  },
   watch: { show(v) { if (v) this.again(); else this.wipe(); } },
   beforeUnmount() { clearTimeout(this._c); },
   methods: {
@@ -97,6 +121,24 @@ export default {
 </script>
 
 <style>
+.rp-steps { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 0; list-style: none; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; }
+.rp-steps li { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.rp-steps i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-style: normal; font-size: 0.72rem; color: #64748b; background: rgba(100, 116, 139, 0.16); transition: background 0.3s, color 0.3s; }
+.rp-steps li.on { color: #b45309; } .rp-steps li.on i { color: #fff; background: linear-gradient(145deg, #fbbf24, #d97706); box-shadow: 0 6px 12px -6px rgba(217, 119, 6, 0.9); }
+.rp-steps li.done { color: #047857; } .rp-steps li.done i { color: #fff; background: #10b981; }
+.rp-steps .rp-bar { flex: 1; height: 3px; border-radius: 3px; background: rgba(100, 116, 139, 0.2); overflow: hidden; position: relative; min-width: 24px; }
+.rp-steps .rp-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #10b981, #d97706); transform: scaleX(0); transform-origin: left; transition: transform 0.5s ease; }
+.rp-steps .rp-bar.full::after { transform: scaleX(1); }
+.rp-label { display: block; margin-bottom: 4px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; }
+.rp-user { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(79, 70, 229, 0.07)); border: 1px solid rgba(245, 158, 11, 0.35); }
+.rp-av { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; font-size: 0.85rem; font-weight: 800; color: #fff; background: linear-gradient(145deg, #6366f1, #3730a3); box-shadow: 0 6px 12px -6px rgba(55, 48, 163, 0.8); }
+.rp-user-name { font-size: 0.95rem; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; } .rp-user-un { font-size: 0.78rem; color: #64748b; }
+.rp-user-tag { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 9999px; font-size: 0.68rem; font-weight: 800; color: #92400e; background: rgba(245, 158, 11, 0.2); white-space: nowrap; }
+.rp-fade-enter-active { transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2); } .rp-fade-leave-active { transition: opacity 0.15s ease; }
+.rp-fade-enter-from { opacity: 0; transform: translateY(6px); } .rp-fade-leave-to { opacity: 0; }
+html.dark .rp-user-name { color: #f1f5f9; }
+@media (max-width: 520px) { .rp-user-tag { display: none; } .rp-steps { gap: 6px; font-size: 0.68rem; } }
+@media (prefers-reduced-motion: reduce) { .rp-fade-enter-active, .rp-fade-leave-active, .rp-steps .rp-bar::after { transition: none; } }
 .rp-sub { font-size: 0.78rem; color: #64748b; font-weight: 600; margin-top: 1px; }
 .rp-help { font-size: 0.88rem; color: #475569; margin-bottom: 14px; line-height: 1.5; }
 .rp-error { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; font-size: 0.82rem; font-weight: 700; color: #dc2626; }

@@ -1175,6 +1175,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::get('csv', [$rem, 'csv'])->middleware('throttle:20,1,material-request-reminders.csv')->name('csv');
         Route::put('settings', [$rem, 'settings'])->middleware('throttle:30,1,material-request-reminders.settings')->name('settings');
         Route::get('request/{material_request}', [$rem, 'form'])->whereNumber('material_request')->middleware('throttle:120,1,material-request-reminders.form')->name('form');
+        Route::post('request/{material_request}/read', [$rem, 'markRead'])->whereNumber('material_request')->middleware('throttle:60,1,material-request-reminders.read')->name('read');
         Route::post('request/{material_request}', [$rem, 'store'])->whereNumber('material_request')->middleware('throttle:20,1,material-request-reminders.store')->name('store');
     });
 

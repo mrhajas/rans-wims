@@ -38,6 +38,7 @@ class ReminderController extends Controller
         $me = $request->user();
         $mr = $material_request->loadMissing(['warehouse:id,name', 'user:id,name', 'items']);
         $audience = ReminderSender::audience((int) $mr->account_id ?: (int) $me->account_id, null, false, $mr);
+        $readIds = \Illuminate\Support\Facades\DB::table('mr_reminder_reads')->where('user_id', $me->id)->whereIn('reminder_id', $mr->reminders()->pluck('id'))->pluck('reminder_id')->map(fn ($i) => (int) $i)->all();
 
         return response()->json([
             'request' => ['id' => $mr->id, 'reference' => $mr->reference, 'status' => MaterialRequest::statusLabel($mr->status), 'project' => optional($mr->warehouse)->name, 'requester' => optional($mr->user)->name,
@@ -47,8 +48,19 @@ class ReminderController extends Controller
             'audience' => $audience->map(fn ($u) => ['name' => $u->name, 'me' => $u->id === $me->id])->values(),
             'channels' => ['email' => ReminderSettings::email(), 'sms' => ReminderSettings::sms(), 'app' => ReminderSettings::app()],
             'limits' => ['files' => ReminderSender::MAX_FILES, 'mb' => ReminderSender::MAX_KB / 1024],
-            'history' => $mr->reminders()->with(['sender:id,name', 'attachments'])->latest('id')->get()->map(fn ($r) => ReminderSender::present($r))->values(),
+            'history' => $mr->reminders()->with(['sender:id,name', 'attachments'])->latest('id')->get()->map(fn ($r) => ReminderSender::present($r) + ['unread' => ! in_array($r->id, $readIds, true)])->values(),
+            'unread' => $mr->reminders()->whereNotIn('id', $readIds ?: [0])->count(),
         ]);
+    }
+
+    /** "Mark all read": every reminder of this request becomes read for the person asking (the number on the bell then disappears). */
+    public function markRead(Request $request, MaterialRequest $material_request)
+    {
+        $this->need('read-mr-reminders');
+        $this->authorize('view', $material_request);
+        ReminderSender::markRead($material_request, $request->user());
+
+        return response()->json(['unread' => 0]);
     }
 
     public function store(Request $request, MaterialRequest $material_request)
@@ -72,6 +84,8 @@ class ReminderController extends Controller
                 : __('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.')], 422);
         }
         $r = ReminderSender::send($material_request, $me, $d['note'] ?? null, $request->file('files', []), $leaveOut);
+        // the person who sent it knows about it: it is not "new" for them
+        \Illuminate\Support\Facades\DB::table('mr_reminder_reads')->insertOrIgnore(['reminder_id' => $r['reminder']->id, 'user_id' => $me->id, 'read_at' => now()]);
         $c = $r['counts'];
 
         return response()->json(['message' => __('Reminder sent to :n people: :e emails, :s SMS and :a app alerts.', ['n' => $c['people'], 'e' => $c['email']['sent'], 's' => $c['sms']['sent'], 'a' => $c['app']['sent']]),

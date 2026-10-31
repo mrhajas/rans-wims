@@ -43,9 +43,14 @@
       </form>
 
       <section class="mrr-history">
-        <h3>{{ $t('History of reminders') }} <span>({{ info.history.length }})</span></h3>
+        <div class="mrr-hhead">
+          <h3>{{ $t('History of reminders') }} <span>({{ info.history.length }})</span><em v-if="info.unread" class="mrr-new">{{ $t(':n new', { n: info.unread }) }}</em></h3>
+          <button v-if="info.unread" type="button" class="lg-btn tone" :class="{ 'is-busy': marking }" :style="{ '--tone': chase ? '#4f46e5' : '#d97706' }" :disabled="marking" @click="markAllRead">
+            <span class="tone-ico"><icons :name="marking ? 'refresh' : 'check-double'" class="w-4 h-4" :class="{ 'animate-spin': marking }" /></span>{{ $t('Mark all read') }}
+          </button>
+        </div>
         <p v-if="!info.history.length" class="mrr-hint">{{ $t('No reminder has been sent for this request yet.') }}</p>
-        <reminder-card v-for="r in info.history" :key="r.id" :reminder="r" />
+        <reminder-card v-for="r in info.history" :key="r.id" :reminder="r" :class="{ 'mrr-unread': r.unread }" />
       </section>
     </template>
     <template #footer>
@@ -62,8 +67,8 @@ import ReminderCard from '@/Pages/MrReminders/ReminderCard.vue';
 export default {
   components: { TravelModal, ReminderCard },
   props: { show: Boolean, requestId: { type: Number, default: null } },
-  emits: ['close', 'sent'],
-  data() { return { loading: false, sending: false, info: null, note: '', leaveOut: false, files: [], problems: [], done: '' }; },
+  emits: ['close', 'sent', 'read'],
+  data() { return { marking: false, loading: false, sending: false, info: null, note: '', leaveOut: false, files: [], problems: [], done: '' }; },
   computed: {
     chase() { return !!(this.info && this.info.approvalChase); },
     told() { return (this.info?.audience || []).filter(a => !(this.leaveOut && a.me)); },
@@ -74,6 +79,21 @@ export default {
   },
   watch: { show(v) { if (v) this.load(); } },
   methods: {
+    // every reminder of this request becomes read for the person: the "new" marks and the number on the bell go
+    async markAllRead() {
+      if (this.marking || !this.info) return;
+      this.marking = true;
+      try {
+        await window.axios.post(route('material-request-reminders.read', this.requestId));
+        this.info.history.forEach(h => { h.unread = false; });
+        this.info.unread = 0;
+        this.$emit('read', { id: this.requestId });
+      } catch (e) {
+        this.problems = [e.response?.data?.message || this.$t('The reminders could not be marked as read. Please try again.')];
+      } finally {
+        this.marking = false;
+      }
+    },
     async load() {
       this.loading = true; this.info = null; this.note = ''; this.leaveOut = false; this.files = []; this.problems = []; this.done = '';
       try { this.info = (await window.axios.get(route('material-request-reminders.form', this.requestId))).data; } catch (e) { this.problems = [e.response?.data?.message || this.$t('The reminder window could not be opened.')]; this.$emit('close'); } finally { this.loading = false; }
@@ -144,5 +164,10 @@ export default {
 .mrr-ok { color: #065f46; background: rgba(209, 250, 229, 0.7); border: 1px solid rgba(52, 211, 153, 0.45); }
 .mrr-err { margin: 0; color: #be123c; font-size: 0.82rem; font-weight: 700; }
 .mrr-history { display: grid; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--lg-line); }
+.mrr-hhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.mrr-new { margin-left: 8px; padding: 2px 9px; border-radius: 9999px; font-style: normal; font-size: 0.7rem; font-weight: 800; color: #fff; background: #e11d48; vertical-align: middle; animation: mrr-pulse 2.2s ease-in-out infinite; }
+.mrr-unread { position: relative; border-radius: 18px; box-shadow: -4px 0 0 0 #e11d48; background: rgba(225, 29, 72, 0.04); }
+@keyframes mrr-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(225, 29, 72, 0); } }
+@media (prefers-reduced-motion: reduce) { .mrr-new { animation: none; } }
 .mrr-history h3 { margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--lg-ink); } .mrr-history h3 span { color: var(--lg-mute); font-weight: 600; }
 </style>

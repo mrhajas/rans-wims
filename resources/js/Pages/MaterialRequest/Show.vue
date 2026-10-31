@@ -33,7 +33,7 @@
           <icons name="doc-text" class="w-4 h-4" />{{ $t('Download PDF') }}
         </button>
         <button v-if="materialRequest.can_remind || (materialRequest.can_view_reminders && materialRequest.reminder_count)" type="button" class="lg-btn tone print:hidden" :style="{ '--tone': materialRequest.status === 'Pending Approval' ? '#4f46e5' : '#d97706' }" @click="reminderOpen = true">
-          <span class="tone-ico"><icons :name="materialRequest.status === 'Pending Approval' ? 'speakerphone' : 'bell'" class="w-4 h-4" /></span>{{ materialRequest.status === 'Pending Approval' ? $t('Remind approvers') : $t('Reminder') }}<b v-if="materialRequest.reminder_count" class="mr-bell-n2">{{ materialRequest.reminder_count }}</b>
+          <span class="tone-ico"><icons :name="materialRequest.status === 'Pending Approval' ? 'speakerphone' : 'bell'" class="w-4 h-4" /></span>{{ materialRequest.status === 'Pending Approval' ? $t('Remind approvers') : $t('Reminder') }}<b v-if="materialRequest.reminder_unread" class="mr-bell-n2">{{ materialRequest.reminder_unread }}</b>
         </button>
         <Link v-if="materialRequest.can_edit" :href="route('material-requests.edit', materialRequest.id)" class="lg-btn mr-btn-amber">
           <icons name="edit" class="w-4 h-4" />{{ $t('Edit') }}
@@ -473,7 +473,7 @@
         </template>
       </tec-dialog-modal>
     </div>
-    <reminder-modal :show="reminderOpen" :request-id="materialRequest.id" @close="reminderOpen = false" @sent="$inertia.reload({ only: ['reminders', 'materialRequest'], preserveScroll: true })" />
+    <reminder-modal :show="reminderOpen" :request-id="materialRequest.id" @close="reminderOpen = false" @sent="$inertia.reload({ only: ['reminders', 'materialRequest'], preserveScroll: true })" @read="$inertia.reload({ only: ['materialRequest'], preserveScroll: true })" />
   </admin-layout>
 </template>
 

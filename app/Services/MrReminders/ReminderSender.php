@@ -184,6 +184,15 @@ class ReminderSender
         return $o;
     }
 
+    /** Marks every reminder of the request as read for this person. */
+    public static function markRead(MaterialRequest $mr, User $user): void
+    {
+        $rows = $mr->reminders()->pluck('id')->map(fn ($id) => ['reminder_id' => $id, 'user_id' => $user->id, 'read_at' => now()])->all();
+        if ($rows) {
+            \Illuminate\Support\Facades\DB::table('mr_reminder_reads')->insertOrIgnore($rows);
+        }
+    }
+
     /** One reminder as the pages show it. */
     public static function present(MaterialRequestReminder $r, bool $withPeople = true): array
     {

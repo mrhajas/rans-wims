@@ -139,7 +139,7 @@
                       @click="openReminder(materialRequest)"
                     >
                       <icons :name="materialRequest.status === 'Pending Approval' ? 'speakerphone' : 'bell'" class="w-4 h-4" />
-                      <b v-if="materialRequest.reminder_count" class="mr-bell-n">{{ materialRequest.reminder_count }}</b>
+                      <b v-if="materialRequest.reminder_unread" class="mr-bell-n">{{ materialRequest.reminder_unread }}</b>
                     </button>
                     <Link
                       v-if="canEdit(materialRequest)"
@@ -183,7 +183,7 @@
       @confirm="forceClear"
       @close="forceAsk = false"
     />
-    <reminder-modal :show="reminderId !== null" :request-id="reminderId" @close="reminderId = null" @sent="onReminderSent" />
+    <reminder-modal :show="reminderId !== null" :request-id="reminderId" @close="reminderId = null" @sent="onReminderSent" @read="onRemindersRead" />
   </admin-layout>
 </template>
 
@@ -316,6 +316,11 @@ export default {
       const chase = m.status === 'Pending Approval';
       if (!m.reminder_count) return chase ? this.$t('Remind the approvers') : this.$t('Send a reminder');
       return (chase ? this.$t('Approver reminder (:n sent)', { n: m.reminder_count }) : this.$t('Reminder (:n sent)', { n: m.reminder_count })) + (m.last_reminder_at ? ' · ' + this.$datetime(m.last_reminder_at) : '');
+    },
+    // "Mark all read" in the window: the number on that row's bell goes away
+    onRemindersRead({ id }) {
+      const row = (this.materialRequests.data || []).find(r => r.id === id);
+      if (row) row.reminder_unread = 0;
     },
     onReminderSent({ id }) {
       const rows = this.materialRequests.data || [];

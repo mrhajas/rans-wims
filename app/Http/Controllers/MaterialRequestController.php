@@ -113,9 +113,13 @@ class MaterialRequestController extends Controller
         });
 
         // Reminders sent per request on this page (the bell icon shows how many)
-        $reminderStats = \App\Models\MaterialRequestReminder::query()->whereIn('material_request_id', $materialRequests->pluck('id'))->selectRaw('material_request_id, COUNT(*) as n, MAX(created_at) as last_at')->groupBy('material_request_id')->get()->keyBy('material_request_id');
+        // (the number on the bell counts the ones this person has not marked as read)
+        $reminderStats = \App\Models\MaterialRequestReminder::query()->whereIn('material_request_id', $materialRequests->pluck('id'))
+            ->leftJoin('mr_reminder_reads as rr', fn ($j) => $j->on('rr.reminder_id', '=', 'mr_reminders.id')->where('rr.user_id', $request->user()->id))
+            ->selectRaw('material_request_id, COUNT(*) as n, SUM(CASE WHEN rr.id IS NULL THEN 1 ELSE 0 END) as unread, MAX(mr_reminders.created_at) as last_at')->groupBy('material_request_id')->get()->keyBy('material_request_id');
         $materialRequests->getCollection()->each(function ($m) use ($reminderStats) {
             $m->setAttribute('reminder_count', (int) ($reminderStats[$m->id]->n ?? 0));
+            $m->setAttribute('reminder_unread', (int) ($reminderStats[$m->id]->unread ?? 0));
             $m->setAttribute('last_reminder_at', $reminderStats[$m->id]->last_at ?? null);
         });
 
@@ -320,6 +324,8 @@ class MaterialRequestController extends Controller
 
         $reminderRows = $request->user()->can('read-mr-reminders') ? $material_request->reminders()->with(['sender:id,name', 'attachments'])->latest('id')->get() : collect();
         $material_request->setAttribute('reminder_count', $reminderRows->count());
+        $readIds = $reminderRows->isEmpty() ? [] : \Illuminate\Support\Facades\DB::table('mr_reminder_reads')->where('user_id', $request->user()->id)->whereIn('reminder_id', $reminderRows->pluck('id'))->pluck('reminder_id')->map(fn ($i) => (int) $i)->all();
+        $material_request->setAttribute('reminder_unread', $reminderRows->filter(fn ($r) => ! in_array((int) $r->id, $readIds, true))->count());
         $material_request->setAttribute('last_reminder_at', optional($reminderRows->first())->created_at);
 
         return Inertia::render('MaterialRequest/Show', [

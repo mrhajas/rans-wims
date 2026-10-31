@@ -29,6 +29,7 @@ class MaterialRequestCollection extends ResourceCollection
                 'can_remind' => $user ? \App\Services\MrReminders\ReminderSender::canSend($user, $materialRequest instanceof \Illuminate\Http\Resources\Json\JsonResource ? $materialRequest->resource : $materialRequest) : false,
                 'can_view_reminders' => $seeReminders,
                 'reminder_count' => (int) ($materialRequest->reminder_count ?? 0),
+                'reminder_unread' => (int) ($materialRequest->reminder_unread ?? 0),
                 'last_reminder_at' => $materialRequest->last_reminder_at ?? null,
                 'cleared_by_user_id' => $materialRequest->cleared_by_user_id,
                 'cleared_by' => $materialRequest->clearedBy ? [
