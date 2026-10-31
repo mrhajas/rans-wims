@@ -3,6 +3,7 @@
     <id-make-overlay />
     <div class="lg-page ac sc-ui px-4 md:px-0">
       <page-header :icon="info.icon" :title="info.label" :subtitle="$t('Every :k with its number, status and validity.', { k: info.singular })">
+        <Link v-if="can.create && (info.kind === 'staff' || info.kind === 'compound')" :href="route('id-passes.' + info.route + '.bulk')" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="collection" class="w-4 h-4" /></span><span>{{ $t('Issue many') }}</span></Link>
         <Link v-if="can.create" :href="route('id-passes.' + info.route + '.create')" class="lg-btn tone tone-solid" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span><span>{{ $t('Issue :k', { k: info.singular }) }}</span></Link>
         <Link v-if="can.batch" :href="route('id-passes.print-centre.index')" class="lg-btn tone" style="--tone: #4f46e5"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span><span>{{ $t('Print Centre') }}</span></Link>
         <Link :href="route('id-passes.dashboard')" class="lg-btn tone" style="--tone: #7c3aed"><span class="tone-ico"><icons name="chart-bar" class="w-4 h-4" /></span><span>{{ $t('Overview') }}</span></Link>
@@ -37,7 +38,7 @@
             <tr v-for="r in rows.data" :key="r.id" class="is-click idl-row" :style="{ '--c': r.color }" @click="open(r)">
               <td class="idl-ph"><img v-if="r.has_photo" loading="lazy" decoding="async" :src="route('id-passes.' + info.route + '.photo-file', [r.id]) + '?w=96'" alt="" /><span v-else><icons name="user" class="w-4 h-4" /></span></td>
               <td :data-label="$t('ID number')"><span class="lg-main idl-no lg-tip tip-left" :data-tip="$t('Open :n', { n: r.number })">{{ r.number }}</span><div v-if="r.staff_number" class="lg-subtext">{{ r.staff_number }}</div></td>
-              <td :data-label="$t('Name')"><template v-if="r.pooled"><span v-if="r.holder" class="lg-chip lg-chip-amber idl-hold">{{ $t('With') }} {{ r.holder }}</span><span v-else class="lg-chip lg-chip-green idl-hold">{{ $t('Free') }}</span></template><template v-else>{{ r.name }}<div v-if="r.phone" class="lg-subtext">{{ r.phone }}</div></template></td>
+              <td :data-label="$t('Name')"><template v-if="r.pooled"><span v-if="r.holder" class="lg-chip lg-chip-amber idl-hold">{{ $t('With') }} {{ r.holder }}</span><span v-else class="lg-chip lg-chip-green idl-hold">{{ $t('Free') }}</span></template><template v-else>{{ r.name }} <span v-if="r.unassigned" class="lg-chip lg-chip-amber idl-hold">{{ $t('Not yet given to a person') }}</span><div v-if="r.phone" class="lg-subtext">{{ r.phone }}</div></template></td>
               <td :data-label="$t('Category')"><category-chip :name="r.category" :color="r.color" :ink="r.ink" :icon="r.icon" /></td>
               <td :data-label="$t('Details')">{{ r.title || '-' }}<div v-if="r.vehicle" class="lg-subtext">{{ r.vehicle }}</div><div v-if="r.host" class="lg-subtext">{{ $t('Host') }}: {{ r.host }}</div></td>
               <td :data-label="$t('Status')"><span class="lg-chip lg-tip tip-left" :class="statusChip(r.status)" :data-tip="statusTip(r.status)"><icons :name="statusIcon(r.status)" class="w-3 h-3" /> {{ $t(r.status) }}</span></td>

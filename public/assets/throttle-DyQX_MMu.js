@@ -1,0 +1,1 @@
+import{Z as n}from"./app-DxUsipej.js";import{e as l,f as o}from"./debounce-Bk58QvH8.js";var f=o,g=l,c="Expected a function";function u(a,i,t){var r=!0,e=!0;if(typeof a!="function")throw new TypeError(c);return g(t)&&(r="leading"in t?!!t.leading:r,e="trailing"in t?!!t.trailing:e),f(a,i,{leading:r,maxWait:i,trailing:e})}var d=u;const _=n(d);export{_ as t};

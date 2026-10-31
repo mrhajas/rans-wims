@@ -69,6 +69,7 @@ class IdPassQuery
             'status' => $eff, 'issued_at' => optional($c->issued_at)->toDateString(), 'expires_at' => optional($c->expires_at)->toDateString(), 'days_left' => $c->daysToExpiry(), 'vehicle' => $c->vehicle_registration, 'phone' => $c->phone,
             'staff_number' => optional($c->staff)->staff_number, 'print_count' => (int) $c->print_count, 'last_printed_at' => optional($c->last_printed_at)->toIso8601String(), 'has_photo' => (bool) $c->photo_path, 'photo_background' => optional($c->category)->photo_background,
             'authorisation' => $c->authorisation_type, 'host' => $c->host_name, 'staff_id' => $c->staff_id, 'contact_id' => $c->contact_id,
+            'unassigned' => $c->kind === 'gate' && ! optional($c->category)->pooled && ! $c->contact_id && ! $c->visitor_id && mb_strtolower(trim((string) $c->full_name)) === mb_strtolower(IdPassSettings::get('idpass_stock_holder')),
             'pooled' => (bool) optional($c->category)->pooled, 'holder' => $c->relationLoaded('openAssignment') && $c->openAssignment ? $c->openAssignment->holder_name : null];
     }
 

@@ -653,6 +653,18 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
                 Route::post('/', [$card, 'store'])->middleware('throttle:60,1,id-passes.' . $k['route'] . '.store')->defaults('kind', $kind)->name('store');
                 Route::get('{card}', [$card, 'show'])->whereNumber('card')->defaults('kind', $kind)->name('show');
                 Route::put('{card}', [$card, 'update'])->whereNumber('card')->middleware('throttle:60,1,id-passes.' . $k['route'] . '.update')->defaults('kind', $kind)->name('update');
+                if (in_array($kind, ['staff', 'compound'], true)) {
+                    Route::get('bulk', [Controllers\IdPasses\BulkController::class, 'index'])->defaults('kind', $kind)->name('bulk');
+                    Route::get('bulk/people', [Controllers\IdPasses\BulkController::class, 'people'])->middleware('throttle:240,1,id-passes.' . $k['route'] . '.bulk.people')->defaults('kind', $kind)->name('bulk.people');
+                    Route::post('bulk/issue', [Controllers\IdPasses\BulkController::class, 'issue'])->middleware('throttle:120,1,id-passes.' . $k['route'] . '.bulk.issue')->defaults('kind', $kind)->name('bulk.issue');
+                    Route::post('bulk/backgrounds', [Controllers\IdPasses\BulkController::class, 'backgrounds'])->middleware('throttle:60,1,id-passes.' . $k['route'] . '.bulk.backgrounds')->defaults('kind', $kind)->name('bulk.backgrounds');
+                }
+                if (in_array($kind, ['visitor', 'gate'], true)) {
+                    Route::post('stock', [$card, 'stock'])->middleware('throttle:120,1,id-passes.' . $k['route'] . '.stock')->defaults('kind', $kind)->name('stock');
+                }
+                if ($kind === 'gate') {
+                    Route::post('{card}/assign', [$card, 'assign'])->whereNumber('card')->middleware('throttle:60,1,id-passes.gates.assign')->defaults('kind', $kind)->name('assign');
+                }
                 Route::post('{card}/photo', [$card, 'photo'])->whereNumber('card')->middleware('throttle:30,1,id-passes.' . $k['route'] . '.photo')->defaults('kind', $kind)->name('photo');
                 Route::get('{card}/faces', [$card, 'faces'])->whereNumber('card')->middleware('throttle:240,1,id-passes.' . $k['route'] . '.faces')->defaults('kind', $kind)->name('faces');
                 Route::get('{card}/photo-file', [$card, 'photoFile'])->whereNumber('card')->middleware('throttle:600,1,id-passes.' . $k['route'] . '.photo-file')->defaults('kind', $kind)->name('photo-file');

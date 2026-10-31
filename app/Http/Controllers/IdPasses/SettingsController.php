@@ -97,7 +97,7 @@ class SettingsController extends Controller
         $this->need('manage-id-settings');
         $d = $request->validate(['idpass_intro' => 'required|string|max:300', 'idpass_terms' => 'required|string|max:1500', 'idpass_address' => 'nullable|string|max:120', 'idpass_pobox' => 'nullable|string|max:120', 'idpass_phones' => 'nullable|string|max:120',
             'idpass_email' => 'nullable|string|max:120', 'idpass_website' => 'nullable|string|max:120', 'idpass_back_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'], 'idpass_expiry_notice_days' => 'required|integer|min:0|max:180',
-            'idpass_gate_types' => 'nullable|string|max:600', 'idpass_no_expiry_text' => 'required|string|max:40', 'idpass_sync_batch' => 'required|integer|min:5|max:200'],
+            'idpass_gate_types' => 'nullable|string|max:600', 'idpass_no_expiry_text' => 'required|string|max:40', 'idpass_stock_holder' => 'required|string|max:120', 'idpass_sync_batch' => 'required|integer|min:5|max:200'],
             ['idpass_intro.required' => __('Type the statement at the top of the back.'), 'idpass_terms.required' => __('Type the terms, one on each line.')]);
         $terms = array_values(array_filter(array_map('trim', preg_split('/\R/', $d['idpass_terms']))));
         if (count($terms) > 10) {

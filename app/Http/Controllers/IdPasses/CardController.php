@@ -73,7 +73,7 @@ class CardController extends Controller
         return Inertia::render('IdPasses/Cards/Issue', [
             'info' => $this->info($kind), 'categories' => $cats->map(fn (IdPassCategory $c) => $this->categoryForm($c))->values(), 'gateTypes' => IdPassSettings::gateTypes(), 'today' => Carbon::today(config('app.timezone'))->toDateString(),
             'presetStaff' => $kind === 'staff' && $request->query('staff') ? (int) $request->query('staff') : null, 'presetContact' => in_array($kind, ['compound', 'gate'], true) && $request->query('contact') ? (int) $request->query('contact') : null,
-            'canNumber' => auth()->user()->can('manage-id-numbering'), 'minPhotoWidth' => PhotoService::MIN_WIDTH,
+            'canNumber' => auth()->user()->can('manage-id-numbering'), 'minPhotoWidth' => PhotoService::MIN_WIDTH, 'stockHolder' => IdPassSettings::get('idpass_stock_holder'),
         ]);
     }
 
@@ -91,7 +91,7 @@ class CardController extends Controller
             'category_id' => 'required|integer', 'staff_id' => 'nullable|integer', 'visitor_id' => 'nullable|integer', 'full_name' => 'nullable|string|max:190', 'title' => 'nullable|string|max:120',
             'phone' => 'nullable|string|max:60', 'company' => 'nullable|string|max:150', 'issued_at' => 'required|date', 'expires_at' => 'nullable|date', 'host_name' => 'nullable|string|max:150', 'purpose' => 'nullable|string|max:255',
             'authorisation_type' => 'nullable|string|max:80', 'vehicle_registration' => 'nullable|string|max:40', 'vehicle_description' => 'nullable|string|max:150', 'restrictions' => 'nullable|string|max:2000', 'notes' => 'nullable|string|max:2000',
-            'manual_number' => 'nullable|integer|min:1|max:99999999', 'quantity' => 'nullable|integer|min:1|max:200', 'contact_id' => 'nullable|integer', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 
+            'manual_number' => 'nullable|integer|min:1|max:99999999', 'quantity' => 'nullable|integer|min:1|max:200', 'stock' => 'nullable|boolean', 'contact_id' => 'nullable|integer', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 
         ];
     }
 
@@ -104,6 +104,13 @@ class CardController extends Controller
         if ($cat->pooled) {
             $made = CardService::issuePool($cat, (int) ($d['quantity'] ?? 1), $request->user(), $d['expires_at'] ?? null);
             $msg = count($made) === 1 ? __(':n was made and is ready to be given to a visitor.', ['n' => $made[0]->number]) : __(':a passes made: :f to :l. They are ready to be given to visitors.', ['a' => count($made), 'f' => $made[0]->number, 'l' => end($made)->number]);
+
+            return redirect()->route('id-passes.' . IdPassKinds::get($kind)['route'] . '.index')->with('message', $msg);
+        }
+        if ($kind === 'gate' && $request->boolean('stock')) {
+            // Gate Passes made in advance, all in the name of the company; each is given to a person later (Assign)
+            $made = CardService::issueStock($cat, (int) ($d['quantity'] ?? 1), $request->user(), $d['expires_at'] ?? null, $d['issued_at'] ?? null);
+            $msg = count($made) === 1 ? __(':n was made in the name of :h. Give it to a person when it is needed.', ['n' => $made[0]->number, 'h' => $made[0]->full_name]) : __(':a Gate Passes made: :f to :l, in the name of :h. Give each one to a person when it is needed.', ['a' => count($made), 'f' => $made[0]->number, 'l' => end($made)->number, 'h' => $made[0]->full_name]);
 
             return redirect()->route('id-passes.' . IdPassKinds::get($kind)['route'] . '.index')->with('message', $msg);
         }
@@ -158,7 +165,7 @@ class CardController extends Controller
             'gateTypes' => IdPassSettings::gateTypes(),
             'pooled' => (bool) optional($card->category)->pooled, 'holder' => ($a = PassAssignments::open($card)) ? ['name' => $a->holder_name, 'company' => $a->holder_company, 'phone' => $a->holder_phone, 'host' => $a->host_name, 'visit_id' => $a->visit_id, 'from' => $a->assigned_at->toIso8601String()] : null,
             'assignments' => optional($card->category)->pooled ? PassAssignments::history($card) : [], 'cardHistory' => $this->cardHistory($card),
-            'can' => ['give' => optional($card->category)->pooled && $card->status === IdPassCard::ACTIVE && $u->can('assign-visitor-passes'), 'edit' => $open && $this->can($kind, 'update'), 'approve' => $pending && $this->can($kind, 'approve') && ((int) $card->created_by_user_id !== (int) $u->id || $u->hasRole('Super Admin')),
+            'can' => ['give' => optional($card->category)->pooled && $card->status === IdPassCard::ACTIVE && $u->can('assign-visitor-passes'), 'assign' => $kind === 'gate' && $open && ! optional($card->category)->pooled && $this->can($kind, 'update'), 'edit' => $open && $this->can($kind, 'update'), 'approve' => $pending && $this->can($kind, 'approve') && ((int) $card->created_by_user_id !== (int) $u->id || $u->hasRole('Super Admin')),
                 'suspend' => $card->status === IdPassCard::ACTIVE && $this->can($kind, 'revoke'), 'reactivate' => $card->status === IdPassCard::SUSPENDED && $this->can($kind, 'revoke'), 'revoke' => $open && $this->can($kind, 'revoke'),
                 'renew' => in_array($card->status, [IdPassCard::ACTIVE, IdPassCard::SUSPENDED], true) && $this->can($kind, 'create'), 'replace' => $open && ! $pending && $this->can($kind, 'create'),
                 'print' => $this->can($kind, 'print') && ! in_array($card->status, [IdPassCard::REJECTED], true), 'download' => $this->can($kind, 'download') && ! in_array($card->status, [IdPassCard::REJECTED], true), 'number' => $u->can('manage-id-numbering')],
@@ -226,6 +233,42 @@ class CardController extends Controller
         }
 
         return back()->with('message', __(':n was taken back.', ['n' => $card->number]));
+    }
+
+    /** A lot of a stock (Visitor Passes, or Gate Passes made in advance) made in one small request, so the page can show the real progress of a long run. Answers with the numbers made. */
+    public function stock(Request $request)
+    {
+        $kind = $this->kindOf($request);
+        abort_unless(in_array($kind, ['visitor', 'gate'], true), 404);
+        $this->must($kind, 'create');
+        $d = $request->validate(['category_id' => 'required|integer', 'quantity' => 'required|integer|min:1|max:50', 'issued_at' => 'nullable|date', 'expires_at' => 'nullable|date', 'ref' => 'required|string|max:40']);
+        $cat = IdPassCategory::query()->active()->ofKind($kind)->findOr((int) $d['category_id'], fn () => throw ValidationException::withMessages(['category_id' => __('Choose a category from the list.')]));
+        $made = $cat->pooled ? CardService::issuePool($cat, (int) $d['quantity'], $request->user(), $d['expires_at'] ?? null, $d['ref'])
+            : CardService::issueStock($cat, (int) $d['quantity'], $request->user(), $d['expires_at'] ?? null, $d['issued_at'] ?? null, $d['ref']);
+
+        return response()->json(['made' => collect($made)->map(fn ($c) => ['id' => $c->id, 'number' => $c->number, 'status' => $c->status])->values(), 'holder' => $made[0]->full_name]);
+    }
+
+    /** Gives a Gate Pass (often one made in advance in the name of the company) to a person: a contact, a visitor of the directory or a name typed. The history keeps who held it before. */
+    public function assign(Request $request)
+    {
+        $kind = $this->kindOf($request);
+        abort_unless($kind === 'gate', 404);
+        $card = $this->cardOf($request, $kind);
+        $this->must($kind, 'update');
+        $d = $request->validate(['contact_id' => 'nullable|integer', 'visitor_id' => 'nullable|integer', 'full_name' => 'nullable|string|max:190', 'phone' => 'nullable|string|max:60', 'company' => 'nullable|string|max:150', 'purpose' => 'required|string|max:255',
+            'authorisation_type' => 'nullable|string|max:80', 'vehicle_registration' => 'nullable|string|max:40', 'vehicle_description' => 'nullable|string|max:150'], ['purpose.required' => __('Say why this person may enter (the reason for access).')]);
+        if (! empty($d['visitor_id']) && ($v = \App\Models\Visitor::query()->find((int) $d['visitor_id']))) {
+            $d['full_name'] = $d['full_name'] ?: $v->full_name;
+            $d['phone'] = $d['phone'] ?? $v->phone;
+            $d['company'] = $d['company'] ?? $v->company;
+        }
+        if ($card->category && $card->category->vehicle_required && trim((string) ($d['vehicle_registration'] ?? '')) === '') {
+            throw ValidationException::withMessages(['vehicle_registration' => __('The vehicle registration number is required for this category.')]);
+        }
+        $c = CardService::assign($card, $d, $request->user());
+
+        return back()->with('message', __(':n now belongs to :p.', ['n' => $c->number, 'p' => $c->full_name]));
     }
 
     public function update(Request $request)

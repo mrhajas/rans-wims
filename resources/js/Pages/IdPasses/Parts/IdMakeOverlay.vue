@@ -8,7 +8,19 @@
             <i v-for="n in 7" :key="'p' + n" class="idm-spark" :style="{ '--x': (n * 41) % 100 + '%', '--y': (n * 23) % 70 + 10 + '%', '--t': 2.6 + (n % 3) * 0.7 + 's', '--d': n * -0.45 + 's' }"></i>
 
             <!-- everything inside is replayed every few seconds while the work goes on -->
-            <div :key="cycle" class="idm-play" :style="{ '--cycle': cycleMs + 'ms' }">
+            <!-- many IDs at once: a ring that fills, the card of the person being made, and a belt that carries the finished ones away -->
+            <div v-if="scene === 'bulk'" class="idm-bulk">
+              <div class="idm-ringbox">
+                <svg viewBox="0 0 140 140" width="132" height="132" class="idm-ringsvg"><circle cx="70" cy="70" r="60" class="idm-ring-bg" /><circle cx="70" cy="70" r="60" class="idm-ring-fg" :style="{ strokeDashoffset: 377 * (1 - pct / 100) }" /></svg>
+                <i class="idm-orbit o1"></i><i class="idm-orbit o2"></i><i class="idm-orbit o3"></i>
+                <div class="idm-who" :key="s.done"><span class="idm-who-photo"><em></em><em></em></span><span class="idm-who-band"></span><span class="idm-who-l"></span><span class="idm-who-l s"></span></div>
+                <b class="idm-pct">{{ Math.round(pct) }}<small>%</small></b>
+              </div>
+              <transition-group name="idm-feed" tag="div" class="idm-belt">
+                <span v-for="f in s.feed" :key="f.key" class="idm-mini" :class="{ bad: !f.ok }"><i class="idm-mini-band"></i><b>{{ f.initials }}</b><small>{{ f.label }}</small><em>{{ f.ok ? '✓' : '✕' }}</em></span>
+              </transition-group>
+            </div>
+            <div v-else :key="cycle" class="idm-play" :style="{ '--cycle': cycleMs + 'ms' }">
               <!-- the printer or the PDF page the card travels to -->
               <div v-if="scene === 'print'" class="idm-printer">
                 <div class="idm-clip"><div class="idm-sheet">
@@ -68,9 +80,10 @@
 
           <div class="idm-text">
             <h3>{{ heading }}</h3>
-            <transition name="idm-step" mode="out-in"><p v-if="s.phase === 'working'" :key="step" class="idm-step">{{ steps[step] }}</p><p v-else-if="s.message" key="msg" class="idm-step msg">{{ s.message }}</p></transition>
-            <div v-if="s.phase === 'working'" class="idm-bar" :class="{ 'is-fixed': s.percent !== null }"><i :style="s.percent !== null ? { width: Math.max(5, s.percent) + '%' } : null"></i></div>
-            <small v-if="s.phase === 'working' && s.total" class="idm-nums">{{ $t(':a of :b cards', { a: s.done, b: s.total }) }}</small>
+            <transition name="idm-step" mode="out-in"><p v-if="s.phase === 'working'" :key="scene === 'bulk' ? s.current : step" class="idm-step">{{ scene === 'bulk' && s.current ? s.current : steps[step] }}</p><p v-else-if="s.message" key="msg" class="idm-step msg">{{ s.message }}</p></transition>
+            <div v-if="s.phase === 'working' && scene !== 'bulk'" class="idm-bar" :class="{ 'is-fixed': s.percent !== null }"><i :style="s.percent !== null ? { width: Math.max(5, s.percent) + '%' } : null"></i></div>
+            <div v-if="scene === 'bulk'" class="idm-chips"><span class="ok">✓ {{ s.ok }} {{ $t('issued') }}</span><span v-if="s.bad" class="bad">✕ {{ s.bad }} {{ $t('need attention') }}</span><span v-if="s.eta && s.phase === 'working'" class="eta">{{ s.eta }}</span></div>
+            <small v-if="s.phase === 'working' && s.total && scene !== 'bulk'" class="idm-nums">{{ $t(':a of :b cards', { a: s.done, b: s.total }) }}</small>
             <small v-else-if="s.phase === 'working' && long" class="idm-nums">{{ $t('Please keep this window open until it is ready.') }}</small>
           </div>
 
@@ -94,6 +107,7 @@ export default {
   data() { return { s: idMake, cycle: 0, step: 0, timer: null, stepTimer: null, lateTimer: null, late: false }; },
   computed: {
     scene() { return this.s.mode === 'batch' ? 'print' : this.s.mode; },
+    pct() { return this.s.percent === null ? 0 : Math.max(0, Math.min(100, this.s.percent)); },
     cycleMs() { return this.scene === 'issue' ? 3800 : this.scene === 'pdf' ? 5000 : 5600; },
     long() { return this.s.mode === 'batch' && !this.s.total; },
     qr() {
@@ -103,9 +117,9 @@ export default {
       return out;
     },
     heading() {
-      if (this.s.phase === 'done') return { issue: this.$t('Your ID is ready'), print: this.$t('Ready to print'), pdf: this.$t('PDF is ready'), batch: this.$t('Your cards are ready') }[this.s.mode] || this.$t('Ready');
+      if (this.s.phase === 'done') return { issue: this.$t('Your ID is ready'), print: this.$t('Ready to print'), pdf: this.$t('PDF is ready'), batch: this.$t('Your cards are ready'), bulk: this.$t('The IDs are ready') }[this.s.mode] || this.$t('Ready');
       if (this.s.phase === 'error') return this.$t('That did not work');
-      return this.s.title || { issue: this.$t('Making the ID card'), print: this.$t('Preparing the print'), pdf: this.$t('Creating the PDF'), batch: this.$t('Making the cards') }[this.s.mode];
+      return this.s.title || { issue: this.$t('Making the ID card'), print: this.$t('Preparing the print'), pdf: this.$t('Creating the PDF'), batch: this.$t('Making the cards'), bulk: this.$t('Making the IDs') }[this.s.mode];
     },
     steps() {
       return {
@@ -113,6 +127,7 @@ export default {
         print: [this.$t('Making the card faces'), this.$t('Fitting the names'), this.$t('Laying out the sheet'), this.$t('Adding the cutting marks'), this.$t('Opening it for printing')],
         pdf: [this.$t('Making the card faces'), this.$t('Embedding the fonts'), this.$t('Building the PDF pages'), this.$t('Almost ready')],
         batch: [this.$t('Making the cards'), this.$t('Fitting the names'), this.$t('Laying out the sheets'), this.$t('Building the files')],
+        bulk: [this.$t('Checking the details'), this.$t('Fitting the names'), this.$t('Placing the photographs'), this.$t('Numbering the IDs')],
       }[this.s.mode] || [];
     },
   },
@@ -212,6 +227,30 @@ export default {
 .idm-doc-l { position: absolute; left: 12px; height: 4px; border-radius: 2px; background: #dbe4ef; transform-origin: left; animation: idm-wipe-x 0.4s both; } .idm-doc-l.l1 { top: 18px; width: 46px; animation-delay: 3.5s; } .idm-doc-l.l2 { top: 28px; width: 62px; animation-delay: 3.65s; } .idm-doc-l.l3 { top: 38px; width: 40px; animation-delay: 3.8s; }
 .idm-doc-arrow { position: absolute; right: 9px; bottom: 9px; padding: 4px; box-sizing: content-box; border-radius: 50%; background: #1565c0; animation: idm-bounce 0.9s 3.9s ease-in-out 2 both; } @keyframes idm-bounce { 0% { opacity: 0; transform: translateY(-14px); } 40% { opacity: 1; transform: translateY(2px); } 100% { opacity: 1; transform: none; } }
 
+
+/* ---------- many IDs at once ---------- */
+.idm-bulk { position: absolute; inset: 0; display: grid; grid-template-rows: 140px 1fr; justify-items: center; transition: opacity 0.4s, filter 0.4s; }
+.is-dim .idm-bulk { opacity: 0.35; filter: blur(1.5px); }
+.idm-ringbox { position: relative; width: 132px; height: 132px; margin-top: 2px; }
+.idm-ringsvg { position: absolute; inset: 0; transform: rotate(-90deg); overflow: visible; filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--band) 45%, transparent)); }
+.idm-ring-bg { fill: none; stroke: rgba(100, 116, 139, 0.18); stroke-width: 9; }
+.idm-ring-fg { fill: none; stroke: var(--band); stroke-width: 9; stroke-linecap: round; stroke-dasharray: 377; transition: stroke-dashoffset 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.idm-orbit { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: #fff200; box-shadow: 0 0 10px 2px color-mix(in srgb, var(--band) 60%, #fff200); animation: idm-orb 3.2s linear infinite; }
+.idm-orbit.o2 { animation-delay: -1.07s; background: #fff; } .idm-orbit.o3 { animation-delay: -2.13s; background: var(--band); }
+@keyframes idm-orb { from { transform: rotate(0deg) translateX(66px); } to { transform: rotate(360deg) translateX(66px); } }
+.idm-who { position: absolute; left: 50%; top: 50%; width: 46px; height: 70px; margin: -35px 0 0 -23px; border-radius: 8px; background: #1e4467; box-shadow: 0 12px 18px -10px rgba(15, 37, 64, 0.7); overflow: hidden; animation: idm-flipin 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; opacity: 0.18; }
+@keyframes idm-flipin { 0% { transform: rotateY(90deg) scale(0.8); opacity: 0; } 100% { transform: none; opacity: 0.18; } }
+.idm-who span { position: absolute; display: block; } .idm-who-photo { left: 14px; top: 8px; width: 24px; height: 30px; border-radius: 4px; background: #c5ccd3; } .idm-who-photo em { position: absolute; background: #f4f6f8; } .idm-who-photo em:first-child { left: 8px; top: 5px; width: 8px; height: 8px; border-radius: 50%; } .idm-who-photo em:last-child { left: 4px; top: 15px; width: 16px; height: 16px; border-radius: 8px 8px 0 0; }
+.idm-who-band { left: 0; top: 40px; width: 36px; height: 11px; border-radius: 0 5px 0 0; background: var(--band); } .idm-who-l { left: 5px; top: 56px; width: 30px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.85); } .idm-who-l.s { top: 63px; width: 18px; background: #fff200; }
+.idm-pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.7rem; font-weight: 900; letter-spacing: -0.02em; color: var(--band); font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6); } .idm-pct small { font-size: 0.7rem; margin-left: 1px; opacity: 0.8; align-self: end; margin-bottom: 40px; }
+.idm-belt { position: relative; display: flex; gap: 7px; align-items: flex-end; justify-content: center; height: 46px; width: 100%; overflow: hidden; margin-top: 4px; padding-bottom: 4px; mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+.idm-mini { position: relative; flex: none; width: 34px; height: 42px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px #dbe4ef, 0 8px 12px -8px rgba(15, 37, 64, 0.5); overflow: hidden; display: grid; place-items: center; align-content: center; gap: 1px; }
+.idm-mini-band { position: absolute; left: 0; right: 0; top: 0; height: 7px; background: var(--band); } .idm-mini b { margin-top: 7px; font-size: 0.78rem; font-weight: 900; color: #1e4467; } .idm-mini small { font-size: 0.5rem; font-weight: 800; color: #64748b; letter-spacing: 0.02em; }
+.idm-mini em { position: absolute; right: 2px; bottom: 1px; font-style: normal; font-size: 0.55rem; font-weight: 900; color: #16a34a; } .idm-mini.bad { box-shadow: 0 0 0 1.5px #dc2626; } .idm-mini.bad em, .idm-mini.bad b { color: #dc2626; } .idm-mini.bad .idm-mini-band { background: #dc2626; }
+.idm-feed-enter-active { transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.4s; } .idm-feed-move { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); } .idm-feed-leave-active { position: absolute; transition: opacity 0.3s, transform 0.4s; }
+.idm-feed-enter-from { opacity: 0; transform: translateY(-34px) scale(0.5); } .idm-feed-leave-to { opacity: 0; transform: translateX(-30px) scale(0.8); }
+.idm-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; font-size: 0.74rem; font-weight: 800; } .idm-chips span { padding: 3px 10px; border-radius: 999px; background: rgba(100, 116, 139, 0.14); } .idm-chips .ok { background: rgba(22, 163, 74, 0.14); color: #15803d; } .idm-chips .bad { background: rgba(220, 38, 38, 0.13); color: #b91c1c; }
+
 /* ---------- the result ---------- */
 .idm-result { position: absolute; inset: 0; display: grid; place-items: center; z-index: 5; }
 .idm-result svg { position: relative; z-index: 2; animation: idm-pop 0.55s both; }
@@ -242,5 +281,6 @@ export default {
   .idm-play { opacity: 1; } .idm-sheet { transform: none; } .idm-flight { transform: none; }
   .m-print .idm-flight, .m-pdf .idm-flight { display: none; }
   .idm-bar i { width: 60%; }
+  .idm-orbit { display: none; }
 }
 </style>

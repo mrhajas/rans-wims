@@ -23,6 +23,7 @@ class IdPassSettings
         'idpass_expiry_notice_days' => '30',
         'idpass_gate_types' => "Parking\nSupplier delivery\nContractor\nService provider\nOther",
         'idpass_no_expiry_text' => 'Valid until revoked',
+        'idpass_stock_holder' => 'RANS Company Limited', // who a stock of Gate Passes belongs to until each one is given to a person
         'idpass_sync_batch' => '30',           // up to this many cards are made at once; more are made in the background
     ];
 

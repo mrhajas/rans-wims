@@ -97,13 +97,14 @@ class CardService
                 self::fail('full_name', __('Type the name of the person.'));
             }
         }
-        if ($cat->kind === 'gate' && ! $cat->pooled && trim((string) ($in['purpose'] ?? '')) === '') {
+        $stock = ! empty($in['_stock']);     // a Gate Pass made in advance, in the name of the company: no person, purpose or photograph yet
+        if ($cat->kind === 'gate' && ! $cat->pooled && ! $stock && trim((string) ($in['purpose'] ?? '')) === '') {
             self::fail('purpose', __('Say why this person may enter (the reason for access).'));
         }
-        if ($cat->vehicle_required && trim((string) ($in['vehicle_registration'] ?? '')) === '') {
+        if ($cat->vehicle_required && ! $stock && trim((string) ($in['vehicle_registration'] ?? '')) === '') {
             self::fail('vehicle_registration', __('The vehicle registration number is required for this category.'));
         }
-        if ($cat->photo_required && ! $photo && ! $cat->pooled) {
+        if ($cat->photo_required && ! $photo && ! $cat->pooled && ! $stock) {
             self::fail('photo', $staff ? __('This staff member has no profile photograph. Upload or take one for the ID.') : __('A photograph is required for this category.'));
         }
         $issued = Carbon::parse($in['issued_at'] ?? self::today(), config('app.timezone'))->startOfDay();
@@ -112,7 +113,7 @@ class CardService
             self::fail('expires_at', __('The expiry date cannot be before the issue date.'));
         }
 
-        $card = DB::transaction(function () use ($cat, $in, $photo, $by, $manualSeq, $staff, $contact, $issued, $expires) {
+        $card = DB::transaction(function () use ($cat, $in, $photo, $by, $manualSeq, $staff, $contact, $issued, $expires, $stock) {
             $locked = IdPassCategory::query()->whereKey($cat->id)->lockForUpdate()->first();
             if ($open = self::openCardOf($cat->kind, $staff?->id, $contact?->id, ! empty($in['visitor_id']) ? (int) $in['visitor_id'] : null)) {
                 self::fail($staff ? 'staff_id' : ($contact ? 'contact_id' : 'full_name'), __(':n already holds :k :num (:s). Renew, replace or revoke it first.', ['n' => $open->full_name, 'k' => __(IdPassCategory::KINDS[$open->kind]), 'num' => $open->number, 's' => $open->effective_status]));
@@ -130,7 +131,7 @@ class CardService
             }
             $locked->next_number = max((int) $locked->next_number, $seq + 1);
             $locked->save();
-            $pending = $cat->requires_approval;
+            $pending = $cat->requires_approval && ! $stock;   // a pass made in advance has no person yet: it is approved when it is given to one
             $card = IdPassCard::create([
                 'kind' => $cat->kind, 'category_id' => $cat->id, 'number' => $number, 'seq_no' => $seq, 'token' => Str::random(40), 'status' => $pending ? IdPassCard::PENDING : IdPassCard::ACTIVE,
                 'staff_id' => $staff?->id, 'contact_id' => $contact?->id, 'visitor_id' => ! empty($in['visitor_id']) ? (int) $in['visitor_id'] : null,
@@ -142,7 +143,7 @@ class CardService
                 'created_by_user_id' => $by->id, 'status_by_user_id' => $by->id, 'status_at' => now(),
             ]);
             DB::table('idpass_numbers')->insert(['category_id' => $cat->id, 'seq_no' => $seq, 'number' => $number, 'card_id' => $card->id, 'manual' => (bool) $manualSeq, 'assigned_by_user_id' => $by->id, 'assigned_at' => now()]);
-            IdPassEvent::record($card, 'issued', null, $card->status, ['number' => $number, 'manual' => (bool) $manualSeq, 'expires' => $expires?->toDateString()]);
+            IdPassEvent::record($card, 'issued', null, $card->status, array_filter(['number' => $number, 'manual' => (bool) $manualSeq, 'expires' => $expires?->toDateString(), 'bulk' => $in['_bulk'] ?? null, 'stock' => $stock ?: null, 'holder' => $stock ? $card->full_name : null], fn ($v) => $v !== null && $v !== false));
 
             return $card;
         });
@@ -154,14 +155,80 @@ class CardService
         return $card;
     }
 
+    /** Makes $count Gate Passes in advance, all in the name of the company ($holder), numbers in a row. Each is given to a person later (assign). @return IdPassCard[] */
+    public static function issueStock(IdPassCategory $cat, int $count, User $by, ?string $expires = null, ?string $issued = null, ?string $ref = null): array
+    {
+        abort_unless($cat->kind === 'gate' && ! $cat->pooled, 422, __('Only Gate Passes of people can be made in advance.'));
+        $count = max(1, min(200, $count));
+        $holder = IdPassSettings::get('idpass_stock_holder');
+        $ref = $ref ?: 'STOCK-' . now()->format('ymdHis') . '-' . Str::upper(Str::random(3));
+        $made = [];
+        DB::transaction(function () use ($cat, $count, $by, $expires, $issued, $holder, $ref, &$made) {
+            for ($i = 0; $i < $count; $i++) {
+                $made[] = self::issue($cat, ['full_name' => $holder, 'issued_at' => $issued ?: self::today()->toDateString(), 'expires_at' => $expires, '_stock' => true, '_bulk' => $ref, 'purpose' => null], null, $by, null, true);
+            }
+        });
+        log_activity('RANS Gate Passes made in advance', ['category' => $cat->name, 'count' => count($made), 'from' => $made[0]->number, 'to' => end($made)->number, 'holder' => $holder, 'reference' => $ref], $made[0], 'RANS ID & Pass Management');
+
+        return $made;
+    }
+
+    /** Gives a Gate Pass (usually one made in advance in the name of the company) to a person. The number, the QR code and the history stay; the holder, the contact and the reason change, and the old and the new holder are written to the history. */
+    public static function assign(IdPassCard $card, array $in, User $by): IdPassCard
+    {
+        abort_unless($card->kind === 'gate' && in_array($card->status, IdPassCard::OPEN, true), 422, __('Only a Gate Pass that is still in use can be given to another person.'));
+        $contact = ! empty($in['contact_id']) ? (Contact::query()->find((int) $in['contact_id']) ?: self::fail('contact_id', __('Choose a contact from the list.'))) : null;
+        $visitorId = ! empty($in['visitor_id']) ? (int) $in['visitor_id'] : null;
+        $name = $contact ? $contact->name : trim(preg_replace('/\s+/', ' ', (string) ($in['full_name'] ?? '')));
+        if ($name === '') {
+            self::fail('full_name', __('Choose the person or type the name.'));
+        }
+        if (trim((string) ($in['purpose'] ?? '')) === '') {
+            self::fail('purpose', __('Say why this person may enter (the reason for access).'));
+        }
+        if ($open = self::openCardOf('gate', null, $contact?->id, $visitorId, $card->id)) {
+            self::fail($contact ? 'contact_id' : 'full_name', __(':n already holds :k :num (:s). Renew, replace or revoke it first.', ['n' => $open->full_name, 'k' => __(IdPassCategory::KINDS[$open->kind]), 'num' => $open->number, 's' => $open->effective_status]));
+        }
+        $before = $after = [];
+        $needsApproval = (bool) optional($card->category)->requires_approval;
+        $c = self::change($card, 'holder_changed', function (IdPassCard $c) use ($in, $contact, $visitorId, $name, $by, $needsApproval, &$before, &$after) {
+            $new = ['full_name' => $name, 'contact_id' => $contact?->id, 'visitor_id' => $visitorId, 'phone' => self::clean($in['phone'] ?? ($contact?->phone)), 'company' => self::clean($in['company'] ?? null), 'purpose' => self::clean($in['purpose']),
+                'authorisation_type' => self::clean($in['authorisation_type'] ?? null), 'vehicle_registration' => ($v = self::clean($in['vehicle_registration'] ?? null)) ? mb_strtoupper($v) : null, 'vehicle_description' => self::clean($in['vehicle_description'] ?? null)];
+            foreach ($new as $f => $v) {
+                if ((string) $c->{$f} !== (string) $v) {
+                    $before[$f] = $c->{$f};
+                    $after[$f] = $v;
+                    $c->{$f} = $v;
+                }
+            }
+            if ($needsApproval && $c->status === IdPassCard::ACTIVE) {
+                // a new person needs the approval of the category before the pass works for them
+                $c->status = IdPassCard::PENDING;
+                $c->approved_by_user_id = null;
+                $c->approved_at = null;
+                $c->decision_reason = null;
+                $c->status_by_user_id = $by->id;
+                $c->status_at = now();
+            }
+        }, null, function () use (&$before, &$after, $needsApproval) {
+            return ['before' => $before, 'after' => $after, 'needs_approval' => $needsApproval ?: null];
+        });
+        if ($c->status === IdPassCard::PENDING) {
+            IdPassNotifier::fire('approval_needed', $c, $by);
+        }
+        self::log('RANS Gate Pass given to a person', $c, ['before' => $before['full_name'] ?? null, 'after' => $after['full_name'] ?? $c->full_name]);
+
+        return $c;
+    }
+
     /** Makes a stock of numbered passes that are handed out and taken back (Visitor Passes): $count of them, numbers in a row. @return IdPassCard[] */
-    public static function issuePool(IdPassCategory $cat, int $count, User $by, ?string $expires = null): array
+    public static function issuePool(IdPassCategory $cat, int $count, User $by, ?string $expires = null, ?string $ref = null): array
     {
         abort_unless($cat->pooled, 422, __('This category is not a stock of passes.'));
         $count = max(1, min(200, $count));
         $made = [];
         for ($i = 0; $i < $count; $i++) {
-            $made[] = self::issue($cat, ['issued_at' => self::today()->toDateString(), 'expires_at' => $expires], null, $by, null, true);
+            $made[] = self::issue($cat, ['issued_at' => self::today()->toDateString(), 'expires_at' => $expires, '_bulk' => $ref], null, $by, null, true);
         }
         log_activity('RANS passes made', ['category' => $cat->name, 'count' => count($made), 'from' => $made[0]->number, 'to' => end($made)->number], $made[0], 'RANS ID & Pass Management');
 

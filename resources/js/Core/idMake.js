@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 
 // State of the "making an ID" animation (shown by Pages/IdPasses/Parts/IdMakeOverlay.vue). One shared object, so any page can start it: issuing a card, printing, downloading a PDF, a batch.
 // The animation always plays at least MIN ms so it reads as a moment and never as a flash; the file itself is opened/downloaded the moment it is ready after that.
-export const idMake = reactive({ open: false, phase: 'idle', mode: 'issue', title: '', color: '#1565c0', count: 1, percent: null, done: 0, total: 0, message: '', openUrl: '', hideable: false, startedAt: 0 });
+export const idMake = reactive({ open: false, phase: 'idle', mode: 'issue', title: '', color: '#1565c0', count: 1, percent: null, done: 0, total: 0, message: '', openUrl: '', hideable: false, startedAt: 0, current: '', feed: [], ok: 0, bad: 0, eta: '' });
 
 const MIN = 1500;
 let closeTimer = null;
@@ -11,7 +11,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export function idMakeStart(o = {}) {
   clearTimeout(closeTimer); clearTimeout(doneTimer);
-  Object.assign(idMake, { open: true, phase: 'working', mode: 'issue', title: '', color: '#1565c0', count: 1, percent: null, done: 0, total: 0, message: '', openUrl: '', hideable: false, startedAt: Date.now() }, o);
+  Object.assign(idMake, { open: true, phase: 'working', mode: 'issue', title: '', color: '#1565c0', count: 1, percent: null, done: 0, total: 0, message: '', openUrl: '', hideable: false, startedAt: Date.now(), current: '', feed: [], ok: 0, bad: 0, eta: '' }, o);
 }
 
 export function idMakeProgress(percent, done = 0, total = 0) {
@@ -76,4 +76,12 @@ export async function idMakeFile(url, { mode = 'pdf', color, count = 1, title = 
     idMakeFail(await errorText(e, fail));
     return false;
   }
+}
+
+/** The "issuing line" of a run of many IDs: the caller reports each person as it starts and as it ends. */
+export function idMakeBulkNow(name) { if (idMake.open) idMake.current = name; }
+export function idMakeBulkItem({ ok, label, initials }) {
+  if (!idMake.open) return;
+  idMake.feed = [...idMake.feed, { key: idMake.feed.length + ':' + label, ok, label, initials }].slice(-7);
+  if (ok) idMake.ok++; else idMake.bad++;
 }

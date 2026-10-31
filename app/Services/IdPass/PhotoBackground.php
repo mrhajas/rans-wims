@@ -92,6 +92,7 @@ class PhotoBackground
             $new = $dir . '/card-' . substr(md5($hex . microtime()), 0, 8) . '.jpg';
             $disk->put($new, $jpeg);
             $card->forceFill(['photo_path' => $new, 'photo_bg' => strtolower($hex)])->save();
+            \App\Models\IdPassEvent::record($card, 'photo_changed', null, null, ['background' => strtolower($hex), 'reason' => 'photo background colour of the category']);
 
             return 'recoloured';
         }

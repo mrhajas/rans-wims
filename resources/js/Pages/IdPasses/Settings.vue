@@ -35,6 +35,7 @@
             <div class="ac-f"><label>{{ $t('Website') }}</label><input v-model="g.idpass_website" maxlength="120" /></div>
             <div class="ac-f"><label>{{ $t('Back colour') }} <b class="wims-req">*</b></label><input v-model="g.idpass_back_color" type="color" class="st-color" /></div>
             <div class="ac-f"><label>{{ $t('Text when there is no expiry') }} <b class="wims-req">*</b></label><input v-model="g.idpass_no_expiry_text" maxlength="40" /></div>
+            <div class="ac-f"><label>{{ $t('Holder of Gate Passes not yet given out') }} <b class="wims-req">*</b></label><input v-model="g.idpass_stock_holder" maxlength="120" /><small class="lg-subtext">{{ $t('A stock of Gate Passes is made in this name, and each one is given to a person later.') }}</small></div>
             <div class="ac-f"><label>{{ $t('Tell about expiry (days before)') }} <b class="wims-req">*</b></label><input v-model.number="g.idpass_expiry_notice_days" type="number" min="0" max="180" /><small class="lg-subtext">{{ $t('0 switches the notice off.') }}</small></div>
             <div class="ac-f"><label>{{ $t('Batch made at once up to (cards)') }} <b class="wims-req">*</b></label><input v-model.number="g.idpass_sync_batch" type="number" min="5" max="200" /><small class="lg-subtext">{{ $t('Larger batches are made in the background.') }}</small></div>
             <div class="ac-f st-all"><label>{{ $t('Gate pass authorisation types (one on each line)') }}</label><textarea v-model="g.idpass_gate_types" rows="4" maxlength="600"></textarea></div>

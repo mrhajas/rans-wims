@@ -19,6 +19,11 @@
             <button v-if="can.give && !holder" type="button" class="lg-btn tone tone-solid" @click="openGive" style="--tone: #2563eb"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Give to a visitor') }}</button>
             <button v-if="can.give && holder" type="button" class="lg-btn tone" @click="backOpen = true" style="--tone: #d97706"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Take back') }}</button>
           </div>
+          <div v-if="can.assign" class="ids-holder" :class="card.unassigned ? 'is-with' : 'is-free'">
+            <icons :name="card.unassigned ? 'info' : 'user'" class="w-5 h-5" />
+            <div><b>{{ card.unassigned ? $t('Not yet given to a person') : $t('Held by :n', { n: card.name }) }}</b><small>{{ card.unassigned ? $t('Made in advance in the name of the company.') : $t('You can give this pass to another person; the history keeps who had it.') }}</small></div>
+            <button type="button" class="lg-btn tone tone-solid" style="--tone: #d97706" @click="openAssign"><span class="tone-ico"><icons name="user" class="w-4 h-4" /></span>{{ card.unassigned ? $t('Give to a person') : $t('Change person') }}</button>
+          </div>
           <div class="ids-actions">
             <button v-if="can.approve" type="button" class="lg-btn tone tone-solid" @click="ask('approve')" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Approve') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn tone tone-solid" @click="ask('reject')" style="--tone: #dc2626"><span class="tone-ico"><icons name="x-circle" class="w-4 h-4" /></span>{{ $t('Reject') }}</button>
@@ -138,6 +143,24 @@
       <template #footer><button type="button" class="lg-btn tone" :disabled="af.processing" @click="ac = null" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-act" class="lg-btn tone tone-solid" :disabled="af.processing || cropBusy" :style="{ '--tone': ac && ac.danger ? '#dc2626' : '#16a34a' }"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ ac ? ac.button : '' }}</button></template>
     </travel-modal>
 
+    <!-- give a Gate Pass to a person -->
+    <travel-modal :show="assignOpen" :title="$t('Give :n to a person', { n: card.number })" :subtitle="$t('The number and the QR code stay. The history keeps who held it before.')" icon="user" max-width="2xl" :busy="asf.processing" @close="assignOpen = false">
+      <form id="ids-assign" @submit.prevent="submitAssign">
+        <div class="idi-src"><button type="button" :class="{ 'is-on': asSource === 'contact' }" @click="setAsSource('contact')">{{ $t('Gate Pass contacts') }}</button><button type="button" :class="{ 'is-on': asSource === 'visitor' }" @click="setAsSource('visitor')">{{ $t('Visitor directory') }}</button><button type="button" :class="{ 'is-on': asSource === 'type' }" @click="setAsSource('type')">{{ $t('Type the details') }}</button></div>
+        <div v-if="asSource !== 'type'" class="ac-f" style="margin-top: 12px"><label>{{ asSource === 'contact' ? $t('Contact') : $t('Visitor') }} <b class="wims-req">*</b></label><person-search v-model="asPerson" :source="asSource" :category-id="asSource === 'contact' ? card.category_id : null" :placeholder="$t('Type a name, number or phone')" @update:model-value="pickAssign" /><span class="ac-err">{{ errs.contact_id || errs.full_name }}</span></div>
+        <div class="lg-fields" style="margin-top: 12px">
+          <div v-if="asSource === 'type'" class="ac-f"><label>{{ $t('Full name') }} <b class="wims-req">*</b></label><input v-model="asf.full_name" maxlength="190" /><span class="ac-err">{{ errs.full_name }}</span></div>
+          <div class="ac-f"><label>{{ $t('Phone') }}</label><input v-model="asf.phone" maxlength="60" inputmode="tel" /></div>
+          <div class="ac-f"><label>{{ $t('Company') }}</label><input v-model="asf.company" maxlength="150" /></div>
+          <div class="ac-f"><label>{{ $t('Reason for access') }} <b class="wims-req">*</b></label><input v-model="asf.purpose" maxlength="255" /><span class="ac-err">{{ errs.purpose }}</span></div>
+          <div class="ac-f"><label>{{ $t('Authorisation') }}</label><acct-select v-model="asf.authorisation_type" :options="gateOptions" clearable /></div>
+          <div class="ac-f"><label>{{ $t('Vehicle registration') }}</label><input v-model="asf.vehicle_registration" maxlength="40" /><span class="ac-err">{{ errs.vehicle_registration }}</span></div>
+        </div>
+        <p class="lg-note lg-note-amber" style="margin-top: 12px"><icons name="info" class="w-4 h-4" /><span>{{ $t('If the new person needs a photograph on the card, use Change photograph after this.') }}</span></p>
+      </form>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="asf.processing" @click="assignOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-assign" class="lg-btn tone tone-solid" :disabled="asf.processing" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Give the pass') }}</button></template>
+    </travel-modal>
+
     <!-- edit details -->
     <travel-modal :show="editOpen" :title="$t('Edit details')" :subtitle="$t('The number, category and person cannot be changed. Replace the ID for that.')" icon="edit" max-width="2xl" :busy="ef.processing" @close="editOpen = false">
       <form id="ids-edit" class="lg-fields" @submit.prevent="saveEdit">
@@ -185,7 +208,7 @@ export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, IdCutout, PhotoCropper, CategoryChip, PersonSearch, IdMakeOverlay },
   props: { info: Object, card: Object, front: String, back: String, css: String, events: Array, prints: Array, canHistory: Boolean, gateTypes: Array, can: Object, layouts: Array, minPhotoWidth: Number, pooled: Boolean, holder: Object, assignments: { type: Array, default: () => [] }, cardHistory: { type: Array, default: () => [] } },
   data() {
-    return { tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, cropBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
+    return { assignOpen: false, asSource: 'contact', asPerson: null, asf: this.$inertia.form({ contact_id: null, visitor_id: null, full_name: '', phone: '', company: '', purpose: '', authorisation_type: null, vehicle_registration: '' }), tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, cropBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
   },
   computed: {
     errs() { return this.$page.props.errors || {}; },
@@ -240,6 +263,13 @@ export default {
       const url = route('id-passes.' + this.info.route + '.' + k, [this.card.id]);
       f.transform(d => { const o = {}; if (['reject', 'suspend', 'revoke', 'replace'].includes(k)) o.reason = d.reason; if (k === 'approve') o.remarks = d.remarks; if (k === 'renew') o.expires_at = d.expires_at; if (k === 'replace' && d.photo) { o.photo = d.photo.file; if (d.photo.original) o.photo_original = d.photo.original; if (d.photo.cutout) o.photo_cutout = d.photo.cutout; } return o; }).post(url, { ...opts, forceFormData: k === 'replace' });
     },
+    openAssign() { this.asSource = 'contact'; this.asPerson = null; this.asf.reset(); this.asf.clearErrors(); this.asf.purpose = this.card.unassigned ? '' : (this.card.purpose || ''); this.assignOpen = true; },
+    setAsSource(k) { this.asSource = k; this.asPerson = null; this.asf.contact_id = this.asf.visitor_id = null; if (k !== 'type') this.asf.full_name = ''; },
+    pickAssign(p) {
+      this.asf.contact_id = this.asSource === 'contact' && p ? p.id : null; this.asf.visitor_id = this.asSource === 'visitor' && p ? p.id : null;
+      if (p) { this.asf.full_name = p.name; this.asf.phone = p.phone || this.asf.phone; if (p.company) this.asf.company = p.company; if (p.vehicle && !this.asf.vehicle_registration) this.asf.vehicle_registration = p.vehicle; }
+    },
+    submitAssign() { this.asf.post(route('id-passes.' + this.info.route + '.assign', [this.card.id]), { preserveScroll: true, onSuccess: () => { this.assignOpen = false; } }); },
     openEdit() {
       const c = this.card;
       this.ef = this.$inertia.form({ full_name: c.name, title: c.title || '', phone: c.phone || '', company: c.company || '', expires_at: c.expires_at, host_name: c.host || '', purpose: c.purpose || '', authorisation_type: c.authorisation, vehicle_registration: c.vehicle || '', vehicle_description: c.vehicle_description || '', restrictions: c.restrictions || '', notes: c.notes || '' });
@@ -252,12 +282,15 @@ export default {
       router.post(route('id-passes.' + this.info.route + '.photo', [this.card.id]), fd, { preserveScroll: true, forceFormData: true, onSuccess: () => { this.photoOpen = false; this.newPhoto = null; this.photoV = Date.now(); }, onFinish: () => { this.photoBusy = false; } });
     },
     eventText(e) {
-      const m = { assigned: this.$t('Given to a visitor'), released: this.$t('Taken back'), reprinted: this.$t('Printed again'), issued: this.$t('Issued'), approved: this.$t('Approved'), rejected: this.$t('Rejected'), renewed: this.$t('Renewed'), suspended: this.$t('Suspended'), reactivated: this.$t('Reactivated'), revoked: this.$t('Revoked'), replaced: this.$t('Replaced by a new ID'), edited: this.$t('Details changed'), photo_changed: this.$t('Photograph changed'), expired: this.$t('Expired') };
+      const m = { holder_changed: this.$t('Given to a person'), assigned: this.$t('Given to a visitor'), released: this.$t('Taken back'), reprinted: this.$t('Printed again'), issued: this.$t('Issued'), approved: this.$t('Approved'), rejected: this.$t('Rejected'), renewed: this.$t('Renewed'), suspended: this.$t('Suspended'), reactivated: this.$t('Reactivated'), revoked: this.$t('Revoked'), replaced: this.$t('Replaced by a new ID'), edited: this.$t('Details changed'), photo_changed: this.$t('Photograph changed'), expired: this.$t('Expired') };
       return m[e.event] || e.event;
     },
     eventNote(e) {
       const d = e.detail || {}; if (e.event === 'renewed') return this.$t('Valid until :a (was :b)', { a: d.to || this.$t('no expiry'), b: d.from || this.$t('no expiry') });
       if (e.event === 'edited' && d.after) return Object.keys(d.after).join(', ');
+      if (e.event === 'holder_changed') return (d.before && d.before.full_name ? d.before.full_name : this.$t('no one')) + ' → ' + ((d.after && d.after.full_name) || this.card.name) + (d.after && d.after.purpose ? ' · ' + d.after.purpose : '');
+      if (e.event === 'issued' && d.bulk) return (d.stock ? this.$t('Made in advance in the name of :h', { h: d.holder }) + ' · ' : '') + this.$t('Run :r', { r: d.bulk });
+      if (e.event === 'photo_changed' && d.background) return this.$t('Background colour :c', { c: d.background });
       if (e.event === 'assigned') return d.holder || '';
       if (e.event === 'released') return (d.holder || '') + (d.reason ? ' · ' + d.reason : '');
       return d.reason || d.remarks || d.note || '';

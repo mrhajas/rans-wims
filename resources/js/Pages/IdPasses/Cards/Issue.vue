@@ -18,14 +18,15 @@
                 <input v-if="manual && canNumber" v-model="form.manual_number" inputmode="numeric" :placeholder="$t('Number, for example 17')" /><span class="ac-err">{{ err('number') || err('manual_number') }}</span>
               </div>
             </div>
+            <label v-if="info.kind === 'gate' && cat && !cat.pooled" class="idi-stock" :class="{ 'is-on': stock }"><input v-model="stock" type="checkbox" /><span><b>{{ $t('Make several now, not yet for a person') }}</b><small>{{ $t('All are made in the name of :h. Give each one to a person when it is needed.', { h: stockHolder }) }}</small></span></label>
           </section>
 
-          <section v-if="cat && cat.pooled" class="lg-card">
-            <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('How many passes') }}</h2><p class="lg-card-sub">{{ $t('These passes belong to nobody. Each is given to a visitor at check-in (from Visitor Logs) and taken back at check-out, and WIMS keeps who held which pass and when.') }}</p></div></header>
+          <section v-if="isStock" class="lg-card">
+            <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('How many passes') }}</h2><p class="lg-card-sub">{{ cat && cat.pooled ? $t('These passes belong to nobody. Each is given to a visitor at check-in (from Visitor Logs) and taken back at check-out, and WIMS keeps who held which pass and when.') : $t('These Gate Passes are made in the name of :h. Each is given to a person later (open the pass and choose Assign), and the history keeps who held it.', { h: stockHolder }) }}</p></div></header>
             <div class="lg-fields"><div class="ac-f"><label>{{ $t('Number of passes to make') }} <b class="wims-req">*</b></label><input v-model.number="form.quantity" type="number" min="1" max="200" inputmode="numeric" /><small class="lg-subtext">{{ $t('They get the next numbers in a row, from :a.', { a: cat.next }) }}</small><span class="ac-err">{{ err('quantity') }}</span></div></div>
           </section>
 
-          <section v-if="!(cat && cat.pooled)" class="lg-card">
+          <section v-if="!isStock" class="lg-card">
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-sky"><icons name="user" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Person') }}</h2><p class="lg-card-sub">{{ personHelp }}</p></div></header>
             <div v-if="sources.length > 1" class="idi-src"><button v-for="s in sources" :key="s.key" type="button" :class="{ 'is-on': source === s.key }" @click="setSource(s.key)">{{ s.label }}</button></div>
             <div v-if="source !== 'type'" class="ac-f"><label>{{ sourceLabel }} <b class="wims-req">*</b></label>
@@ -38,7 +39,7 @@
             </div>
           </section>
 
-          <section v-if="!(cat && cat.pooled)" class="lg-card">
+          <section v-if="!isStock" class="lg-card">
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-indigo"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Details') }}</h2><p class="lg-card-sub">{{ $t('What is written on the card and kept with it.') }}</p></div></header>
             <div class="lg-fields">
               <div v-if="info.kind === 'staff' || info.kind === 'visitor' || info.kind === 'gate'" class="ac-f"><label>{{ info.kind === 'staff' ? $t('Designation') : $t('Title or description') }}</label><input v-model="form.title" maxlength="120" :placeholder="info.kind === 'staff' ? $t('Taken from the staff profile') : ''" /></div>
@@ -62,7 +63,7 @@
             </div>
           </section>
 
-          <section v-if="showPhoto && !(cat && cat.pooled)" class="lg-card">
+          <section v-if="showPhoto && !isStock" class="lg-card">
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="camera" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Photograph') }} <b v-if="cat && cat.photo_required" class="wims-req">*</b></h2><p class="lg-card-sub">{{ $t('Upload a picture or take one now. The original is kept; the card gets the part inside the frame.') }}</p></div></header>
             <photo-cropper v-model="photo" :staff-photo-url="staffPhotoUrl" :min-width="minPhotoWidth" :background="(cat && cat.photo_bg) || ''" @busy="photoBusy = $event" />
             <span class="ac-err">{{ err('photo') || photoMissing }}</span>
@@ -70,7 +71,7 @@
 
           <div class="lg-actionbar"><span class="lg-actionbar-note">{{ cat && cat.requires_approval ? $t('Saved as waiting for approval.') : $t('The ID is active as soon as it is saved.') }}</span>
             <div class="lg-actionbar-btns"><Link :href="route('id-passes.' + info.route + '.index')" class="lg-btn tone t-slate" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</Link>
-              <button type="submit" class="lg-btn tone tone-solid" :disabled="form.processing || !canSave || photoBusy" :title="photoBusy ? $t('Wait until the photograph background is ready.') : ''" style="--tone: #16a34a"><span class="tone-ico"><icons name="send" class="w-4 h-4" /></span>{{ form.processing ? $t('Saving...') : (cat && cat.pooled ? $t('Make the passes') : cat && cat.requires_approval ? $t('Submit for approval') : $t('Issue ID')) }}</button></div></div>
+              <button type="submit" class="lg-btn tone tone-solid" :disabled="form.processing || running || !canSave || photoBusy" :title="photoBusy ? $t('Wait until the photograph background is ready.') : ''" style="--tone: #16a34a"><span class="tone-ico"><icons name="send" class="w-4 h-4" /></span>{{ form.processing ? $t('Saving...') : (isStock ? $t('Make the passes') : cat && cat.requires_approval ? $t('Submit for approval') : $t('Issue ID')) }}</button></div></div>
         </form>
 
         <aside class="idi-preview">
@@ -93,22 +94,24 @@ import CardFace from '../Parts/CardFace.vue';
 import PersonSearch from '../Parts/PersonSearch.vue';
 import PhotoCropper from '../Parts/PhotoCropper.vue';
 import IdMakeOverlay from '../Parts/IdMakeOverlay.vue';
-import { idMakeStart, idMakeDone, idMakeClose } from '@/Core/idMake';
+import { idMake, idMakeStart, idMakeProgress, idMakeDone, idMakeFail, idMakeClose, idMakeBulkNow, idMakeBulkItem } from '@/Core/idMake';
 
 const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, CardFace, PersonSearch, PhotoCropper, IdMakeOverlay },
-  props: { info: Object, categories: Array, gateTypes: Array, today: String, presetStaff: Number, presetContact: Number, canNumber: Boolean, minPhotoWidth: Number },
+  props: { info: Object, categories: Array, gateTypes: Array, today: String, presetStaff: Number, presetContact: Number, canNumber: Boolean, minPhotoWidth: Number, stockHolder: String },
   data() {
     const first = this.categories[0] || null;
     return {
       form: this.$inertia.form({ category_id: first ? first.id : null, staff_id: null, contact_id: null, visitor_id: null, full_name: '', title: '', phone: '', company: '', issued_at: this.today, expires_at: null, host_name: '', purpose: '', authorisation_type: null,
         vehicle_registration: '', vehicle_description: '', restrictions: '', notes: '', manual_number: '', quantity: 10 }),
-      person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, photoBusy: false, manual: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
+      person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, photoBusy: false, running: false, manual: false, stock: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
     };
   },
   computed: {
+    // many passes in one run: a stock of Visitor Passes, or Gate Passes made in advance
+    isStock() { return !!(this.cat && (this.cat.pooled || (this.info.kind === 'gate' && this.stock))); },
     pageTitle() { return this.$t('Issue :k', { k: this.info.singular }); },
     cat() { return this.categories.find(c => c.id === this.form.category_id) || null; },
     catOptions() { return this.categories.map(c => ({ value: c.id, label: c.name })); },
@@ -126,7 +129,7 @@ export default {
     staffPhotoUrl() { return this.info.kind === 'staff' && this.person && this.person.has_photo ? route('id-passes.lookup.staff-photo', this.person.id) : ''; },
     canSave() {
       if (!this.cat || !this.form.issued_at) return false;
-      if (this.cat.pooled) return this.form.quantity >= 1 && this.form.quantity <= 200;
+      if (this.isStock) return this.form.quantity >= 1 && this.form.quantity <= 200;
       if (this.source === 'type' ? !this.form.full_name.trim() : !this.person) return false;
       if (this.cat.photo_required && !this.photo && !this.staffPhotoUrl) return false;
       return true;
@@ -146,6 +149,27 @@ export default {
     this.queue(0);
   },
   methods: {
+    // many passes: lots of 25 are made one after another, so the screen shows the real progress and WIMS never waits long on one request
+    async runStock() {
+      if (this.running) return;
+      const c = this.cat, total = Math.max(1, Math.min(200, Math.floor(this.form.quantity))); this.running = true;
+      const ref = 'RUN-' + Date.now().toString(36).toUpperCase(); let left = total, done = 0; const t0 = Date.now(); let holder = '';
+      idMakeStart({ mode: 'bulk', color: c.band || '#1565c0', count: total, total, percent: 0, title: this.$t('Making :n passes', { n: total }) });
+      try {
+        while (left > 0) {
+          const n = Math.min(25, left); idMakeBulkNow(this.$t('Passes :a to :b', { a: done + 1, b: done + n }));
+          const { data } = await window.axios.post(route('id-passes.' + this.info.route + '.stock'), { category_id: c.id, quantity: n, issued_at: this.form.issued_at, expires_at: this.form.expires_at, ref }, { headers: { 'X-Quiet': '1' } });
+          holder = data.holder; data.made.forEach(m => idMakeBulkItem({ ok: true, label: m.number, initials: m.number.replace(/\D+/g, '').slice(-3) || m.number.slice(-2) }));
+          done += n; left -= n; idMake.eta = left ? this.$t('about :s s left', { s: Math.round(((Date.now() - t0) / 1000 / done) * left) }) : '';
+          idMakeProgress((done / total) * 100, done, total);
+        }
+        idMakeDone(c.pooled ? this.$t(':a passes made. They are ready to be given to visitors.', { a: total }) : this.$t(':a Gate Passes made in the name of :h. Give each one to a person when it is needed.', { a: total, h: holder }));
+        setTimeout(() => this.$inertia.visit(route('id-passes.' + this.info.route + '.index')), 1900);
+      } catch (e) {
+        idMakeFail((e.response && e.response.data && (e.response.data.message || Object.values(e.response.data.errors || {}).flat()[0])) || this.$t('The run stopped. The passes already made are kept.'));
+        this.running = false;
+      }
+    },
     err(k) { return (this.$page.props.errors || {})[k]; },
     async loadPreset(source, id) {
       try { const { data } = await window.axios.get(route('id-passes.lookup.people'), { params: { source, q: '' } }); const hit = data.find(r => r.id === id); if (hit && !hit.card) this.setPerson(hit); } catch (e) { /* the person is chosen by hand */ }
@@ -186,6 +210,7 @@ export default {
       if (!this.css) { try { const r = await window.axios.get(route('id-passes.lookup.css')); this.css = r.data; } catch (e) { /* ignore */ } }
     },
     save() {
+      if (this.isStock) return this.runStock();
       this.photoMissing = '';
       if (this.cat.photo_required && !this.photo && !this.staffPhotoUrl) { this.photoMissing = this.$t('A photograph is required.'); return; }
       const f = this.form;
@@ -218,4 +243,5 @@ export default {
 .idi-pv-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .idi-pv-cards small { display: block; text-align: center; margin-top: 6px; color: var(--lg-mute, #64748b); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 .idi-pv-empty { padding: 40px 10px; text-align: center; color: var(--lg-mute, #64748b); }
 .lg-span-all { grid-column: 1 / -1; }
+.idi-stock { display: flex; gap: 12px; align-items: flex-start; margin-top: 14px; padding: 12px 14px; border-radius: 16px; cursor: pointer; background: var(--lg-soft, #f1f5f9); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: box-shadow 0.2s, background 0.2s; } .idi-stock.is-on { box-shadow: 0 0 0 2px #d97706; background: rgba(217, 119, 6, 0.07); } .idi-stock span { display: grid; gap: 2px; } .idi-stock small { color: var(--lg-mute, #64748b); }
 </style>
