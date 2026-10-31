@@ -46,31 +46,39 @@
           </div>
         </section>
 
-        <section class="lg-card">
-          <header class="lg-card-head">
+        <section class="lg-card pw-card">
+          <header class="lg-card-head pw-head">
             <span class="lg-card-ico lg-ico-rose"><icons name="key" class="w-5 h-5" /></span>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <h2 class="lg-card-title">{{ $t('Password') }}</h2>
-              <p class="lg-card-sub">{{ $t('Password') }} / {{ $t('Confirm Password') }}</p>
+              <p class="lg-card-sub">{{ edit ? $t('Leave both boxes empty to keep the current password.') : $t('Choose a password for the new user.') }}</p>
             </div>
-            <button type="button" class="lg-btn tone ml-auto" style="--tone: #d97706" @click="generatePw">
-              <span class="tone-ico"><icons name="key" class="w-4 h-4" /></span>{{ $t('Generate password') }}
+            <button type="button" class="lg-btn tone pw-genbtn" style="--tone: #d97706" @click="generatePw">
+              <span class="tone-ico"><icons name="key" class="w-4 h-4" /></span><span class="pw-genbtn-text">{{ $t('Generate password') }}</span>
             </button>
           </header>
-          <div class="lg-fields">
-            <div>
-              <text-input id="password" type="password" :label="$t('Password')" v-model="form.password" :error="$page.props.errors.password" />
-            </div>
-            <div class="lg-span-all">
-              <ul class="pw-rules" :aria-label="$t('Password rules')">
-                <li v-for="r in passwordRules" :key="r.key" :class="{ 'is-ok': r.ok, 'is-bad': !r.ok && form.password }">
-                  <icons :name="r.ok ? 'tick' : 'info'" class="w-3.5 h-3.5" />{{ r.label }}
-                </li>
-              </ul>
-              <div v-if="generated" class="pw-gen" role="status">
-                <div class="pw-gen-top">{{ $t('New password (filled in both boxes)') }}</div>
-                <div class="pw-gen-box">
-                  <code class="pw-gen-code" :title="$t('Click to copy')" @click="copyPw"><decrypt-text :text="generated" /></code>
+
+          <div class="pw-grid">
+            <password-field id="password" v-model="form.password" :label="$t('Password')" :placeholder="$t('Password')" :error="$page.props.errors.password" />
+            <password-field id="password_confirmation" v-model="form.password_confirmation" :label="$t('Confirm Password')" :placeholder="$t('Confirm Password')" :error="$page.props.errors.password_confirmation" />
+          </div>
+
+          <div class="pw-meter" :class="'is-' + passwordStrength.key" role="status" aria-live="polite">
+            <div class="pw-bars" aria-hidden="true"><i v-for="n in 4" :key="n" :class="{ on: n <= passwordStrength.bars }"></i></div>
+            <span class="pw-level">{{ passwordStrength.label }}</span>
+          </div>
+          <ul class="pw-rules" :aria-label="$t('Password rules')">
+            <li v-for="r in passwordRules" :key="r.key" :class="{ 'is-ok': r.ok, 'is-bad': !r.ok && form.password }">
+              <icons :name="r.ok ? 'tick' : 'info'" class="w-3.5 h-3.5" />{{ r.label }}
+            </li>
+          </ul>
+
+          <transition name="pw-pop">
+            <div v-if="generated" class="pw-gen" role="status">
+              <div class="pw-gen-top"><icons name="sparkles" class="w-4 h-4" />{{ $t('New password (filled in both boxes)') }}</div>
+              <div class="pw-gen-box">
+                <code class="pw-gen-code" :title="$t('Click to copy')" @click="copyPw"><decrypt-text :text="generated" /></code>
+                <div class="pw-gen-btns">
                   <button type="button" class="lg-btn tone" style="--tone: #4f46e5" @click="copyPw">
                     <span class="tone-ico"><icons :name="copied ? 'tick' : 'duplicate'" class="w-4 h-4" /></span>{{ copied ? $t('Copied') : $t('Copy') }}
                   </button>
@@ -78,21 +86,10 @@
                     <span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Another one') }}
                   </button>
                 </div>
-                <p class="pw-gen-note">{{ $t('It is applied when you save the user. Copy it now: it is not shown again after that.') }}</p>
               </div>
-              <p v-if="!edit" class="lg-sub" style="margin-top: 6px">{{ $t('Type the password twice (below) so a typing mistake is caught.') }}</p>
-              <p v-else class="lg-sub" style="margin-top: 6px">{{ $t('Leave both password boxes empty to keep the current password.') }}</p>
+              <p class="pw-gen-note">{{ $t('It is applied when you save the user. Copy it now: it is not shown again after that.') }}</p>
             </div>
-            <div>
-              <text-input
-                type="password"
-                id="password_confirmation"
-                :label="$t('Confirm Password')"
-                v-model="form.password_confirmation"
-                :error="$page.props.errors.password_confirmation"
-              />
-            </div>
-          </div>
+          </transition>
         </section>
 
         <section v-if="warehouses && warehouses.length" class="lg-card">
@@ -356,6 +353,7 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import TecActionMessage from '@/Jetstream/ActionMessage.vue';
 import DecryptText from '@/Shared/DecryptText.vue';
+import PasswordField from '@/Shared/PasswordField.vue';
 import { generatePassword } from '@/Core/passwordGen';
 
 export default {
@@ -377,6 +375,7 @@ export default {
     TecSectionTitle,
     TecActionMessage,
     DecryptText,
+    PasswordField,
   },
 
   data() {
@@ -430,6 +429,14 @@ export default {
 
   computed: {
     // what a password must have (the same rule the server applies), ticked off as it is typed
+    // 0-4 bars: how many of the four rules are met (a 12+ character password that meets them all is "Strong")
+    passwordStrength() {
+      const p = this.form.password || '';
+      if (!p) return { key: 'none', bars: 0, label: this.$t('Type or generate a password') };
+      const met = this.passwordRules.filter(r => ['len', 'up', 'low', 'num'].includes(r.key) && r.ok).length;
+      if (met < 4) return { key: met <= 2 ? 'weak' : 'fair', bars: Math.max(1, met - 1) , label: met <= 2 ? this.$t('Too weak') : this.$t('Almost there') };
+      return p.length >= 12 ? { key: 'strong', bars: 4, label: this.$t('Strong') } : { key: 'good', bars: 3, label: this.$t('Good: meets the rules') };
+    },
     passwordRules() {
       const p = this.form.password || '';
       const rules = [

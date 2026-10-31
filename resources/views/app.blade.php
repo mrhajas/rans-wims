@@ -15,7 +15,6 @@
   <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png?v={{ $faviconVersion }}" />
   <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png?v={{ $faviconVersion }}" />
   <link rel="mask-icon" href="/icons/icon-512x512.png?v={{ $faviconVersion }}" color="#27447a" />
-  <link rel="preload" as="image" href="/icons/icon-192x192.png?v={{ $faviconVersion }}" fetchpriority="high" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="WIMS" />

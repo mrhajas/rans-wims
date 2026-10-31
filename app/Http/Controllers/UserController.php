@@ -50,7 +50,7 @@ class UserController extends Controller
         return Inertia::render('User/Form', [
             'passwordHint' => \App\Support\PasswordPolicy::hint(),
             'roles'      => $this->selectableRoles(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(['id', 'name', 'status', 'completed_at']),
         ]);
     }
 
@@ -191,7 +191,7 @@ class UserController extends Controller
             'passwordHint' => \App\Support\PasswordPolicy::hint(),
             'edit'       => new UserResource($user),
             'roles'      => $this->selectableRoles(),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
+            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(['id', 'name', 'status', 'completed_at']),
             'staffLink'  => UserStaffLinkController::payloadFor($user),
             'faceEnrolled' => auth()->user()?->hasRole('Super Admin') && \App\Services\Face\FaceService::enrolled($user),
         ]);
