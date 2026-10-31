@@ -7,7 +7,7 @@
         </Link>
       </page-header>
 
-      <stat-tiles :items="statTiles" @select="pickTile" />
+      <stat-tiles :items="statTiles" lively @select="pickTile" />
 
       <div class="txn-toolbar mb-6 flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between print:hidden relative z-20">
         <search-filter v-model="form.search" class="w-full max-w-lg" @reset="reset">
@@ -270,13 +270,13 @@ export default {
       }
 
       return [
-        { icon: 'clip', tone: 'navy', label: this.$t('All'), value: this.stats.total, status: null, active: !this.form.status },
+        { icon: 'clip', tone: 'navy', label: this.$t('All Requests'), value: this.stats.total, status: null, active: !this.form.status },
+        { icon: 'lock-closed', tone: 'emerald', label: this.$t('Cleared'), value: this.stats.cleared, status: 'Cleared', active: this.form.status === 'Cleared' },
         { icon: 'clock', tone: 'amber', label: this.$t('Pending Approval'), value: this.stats.pending, status: 'Pending Approval', active: this.form.status === 'Pending Approval' },
         { icon: 'tick', tone: 'sky', label: this.$t('Approved'), value: this.stats.approved, status: 'Approved', active: this.form.status === 'Approved' },
         { icon: 'x-circle', tone: 'rose', label: this.$t('Rejected'), value: this.stats.rejected, status: 'Rejected', active: this.form.status === 'Rejected' },
-        { icon: 'truck', tone: 'violet', label: this.$t('Partially Issued'), value: this.stats.partially_issued, status: 'Partially Issued', active: this.form.status === 'Partially Issued' },
         { icon: 'truck', tone: 'teal', label: this.$t('Fully Issued'), value: this.stats.issued, status: 'Issued', active: this.form.status === 'Issued' },
-        { icon: 'lock-closed', tone: 'emerald', label: this.$t('Cleared'), value: this.stats.cleared, status: 'Cleared', active: this.form.status === 'Cleared' },
+        { icon: 'truck', tone: 'violet', label: this.$t('Partially Issued'), value: this.stats.partially_issued, status: 'Partially Issued', active: this.form.status === 'Partially Issued' },
       ];
     },
     statusOptions() {

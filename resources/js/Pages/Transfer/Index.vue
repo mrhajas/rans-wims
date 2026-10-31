@@ -14,7 +14,7 @@
         </offline-lock>
       </page-header>
 
-      <stat-tiles v-if="$connection.status !== 'offline'" :items="statItems" @select="pickTile" />
+      <stat-tiles v-if="$connection.status !== 'offline'" :items="statItems" lively @select="pickTile" />
 
       <div v-if="$connection.status === 'offline'" class="mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 print:hidden">
         <icons name="wifi" class="w-3.5 h-3.5 flex-shrink-0" />
@@ -617,11 +617,11 @@ export default {
       const tile = (view, icon, tone, label, value) => ({ icon, tone, label, value, view, ...(online ? { active: (this.form.view || null) === view } : {}) });
       return [
         tile(null, 'collection', 'navy', this.$t('Total transfers'), s.total),
-        tile('today', 'clock', 'sky', this.$t('Created today'), s.today),
-        tile('month', 'calendar', 'indigo', this.$t('This month'), s.month),
+        tile('awaiting', 'exclamation', 'pink', this.$t('Awaiting approval'), s.awaiting || 0),
         tile('pending', 'truck', 'amber', this.$t('Awaiting receipt'), s.pending),
         tile('received', 'tick', 'emerald', this.$t('Received'), s.received),
-        tile('awaiting', 'exclamation', 'pink', this.$t('Awaiting approval'), s.awaiting || 0),
+        tile('today', 'clock', 'sky', this.$t('Created today'), s.today),
+        tile('month', 'calendar', 'indigo', this.$t('This month'), s.month),
         tile('drafts', 'doc-text', 'slate', this.$t('Drafts'), s.drafts),
       ];
     },
