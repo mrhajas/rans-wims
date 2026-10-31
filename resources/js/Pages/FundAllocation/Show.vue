@@ -1228,7 +1228,9 @@ html.dark .fx-cleared-amt { color: #fca5a5; }
 
 
 /* bulk pay + voucher generation */
-.fx-bulkbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(99, 132, 255, 0.1), rgba(255, 255, 255, 0.6)); border: 1px solid rgba(99, 132, 255, 0.3); box-shadow: 0 10px 20px -14px rgba(28, 63, 102, 0.6); }
+.fx-bulkbar { position: sticky; top: 8px; z-index: 40; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(232, 238, 255, 0.92), rgba(255, 255, 255, 0.92)); -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); border: 1px solid rgba(99, 132, 255, 0.35); box-shadow: 0 14px 28px -14px rgba(28, 63, 102, 0.55), 0 2px 6px rgba(28, 63, 102, 0.08); }
+html.dark .fx-bulkbar { background: linear-gradient(135deg, rgba(30, 41, 79, 0.94), rgba(17, 26, 46, 0.94)); border-color: rgba(129, 140, 248, 0.4); }
+@media (max-width: 640px) { .fx-bulkbar { top: 4px; padding: 8px 10px; gap: 8px; } }
 .fx-grow { flex: 1; }
 .fx-check { display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
 .fx-check input, .fx-rowcheck input { width: 16px; height: 16px; accent-color: #1c3f66; cursor: pointer; }
