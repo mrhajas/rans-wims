@@ -16,6 +16,7 @@
         <img class="rail-brand-mark" src="/images/logo-white-mark.png" alt="RANS" />
       </Link>
       <mobile-menu-icon :show="show" @on-change="v => (show = v)" />
+      <orbit-line v-if="pro" class="ol-rail" />
     </div>
     <div class="bg-white border-b border-slate-100 shadow-sm w-full pt-3.5 pb-2 px-4 md:py-2.5 md:text-md flex flex-wrap justify-between items-start md:items-center gap-y-2">
       <!-- <div class="mt-1 mr-4">{{ $page.props.auth.user.name.account.name }}</div> -->
@@ -389,6 +390,7 @@
           </template>
         </tec-dropdown>
       </div>
+      <orbit-line v-if="pro" class="ol-bar" />
     </div>
 
     <pwa-install-dialog v-if="pwaDialog" :kind="pwaDialog.kind" :guide="pwaDialog.guide" @close="pwaDialog = null" />
@@ -410,6 +412,7 @@ import { groupWarehouses, progressOf } from '@/Core/warehouseGroups';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
 import AnimatedLogo from '@/Shared/AnimatedLogo.vue';
+import OrbitLine from '@/Shared/Top/OrbitLine.vue';
 import { applyMenuStyle, pageAllowsPro } from '@/Core/menuStyle';
 import { LANGUAGES, loadLocale } from '@/Core/i18n.js';
 import { SITE_ENGINEER_ROLES } from '@/Core/siteEngineerRoles';
@@ -443,6 +446,7 @@ export default {
   emits: ['on-mobile-menu-change', 'on-sidebar-toggle'],
   components: {
     AnimatedLogo,
+    OrbitLine,
     ThemeIcon,
     QuickCreateMenu,
     PhotoZoom,
