@@ -251,8 +251,8 @@ export default {
 .pm-tree { list-style: none; margin: 0; padding: 22px 0 24px 22px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; scroll-behavior: auto; }
 /* the spine of the tree and a branch to every item */
 .pm-tree::before { content: ''; position: absolute; left: 31px; top: 28px; bottom: 30px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--ln), rgba(255, 255, 255, 0.08) 85%); opacity: 0.7; }
-.pm-tree li { position: relative; margin: 3px 0; animation: pm-in 0.5s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.pm-link { position: relative; display: flex; align-items: center; gap: 9px; min-height: 38px; margin-left: 16px; padding: 4px 12px 4px 8px; color: #dbe6f8; text-decoration: none; font-size: 0.76rem; font-weight: 300; border-radius: 19px 0 0 19px; transition: background 0.25s ease, color 0.25s ease; }
+.pm-tree li { position: relative; margin: 8px 0; animation: pm-in 0.5s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pm-link { position: relative; display: flex; align-items: center; gap: 9px; min-height: 40px; margin-left: 16px; padding: 6px 12px 6px 8px; color: #dbe6f8; text-decoration: none; font-size: 0.76rem; font-weight: 300; border-radius: 19px 0 0 19px; transition: background 0.25s ease, color 0.25s ease; }
 .pm-link::before { content: ''; position: absolute; left: -16px; top: 50%; width: 16px; height: 2px; background: linear-gradient(90deg, var(--ln), rgba(255, 255, 255, 0.15)); border-radius: 2px; opacity: 0.8; transition: width 0.25s; }
 .pm-node { position: absolute; left: -30px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; background: var(--panel); box-shadow: 0 0 0 2px var(--ln); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.4), background 0.25s, box-shadow 0.25s; z-index: 2; }
 .pm-link:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
