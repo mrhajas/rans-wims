@@ -39,8 +39,37 @@ class AjaxController extends Controller
         // Background polling (every 20 s from every open tab) only needs the unread number to ring the bell: skip the
         // 150 notification rows and the four "done today" counts, which the open panel fetches on its own.
         if (request()->boolean('light')) {
+            $unread = auth()->check() ? $this->alertsNotificationQuery(auth()->user())->count() : 0;
+            $payload = ['unread_count' => $unread];
+
+            // The pop-up toasts: the newest alerts that arrived since the last check. The browser says how many seconds ago it last asked
+            // (`ago`, at most 15 minutes), so no clock of the browser is trusted and nothing is stored here; at most three rows are read, and only when something is unread.
+            if ($unread > 0 && request()->filled('ago')) {
+                $ago = max(0, min(900, (int) request()->input('ago')));
+                $payload['latest'] = $this->alertsNotificationQuery(auth()->user())
+                    ->where('created_at', '>', now()->subSeconds($ago + 3))
+                    ->latest()
+                    ->limit(3)
+                    ->get()
+                    ->map(function ($n) {
+                        $module = (string) data_get($n->data, 'module', '');
+                        $meta = AppNotification::moduleMeta($module);
+
+                        return [
+                            'id' => $n->id,
+                            'module' => $module,
+                            'module_label' => $meta['label'],
+                            'module_icon' => $meta['icon'],
+                            'module_accent' => $meta['accent'],
+                            'title' => data_get($n->data, 'title', 'Notice Board'),
+                            'message' => data_get($n->data, 'message'),
+                            'url' => data_get($n->data, 'url'),
+                        ];
+                    })->reverse()->values();
+            }
+
             return response()
-                ->json(['unread_count' => auth()->check() ? $this->alertsNotificationQuery(auth()->user())->count() : 0])
+                ->json($payload)
                 ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         }
 

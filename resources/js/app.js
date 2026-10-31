@@ -29,6 +29,7 @@ import { initRequiredFields } from '@/Core/requiredFields';
 import { initAutoNumber, setPagination } from '@/Core/autoNumber';
 import { initSaveProgress } from '@/Core/saveProgress';
 import SaveProgress from '@/Shared/SaveProgress.vue';
+import AlertToasts from '@/Shared/AlertToasts.vue';
 import CssSelect from '@/Shared/CssSelect.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 
@@ -112,6 +113,14 @@ const mountSaveProgress = () => {
   el.id = 'save-progress-root';
   document.body.appendChild(el);
   createApp(SaveProgress).use(i18n).mount(el);
+};
+
+// the pop-up toasts for new alerts (drawn once, over the page)
+const mountAlertToasts = () => {
+  const el = document.createElement('div');
+  el.id = 'alert-toasts-root';
+  document.body.appendChild(el);
+  createApp(AlertToasts).use(i18n).mount(el);
 };
 
 const mountGlobalDialog = () => {
@@ -205,6 +214,7 @@ createInertiaApp({
     mountIdleLogoutModal();
     mountGlobalDialog();
     mountSaveProgress();
+    mountAlertToasts();
     initSaveProgress(router);
 
     // Global safety net for a failed/non-Inertia navigation — until now,

@@ -81,9 +81,10 @@ import AlertsModal from './AlertsModal.vue';
 import AnsModal from './AnsModal.vue';
 import ConstructionToolbox from '../ConstructionToolbox/ConstructionToolbox.vue';
 import { reactive } from 'vue';
+import { showAlertToasts } from '@/Core/alertToasts';
 
 // The bell is on the page up to three times (top bar, full menu, mini menu): they share ONE poll and one count, so the server is asked once, not three times.
-const bell = reactive({ at: 0, count: null });
+const bell = reactive({ at: 0, count: null, asked: Date.now() });
 
 export default {
   components: { AlertsModal, AnsModal, ConstructionToolbox },
@@ -193,9 +194,16 @@ export default {
         return;
       }
       bell.at = Date.now();
+      // `ago`: how long since the last answer, so the server can say which alerts are new (they pop up as toasts)
+      const ago = Math.round((Date.now() - bell.asked) / 1000);
+      const sentAt = Date.now();
       axios
-        .get('/alerts', { params: { light: 1 } })
+        .get('/alerts', { params: { light: 1, ago } })
         .then(res => {
+          bell.asked = sentAt;
+          if (res.data?.latest?.length) {
+            showAlertToasts(res.data.latest);
+          }
           const count = Number(res.data?.unread_count ?? res.data?.notifications?.length ?? 0);
 
           if (count > this.previousUnreadCount) {
