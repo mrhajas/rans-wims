@@ -115,6 +115,7 @@
         .who { display: flex; gap: 16px; align-items: center; margin-bottom: 18px; animation: rise .7s 1.05s var(--ease) both; }
         .avatar { position: relative; flex: none; width: 92px; height: 112px; border-radius: 18px; padding: 3px; background: linear-gradient(150deg, var(--band), color-mix(in srgb, var(--band) 40%, #fff)); box-shadow: 0 16px 24px -14px color-mix(in srgb, var(--band) 80%, #000); }
         .avatar img, .avatar .mono { width: 100%; height: 100%; border-radius: 15px; object-fit: cover; display: grid; place-items: center; background: #dde5ee; }
+        .avatar .ghost { background: linear-gradient(160deg, #f4f7fb, #e3eaf4); } .avatar .ghost img { width: 72%; height: auto; border-radius: 0; background: none; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(70, 60, 140, .25)); }
         .avatar .mono { background: linear-gradient(160deg, var(--band), color-mix(in srgb, var(--band) 60%, #000)); color: var(--bandink); font-weight: 900; font-size: 2rem; letter-spacing: .04em; }
         .who h1 { margin: 0; font-size: 1.32rem; line-height: 1.2; letter-spacing: -.01em; }
         .who p { margin: 5px 0 0; color: #475569; font-size: .92rem; line-height: 1.4; }
@@ -214,7 +215,7 @@
                 <div class="live"><i></i>{{ __('Live check') }} &middot; <time id="clock">--:--:--</time></div>
                 <div class="body">
                     <div class="who">
-                        <div class="avatar">@if($photo)<img src="{{ $photo }}" alt="">@else<div class="mono" aria-hidden="true">{{ $initials }}</div>@endif</div>
+                        <div class="avatar">@if($photo)<img src="{{ $photo }}" alt="">@else<div class="mono ghost" aria-hidden="true"><img src="{{ asset('images/avatars/person-gradient.png') }}" alt=""></div>@endif</div>
                         <div>
                             <h1>{{ $holder }}</h1>
                             @if($title)<p>{{ $title }}</p>@endif

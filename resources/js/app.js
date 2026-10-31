@@ -1,3 +1,4 @@
+import ProDockHost from '@/Shared/Sidebar/ProDockHost.vue';
 import './bootstrap';
 import '@/Core/zoomCompat';
 import '@/Core/tipLayer';
@@ -132,7 +133,8 @@ createInertiaApp({
         const { t } = useI18n();
         return { t };
       },
-      render: () => h(App, props),
+      // the Pro menu lives beside the page (it is not part of any page), so it is drawn once and stays while the pages change
+      render: () => [h(App, props), h(ProDockHost)],
       mounted: () => {
         if (window.__wimsFinishLoading) {
           window.__wimsFinishLoading();

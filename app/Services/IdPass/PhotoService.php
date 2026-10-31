@@ -66,6 +66,66 @@ class PhotoService
         return ['path' => $dir . '/card.jpg', 'original' => $originalPath, 'cutout' => $cutPath, 'bg' => $madeBg, 'width' => $card['src_w'], 'height' => $card['src_h'], 'low' => $card['src_w'] < self::MIN_WIDTH];
     }
 
+    /** 'male' or 'female' from whatever the record says (Male, Female, M, F, mwanamke...). Unknown is male. */
+    public static function gender(?string $raw): string
+    {
+        return preg_match('/^\s*(f|female|woman|girl|mwanamke|kike)\b/i', (string) $raw) ? 'female' : 'male';
+    }
+
+    /** The avatar on the colour, as the card picture: a dark blue silhouette (male or female) standing on $bg, in the 4:5 frame. Returns the JPEG and the transparent cut-out (so a later change of the category colour is done on the server). */
+    private static function avatarImages(string $gender, ?string $bg): array
+    {
+        $gender = $gender === 'female' ? 'female' : 'male';
+        $hex = PhotoBackground::valid($bg) ? strtolower($bg) : '#e6edf6';
+        $src = @imagecreatefrompng(public_path('images/avatars/' . $gender . '.png'));
+        if (! $src) {
+            throw ValidationException::withMessages(['photo' => __('The avatar picture is missing.')]);
+        }
+        $w = self::OUT_W;
+        $h = self::OUT_H;
+        $aw = (int) round($w * 0.94);
+        $ah = (int) round(imagesy($src) * $aw / imagesx($src));
+        $ax = (int) round(($w - $aw) / 2);
+        $ay = $h - $ah;                                     // the shoulders reach the foot of the frame
+        $cut = imagecreatetruecolor($w, $h);
+        imagealphablending($cut, false);
+        imagesavealpha($cut, true);
+        imagefill($cut, 0, 0, imagecolorallocatealpha($cut, 0, 0, 0, 127));
+        imagecopyresampled($cut, $src, $ax, $ay, 0, 0, $aw, $ah, imagesx($src), imagesy($src));
+        ob_start();
+        imagepng($cut, null, 6);
+        $png = ob_get_clean();
+        imagedestroy($src);
+        imagedestroy($cut);
+
+        return ['jpeg' => PhotoBackground::composite($png, $hex), 'png' => $png, 'bg' => $hex];
+    }
+
+    /** An avatar as the photograph of a card (saved like any photograph, with its cut-out). */
+    public static function avatar(?string $gender, ?string $bg = null): array
+    {
+        $g = self::gender($gender);
+        $img = self::avatarImages($g, $bg);
+        $dir = 'idpass/photos/' . now()->format('Y/m') . '/' . Str::random(24);
+        Storage::disk('local')->put($dir . '/card.jpg', $img['jpeg']);
+        Storage::disk('local')->put($dir . '/cutout.png', $img['png']);
+
+        return ['path' => $dir . '/card.jpg', 'original' => null, 'cutout' => $dir . '/cutout.png', 'bg' => $img['bg'], 'width' => self::OUT_W, 'height' => self::OUT_H, 'low' => false, 'avatar' => $g];
+    }
+
+    /** The avatar on the colour for the preview of the issue form (kept in the cache, nothing is saved on a card). */
+    public static function avatarPreview(?string $gender, ?string $bg = null): string
+    {
+        $g = self::gender($gender);
+        $hex = PhotoBackground::valid($bg) ? strtolower($bg) : '#e6edf6';
+        $out = CardAssets::dir('tmp') . '/avatar-' . $g . '-' . ltrim($hex, '#') . '.jpg';
+        if (! is_file($out)) {
+            file_put_contents($out, self::avatarImages($g, $hex)['jpeg']);
+        }
+
+        return $out;
+    }
+
     /** The picture of a staff member in the card frame (their profile photograph is copied, so the card does not change if the profile photo does). */
     public static function fromStaff(Staff $s, ?string $bg = null): ?array
     {

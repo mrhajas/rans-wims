@@ -90,7 +90,7 @@ class BulkController extends Controller
         $rows = $people->map(function ($p) use ($kind, $open) {
             $phone = $kind === 'staff' ? $p->mobile_no : $p->phone;
             $row = ['id' => $p->id, 'name' => trim((string) $p->name), 'sub' => $kind === 'staff' ? trim($p->staff_number . ' · ' . $p->position, ' ·') : (string) $p->category, 'phone' => $phone ? trim((string) $phone) : '',
-                'has_photo' => $kind === 'staff' ? (bool) $p->photo : false, 'card' => $open[$p->id] ?? null];
+                'has_photo' => $kind === 'staff' ? (bool) $p->photo : false, 'gender' => $kind === 'staff' ? PhotoService::gender($p->gender) : 'male', 'card' => $open[$p->id] ?? null];
             if ($kind === 'staff') {
                 $row['title'] = $p->position;
             }
@@ -106,7 +106,7 @@ class BulkController extends Controller
     {
         $kind = $this->kindForBulk($request);
         $d = $request->validate(['category_id' => 'required|integer', 'issued_at' => 'required|date', 'expires_at' => 'nullable|date', 'ref' => 'required|string|max:40', 'rows' => 'required|array|min:1|max:12',
-            'rows.*.id' => 'required|integer', 'rows.*.seq' => 'nullable|integer|min:1|max:99999999', 'rows.*.phone' => 'nullable|string|max:60', 'rows.*.title' => 'nullable|string|max:120',
+            'rows.*.id' => 'required|integer', 'rows.*.seq' => 'nullable|integer|min:1|max:99999999', 'rows.*.phone' => 'nullable|string|max:60', 'rows.*.title' => 'nullable|string|max:120', 'rows.*.avatar' => 'nullable|in:male,female',
             'rows.*.photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'rows.*.photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'rows.*.photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB]);
         $cat = IdPassCategory::query()->active()->ofKind($kind)->findOrFail((int) $d['category_id']);
         abort_if($cat->pooled, 422);
@@ -154,10 +154,11 @@ class BulkController extends Controller
                 $missing[] = __('contact');
             }
             $file = $request->file("rows.$i.photo");
-            if ($kind === 'staff' && ! $file && ! $person->photo) {
+            $avatar = ! $file && ! empty($r['avatar']) && ($kind === 'compound' || ! $person->photo) ? $r['avatar'] : null;     // an avatar stands in only where there is no photograph
+            if ($kind === 'staff' && ! $file && ! $person->photo && ! $avatar) {
                 $missing[] = __('photograph');
             }
-            if ($kind === 'compound' && ! $file) {
+            if ($kind === 'compound' && ! $file && ! $avatar) {
                 $missing[] = __('photograph');
             }
             if ($missing) {
@@ -167,7 +168,9 @@ class BulkController extends Controller
             if ($seq && ! $by->can('manage-id-numbering')) {
                 return $fail(__('Only people who may manage numbering can choose an ID number.'));
             }
-            if ($file) {
+            if ($avatar) {
+                $photo = PhotoService::avatar($avatar, $cat->photo_background);
+            } elseif ($file) {
                 $photo = PhotoService::store($file, $request->file("rows.$i.photo_original"), $request->file("rows.$i.photo_cutout"), $cat->photo_background);
             } else {
                 $photo = PhotoService::fromStaff($person, $cat->photo_background);

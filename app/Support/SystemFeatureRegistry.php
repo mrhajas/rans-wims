@@ -577,6 +577,14 @@ class SystemFeatureRegistry
                 'route_prefixes' => ['material-request-reminders.'],
                 'depends_on' => 'material_requests',
             ],
+            'pro_menu' => [
+                'name' => __('Pro menu'),
+                'description' => __('The Pro look of the main menu: a rail of coloured group icons with the tree of the chosen group beside it, an animated logo and a collapsed form. Each person chooses Classic or Pro in their profile menu; Classic stays the default. Switched off, everybody has the Classic menu.'),
+                'module' => __('Tools'),
+                'icon' => 'collection',
+                'route_prefixes' => ['menu.style.'],
+                'depends_on' => null,
+            ],
             'id_passes' => [
                 'name' => __('RANS ID & Pass Management'),
                 'description' => __('Staff IDs, Compound Worker IDs, Visitor Passes and Gate Passes of people: one numbering, one QR verification, shared card design and back, printing and PDF export (55 x 85 mm), print history and reports.'),

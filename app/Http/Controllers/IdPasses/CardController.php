@@ -92,7 +92,7 @@ class CardController extends Controller
             'category_id' => 'required|integer', 'staff_id' => 'nullable|integer', 'visitor_id' => 'nullable|integer', 'full_name' => 'nullable|string|max:190', 'title' => 'nullable|string|max:120',
             'phone' => 'nullable|string|max:60', 'company' => 'nullable|string|max:150', 'issued_at' => 'required|date', 'expires_at' => 'nullable|date', 'host_name' => 'nullable|string|max:150', 'purpose' => 'nullable|string|max:255',
             'authorisation_type' => 'nullable|string|max:80', 'vehicle_registration' => 'nullable|string|max:40', 'vehicle_description' => 'nullable|string|max:150', 'restrictions' => 'nullable|string|max:2000', 'notes' => 'nullable|string|max:2000',
-            'manual_number' => 'nullable|integer|min:1|max:99999999', 'quantity' => 'nullable|integer|min:1|max:200', 'stock' => 'nullable|boolean', 'contact_id' => 'nullable|integer', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 
+            'manual_number' => 'nullable|integer|min:1|max:99999999', 'quantity' => 'nullable|integer|min:1|max:200', 'stock' => 'nullable|boolean', 'avatar' => 'nullable|in:male,female', 'contact_id' => 'nullable|integer', 'photo' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 
         ];
     }
 
@@ -124,6 +124,9 @@ class CardController extends Controller
             $photo = PhotoService::store($request->file('photo'), $request->file('photo_original'), $request->file('photo_cutout'), $cat->photo_background);
         } elseif ($kind === 'staff' && ! empty($d['staff_id']) && ($s = Staff::query()->find((int) $d['staff_id']))) {
             $photo = PhotoService::fromStaff($s, $cat->photo_background);
+        }
+        if (! $photo && ! empty($d['avatar'])) {
+            $photo = PhotoService::avatar($d['avatar'], $cat->photo_background);     // no photograph: the avatar chosen on the form
         }
         $card = CardService::issue($cat, $d, $photo, $request->user(), $manual);
         $msg = $card->status === IdPassCard::PENDING ? __(':n is waiting for approval.', ['n' => $card->number]) : __(':n was issued to :p.', ['n' => $card->number, 'p' => $card->full_name]);
@@ -331,7 +334,12 @@ class CardController extends Controller
         $card = $this->cardOf($request, $kind);
         $this->must($kind, 'update');
         abort_unless(in_array($card->status, IdPassCard::OPEN, true), 422, __('This ID can no longer be changed.'));
-        $request->validate(['photo' => 'required|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 'keep_original' => 'nullable|boolean']);
+        $request->validate(['avatar' => 'nullable|in:male,female', 'photo' => 'required_without:avatar|nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_original' => 'nullable|file|image|max:' . PhotoService::MAX_KB, 'photo_cutout' => 'nullable|file|mimes:png|max:' . PhotoService::MAX_KB, 'keep_original' => 'nullable|boolean']);
+        if (! $request->hasFile('photo') && $request->input('avatar')) {
+            CardService::setPhoto($card, PhotoService::avatar($request->input('avatar'), $card->category->photo_background), $request->user());
+
+            return back()->with('message', __('The avatar was put on the ID. Add a photograph of the person when you have one.'));
+        }
         $p = PhotoService::store($request->file('photo'), $request->file('photo_original'), $request->file('photo_cutout'), $card->category->photo_background);
         if ($request->boolean('keep_original')) {       // the colour was re-done on a photograph already on the card: the picture first taken stays as the original
             PhotoService::delete($p['original']);

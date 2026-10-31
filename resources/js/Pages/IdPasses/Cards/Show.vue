@@ -69,8 +69,8 @@
             </dl>
             <div v-if="cardHistory.length" class="ids-earlier"><b>{{ $t('Other IDs of this person') }}</b>
               <a v-for="h in cardHistory" :key="h.id" :href="h.url"><span>{{ h.number }}</span><em>{{ h.from ? $date(h.from) : '' }} - {{ h.to ? $date(h.to) : $t('now') }}</em><i class="lg-chip" :class="statusChip(h.status)">{{ $t(h.status) }}</i><small v-if="h.reason">{{ h.reason }}</small></a></div>
-            <div v-if="can.edit && !pooled" class="ids-photo"><b>{{ $t('Photograph') }}</b>
-              <img v-if="card.has_photo" :src="route('id-passes.' + info.route + '.photo-file', [card.id]) + '?w=160&v=' + photoV" alt="" />
+            <div v-if="can.edit && !pooled" class="ids-photo"><b>{{ $t('Photograph') }}</b><span v-if="card.avatar" class="lg-chip lg-chip-amber">{{ $t('Avatar') }}</span>
+              <img v-if="card.has_photo" :src="route('id-passes.' + info.route + '.photo-file', [card.id]) + '?w=160&v=' + photoV" alt="" /><img v-else src="/images/avatars/person-gradient.png" class="ids-noph" alt="" />
               <button type="button" class="lg-btn tone" @click="photoOpen = true" style="--tone: #0284c7"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ card.has_photo ? $t('Change photo') : $t('Add photo') }}</button></div>
           </section>
 
@@ -215,6 +215,7 @@
     <travel-modal :show="photoOpen" :title="$t('Photograph')" :subtitle="$t('Choose or take a picture; the part inside the frame goes on the card.')" icon="camera" max-width="2xl" :busy="photoBusy" @close="photoOpen = false">
       <photo-cropper v-model="newPhoto" :min-width="minPhotoWidth" :background="card.photo_background || ''" @busy="cropBusy = $event" />
       <span class="ac-err">{{ errs.photo }}</span>
+      <div class="ids-av"><b>{{ $t('No photograph of the person?') }}</b><div class="ids-av-row"><button v-for="g in ['male', 'female']" :key="g" type="button" class="ids-av-btn" :disabled="photoBusy" :style="{ '--bg': card.photo_background || '#e6edf6' }" @click="useAvatar(g)"><span><img :src="'/images/avatars/' + g + '.png'" alt="" /></span>{{ g === 'male' ? $t('Use the male avatar') : $t('Use the female avatar') }}</button></div></div>
       <template #footer><button type="button" class="lg-btn tone" @click="photoOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="!newPhoto || photoBusy || cropBusy" @click="savePhoto" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save photograph') }}</button></template>
     </travel-modal>
   </admin-layout>
@@ -333,6 +334,10 @@ export default {
       this.editOpen = true;
     },
     saveEdit() { this.ef.put(route('id-passes.' + this.info.route + '.update', [this.card.id]), { preserveScroll: true, onSuccess: () => { this.editOpen = false; } }); },
+    useAvatar(g) {
+      this.photoBusy = true;
+      router.post(route('id-passes.' + this.info.route + '.photo', [this.card.id]), { avatar: g }, { preserveScroll: true, onSuccess: () => { this.photoOpen = false; this.photoV = Date.now(); }, onFinish: () => { this.photoBusy = false; } });
+    },
     savePhoto() {
       if (!this.newPhoto) return; this.photoBusy = true;
       const fd = new FormData(); fd.append('photo', this.newPhoto.file); if (this.newPhoto.original) fd.append('photo_original', this.newPhoto.original); if (this.newPhoto.cutout) fd.append('photo_cutout', this.newPhoto.cutout);
@@ -391,5 +396,7 @@ export default {
 .ids-holder { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding: 12px 14px; border-radius: 18px; } .ids-holder > div { flex: 1; min-width: 160px; display: grid; } .ids-holder small { color: var(--lg-mute, #64748b); }
 .ids-holder.is-with { background: rgba(217, 119, 6, 0.12); color: #92400e; } .ids-holder.is-free { background: rgba(22, 163, 74, 0.12); color: #166534; }
 .ids-earlier { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--lg-line, #e2e8f0); display: grid; gap: 6px; } .ids-earlier a { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 10px; border-radius: 12px; color: inherit; text-decoration: none; background: var(--lg-soft, #f1f5f9); } .ids-earlier em { font-style: normal; color: var(--lg-mute, #64748b); font-size: 0.82rem; } .ids-earlier small { flex-basis: 100%; color: var(--lg-mute, #64748b); }
+.ids-photo .ids-noph { width: 64px; height: 64px; object-fit: contain; box-shadow: none; border-radius: 0; }
+.ids-av { margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: var(--lg-soft, #f1f5f9); display: grid; gap: 10px; } .ids-av-row { display: flex; gap: 10px; flex-wrap: wrap; } .ids-av-btn { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border: 0; border-radius: 14px; cursor: pointer; font: inherit; font-weight: 700; background: var(--lg-card, #fff); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: transform 0.2s; } .ids-av-btn:hover { transform: scale(1.04); } .ids-av-btn span { width: 38px; height: 48px; border-radius: 9px; overflow: hidden; position: relative; background: var(--bg); } .ids-av-btn img { position: absolute; left: 3%; bottom: 0; width: 94%; }
 .ids-reasons { flex-wrap: wrap; border-radius: 18px; margin-bottom: 8px; }
 </style>

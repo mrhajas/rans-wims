@@ -1,6 +1,47 @@
 <template>
   <Head :title="title" />
-  <div class="app-shell wims-float bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard }">
+  <div v-if="proMenu" class="app-shell wims-float wims-pro bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard }">
+    <div class="pro-shell md:flex md:h-screen">
+      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden }" aria-hidden="true"></div>
+      <div class="pro-main md:flex md:flex-col md:flex-1 min-w-0 md:h-screen">
+        <top-bar pro class="print:hidden" :mobile-menu-open="show" :sidebar-hidden="sidebarHidden" :menu-unavailable="offlineReadMode" @on-mobile-menu-change="v => (show = v)" @on-sidebar-toggle="toggleSidebar" />
+        <impersonation-banner class="print:hidden" />
+        <simulation-badge class="print:hidden" />
+        <div v-if="offlineReadMode" class="md:flex md:grow md:items-stretch overflow-hidden">
+          <div class="md:flex-1 md:px-4 py-6 md:p-6 overflow-x-hidden md:overflow-y-auto" scroll-region>
+            <div class="app-canvas p-4 md:p-6"><offline-shell /></div>
+            <app-footer />
+          </div>
+        </div>
+        <div v-else class="md:flex md:grow md:items-stretch overflow-hidden">
+          <transition name="swipe-hint"><div v-if="swipeHint && !show" class="swipe-hint nav:hidden print:hidden" aria-hidden="true"><i></i></div></transition>
+          <transition name="drawer-backdrop"><div v-if="show" class="drawer-backdrop-root fixed inset-0 z-[100] bg-black/40 nav:hidden print:hidden" @click="show = false"></div></transition>
+          <transition name="drawer-panel">
+            <div v-if="show" class="drawer-panel-root pro-drawer fixed inset-y-0 left-0 z-[101] w-[340px] max-w-[92vw] nav:hidden print:hidden"><pro-menu mobile @navigate="show = false" /></div>
+          </transition>
+          <div class="md:flex-1 md:px-4 py-6 md:p-6 overflow-x-hidden md:overflow-y-auto print:m-0 print:p-0 print:overflow-visible" scroll-region>
+            <div class="app-canvas p-4 md:p-6 print:bg-white print:border-0 print:shadow-none print:rounded-none">
+              <qr-record-button v-if="$page.props.qrRecord" :key="$page.props.qrRecord.type + $page.props.qrRecord.id" class="print:hidden" />
+              <slot />
+            </div>
+            <app-footer />
+            <print-animation-host />
+          </div>
+        </div>
+      </div>
+    </div>
+    <install-pwa-banner />
+    <update-available-banner />
+    <connection-status-banner />
+    <quick-access-menu />
+    <wims-chat-launcher />
+    <scroll-jump />
+    <rauncher :show="rauncherOpen" @close="rauncherOpen = false" />
+    <prayer-layer v-if="$page.props.prayer" />
+    <gate-reveal :show="!!$page.props.flash.just_logged_in" />
+    <security-reminder-popup />
+  </div>
+  <div v-else class="app-shell wims-float bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard }">
     <div class="md:flex md:flex-col">
       <div class="md:h-screen md:flex md:flex-col">
         <top-bar
@@ -74,6 +115,8 @@ import AppFooter from '@/Shared/AppFooter.vue';
 import PrintAnimationHost from '@/Shared/PrintAnimationHost.vue';
 import FullMainMenu from '@/Shared/Sidebar/FullMainMenu.vue';
 import MiniMainMenu from '@/Shared/Sidebar/MiniMainMenu.vue';
+import ProMenu from '@/Shared/Sidebar/ProMenu.vue';
+import { proDock, proDockWant, proDockDrop, proDockCollapse } from '@/Core/proDock';
 import InstallPwaBanner from '@/Shared/InstallPwaBanner.vue';
 import UpdateAvailableBanner from '@/Shared/UpdateAvailableBanner.vue';
 import ConnectionStatusBanner from '@/Shared/ConnectionStatusBanner.vue';
@@ -122,6 +165,7 @@ export default {
     AppFooter,
     FullMainMenu,
     MiniMainMenu,
+    ProMenu,
     InstallPwaBanner,
     UpdateAvailableBanner,
     ConnectionStatusBanner,
@@ -156,6 +200,11 @@ export default {
   },
 
   computed: {
+    // the Pro menu (a rail of coloured icons and a tree beside it) is a personal choice; the classic menu stays the default
+    dockWanted() { return this.proMenu && !this.offlineReadMode; },
+    proMenu() {
+      return this.$page.props.auth?.user?.extra_attributes?.menu_style === 'pro' && this.$page.props.settings.sidebar !== 'mini' && this.$page.props.enabledFeatures?.pro_menu !== false && this.$can(['use-pro-menu']);
+    },
     isMainDashboard() {
       return this.$page.component === 'Dashboard/Index';
     },
@@ -173,6 +222,8 @@ export default {
       document.body.classList.toggle('overflow-hidden', open);
     },
     '$page.props.prayer': { immediate: true, handler(v) { syncPrayer(v); } },
+    // tells the application whether this page wants the Pro menu beside it (the menu itself is drawn once, outside the pages)
+    dockWanted: { immediate: true, handler(v) { proDockWant(this._.uid, v); } },
   },
 
   mounted() {
@@ -184,6 +235,7 @@ export default {
       this.show = false;
     });
     this.sidebarHidden = window.localStorage.getItem('wims_sidebar_hidden') === '1';
+    proDockCollapse(this.sidebarHidden);
 
     if (!heartbeatTimer && this.$connection.status !== 'offline' && !this.$page.props.impersonation?.active) {
       const touch = () => {
@@ -197,6 +249,7 @@ export default {
     }
   },
   beforeUnmount() {
+    proDockDrop(this._.uid);
     window.removeEventListener('keydown', this.onRauncherShortcut);
     window.removeEventListener('wims:rauncher', this.toggleRauncher);
     this.stopDrawerAutoClose?.();
@@ -255,6 +308,7 @@ export default {
     toggleSidebar() {
       this.sidebarHidden = !this.sidebarHidden;
       window.localStorage.setItem('wims_sidebar_hidden', this.sidebarHidden ? '1' : '0');
+      proDockCollapse(this.sidebarHidden);
     },
     toggleRauncher() {
       this.rauncherOpen = !this.rauncherOpen;

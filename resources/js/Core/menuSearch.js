@@ -37,6 +37,12 @@ const ACCOUNT_ENTRIES = [
   { route: 'logout', title: 'Log Out', icon: 'out', action: 'logout' },
 ];
 
+// The look of the main menu: Classic or Pro (kept on the person's own settings; offered only when the feature is on and the role has the permission)
+const MENU_STYLE_ENTRIES = [
+  { title: 'Switch to the Pro menu', words: 'pro menu style rail', icon: 'collection', action: 'menu-style:pro' },
+  { title: 'Switch to the Classic menu', words: 'classic menu style sidebar', icon: 'list', action: 'menu-style:classic' },
+];
+
 // Backup/restore aliases — all point at the same page since the actual
 // download/restore/create actions are only ever performed there, behind the
 // existing password confirmation and (for restore) the "type RESTORE" gate.
@@ -123,6 +129,14 @@ export function searchMenu(query, ctx) {
       action: entry.action || null,
       rank: haystack.startsWith(q) ? 0 : 1,
     });
+  }
+
+  if ((ctx.features || {}).pro_menu !== false && ctx.can(['use-pro-menu'])) {
+    for (const entry of MENU_STYLE_ENTRIES) {
+      const haystack = (entry.title + ' ' + entry.words).toLowerCase();
+      if (!haystack.includes(q)) continue;
+      results.push({ category: 'account', label: 'Account', icon: entry.icon, title: ctx.t(entry.title), subtitle: '', url: null, action: entry.action, rank: entry.title.toLowerCase().includes(q) ? 0 : 1 });
+    }
   }
 
   for (const entry of BACKUP_ENTRIES) {

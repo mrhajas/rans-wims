@@ -9,8 +9,9 @@
       </Link>
       <mobile-menu-icon :show="show" @on-change="v => (show = v)" />
     </div>
-    <div v-else class="liquid-side-rail rail-full md:shrink-0 md:w-64 px-6 py-3 flex items-center justify-between md:justify-center" :class="{ 'rail-collapsed': sidebarHidden || menuUnavailable }">
-      <Link class="rail-brand lg-tip" :href="route('dashboard')" :data-tip="sidebarHidden || menuUnavailable ? 'RANS Workflow Integrated Management System' : null" :aria-label="sidebarHidden || menuUnavailable ? 'RANS Workflow Integrated Management System' : null">
+    <div v-else class="liquid-side-rail rail-full md:shrink-0 md:w-64 px-6 py-3 flex items-center justify-between md:justify-center" :class="{ 'rail-collapsed': (sidebarHidden || menuUnavailable) && !pro, 'rail-pro': pro }">
+      <Link v-if="pro" class="rail-brand rail-brand-pro" :href="route('dashboard')" aria-label="RANS Workflow Integrated Management System"><animated-logo /></Link>
+      <Link v-else class="rail-brand lg-tip" :href="route('dashboard')" :data-tip="sidebarHidden || menuUnavailable ? 'RANS Workflow Integrated Management System' : null" :aria-label="sidebarHidden || menuUnavailable ? 'RANS Workflow Integrated Management System' : null">
         <img class="rail-brand-logo" src="/images/logo-white.png" alt="RANS Workflow Integrated Management System" />
         <img class="rail-brand-mark" src="/images/logo-white-mark.png" alt="RANS" />
       </Link>
@@ -332,6 +333,11 @@
               </div>
 
               <div class="pm-list">
+                <div v-if="proAllowed" class="pm-item pm-style" @click.stop>
+                  <span class="profile-menu-icon-chip chip-violet"><icons name="collection" class="h-4 w-4" /></span>
+                  <span class="min-w-0"><span class="pm-title">{{ $t('Menu style') }}</span><span class="pm-sub">{{ $t('Classic or Pro') }}</span></span>
+                  <span class="pm-seg" role="group" :aria-label="$t('Menu style')"><button type="button" :class="{ on: menuStyle !== 'pro' }" @click.stop.prevent="setMenuStyle('classic')">{{ $t('Classic') }}</button><button type="button" :class="{ on: menuStyle === 'pro' }" @click.stop.prevent="setMenuStyle('pro')">{{ $t('Pro') }}</button></span>
+                </div>
                 <Link :href="route('profile.show')" class="pm-item">
                   <span class="profile-menu-icon-chip chip-blue"><icons name="user" class="h-4 w-4" /></span>
                   <span class="min-w-0"><span class="pm-title">{{ $t('Profile') }}</span><span class="pm-sub">{{ $t('Account, photo and security') }}</span></span>
@@ -403,6 +409,8 @@
 import { groupWarehouses, progressOf } from '@/Core/warehouseGroups';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
+import AnimatedLogo from '@/Shared/AnimatedLogo.vue';
+import { applyMenuStyle, pageAllowsPro } from '@/Core/menuStyle';
 import { LANGUAGES, loadLocale } from '@/Core/i18n.js';
 import { SITE_ENGINEER_ROLES } from '@/Core/siteEngineerRoles';
 import QuickCreateMenu from '@/Shared/Top/QuickCreateMenu.vue';
@@ -429,9 +437,12 @@ export default {
     sidebarHidden: { type: Boolean, default: false },
     // Offline read mode shows no side menu, so the tall logo card collapses to its compact form.
     menuUnavailable: { type: Boolean, default: false },
+    // the Pro menu carries the logo itself on a wide screen; below that the bar keeps its own logo card (with the animated house)
+    pro: { type: Boolean, default: false },
   },
   emits: ['on-mobile-menu-change', 'on-sidebar-toggle'],
   components: {
+    AnimatedLogo,
     ThemeIcon,
     QuickCreateMenu,
     PhotoZoom,
@@ -484,6 +495,8 @@ export default {
   },
 
   computed: {
+    proAllowed() { return pageAllowsPro(this.$page, this.$can); },
+    menuStyle() { return this.$page.props.auth?.user?.extra_attributes?.menu_style === 'pro' ? 'pro' : 'classic'; },
     pwaSub() {
       if (pwa.standalone) return this.$t('You are using the installed app');
       if (pwa.installed && !pwa.canPrompt) return this.$t('Already installed on this device');
@@ -663,6 +676,10 @@ export default {
   },
 
   methods: {
+    // the menu changes at once; the choice is kept on the person's own settings
+    setMenuStyle(style) {
+      applyMenuStyle(this.$page, style);
+    },
     // Phones: the logo bar and icon row stay pinned (CSS: .nb-root is sticky). Once the page scrolls, the project/role row is hidden
     // so the pinned part stays small; the space it took is kept as a margin so the content below does not jump when this happens.
     onPageScroll() {

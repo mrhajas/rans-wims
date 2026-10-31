@@ -969,6 +969,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('rauncher/search', [Controllers\RauncherController::class, 'search'])->name('rauncher.search');
     Route::put('rauncher/shortcut', [Controllers\RauncherController::class, 'updateShortcut'])->name('rauncher.shortcut.update');
     Route::put('scan/shortcut', [Controllers\ScanShortcutController::class, 'update'])->name('scan.shortcut.update');
+    Route::put('menu/style', [Controllers\MenuStyleController::class, 'update'])->middleware('throttle:60,1,menu.style')->name('menu.style.update');
 
     Route::get('hover-preview', [Controllers\HoverPreviewController::class, 'preview'])->name('hover-preview.show');
 

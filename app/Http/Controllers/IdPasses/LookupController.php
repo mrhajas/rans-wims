@@ -38,10 +38,10 @@ class LookupController extends Controller
         if ($d['source'] === 'staff') {
             abort_unless($u->can('assign-staff-ids'), 403);
             $rows = Staff::query()->whereIn('status', ['Active', 'Retired Active'])->when($q !== '', fn ($w) => $w->where(fn ($x) => $x->where('name', 'like', $like)->orWhere('staff_number', 'like', $like)->orWhere('position', 'like', $like)))
-                ->orderBy('name')->limit(20)->get(['id', 'staff_number', 'name', 'position', 'mobile_no', 'photo']);
+                ->orderBy('name')->limit(20)->get(['id', 'staff_number', 'name', 'position', 'mobile_no', 'photo', 'gender']);
             $open = IdPassCard::query()->where('kind', 'staff')->whereIn('status', IdPassCard::OPEN)->whereIn('staff_id', $rows->pluck('id'))->pluck('number', 'staff_id');
 
-            return response()->json($rows->map(fn ($s) => ['id' => $s->id, 'name' => NameFitter::display((string) $s->name), 'sub' => trim($s->staff_number . ' · ' . $s->position, ' ·'), 'title' => $s->position, 'phone' => $s->mobile_no, 'has_photo' => (bool) $s->photo, 'card' => $open[$s->id] ?? null])->values());
+            return response()->json($rows->map(fn ($s) => ['id' => $s->id, 'name' => NameFitter::display((string) $s->name), 'sub' => trim($s->staff_number . ' · ' . $s->position, ' ·'), 'title' => $s->position, 'phone' => $s->mobile_no, 'gender' => \App\Services\IdPass\PhotoService::gender($s->gender), 'has_photo' => (bool) $s->photo, 'card' => $open[$s->id] ?? null])->values());
         }
         if ($d['source'] === 'contact') {
             abort_unless($u->can('assign-compound-ids') || $u->can('create-people-gate-passes') || $u->can('create-visitor-passes'), 403);
@@ -77,13 +77,16 @@ class LookupController extends Controller
     {
         $this->module();
         $d = $request->validate(['category_id' => 'required|integer', 'full_name' => 'nullable|string|max:190', 'title' => 'nullable|string|max:120', 'issued_at' => 'nullable|date', 'expires_at' => 'nullable|date', 'host_name' => 'nullable|string|max:150',
-            'vehicle_registration' => 'nullable|string|max:40', 'authorisation_type' => 'nullable|string|max:80', 'staff_id' => 'nullable|integer', 'number' => 'nullable|string|max:40', 'photo_data' => 'nullable|string|max:6000000']);
+            'vehicle_registration' => 'nullable|string|max:40', 'authorisation_type' => 'nullable|string|max:80', 'staff_id' => 'nullable|integer', 'number' => 'nullable|string|max:40', 'photo_data' => 'nullable|string|max:6000000', 'avatar' => 'nullable|in:male,female']);
         $cat = IdPassCategory::query()->findOrFail((int) $d['category_id']);
         $k = \App\Services\IdPass\IdPassKinds::get($cat->kind);
         abort_unless($request->user()->can($k['create']), 403);
         $photo = ! empty($d['photo_data']) ? PhotoService::previewFile($d['photo_data']) : null;
         if (! $photo && ! empty($d['staff_id']) && $cat->kind === 'staff' && ($s = Staff::query()->find((int) $d['staff_id']))) {
             $photo = PhotoService::staffPreview($s);
+        }
+        if (! $photo && ! empty($d['avatar'])) {
+            $photo = PhotoService::avatarPreview($d['avatar'], $cat->photo_background);
         }
         $issued = ! empty($d['issued_at']) ? Carbon::parse($d['issued_at'], config('app.timezone')) : Carbon::today(config('app.timezone'));
         $data = CardRenderer::draft(['full_name' => $d['full_name'] ?? '', 'title' => $d['title'] ?? null, 'issued' => $issued, 'expires' => ! empty($d['expires_at']) ? Carbon::parse($d['expires_at'], config('app.timezone')) : null, 'host_name' => $d['host_name'] ?? null,

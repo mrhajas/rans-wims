@@ -538,6 +538,13 @@ class PermissionRegistry
                 ],
             ],
 
+            'pro_menu' => [
+                'label' => __('Pro menu'),
+                'abilities' => [
+                    'use-pro-menu' => __('Choose the Pro menu (instead of the Classic menu) in the profile menu. Every role has it by default.'),
+                ],
+            ],
+
             'archive_tree' => [
                 'label' => __('Archive Tree'),
                 'abilities' => [

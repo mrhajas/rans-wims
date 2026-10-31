@@ -47,6 +47,9 @@ class RecordSync
     /** The photograph that goes to the record: the picture as first taken when the ID has it, else the picture on the card. */
     private static function cardPhotoFile(IdPassCard $c): ?string
     {
+        if ($c->photo_avatar) {
+            return null;        // an avatar is not a photograph of the person: it never goes to a company record
+        }
         $disk = Storage::disk('local');
         foreach ([$c->photo_original, $c->photo_path] as $p) {
             if ($p && $disk->exists($p)) {
@@ -110,7 +113,7 @@ class RecordSync
             $f = ['key' => 'photo', 'label' => __('Photograph'), 'kind' => 'photo', 'record' => $has ? $disk->url($m->photo) : null, 'card' => $src ? route($route, [$c->id]) . '?w=240' : null];
             if (! $src) {
                 $f['state'] = 'same';
-                $f['note'] = __('The ID has no photograph to save.');
+                $f['note'] = $c->photo_avatar ? __('The ID carries an avatar, not a photograph of the person, so there is nothing to save.') : __('The ID has no photograph to save.');
             } elseif (! $has) {
                 $f['state'] = 'new';
             } elseif (md5_file($disk->path($m->photo)) === md5(Storage::disk('local')->get($src))) {

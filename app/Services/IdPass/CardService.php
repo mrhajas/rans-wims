@@ -136,7 +136,7 @@ class CardService
                 'kind' => $cat->kind, 'category_id' => $cat->id, 'number' => $number, 'seq_no' => $seq, 'token' => Str::random(40), 'status' => $pending ? IdPassCard::PENDING : IdPassCard::ACTIVE,
                 'staff_id' => $staff?->id, 'contact_id' => $contact?->id, 'visitor_id' => ! empty($in['visitor_id']) ? (int) $in['visitor_id'] : null,
                 'full_name' => trim(preg_replace('/\s+/', ' ', (string) $in['full_name'])), 'title' => self::clean($in['title'] ?? null), 'phone' => self::clean($in['phone'] ?? null), 'company' => self::clean($in['company'] ?? null),
-                'photo_path' => $photo['path'] ?? null, 'photo_original' => $photo['original'] ?? null, 'photo_cutout' => $photo['cutout'] ?? null, 'photo_bg' => $photo['bg'] ?? null, 'issued_at' => $issued->toDateString(), 'expires_at' => $expires?->toDateString(),
+                'photo_path' => $photo['path'] ?? null, 'photo_original' => $photo['original'] ?? null, 'photo_cutout' => $photo['cutout'] ?? null, 'photo_bg' => $photo['bg'] ?? null, 'photo_avatar' => $photo['avatar'] ?? null, 'issued_at' => $issued->toDateString(), 'expires_at' => $expires?->toDateString(),
                 'host_name' => self::clean($in['host_name'] ?? null), 'purpose' => self::clean($in['purpose'] ?? null), 'authorisation_type' => self::clean($in['authorisation_type'] ?? null),
                 'vehicle_registration' => ($v = self::clean($in['vehicle_registration'] ?? null)) ? mb_strtoupper($v) : null, 'vehicle_description' => self::clean($in['vehicle_description'] ?? null),
                 'restrictions' => self::clean($in['restrictions'] ?? null), 'notes' => self::clean($in['notes'] ?? null), 'replaces_id' => $in['replaces_id'] ?? null,
@@ -385,7 +385,7 @@ class CardService
             $old->save();
             $in = $old->only(['staff_id', 'contact_id', 'visitor_id', 'full_name', 'title', 'phone', 'company', 'host_name', 'purpose', 'authorisation_type', 'vehicle_registration', 'vehicle_description', 'restrictions', 'notes'])
                 + ['issued_at' => self::today()->toDateString(), 'expires_at' => $old->expires_at?->toDateString(), 'replaces_id' => $old->id];
-            $photoInfo = $photo ?: ($old->photo_path ? ['path' => $old->photo_path, 'original' => $old->photo_original, 'cutout' => $old->photo_cutout, 'bg' => $old->photo_bg] : null);
+            $photoInfo = $photo ?: ($old->photo_path ? ['path' => $old->photo_path, 'original' => $old->photo_original, 'cutout' => $old->photo_cutout, 'bg' => $old->photo_bg, 'avatar' => $old->photo_avatar] : null);
             // the new card is made in the same transaction: no moment where the person has no valid card and no new one either
             $cat->requires_approval = false;
             $new = self::issue($cat, $in, $photoInfo, $by);
@@ -455,7 +455,8 @@ class CardService
             $c->photo_original = $photo['original'] ?? $c->photo_original;
             $c->photo_cutout = $photo['cutout'] ?? null;
             $c->photo_bg = $photo['bg'] ?? null;
-        }, null, ['low_resolution' => (bool) ($photo['low'] ?? false)]);
+            $c->photo_avatar = $photo['avatar'] ?? null;
+        }, null, array_filter(['low_resolution' => (bool) ($photo['low'] ?? false), 'avatar' => $photo['avatar'] ?? null]));
         self::log('RANS ID photograph changed', $c);
 
         return $c;

@@ -42,13 +42,13 @@
 
       <section class="lg-card">
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="doc-text" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('3. Check and number') }} <span class="bk-count">{{ rows.length }}</span></h2><p class="lg-card-sub">{{ $t('The top of the list gets the first number. Move people up or down, or type a number if you may.') }}</p></div>
-          <div v-if="rows.length" class="bk-head-btns"><button type="button" class="lg-btn tone" style="--tone: #64748b" @click="sortByName"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span>{{ $t('Sort by name') }}</button><button type="button" class="lg-btn tone" style="--tone: #dc2626" @click="clearAll"><span class="tone-ico"><icons name="trash" class="w-4 h-4" /></span>{{ $t('Clear') }}</button></div></header>
+          <div v-if="rows.length" class="bk-head-btns"><button v-if="noPhotoCount" type="button" class="lg-btn tone" style="--tone: #0d9488" @click="avatarsForAll"><span class="tone-ico"><icons name="user" class="w-4 h-4" /></span>{{ $t('Avatars for the :n without a photo', { n: noPhotoCount }) }}</button><button type="button" class="lg-btn tone" style="--tone: #64748b" @click="sortByName"><span class="tone-ico"><icons name="list" class="w-4 h-4" /></span>{{ $t('Sort by name') }}</button><button type="button" class="lg-btn tone" style="--tone: #dc2626" @click="clearAll"><span class="tone-ico"><icons name="trash" class="w-4 h-4" /></span>{{ $t('Clear') }}</button></div></header>
         <div v-if="!rows.length" class="bk-empty"><icons name="users" class="w-8 h-8" /><span>{{ $t('Nobody chosen yet. Tick people above and they appear here, checked and numbered.') }}</span></div>
         <transition-group v-else name="bk-r" tag="div" class="bk-list">
           <div v-for="(r, i) in rows" :key="r.key" class="bk-item" :class="{ 'is-bad': !r.ok || r.state === 'bad', 'is-done': r.state === 'ok' }">
             <span class="bk-no">{{ i + 1 }}</span>
-            <div class="bk-photo" @click="r.state !== 'ok' && openPhoto(r)" :class="{ 'is-add': !r.thumb && !r.hasPhoto }">
-              <img v-if="r.thumb" :src="r.thumb" alt="" /><img v-else-if="info.kind === 'staff' && r.hasPhoto" :src="route('id-passes.lookup.staff-photo', r.id)" alt="" loading="lazy" /><icons v-else name="camera" class="w-5 h-5" />
+            <div class="bk-photo" @click="r.state !== 'ok' && openPhoto(r)" :class="{ 'is-add': !r.thumb && !r.hasPhoto && !r.avatar }">
+              <img v-if="r.thumb" :src="r.thumb" alt="" /><img v-else-if="info.kind === 'staff' && r.hasPhoto" :src="route('id-passes.lookup.staff-photo', r.id)" alt="" loading="lazy" /><span v-else-if="r.avatar" class="bk-avimg" :style="{ background: avatarBg }"><img :src="'/images/avatars/' + r.avatar + '.png'" alt="" /></span><img v-else src="/images/avatars/person-gradient.png" class="bk-none" alt="" />
             </div>
             <div class="bk-who"><b>{{ r.name }}</b><small>{{ r.sub }}</small>
               <div class="bk-flags"><span v-for="m in r.missing" :key="m" class="lg-chip lg-chip-red">{{ $t('Missing :x', { x: m }) }}</span><span v-if="!r.missing.length && r.state !== 'ok' && r.state !== 'bad'" class="lg-chip lg-chip-green">{{ $t('Ready') }}</span><span v-if="dup[i]" class="lg-chip lg-chip-red">{{ $t('Number used twice') }}</span></div>
@@ -56,6 +56,7 @@
             </div>
             <div class="bk-fix">
               <input v-if="r.needsPhone" v-model="r.phone" class="bk-phone" inputmode="tel" maxlength="60" :placeholder="$t('Contact number')" :disabled="r.state === 'ok'" />
+              <div v-if="r.state !== 'ok' && !r.thumb && !r.hasPhoto" class="bk-avs" :title="$t('No photograph: use an avatar')"><button v-for="g in ['male', 'female']" :key="g" type="button" :class="{ 'is-on': r.avatar === g }" :style="{ '--bg': avatarBg }" :aria-label="g === 'male' ? $t('Male avatar') : $t('Female avatar')" @click="r.avatar = r.avatar === g ? null : g"><img :src="'/images/avatars/' + g + '.png'" alt="" /></button></div>
               <button v-if="r.state !== 'ok'" type="button" class="lg-btn tone" style="--tone: #7c3aed" @click="openPhoto(r)"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ r.thumb || r.hasPhoto ? $t('Change photo') : $t('Add photo') }}</button>
             </div>
             <div class="bk-num">
@@ -137,6 +138,8 @@ export default {
     planned() { const c = this.cat; return this.plan.map(s => (s === null ? '' : c ? c.prefix + String(s).padStart(c.digits, '0') : s)); },
     sendSeq() { return !!this.startAt || this.rows.some(r => r.seq && r.state !== 'ok'); },
     dup() { const seen = {}; return this.plan.map((s, i) => { if (s === null || this.rows[i].state === 'ok') return false; const d = seen[s] !== undefined; seen[s] = i; return d; }); },
+    avatarBg() { return (this.cat && this.cat.photo_bg) || '#e6edf6'; },
+    noPhotoCount() { return this.rows.filter(r => r.state !== 'ok' && !r.thumb && !r.hasPhoto && !r.avatar).length; },
     readyCount() { return this.rows.filter((r, i) => r.ok && r.state !== 'ok' && !this.dup[i]).length; },
     attentionCount() { return this.rows.filter((r, i) => r.state !== 'ok' && (!r.ok || this.dup[i])).length; },
     failedCount() { return this.rows.filter(r => r.state === 'bad').length; },
@@ -152,7 +155,7 @@ export default {
       const miss = [];
       if (!String(r.name || '').trim()) miss.push(this.$t('name'));
       if (!String(r.phone || '').trim()) miss.push(this.$t('contact'));
-      if (!r.thumb && !r.hasPhoto) miss.push(this.$t('photograph'));
+      if (!r.thumb && !r.hasPhoto && !r.avatar) miss.push(this.$t('photograph'));
       const ok = miss.length === 0;
       if (r.ok !== ok) r.ok = ok;
       if (r.missing.join() !== miss.join()) r.missing = miss;
@@ -172,7 +175,7 @@ export default {
       this.loading = false;
     },
     chosen(id) { return this.rows.some(r => r.id === id); },
-    makeRow(p) { return { key: p.id + ':' + Math.random().toString(36).slice(2, 7), id: p.id, name: p.name, sub: p.sub, phone: p.phone || '', title: p.title || '', hasPhoto: !!p.has_photo, thumb: null, file: null, seq: null, ok: false, missing: [], state: 'idle', message: '', number: '', card_id: null, realSeq: null, needsPhone: !p.phone }; },
+    makeRow(p) { return { key: p.id + ':' + Math.random().toString(36).slice(2, 7), id: p.id, name: p.name, sub: p.sub, phone: p.phone || '', title: p.title || '', hasPhoto: !!p.has_photo, thumb: null, file: null, seq: null, ok: false, missing: [], state: 'idle', message: '', number: '', card_id: null, realSeq: null, needsPhone: !p.phone, avatar: null, gender: p.gender || 'male' }; },
     toggle(p) {
       if (p.card) return;
       const i = this.rows.findIndex(r => r.id === p.id);
@@ -189,7 +192,9 @@ export default {
     sortByName() { this.rows.sort((a, b) => (a.state === 'ok' ? -1 : 0) - (b.state === 'ok' ? -1 : 0) || a.name.localeCompare(b.name)); },
     clearAll() { this.rows = this.rows.filter(r => r.state === 'ok'); },
     openPhoto(r) { this.pr = r; this.prPhoto = null; },
-    savePhoto() { const r = this.pr; if (!r || !this.prPhoto) return; r.file = this.prPhoto; r.thumb = this.prPhoto.dataUri; this.pr = null; },
+    savePhoto() { const r = this.pr; if (!r || !this.prPhoto) return; r.file = this.prPhoto; r.thumb = this.prPhoto.dataUri; r.avatar = null; this.pr = null; },
+    // an avatar (male or female silhouette on the colour of the category) for everyone who has no photograph yet; the gender follows the staff record
+    avatarsForAll() { this.rows.forEach(r => { if (r.state !== 'ok' && !r.thumb && !r.hasPhoto && !r.avatar) r.avatar = r.gender === 'female' ? 'female' : 'male'; }); },
 
     // ---- the run ----
     batches(list) {
@@ -213,6 +218,7 @@ export default {
             const idx = this.rows.indexOf(r);
             fd.append(`rows[${j}][id]`, r.id); fd.append(`rows[${j}][phone]`, r.phone || ''); if (r.title) fd.append(`rows[${j}][title]`, r.title);
             if (this.sendSeq) fd.append(`rows[${j}][seq]`, this.plan[idx]);
+            if (!r.file && r.avatar) fd.append(`rows[${j}][avatar]`, r.avatar);
             if (r.file) { fd.append(`rows[${j}][photo]`, r.file.file); if (r.file.original) fd.append(`rows[${j}][photo_original]`, r.file.original); if (r.file.cutout) fd.append(`rows[${j}][photo_cutout]`, r.file.cutout); }
           });
           let results = [];
@@ -286,6 +292,8 @@ export default {
 .bk-item { display: grid; grid-template-columns: 30px 54px minmax(0, 1fr) auto auto auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 18px; background: var(--lg-card, #fff); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: box-shadow 0.25s, background 0.25s; }
 .bk-item.is-bad { box-shadow: 0 0 0 1.5px #fca5a5; background: rgba(254, 226, 226, 0.35); } .bk-item.is-done { box-shadow: 0 0 0 1.5px #86efac; background: rgba(220, 252, 231, 0.4); }
 .bk-no { font-weight: 800; color: var(--lg-mute, #64748b); text-align: center; font-variant-numeric: tabular-nums; }
+.bk-photo .bk-none { width: 34px; height: 34px; object-fit: contain; border-radius: 0; opacity: 0.9; } .bk-avimg { display: block; width: 100%; height: 100%; position: relative; } .bk-photo .bk-avimg img { position: absolute; left: 3%; bottom: 0; width: 94%; height: auto; object-fit: contain; }
+.bk-avs { display: flex; gap: 6px; } .bk-avs button { width: 34px; height: 42px; padding: 0; border: 0; border-radius: 9px; overflow: hidden; position: relative; cursor: pointer; background: var(--bg); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: transform 0.15s, box-shadow 0.15s; } .bk-avs button:hover { transform: scale(1.1); } .bk-avs button.is-on { box-shadow: 0 0 0 3px #0d9488; } .bk-avs img { position: absolute; left: 3%; bottom: 0; width: 94%; }
 .bk-photo { width: 54px; height: 66px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: var(--lg-soft, #f1f5f9); color: #94a3b8; cursor: pointer; box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); } .bk-photo img { width: 100%; height: 100%; object-fit: cover; } .bk-photo.is-add { box-shadow: 0 0 0 2px #fca5a5; color: #dc2626; }
 .bk-who { min-width: 0; display: grid; gap: 2px; } .bk-who b { overflow-wrap: anywhere; } .bk-who small { color: var(--lg-mute, #64748b); } .bk-flags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; } .bk-err { color: #b91c1c !important; font-weight: 700; }
 .bk-fix { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; } .bk-phone { width: 150px; }

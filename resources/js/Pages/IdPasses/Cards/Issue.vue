@@ -66,6 +66,15 @@
           <section v-if="showPhoto && !isStock" class="lg-card">
             <header class="lg-card-head"><span class="lg-card-ico lg-ico-violet"><icons name="camera" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Photograph') }} <b v-if="cat && cat.photo_required" class="wims-req">*</b></h2><p class="lg-card-sub">{{ $t('Upload a picture or take one now. The original is kept; the card gets the part inside the frame.') }}</p></div></header>
             <photo-cropper v-model="photo" :staff-photo-url="staffPhotoUrl" :min-width="minPhotoWidth" :background="(cat && cat.photo_bg) || ''" @busy="photoBusy = $event" />
+            <div v-if="!photo && !staffPhotoUrl" class="idi-av">
+              <div class="idi-av-head"><b>{{ $t('No photograph yet?') }}</b><small>{{ $t('Use an avatar for now. It stands on the colour of this ID and can be replaced by a photograph at any time.') }}</small></div>
+              <div class="idi-av-tiles">
+                <button v-for="g in ['male', 'female']" :key="g" type="button" class="idi-av-tile" :class="{ 'is-on': form.avatar === g }" :style="{ '--bg': (cat && cat.photo_bg) || '#e6edf6' }" @click="form.avatar = form.avatar === g ? null : g">
+                  <span class="idi-av-pic"><img :src="'/images/avatars/' + g + '.png'" alt="" /></span>
+                  <span class="idi-av-name">{{ g === 'male' ? $t('Male avatar') : $t('Female avatar') }}<em v-if="person && person.gender === g">{{ $t('matches the record') }}</em></span>
+                </button>
+              </div>
+            </div>
             <span class="ac-err">{{ err('photo') || photoMissing }}</span>
           </section>
 
@@ -105,7 +114,7 @@ export default {
     const first = this.categories[0] || null;
     return {
       form: this.$inertia.form({ category_id: first ? first.id : null, staff_id: null, contact_id: null, visitor_id: null, full_name: '', title: '', phone: '', company: '', issued_at: this.today, expires_at: null, host_name: '', purpose: '', authorisation_type: null,
-        vehicle_registration: '', vehicle_description: '', restrictions: '', notes: '', manual_number: '', quantity: 10 }),
+        vehicle_registration: '', vehicle_description: '', restrictions: '', notes: '', manual_number: '', quantity: 10, avatar: null }),
       person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, photoBusy: false, running: false, manual: false, stock: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
     };
   },
@@ -131,14 +140,15 @@ export default {
       if (!this.cat || !this.form.issued_at) return false;
       if (this.isStock) return this.form.quantity >= 1 && this.form.quantity <= 200;
       if (this.source === 'type' ? !this.form.full_name.trim() : !this.person) return false;
-      if (this.cat.photo_required && !this.photo && !this.staffPhotoUrl) return false;
+      if (this.cat.photo_required && !this.photo && !this.staffPhotoUrl && !this.form.avatar) return false;
       return true;
     },
   },
   watch: {
     'form.category_id'() { this.applyExpiry(); if (this.info.kind === 'compound' || this.info.kind === 'gate') this.setPerson(null); this.queue(); },
     'form.issued_at'() { this.applyExpiry(); this.queue(); },
-    photo() { this.queue(); },
+    photo(v) { if (v) this.form.avatar = null; this.queue(); },
+    'form.avatar'() { this.queue(0); },
     person() { this.queue(); },
     'form.full_name'() { this.queue(); }, 'form.title'() { this.queue(); }, 'form.expires_at'() { this.queue(); }, 'form.host_name'() { this.queue(); }, 'form.vehicle_registration'() { this.queue(); }, 'form.authorisation_type'() { this.queue(); },
   },
@@ -202,7 +212,7 @@ export default {
       const n = ++this.seq; this.loading = true;
       try {
         const body = { category_id: this.cat.id, full_name: this.form.full_name || (this.person ? this.person.name : '') || this.$t('Full Name'), title: this.form.title || (this.info.kind === 'compound' ? this.cat.name : ''), issued_at: this.form.issued_at, expires_at: this.form.expires_at, host_name: this.form.host_name,
-          vehicle_registration: this.form.vehicle_registration, authorisation_type: this.form.authorisation_type, staff_id: this.form.staff_id, number: this.manual && this.form.manual_number ? this.manualPreview : this.cat.next, photo_data: this.photo ? this.photo.dataUri : undefined };
+          vehicle_registration: this.form.vehicle_registration, authorisation_type: this.form.authorisation_type, staff_id: this.form.staff_id, number: this.manual && this.form.manual_number ? this.manualPreview : this.cat.next, photo_data: this.photo ? this.photo.dataUri : undefined, avatar: !this.photo && !this.staffPhotoUrl && this.form.avatar ? this.form.avatar : undefined };
         const { data } = await window.axios.post(route('id-passes.lookup.preview'), body);
         if (n === this.seq) { this.pv = data; }
       } catch (e) { /* the preview is only a help */ }
@@ -212,7 +222,7 @@ export default {
     save() {
       if (this.isStock) return this.runStock();
       this.photoMissing = '';
-      if (this.cat.photo_required && !this.photo && !this.staffPhotoUrl) { this.photoMissing = this.$t('A photograph is required.'); return; }
+      if (this.cat.photo_required && !this.photo && !this.staffPhotoUrl && !this.form.avatar) { this.photoMissing = this.$t('A photograph is required, or choose an avatar.'); return; }
       const f = this.form;
       f.transform(d => {
         const o = { ...d }; if (!this.manual) o.manual_number = '';
@@ -243,5 +253,10 @@ export default {
 .idi-pv-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .idi-pv-cards small { display: block; text-align: center; margin-top: 6px; color: var(--lg-mute, #64748b); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 .idi-pv-empty { padding: 40px 10px; text-align: center; color: var(--lg-mute, #64748b); }
 .lg-span-all { grid-column: 1 / -1; }
+.idi-av { margin-top: 16px; padding: 14px; border-radius: 18px; background: var(--lg-soft, #f1f5f9); } .idi-av-head { display: grid; gap: 2px; margin-bottom: 12px; } .idi-av-head small { color: var(--lg-mute, #64748b); }
+.idi-av-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 440px; }
+.idi-av-tile { display: grid; gap: 8px; padding: 8px; border: 0; border-radius: 18px; cursor: pointer; background: var(--lg-card, #fff); font: inherit; color: inherit; box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: transform 0.2s, box-shadow 0.2s; } .idi-av-tile:hover { transform: scale(1.03); } .idi-av-tile.is-on { box-shadow: 0 0 0 3px #1565c0, 0 16px 24px -14px rgba(21, 101, 192, 0.7); }
+.idi-av-pic { display: block; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; background: var(--bg); position: relative; } .idi-av-pic img { position: absolute; left: 3%; bottom: 0; width: 94%; display: block; }
+.idi-av-name { display: grid; gap: 1px; text-align: center; font-weight: 800; font-size: 0.82rem; } .idi-av-name em { font-style: normal; font-size: 0.68rem; color: #0f766e; font-weight: 700; }
 .idi-stock { display: flex; gap: 12px; align-items: flex-start; margin-top: 14px; padding: 12px 14px; border-radius: 16px; cursor: pointer; background: var(--lg-soft, #f1f5f9); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: box-shadow 0.2s, background 0.2s; } .idi-stock.is-on { box-shadow: 0 0 0 2px #d97706; background: rgba(217, 119, 6, 0.07); } .idi-stock span { display: grid; gap: 2px; } .idi-stock small { color: var(--lg-mute, #64748b); }
 </style>

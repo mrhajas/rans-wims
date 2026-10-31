@@ -71,6 +71,7 @@
 <script>
 import debounce from 'lodash/debounce';
 import { searchMenu } from '@/Core/menuSearch';
+import { applyMenuStyle } from '@/Core/menuStyle';
 import { resolveCategory } from './categories';
 
 export default {
@@ -170,7 +171,7 @@ export default {
             isAdmin: this.$admin,
             features: this.$page.props.enabledFeatures || {},
             roles: (this.$page.props.auth?.user?.roles || []).map(r => r.name),
-          }).map(r => ({ ...r, key: `page:${r.url}` }));
+          }).map(r => ({ ...r, key: `page:${r.action || r.url}` }));
 
       if (term.trim().length >= 2 || category) {
         this.debouncedDataSearch(term, category);
@@ -228,6 +229,10 @@ export default {
       this.close();
       if (result.action === 'logout') {
         this.$inertia.post(this.route('logout'));
+        return;
+      }
+      if (result.action && result.action.startsWith('menu-style:')) {
+        applyMenuStyle(this.$page, result.action.split(':')[1]);
         return;
       }
       window.location.assign(result.url);
