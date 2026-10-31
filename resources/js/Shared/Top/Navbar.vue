@@ -16,7 +16,7 @@
         <img class="rail-brand-mark" src="/images/logo-white-mark.png" alt="RANS" />
       </Link>
       <mobile-menu-icon :show="show" @on-change="v => (show = v)" />
-      <orbit-line v-if="pro" class="ol-rail" :seconds="7" />
+      <orbit-line v-if="pro" class="ol-rail" :length="90" :speed="150" />
     </div>
     <div class="bg-white border-b border-slate-100 shadow-sm w-full pt-3.5 pb-2 px-4 md:py-2.5 md:text-md flex flex-wrap justify-between items-start md:items-center gap-y-2">
       <!-- <div class="mt-1 mr-4">{{ $page.props.auth.user.name.account.name }}</div> -->

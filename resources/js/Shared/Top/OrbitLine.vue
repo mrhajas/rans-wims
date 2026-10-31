@@ -1,24 +1,26 @@
 <template>
   <svg class="ol" aria-hidden="true" focusable="false" :width="w" :height="h" :viewBox="'0 0 ' + w + ' ' + h">
-    <rect v-for="l in layers" :key="l.i" ref="seg" v-bind="box" pathLength="100" :stroke-dasharray="l.len + ' ' + (100 - l.len)" :style="{ stroke: l.color }" :data-off="l.len - HEAD" />
+    <rect v-for="l in layers" :key="l.i" ref="seg" v-bind="box" :stroke-dasharray="l.len + ' ' + Math.max(1, per - l.len)" :style="{ stroke: l.color }" :data-len="l.len" />
   </svg>
 </template>
 
 <script>
-const N = 14, LONG = 34, SHORT = 2, HEAD = 40, WARM = 0.8;
+const N = 14, SHORT = 2, WARM = 0.8;
 
 // A thin light that runs round the edge of the bar it sits in. It is drawn on the bar's own outline (its real size and its real corner radius, read from the bar),
-// so it bends round the corners instead of cutting across them. Fourteen short-to-long strokes end at the same point, so the light fades smoothly from a faint tail
+// so it bends round the corners instead of cutting across them. The light has a fixed length in pixels (not a share of the bar), so it stays short on a wide bar. Fourteen short-to-long strokes end at the same point, so the light fades smoothly from a faint tail
 // to a bright head, and its colour moves from deep blue through light blue to a touch of orange at the tip (the colours come from --ol-a, --ol-b, --ol-c).
 export default {
-  props: { seconds: { type: Number, default: 9 } },
-  data() { return { w: 0, h: 0, r: 0, HEAD }; },
+  props: { length: { type: Number, default: 120 }, speed: { type: Number, default: 200 } },
+  data() { return { w: 0, h: 0, r: 0 }; },
   computed: {
     box() { return { x: 1, y: 1, width: Math.max(0, this.w - 2), height: Math.max(0, this.h - 2), rx: Math.max(0, Math.min(this.r - 1, (this.h - 2) / 2)), fill: 'none' }; },
+    // the length of the outline of the bar, in pixels
+    per() { const rx = this.box.rx, W = this.box.width, H = this.box.height; return Math.max(1, 2 * (W - 2 * rx) + 2 * (H - 2 * rx) + 2 * Math.PI * rx); },
     layers() {
       const out = [];
       for (let i = 0; i < N; i++) {
-        const t = i / (N - 1), len = LONG - (LONG - SHORT) * t;
+        const t = i / (N - 1), len = this.length - (this.length - SHORT) * t;
         const color = t <= WARM
           ? 'color-mix(in srgb, var(--ol-b) ' + (t / WARM * 100).toFixed(0) + '%, var(--ol-a))'
           : 'color-mix(in srgb, var(--ol-c) ' + ((t - WARM) / (1 - WARM) * 100).toFixed(0) + '%, var(--ol-b))';
@@ -36,17 +38,21 @@ export default {
     };
     measure();
     if (window.ResizeObserver) { this._ro = new ResizeObserver(measure); this._ro.observe(p); }
-    this.run();
+    this.$nextTick(() => this.run());
   },
+  watch: { per() { this.$nextTick(() => this.run()); } },
   beforeUnmount() { if (this._ro) this._ro.disconnect(); (this._an || []).forEach(a => a.cancel()); },
   methods: {
     run() {
+      (this._an || []).forEach(a => a.cancel());
+      this._an = [];
       const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const els = [].concat(this.$refs.seg || []);
       if (reduce || !els.length || !els[0].animate) return;
+      const per = this.per, head = per * 0.4;
       this._an = els.map(el => {
-        const o = parseFloat(el.dataset.off);
-        return el.animate([{ strokeDashoffset: o }, { strokeDashoffset: o - 100 }], { duration: this.seconds * 1000, iterations: Infinity, easing: 'linear' });
+        const o = parseFloat(el.dataset.len) - head;
+        return el.animate([{ strokeDashoffset: o }, { strokeDashoffset: o - per }], { duration: per / this.speed * 1000, iterations: Infinity, easing: 'linear' });
       });
     },
   },
