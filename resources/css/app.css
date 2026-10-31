@@ -3252,3 +3252,14 @@ html:not(#_):not(#__) [data-req-state='empty'] {
 .pm-seg { margin-left: auto; display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(100, 116, 139, 0.16); flex: none; }
 .pm-seg button { border: 0; padding: 4px 11px; border-radius: 999px; font-size: 0.74rem; font-weight: 800; background: transparent; color: #64748b; cursor: pointer; transition: background 0.2s, color 0.2s; }
 .pm-seg button.on { background: #12335a; color: #fff; box-shadow: 0 6px 10px -6px rgba(18, 51, 90, 0.8); }
+
+
+/* Pro menu: a thin dark blue light runs round the top bar all the time (the shadow of the bar is untouched) */
+.nb-pro .liquid-side-rail + div { position: relative; }
+.nb-pro .liquid-side-rail + div::after { content: ''; display: none; }
+@supports (offset-path: inset(0 round 22px)) {
+  .nb-pro .liquid-side-rail + div::after { display: block; position: absolute; left: -1px; top: -1px; width: 140px; height: 2px; border-radius: 2px; pointer-events: none; z-index: 2; background: linear-gradient(90deg, rgba(11, 29, 54, 0), rgba(96, 150, 230, 0.75) 22%, rgba(29, 79, 143, 0.95) 52%, #0b1d36 80%, #f2a93b 100%); filter: drop-shadow(0 0 3px rgba(29, 79, 143, 0.5)); offset-path: inset(0 round 22px); offset-rotate: auto; offset-anchor: 100% 50%; offset-distance: 0%; animation: nb-orbit 9s linear infinite; }
+}
+@keyframes nb-orbit { to { offset-distance: 100%; } }
+html.dark .nb-pro .liquid-side-rail + div::after { background: linear-gradient(90deg, rgba(120, 170, 255, 0), rgba(96, 150, 240, 0.75) 30%, #9dc0ff 78%, #f2a93b 100%); filter: drop-shadow(0 0 4px rgba(96, 150, 240, 0.7)); }
+@media (prefers-reduced-motion: reduce) { .nb-pro .liquid-side-rail + div::after { animation: none; display: none; } }

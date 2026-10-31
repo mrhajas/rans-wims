@@ -114,10 +114,16 @@ export default {
   created() { this.sel = this.hereKey; },
   mounted() {
     this.$nextTick(() => { this.reveal(this.$refs.railList, '.is-on'); this.reveal(this.$refs.panel && this.$refs.panel.querySelector('.pm-tree'), '.is-on'); });
+    // the light on the rail icons only runs for the icons that can be seen (a long rail would otherwise keep fifty animations alive)
+    if (typeof IntersectionObserver !== 'undefined' && this.$refs.railList) {
+      this._io = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('is-seen', e.isIntersecting)), { root: this.$refs.railList, threshold: 0 });
+      this.watchRail();
+    }
     document.addEventListener('keydown', this.onKey);
     document.addEventListener('pointerdown', this.onOutside, true);
   },
-  beforeUnmount() { clearTimeout(this._tt); clearTimeout(this._hv); clearTimeout(this._hl); document.removeEventListener('keydown', this.onKey); document.removeEventListener('pointerdown', this.onOutside, true); },
+  updated() { this.watchRail(); },
+  beforeUnmount() { if (this._io) this._io.disconnect(); clearTimeout(this._tt); clearTimeout(this._hv); clearTimeout(this._hl); document.removeEventListener('keydown', this.onKey); document.removeEventListener('pointerdown', this.onOutside, true); },
   methods: {
     ...shared,
     pick(g) {
@@ -166,6 +172,7 @@ export default {
         this.tip = { on: true, ready: true, text: t.dataset.tip, side, x, y, ax: Math.min(Math.max(14, ax), w - 14), ay: Math.min(Math.max(12, ay), h - 12) };
       });
     },
+    watchRail() { if (this._io && this.$refs.railList) this.$refs.railList.querySelectorAll('li').forEach(li => this._io.observe(li)); },
     onNavigate() { this.flyOpen = false; this.$emit('navigate'); },
     onKey(e) { if (e.key === 'Escape' && this.flyOpen) this.flyOpen = false; },
     onOutside(e) { if (this.flyOpen && this.collapsed && !this.mobile && this.$el && !this.$el.contains(e.target)) this.flyOpen = false; },
@@ -215,6 +222,7 @@ export default {
 .pm-tile { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; overflow: hidden; color: var(--fg); background: var(--bg); transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3), background 0.25s ease; position: relative; z-index: 2; }
 .pm-tile::after, .pm-head-ico::after { content: ''; position: absolute; inset: -10%; pointer-events: none; z-index: 3; background: linear-gradient(112deg, transparent 38%, rgba(255, 255, 255, 0.85) 50%, transparent 62%); transform: translateX(-130%); animation: pm-shine 5.2s var(--sh, 0ms) ease-in-out infinite; }
 @keyframes pm-shine { 0%, 58% { transform: translateX(-130%); } 80%, 100% { transform: translateX(130%); } }
+.pm-rail li:not(.is-seen) .pm-tile::after { animation-play-state: paused; }
 .pm-rail li:hover .pm-tile { transform: translateY(-1px) scale(1.07); background: var(--bg2); }
 .pm-rail li:hover .pm-ic { transform: scale(1.14) rotate(-8deg); }
 .pm-rail li button:active .pm-tile { transform: scale(0.94); }

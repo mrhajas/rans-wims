@@ -1,5 +1,5 @@
 <template>
-  <div ref="navRoot" class="relative z-50 md:flex md:shrink-0 nb-root">
+  <div ref="navRoot" class="relative z-50 md:flex md:shrink-0 nb-root" :class="{ 'nb-pro': pro }">
     <div
       v-if="$page.props.settings.sidebar == 'mini'"
       class="liquid-side-rail md:shrink-0 md:w-16 px-6 py-3 flex items-center justify-between md:justify-center"
