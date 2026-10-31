@@ -20,6 +20,16 @@
                 <span v-for="f in s.feed" :key="f.key" class="idm-mini" :class="{ bad: !f.ok }"><i class="idm-mini-band"></i><b>{{ f.initials }}</b><small>{{ f.label }}</small><em>{{ f.ok ? '✓' : '✕' }}</em></span>
               </transition-group>
             </div>
+            <!-- Sync Data: the details of the ID travel to the company record -->
+            <div v-else-if="scene === 'sync'" class="idm-sync">
+              <span class="idm-sy-glow"></span>
+              <div class="idm-sy-card"><i class="b"></i><i class="p"><em></em><em></em></i><i class="l1"></i><i class="l2"></i><i class="q"></i></div>
+              <svg class="idm-sy-arc" viewBox="0 0 120 70" aria-hidden="true"><path d="M2 58 C 30 -6, 90 -6, 118 58" /></svg>
+              <i class="idm-pk k1"><svg viewBox="0 0 24 24" width="16" height="16"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2" /><circle cx="9" cy="10" r="2" fill="#fff" /><path d="M4 18l5-5 4 4 3-3 4 4" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" /></svg></i>
+              <i class="idm-pk k2"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" fill="#fff" /></svg></i>
+              <i class="idm-pk k3"><b>Aa</b></i>
+              <div class="idm-sy-rec"><span class="av"><em></em><em></em></span><i class="r1"></i><i class="r2"></i><i class="r3"></i><span class="ok"><svg viewBox="0 0 20 20" width="14" height="14"><path d="M4 10.5l4 4 8-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg></span></div>
+            </div>
             <div v-else :key="cycle" class="idm-play" :style="{ '--cycle': cycleMs + 'ms' }">
               <!-- the printer or the PDF page the card travels to -->
               <div v-if="scene === 'print'" class="idm-printer">
@@ -117,9 +127,9 @@ export default {
       return out;
     },
     heading() {
-      if (this.s.phase === 'done') return { issue: this.$t('Your ID is ready'), print: this.$t('Ready to print'), pdf: this.$t('PDF is ready'), batch: this.$t('Your cards are ready'), bulk: this.$t('The IDs are ready') }[this.s.mode] || this.$t('Ready');
+      if (this.s.phase === 'done') return { issue: this.$t('Your ID is ready'), print: this.$t('Ready to print'), pdf: this.$t('PDF is ready'), batch: this.$t('Your cards are ready'), bulk: this.$t('The IDs are ready'), sync: this.$t('The records are in sync') }[this.s.mode] || this.$t('Ready');
       if (this.s.phase === 'error') return this.$t('That did not work');
-      return this.s.title || { issue: this.$t('Making the ID card'), print: this.$t('Preparing the print'), pdf: this.$t('Creating the PDF'), batch: this.$t('Making the cards'), bulk: this.$t('Making the IDs') }[this.s.mode];
+      return this.s.title || { issue: this.$t('Making the ID card'), print: this.$t('Preparing the print'), pdf: this.$t('Creating the PDF'), batch: this.$t('Making the cards'), bulk: this.$t('Making the IDs'), sync: this.$t('Syncing with the company record') }[this.s.mode];
     },
     steps() {
       return {
@@ -127,6 +137,7 @@ export default {
         print: [this.$t('Making the card faces'), this.$t('Fitting the names'), this.$t('Laying out the sheet'), this.$t('Adding the cutting marks'), this.$t('Opening it for printing')],
         pdf: [this.$t('Making the card faces'), this.$t('Embedding the fonts'), this.$t('Building the PDF pages'), this.$t('Almost ready')],
         batch: [this.$t('Making the cards'), this.$t('Fitting the names'), this.$t('Laying out the sheets'), this.$t('Building the files')],
+        sync: [this.$t('Comparing the details'), this.$t('Copying the photograph'), this.$t('Saving the contact number'), this.$t('Writing the history')],
         bulk: [this.$t('Checking the details'), this.$t('Fitting the names'), this.$t('Placing the photographs'), this.$t('Numbering the IDs')],
       }[this.s.mode] || [];
     },
@@ -251,6 +262,25 @@ export default {
 .idm-feed-enter-from { opacity: 0; transform: translateY(-34px) scale(0.5); } .idm-feed-leave-to { opacity: 0; transform: translateX(-30px) scale(0.8); }
 .idm-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; font-size: 0.74rem; font-weight: 800; } .idm-chips span { padding: 3px 10px; border-radius: 999px; background: rgba(100, 116, 139, 0.14); } .idm-chips .ok { background: rgba(22, 163, 74, 0.14); color: #15803d; } .idm-chips .bad { background: rgba(220, 38, 38, 0.13); color: #b91c1c; }
 
+
+/* ---------- Sync Data ---------- */
+.idm-sync { position: absolute; inset: 0; transition: opacity 0.4s, filter 0.4s; } .is-dim .idm-sync { opacity: 0.3; filter: blur(1.5px); }
+.idm-sy-glow { position: absolute; inset: 10px 8px; border-radius: 28px; background: radial-gradient(60% 70% at 50% 50%, color-mix(in srgb, var(--band) 20%, transparent), transparent 72%); animation: idm-breathe 3.6s ease-in-out infinite; }
+.idm-sy-card { position: absolute; left: 18px; top: 38px; width: 74px; height: 114px; border-radius: 9px; background: #1e4467; box-shadow: 0 16px 22px -12px rgba(15, 37, 64, 0.65); overflow: hidden; animation: idm-rise 0.6s both; }
+.idm-sy-card i { position: absolute; display: block; } .idm-sy-card .b { left: 0; top: 52px; width: 56px; height: 16px; border-radius: 0 7px 0 0; background: var(--band); }
+.idm-sy-card .p { left: 18px; top: 9px; width: 38px; height: 38px; border-radius: 6px; background: #c5ccd3; overflow: hidden; animation: idm-sy-pulse 2.7s 0.1s infinite; } .idm-sy-card .p em { position: absolute; background: #f4f6f8; } .idm-sy-card .p em:first-child { left: 13px; top: 6px; width: 12px; height: 12px; border-radius: 50%; } .idm-sy-card .p em:last-child { left: 7px; top: 21px; width: 24px; height: 20px; border-radius: 12px 12px 0 0; }
+.idm-sy-card .l1 { left: 6px; top: 75px; width: 42px; height: 4px; border-radius: 2px; background: #fff200; animation: idm-sy-pulse 2.7s 0.9s infinite; } .idm-sy-card .l2 { left: 6px; top: 84px; width: 28px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.85); animation: idm-sy-pulse 2.7s 1.8s infinite; } .idm-sy-card .q { left: 6px; top: 94px; width: 16px; height: 16px; border-radius: 3px; background: #fffbf3; opacity: 0.9; }
+@keyframes idm-sy-pulse { 0%, 22%, 100% { filter: none; } 8% { filter: brightness(1.6) saturate(1.3); } }
+.idm-sy-arc { position: absolute; left: 90px; top: 36px; width: 120px; height: 70px; overflow: visible; } .idm-sy-arc path { fill: none; stroke: color-mix(in srgb, var(--band) 55%, #94a3b8); stroke-width: 2.2; stroke-dasharray: 3 7; stroke-linecap: round; animation: idm-sy-dash 1.2s linear infinite; } @keyframes idm-sy-dash { to { stroke-dashoffset: -20; } }
+.idm-pk { position: absolute; left: 94px; top: 88px; width: 28px; height: 28px; margin: -14px; border-radius: 9px; display: grid; place-items: center; color: #fff; font-style: normal; background: var(--band); box-shadow: 0 10px 16px -8px color-mix(in srgb, var(--band) 80%, #000); opacity: 0; animation: idm-sy-fly 2.7s cubic-bezier(0.4, 0, 0.3, 1) infinite; } .idm-pk b { font-size: 0.66rem; letter-spacing: 0.02em; }
+.idm-pk.k1 { animation-delay: 0s; background: #7c3aed; } .idm-pk.k2 { animation-delay: 0.9s; background: #16a34a; } .idm-pk.k3 { animation-delay: 1.8s; background: #d97706; }
+@keyframes idm-sy-fly { 0% { opacity: 0; transform: translate(0, 0) scale(0.4) rotate(-12deg); } 12% { opacity: 1; transform: translate(10px, -14px) scale(1) rotate(0); } 50% { opacity: 1; transform: translate(60px, -38px) scale(1.08) rotate(4deg); } 86% { opacity: 1; transform: translate(112px, -2px) scale(0.9) rotate(0); } 100% { opacity: 0; transform: translate(128px, 6px) scale(0.3); } }
+.idm-sy-rec { position: absolute; right: 18px; top: 38px; width: 74px; height: 114px; border-radius: 16px; background: linear-gradient(170deg, #ffffff, #e9f0f9); box-shadow: 0 16px 22px -12px rgba(15, 37, 64, 0.55), 0 0 0 1px #d6e0ec; animation: idm-rise 0.6s 0.15s both; }
+.idm-sy-rec .av { position: absolute; left: 21px; top: 12px; width: 32px; height: 32px; border-radius: 50%; background: #b8c6d8; overflow: hidden; animation: idm-sy-pulse 2.7s 1.5s infinite; } .idm-sy-rec .av em { position: absolute; background: #eef3f9; } .idm-sy-rec .av em:first-child { left: 11px; top: 6px; width: 10px; height: 10px; border-radius: 50%; } .idm-sy-rec .av em:last-child { left: 6px; top: 19px; width: 20px; height: 16px; border-radius: 10px 10px 0 0; }
+.idm-sy-rec i { position: absolute; left: 10px; height: 5px; border-radius: 3px; background: #c9d6e6; transform-origin: left; } .idm-sy-rec .r1 { top: 58px; width: 54px; animation: idm-sy-fill 2.7s 0.8s infinite; } .idm-sy-rec .r2 { top: 71px; width: 40px; animation: idm-sy-fill 2.7s 1.7s infinite; } .idm-sy-rec .r3 { top: 84px; width: 48px; animation: idm-sy-fill 2.7s 2.6s infinite; }
+@keyframes idm-sy-fill { 0% { background: #c9d6e6; } 10%, 40% { background: var(--band); } 70%, 100% { background: #c9d6e6; } }
+.idm-sy-rec .ok { position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; background: #16a34a; display: grid; place-items: center; box-shadow: 0 8px 12px -6px #16a34a, 0 0 0 3px #fff; animation: idm-pop 0.6s 0.9s both; }
+
 /* ---------- the result ---------- */
 .idm-result { position: absolute; inset: 0; display: grid; place-items: center; z-index: 5; }
 .idm-result svg { position: relative; z-index: 2; animation: idm-pop 0.55s both; }
@@ -282,5 +312,6 @@ export default {
   .m-print .idm-flight, .m-pdf .idm-flight { display: none; }
   .idm-bar i { width: 60%; }
   .idm-orbit { display: none; }
+  .idm-pk { display: none; }
 }
 </style>

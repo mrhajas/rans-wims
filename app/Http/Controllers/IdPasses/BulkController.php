@@ -13,6 +13,7 @@ use App\Services\IdPass\IdPassKinds;
 use App\Services\IdPass\IdPassNotifier;
 use App\Services\IdPass\PhotoBackground;
 use App\Services\IdPass\PhotoService;
+use App\Services\IdPass\RecordSync;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -222,5 +223,17 @@ class BulkController extends Controller
         }
 
         return response()->json($out);
+    }
+
+    /** After a run: the people who had nothing in their record get what was added on this page (phone, photograph, position): only empty fields are filled, nothing is replaced. */
+    public function sync(Request $request)
+    {
+        $kind = $this->kindForBulk($request);
+        $d = $request->validate(['ids' => 'required|array|min:1|max:' . self::ALL, 'ids.*' => 'integer']);
+        $cards = IdPassCard::query()->where('kind', $kind)->where('created_by_user_id', $request->user()->id)->whereIn('id', array_map('intval', $d['ids']))->get();
+        $r = RecordSync::fillGaps($cards, $request->user());
+        $parts = array_filter([$r['phones'] ? __(':n contact numbers', ['n' => $r['phones']]) : null, $r['photos'] ? __(':n photographs', ['n' => $r['photos']]) : null, $r['positions'] ? __(':n positions', ['n' => $r['positions']]) : null]);
+
+        return response()->json($r + ['message' => $parts ? __('Saved to the company records: :p, for :n people.', ['p' => implode(', ', $parts), 'n' => $r['people']]) : __('The records already hold everything.')]);
     }
 }

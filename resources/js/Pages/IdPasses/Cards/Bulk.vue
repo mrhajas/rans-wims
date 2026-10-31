@@ -81,6 +81,15 @@
       <div class="bk-spacer"></div>
     </div>
 
+    <!-- after a run: the records of these people lacked what was added here. Yes or No. -->
+    <travel-modal :show="!!ask" :title="$t('Save them to the company records too?')" :subtitle="info.kind === 'staff' ? $t('Sync with the Staff records') : $t('Sync with the Contacts')" icon="refresh" :busy="syncing" @close="ask = null">
+      <div v-if="ask" class="bk-ask">
+        <ul><li v-if="ask.phones"><span class="a-ico"><icons name="phone" class="w-4 h-4" /></span><b>{{ ask.phones }}</b> {{ $t('contact numbers you typed') }}</li><li v-if="ask.photos"><span class="a-ico"><icons name="camera" class="w-4 h-4" /></span><b>{{ ask.photos }}</b> {{ $t('photographs you added') }}</li></ul>
+        <p>{{ $t('These people had nothing for them in their company record. Only empty fields are filled; nothing already in a record is replaced.') }}</p>
+      </div>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="syncing" style="--tone: #64748b" @click="ask = null"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('No, keep them on the IDs only') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="syncing" style="--tone: #0d9488" @click="syncNow"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Yes, sync') }}</button></template>
+    </travel-modal>
+
     <travel-modal :show="!!pr" :title="pr ? $t('Photograph of :n', { n: pr.name }) : ''" :subtitle="$t('Choose or take a picture; the part inside the frame goes on the card.')" icon="camera" max-width="2xl" :busy="photoBusy" @close="pr = null">
       <photo-cropper v-if="pr" v-model="prPhoto" :staff-photo-url="info.kind === 'staff' && pr.hasPhoto ? route('id-passes.lookup.staff-photo', pr.id) : ''" :min-width="minPhotoWidth" :background="(cat && cat.photo_bg) || ''" @busy="photoBusy = $event" />
       <template #footer><button type="button" class="lg-btn tone" style="--tone: #64748b" @click="pr = null"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" style="--tone: #16a34a" :disabled="!prPhoto || photoBusy" @click="savePhoto"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Use this photograph') }}</button></template>
@@ -109,7 +118,7 @@ export default {
   data() {
     const first = this.categories[0] || null;
     return { categoryId: first ? first.id : null, issuedAt: this.today, expiresAt: null, expTouched: false, startAt: null, q: '', list: [], total: 0, page: 1, last: 1, loading: false, busyAll: false, timer: null,
-      rows: [], pr: null, prPhoto: null, photoBusy: false, running: false, bg: { show: false, running: false, stop: false, done: 0, total: 0, msg: '' } };
+      rows: [], ask: null, syncing: false, pr: null, prPhoto: null, photoBusy: false, running: false, bg: { show: false, running: false, stop: false, done: 0, total: 0, msg: '' } };
   },
   computed: {
     pageTitle() { return this.$t('Issue many :k', { k: this.info.label }); },
@@ -223,9 +232,24 @@ export default {
         idMakeDone(bad ? this.$t(':a IDs issued, :b need attention.', { a: ok, b: bad }) : this.$t(':a IDs issued.', { a: ok }));
       } catch (e) { idMakeFail(this.$t('The run stopped. The IDs already made are kept.')); }
       this.running = false;
+      this.offerSync(madeIds);
       if (madeIds.length && this.cat.photo_bg) this.backgrounds(madeIds);
     },
 
+    // what this page added that the company record lacked: ask once, Yes or No
+    offerSync(ids) {
+      const done = this.rows.filter(r => r.state === 'ok' && ids.includes(r.card_id));
+      const phones = done.filter(r => r.needsPhone && String(r.phone || '').trim()).length;
+      const photos = this.info.kind === 'staff' ? done.filter(r => !r.hasPhoto && r.thumb).length : 0;
+      if (phones || photos) setTimeout(() => { this.ask = { phones, photos, ids: done.map(r => r.card_id) }; }, 2100);
+    },
+    async syncNow() {
+      const a = this.ask; if (!a || this.syncing) return; this.syncing = true; this.ask = null;
+      idMakeStart({ mode: 'sync', color: this.cat ? this.cat.band : '#0d9488', title: this.info.kind === 'staff' ? this.$t('Syncing with the Staff records') : this.$t('Syncing with the Contacts') });
+      try { const { data } = await window.axios.post(route('id-passes.' + this.info.route + '.bulk.sync'), { ids: a.ids }, { headers: { 'X-Quiet': '1' } }); idMakeDone(data.message); }
+      catch (e) { idMakeFail((e.response && e.response.data && e.response.data.message) || this.$t('The sync could not be made.')); }
+      this.syncing = false;
+    },
     // the photographs of the new IDs on the colour of the category: the server does what it can, the browser makes the cut-outs of the rest, one by one, without holding anything up
     async backgrounds(ids) {
       const bg = this.bg; Object.assign(bg, { show: true, running: true, stop: false, done: 0, total: 0, msg: this.$t('Checking the photograph backgrounds...') });
@@ -273,6 +297,7 @@ export default {
 .bk-dock-info { flex: 1 1 200px; display: grid; min-width: 0; } .bk-dock-info b { font-size: 1.05rem; color: #1e4467; } .bk-dock-info small { color: var(--lg-mute, #64748b); font-weight: 600; }
 .bk-go { min-width: 190px; justify-content: center; }
 .bk-spacer { height: 4px; }
+.bk-ask ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; } .bk-ask li { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: rgba(13, 148, 136, 0.09); } .bk-ask b { font-size: 1.2rem; color: #0f766e; } .bk-ask p { margin: 0; line-height: 1.5; color: #334155; } .a-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: #0d9488; color: #fff; }
 @media (max-width: 767px) {
   .bk-item { grid-template-columns: 26px 48px minmax(0, 1fr); } .bk-fix, .bk-num, .bk-move { grid-column: 2 / -1; justify-content: flex-start; justify-items: start; } .bk-num { grid-auto-flow: column; align-items: center; gap: 10px; }
   .bk-dock { position: fixed; left: 10px; right: 10px; bottom: 74px; } .bk-spacer { height: 130px; } .bk-go { width: 100%; }

@@ -27,6 +27,7 @@
           <div class="ids-actions">
             <button v-if="can.approve" type="button" class="lg-btn tone tone-solid" @click="ask('approve')" style="--tone: #16a34a"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Approve') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn tone tone-solid" @click="ask('reject')" style="--tone: #dc2626"><span class="tone-ico"><icons name="x-circle" class="w-4 h-4" /></span>{{ $t('Reject') }}</button>
+            <button v-if="can.sync" type="button" class="lg-btn tone" @click="openSync" style="--tone: #0d9488"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ info.kind === 'staff' ? $t('Sync Data') : $t('Sync Contacts') }}</button>
             <button v-if="can.renew" type="button" class="lg-btn tone" @click="ask('renew')" style="--tone: #d97706"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Renew') }}</button>
             <button v-if="can.replace" type="button" class="lg-btn tone" @click="ask('replace')" style="--tone: #7c3aed"><span class="tone-ico"><icons name="duplicate" class="w-4 h-4" /></span>{{ $t('Replace') }}</button>
             <button v-if="can.suspend" type="button" class="lg-btn tone" @click="ask('suspend')" style="--tone: #d97706"><span class="tone-ico"><icons name="pause" class="w-4 h-4" /></span>{{ $t('Suspend') }}</button>
@@ -143,6 +144,37 @@
       <template #footer><button type="button" class="lg-btn tone" :disabled="af.processing" @click="ac = null" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="submit" form="ids-act" class="lg-btn tone tone-solid" :disabled="af.processing || cropBusy" :style="{ '--tone': ac && ac.danger ? '#dc2626' : '#16a34a' }"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ ac ? ac.button : '' }}</button></template>
     </travel-modal>
 
+    <!-- Sync Data: what differs between the ID and the company record, and the question before anything is changed -->
+    <travel-modal :show="syncOpen" :title="info.kind === 'staff' ? $t('Sync Data of :n', { n: card.number }) : $t('Sync Contacts of :n', { n: card.number })" :subtitle="syncData ? $t('Compared with :r: :n', { r: syncData.target.label, n: syncData.target.name }) : $t('Comparing...')" icon="refresh" max-width="2xl" :busy="syncBusy" @close="syncOpen = false">
+      <div v-if="!syncData" class="sy-wait"><i></i><i></i><i></i></div>
+      <div v-else class="sy-list">
+        <p v-if="!syncChanges.length" class="lg-note lg-note-green"><icons name="tick" class="w-4 h-4" /><span>{{ $t('The record already holds the same as this ID. Nothing to sync.') }}</span></p>
+        <label v-for="f in syncData.fields" :key="f.key" class="sy-row" :class="['is-' + f.state, { 'is-on': syncPick[f.key] }]">
+          <input v-if="f.state === 'new' || f.state === 'different'" v-model="syncPick[f.key]" type="checkbox" />
+          <span v-else class="sy-nobox"><icons :name="f.state === 'same' ? 'tick' : 'x-circle'" class="w-4 h-4" /></span>
+          <span class="sy-body">
+            <span class="sy-top"><b>{{ f.label }}</b>
+              <em v-if="f.state === 'new'" class="sy-chip new">{{ $t('Will be added') }}</em><em v-else-if="f.state === 'different'" class="sy-chip diff">{{ $t('Different') }}</em><em v-else-if="f.state === 'blocked'" class="sy-chip bad">{{ $t('Cannot be saved') }}</em><em v-else class="sy-chip same">{{ $t('Same') }}</em></span>
+            <span class="sy-cmp">
+              <span class="sy-side"><small>{{ $t('In the record now') }}</small><template v-if="f.kind === 'photo'"><img v-if="f.record" :src="f.record" alt="" /><span v-else class="sy-empty">{{ $t('Empty') }}</span></template><template v-else><b v-if="f.record">{{ f.record }}</b><span v-else class="sy-empty">{{ $t('Empty') }}</span></template></span>
+              <icons name="forward" class="w-4 h-4 sy-arrow" />
+              <span class="sy-side is-new"><small>{{ $t('On the ID') }}</small><template v-if="f.kind === 'photo'"><img v-if="f.card" :src="f.card" alt="" /><span v-else class="sy-empty">{{ $t('Empty') }}</span></template><template v-else><b v-if="f.card">{{ f.save || f.card }}</b><span v-else class="sy-empty">{{ $t('Empty') }}</span></template></span>
+            </span>
+            <small v-if="f.note" class="sy-note">{{ f.note }}</small>
+          </span>
+        </label>
+        <p v-if="syncReplace.length" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t(':n field(s) in the record hold other data and will be replaced: :f. The old value is kept in the history.', { n: syncReplace.length, f: syncReplace.join(', ') }) }}</span></p>
+      </div>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="syncBusy" @click="syncOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('Cancel') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="syncBusy || !syncKeys.length" @click="doSync(syncKeys)" :style="{ '--tone': syncReplace.length ? '#d97706' : '#0d9488' }"><span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ syncReplace.length ? $t('Replace and sync') : $t('Sync now') }}</button></template>
+    </travel-modal>
+
+    <!-- right after an ID was made: the record lacks what the ID now holds. Yes or No. -->
+    <travel-modal :show="offerOpen" :title="$t('Save it to the company record too?')" :subtitle="syncOffer ? $t('The record of :n has nothing for:', { n: syncOffer.target.name }) : ''" icon="refresh" :busy="syncBusy" @close="offerOpen = false">
+      <ul v-if="syncOffer" class="sy-offer"><li v-for="f in syncOffer.fields" :key="f.key"><span class="sy-ico"><icons :name="f.key === 'photo' ? 'camera' : f.key === 'phone' ? 'phone' : 'doc-text'" class="w-4 h-4" /></span><b>{{ f.label }}</b><template v-if="f.kind === 'photo'"><img v-if="f.card" :src="f.card" alt="" /></template><template v-else><em>{{ f.card }}</em></template></li></ul>
+      <p class="sy-ask">{{ $t('You added these on the ID. Do you want to sync them with the company record (:r) so everyone in WIMS has them?', { r: syncOffer ? syncOffer.target.label : '' }) }}</p>
+      <template #footer><button type="button" class="lg-btn tone" :disabled="syncBusy" @click="offerOpen = false" style="--tone: #64748b"><span class="tone-ico"><icons name="cross" class="w-4 h-4" /></span>{{ $t('No, keep them on the ID only') }}</button><button type="button" class="lg-btn tone tone-solid" :disabled="syncBusy" @click="doSync(syncOffer.fields.map(f => f.key), true)" style="--tone: #0d9488"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Yes, sync') }}</button></template>
+    </travel-modal>
+
     <!-- give a Gate Pass to a person -->
     <travel-modal :show="assignOpen" :title="$t('Give :n to a person', { n: card.number })" :subtitle="$t('The number and the QR code stay. The history keeps who held it before.')" icon="user" max-width="2xl" :busy="asf.processing" @close="assignOpen = false">
       <form id="ids-assign" @submit.prevent="submitAssign">
@@ -201,17 +233,23 @@ import PhotoCropper from '../Parts/PhotoCropper.vue';
 import { statusChip, statusIcon } from '../Parts/status';
 import CategoryChip from '../Parts/CategoryChip.vue';
 import IdMakeOverlay from '../Parts/IdMakeOverlay.vue';
-import { idMakeFile } from '@/Core/idMake';
+import { idMakeFile, idMakeStart, idMakeDone, idMakeFail } from '@/Core/idMake';
 import PersonSearch from '../Parts/PersonSearch.vue';
 
 export default {
   components: { AdminLayout, PageHeader, Link, DatePicker, AcctSelect, TravelModal, ScTabs, IdCutout, PhotoCropper, CategoryChip, PersonSearch, IdMakeOverlay },
-  props: { info: Object, card: Object, front: String, back: String, css: String, events: Array, prints: Array, canHistory: Boolean, gateTypes: Array, can: Object, layouts: Array, minPhotoWidth: Number, pooled: Boolean, holder: Object, assignments: { type: Array, default: () => [] }, cardHistory: { type: Array, default: () => [] } },
+  props: { syncOffer: { type: Object, default: null }, info: Object, card: Object, front: String, back: String, css: String, events: Array, prints: Array, canHistory: Boolean, gateTypes: Array, can: Object, layouts: Array, minPhotoWidth: Number, pooled: Boolean, holder: Object, assignments: { type: Array, default: () => [] }, cardHistory: { type: Array, default: () => [] } },
   data() {
-    return { assignOpen: false, asSource: 'contact', asPerson: null, asf: this.$inertia.form({ contact_id: null, visitor_id: null, full_name: '', phone: '', company: '', purpose: '', authorisation_type: null, vehicle_registration: '' }), tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, cropBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
+    return { syncOpen: false, syncData: null, syncPick: {}, syncBusy: false, offerOpen: false, assignOpen: false, asSource: 'contact', asPerson: null, asf: this.$inertia.form({ contact_id: null, visitor_id: null, full_name: '', phone: '', company: '', purpose: '', authorisation_type: null, vehicle_registration: '' }), tab: 'details', printOpen: false, layout: 'a4_side', orient: 'portrait', ac: null, af: this.$inertia.form({ reason: '', remarks: '', expires_at: null, photo: null }), editOpen: false, ef: this.$inertia.form({}), photoOpen: false, newPhoto: null, photoBusy: false, cropBusy: false, photoV: Date.now(), reason: '', note: '', dlOpen: false, giveOpen: false, gf: this.$inertia.form({ visitor_id: null, name: '', company: '', phone: '', host: '' }), pickedVisitor: null, backForm: this.$inertia.form({ reason: '' }), backOpen: false };
+  },
+  mounted() {
+    if (this.syncOffer) { this.offerOpen = true; try { history.replaceState(history.state, '', location.pathname); } catch (e) { /* the address stays */ } }
   },
   computed: {
     errs() { return this.$page.props.errors || {}; },
+    syncChanges() { return (this.syncData ? this.syncData.fields : []).filter(f => f.state === 'new' || f.state === 'different'); },
+    syncKeys() { return this.syncChanges.filter(f => this.syncPick[f.key]).map(f => f.key); },
+    syncReplace() { return this.syncChanges.filter(f => f.state === 'different' && this.syncPick[f.key]).map(f => f.label); },
     gateOptions() { return this.gateTypes.map(g => ({ value: g, label: g })); },
     tabs() { const t = [{ key: 'details', label: this.$t('Details'), icon: 'info', tone: 'navy' }]; if (this.pooled) t.push({ key: 'holders', label: this.$t('Who held it'), icon: 'users', tone: 'amber', count: this.assignments.length }); t.push({ key: 'life', label: this.$t('Life'), icon: 'clock', tone: 'violet', count: this.events.length }); if (this.canHistory) t.push({ key: 'prints', label: this.$t('Print & Export History'), icon: 'printer', tone: 'sky', count: this.prints.length }); return t; },
     statusNote() {
@@ -263,6 +301,25 @@ export default {
       const url = route('id-passes.' + this.info.route + '.' + k, [this.card.id]);
       f.transform(d => { const o = {}; if (['reject', 'suspend', 'revoke', 'replace'].includes(k)) o.reason = d.reason; if (k === 'approve') o.remarks = d.remarks; if (k === 'renew') o.expires_at = d.expires_at; if (k === 'replace' && d.photo) { o.photo = d.photo.file; if (d.photo.original) o.photo_original = d.photo.original; if (d.photo.cutout) o.photo_cutout = d.photo.cutout; } return o; }).post(url, { ...opts, forceFormData: k === 'replace' });
     },
+    async openSync() {
+      this.syncOpen = true; this.syncData = null; this.syncPick = {};
+      try {
+        const { data } = await window.axios.get(route('id-passes.' + this.info.route + '.sync-preview', [this.card.id]), { headers: { 'X-Quiet': '1' } });
+        const pick = {}; data.fields.forEach(f => { pick[f.key] = f.state === 'new' || f.state === 'different'; }); this.syncPick = pick; this.syncData = data;
+      } catch (e) { this.syncOpen = false; this.$alert((e.response && e.response.data && e.response.data.message) || this.$t('The records could not be compared.')); }
+    },
+    // the details travel to the record while the sync animation plays; nothing was changed before this
+    async doSync(keys, fromOffer = false) {
+      if (this.syncBusy || !keys.length) return;
+      this.syncBusy = true; this.syncOpen = false; this.offerOpen = false;
+      idMakeStart({ mode: 'sync', color: this.card.color, title: this.info.kind === 'staff' ? this.$t('Syncing with the Staff record') : this.$t('Syncing with the Contact') });
+      try {
+        const { data } = await window.axios.post(route('id-passes.' + this.info.route + '.sync', [this.card.id]), { fields: keys }, { headers: { 'X-Quiet': '1', Accept: 'application/json' } });
+        idMakeDone(data.message || this.$t('Synced.'));
+        router.reload({ only: ['card', 'events', 'syncOffer'], preserveScroll: true });
+      } catch (e) { idMakeFail((e.response && e.response.data && (e.response.data.message || Object.values(e.response.data.errors || {}).flat()[0])) || this.$t('The sync could not be made.')); }
+      this.syncBusy = false;
+    },
     openAssign() { this.asSource = 'contact'; this.asPerson = null; this.asf.reset(); this.asf.clearErrors(); this.asf.purpose = this.card.unassigned ? '' : (this.card.purpose || ''); this.assignOpen = true; },
     setAsSource(k) { this.asSource = k; this.asPerson = null; this.asf.contact_id = this.asf.visitor_id = null; if (k !== 'type') this.asf.full_name = ''; },
     pickAssign(p) {
@@ -282,12 +339,13 @@ export default {
       router.post(route('id-passes.' + this.info.route + '.photo', [this.card.id]), fd, { preserveScroll: true, forceFormData: true, onSuccess: () => { this.photoOpen = false; this.newPhoto = null; this.photoV = Date.now(); }, onFinish: () => { this.photoBusy = false; } });
     },
     eventText(e) {
-      const m = { holder_changed: this.$t('Given to a person'), assigned: this.$t('Given to a visitor'), released: this.$t('Taken back'), reprinted: this.$t('Printed again'), issued: this.$t('Issued'), approved: this.$t('Approved'), rejected: this.$t('Rejected'), renewed: this.$t('Renewed'), suspended: this.$t('Suspended'), reactivated: this.$t('Reactivated'), revoked: this.$t('Revoked'), replaced: this.$t('Replaced by a new ID'), edited: this.$t('Details changed'), photo_changed: this.$t('Photograph changed'), expired: this.$t('Expired') };
+      const m = { holder_changed: this.$t('Given to a person'), synced: this.$t('Synced to the company record'), assigned: this.$t('Given to a visitor'), released: this.$t('Taken back'), reprinted: this.$t('Printed again'), issued: this.$t('Issued'), approved: this.$t('Approved'), rejected: this.$t('Rejected'), renewed: this.$t('Renewed'), suspended: this.$t('Suspended'), reactivated: this.$t('Reactivated'), revoked: this.$t('Revoked'), replaced: this.$t('Replaced by a new ID'), edited: this.$t('Details changed'), photo_changed: this.$t('Photograph changed'), expired: this.$t('Expired') };
       return m[e.event] || e.event;
     },
     eventNote(e) {
       const d = e.detail || {}; if (e.event === 'renewed') return this.$t('Valid until :a (was :b)', { a: d.to || this.$t('no expiry'), b: d.from || this.$t('no expiry') });
       if (e.event === 'edited' && d.after) return Object.keys(d.after).join(', ');
+      if (e.event === 'synced' && d.after) return (d.record ? d.record + ': ' : '') + Object.keys(d.after).join(', ') + (d.only_gaps ? ' · ' + this.$t('empty fields only') : '');
       if (e.event === 'holder_changed') return (d.before && d.before.full_name ? d.before.full_name : this.$t('no one')) + ' → ' + ((d.after && d.after.full_name) || this.card.name) + (d.after && d.after.purpose ? ' · ' + d.after.purpose : '');
       if (e.event === 'issued' && d.bulk) return (d.stock ? this.$t('Made in advance in the name of :h', { h: d.holder }) + ' · ' : '') + this.$t('Run :r', { r: d.bulk });
       if (e.event === 'photo_changed' && d.background) return this.$t('Background colour :c', { c: d.background });
@@ -319,6 +377,16 @@ export default {
 .ids-opt.is-on { box-shadow: 0 0 0 2px #1565c0, 0 12px 20px -14px rgba(21, 101, 192, 0.7); } .ids-opt input { margin-top: 4px; } .ids-opt span { display: grid; gap: 2px; } .ids-opt small { color: var(--lg-mute, #64748b); }
 .idi-src { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--lg-soft, #f1f5f9); } .idi-src button { border: 0; padding: 7px 14px; border-radius: 999px; background: transparent; font-weight: 700; font-size: 0.82rem; color: var(--lg-mute, #64748b); cursor: pointer; }
 .idi-src button.is-on { background: #fff; color: #1e4467; box-shadow: 0 6px 12px -8px rgba(15, 37, 64, 0.6); }
+.sy-wait { display: flex; gap: 8px; justify-content: center; padding: 28px; } .sy-wait i { width: 12px; height: 12px; border-radius: 50%; background: #0d9488; animation: sy-b 1s ease-in-out infinite; } .sy-wait i:nth-child(2) { animation-delay: 0.15s; } .sy-wait i:nth-child(3) { animation-delay: 0.3s; } @keyframes sy-b { 50% { transform: translateY(-8px); opacity: 0.4; } }
+.sy-list { display: grid; gap: 10px; }
+.sy-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: var(--lg-card, #fff); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); cursor: pointer; transition: box-shadow 0.2s, background 0.2s; } .sy-row.is-same, .sy-row.is-blocked { cursor: default; } .sy-row.is-on.is-new { box-shadow: 0 0 0 2px #16a34a; background: rgba(22, 163, 74, 0.05); } .sy-row.is-on.is-different { box-shadow: 0 0 0 2px #d97706; background: rgba(217, 119, 6, 0.06); } .sy-row.is-blocked { box-shadow: 0 0 0 1.5px #fca5a5; }
+.sy-row > input { margin-top: 4px; width: 18px; height: 18px; } .sy-nobox { width: 18px; margin-top: 3px; color: #94a3b8; } .sy-row.is-blocked .sy-nobox { color: #dc2626; } .sy-row.is-same .sy-nobox { color: #16a34a; }
+.sy-body { flex: 1; min-width: 0; display: grid; gap: 8px; } .sy-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sy-chip { font-style: normal; font-size: 0.7rem; font-weight: 800; padding: 2px 9px; border-radius: 999px; } .sy-chip.new { background: rgba(22, 163, 74, 0.14); color: #15803d; } .sy-chip.diff { background: rgba(217, 119, 6, 0.16); color: #b45309; } .sy-chip.bad { background: rgba(220, 38, 38, 0.13); color: #b91c1c; } .sy-chip.same { background: rgba(100, 116, 139, 0.14); color: #475569; }
+.sy-cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: center; } .sy-side { display: grid; gap: 4px; padding: 8px 10px; border-radius: 12px; background: var(--lg-soft, #f1f5f9); min-width: 0; } .sy-side.is-new { background: rgba(13, 148, 136, 0.09); } .sy-side small { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute, #64748b); } .sy-side b { overflow-wrap: anywhere; } .sy-side img { width: 64px; height: 80px; object-fit: cover; border-radius: 10px; } .sy-empty { color: #94a3b8; font-style: italic; } .sy-arrow { color: #0d9488; } .sy-note { color: #b91c1c; font-weight: 700; }
+.sy-offer { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; } .sy-offer li { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: rgba(13, 148, 136, 0.09); } .sy-offer img { width: 44px; height: 56px; object-fit: cover; border-radius: 8px; margin-left: auto; } .sy-offer em { margin-left: auto; font-style: normal; font-weight: 700; } .sy-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: #0d9488; color: #fff; }
+.sy-ask { margin: 0; line-height: 1.5; color: #334155; }
+@media (max-width: 560px) { .sy-cmp { grid-template-columns: 1fr; } .sy-arrow { transform: rotate(90deg); justify-self: center; } }
 .is-disabled { opacity: 0.45; pointer-events: none; }
 .ids-holder { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding: 12px 14px; border-radius: 18px; } .ids-holder > div { flex: 1; min-width: 160px; display: grid; } .ids-holder small { color: var(--lg-mute, #64748b); }
 .ids-holder.is-with { background: rgba(217, 119, 6, 0.12); color: #92400e; } .ids-holder.is-free { background: rgba(22, 163, 74, 0.12); color: #166534; }

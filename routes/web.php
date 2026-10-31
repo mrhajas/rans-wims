@@ -657,7 +657,12 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
                     Route::get('bulk', [Controllers\IdPasses\BulkController::class, 'index'])->defaults('kind', $kind)->name('bulk');
                     Route::get('bulk/people', [Controllers\IdPasses\BulkController::class, 'people'])->middleware('throttle:240,1,id-passes.' . $k['route'] . '.bulk.people')->defaults('kind', $kind)->name('bulk.people');
                     Route::post('bulk/issue', [Controllers\IdPasses\BulkController::class, 'issue'])->middleware('throttle:120,1,id-passes.' . $k['route'] . '.bulk.issue')->defaults('kind', $kind)->name('bulk.issue');
+                    Route::post('bulk/sync', [Controllers\IdPasses\BulkController::class, 'sync'])->middleware('throttle:30,1,id-passes.' . $k['route'] . '.bulk.sync')->defaults('kind', $kind)->name('bulk.sync');
                     Route::post('bulk/backgrounds', [Controllers\IdPasses\BulkController::class, 'backgrounds'])->middleware('throttle:60,1,id-passes.' . $k['route'] . '.bulk.backgrounds')->defaults('kind', $kind)->name('bulk.backgrounds');
+                }
+                if (in_array($kind, ['staff', 'compound', 'gate'], true)) {
+                    Route::get('{card}/sync', [$card, 'syncPreview'])->whereNumber('card')->middleware('throttle:120,1,id-passes.' . $k['route'] . '.sync-preview')->defaults('kind', $kind)->name('sync-preview');
+                    Route::post('{card}/sync', [$card, 'sync'])->whereNumber('card')->middleware('throttle:60,1,id-passes.' . $k['route'] . '.sync')->defaults('kind', $kind)->name('sync');
                 }
                 if (in_array($kind, ['visitor', 'gate'], true)) {
                     Route::post('stock', [$card, 'stock'])->middleware('throttle:120,1,id-passes.' . $k['route'] . '.stock')->defaults('kind', $kind)->name('stock');

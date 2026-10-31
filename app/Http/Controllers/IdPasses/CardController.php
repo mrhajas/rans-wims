@@ -14,6 +14,7 @@ use App\Services\IdPass\IdPassKinds;
 use App\Services\IdPass\IdPassQuery;
 use App\Services\IdPass\IdPassSettings;
 use App\Services\IdPass\PassAssignments;
+use App\Services\IdPass\RecordSync;
 use App\Models\IdPassAssignment;
 use App\Services\IdPass\PhotoService;
 use Carbon\Carbon;
@@ -133,7 +134,7 @@ class CardController extends Controller
             $msg .= ' ' . __('The photograph background could not be changed to the colour of this ID, so the photograph is as it was taken.');
         }
 
-        return redirect()->route('id-passes.' . IdPassKinds::get($kind)['route'] . '.show', ['card' => $card->id])->with('message', $msg);
+        return redirect()->route('id-passes.' . IdPassKinds::get($kind)['route'] . '.show', ['card' => $card->id, 'offer' => 1])->with('message', $msg);
     }
 
     public function show(Request $request)
@@ -165,13 +166,23 @@ class CardController extends Controller
             'gateTypes' => IdPassSettings::gateTypes(),
             'pooled' => (bool) optional($card->category)->pooled, 'holder' => ($a = PassAssignments::open($card)) ? ['name' => $a->holder_name, 'company' => $a->holder_company, 'phone' => $a->holder_phone, 'host' => $a->host_name, 'visit_id' => $a->visit_id, 'from' => $a->assigned_at->toIso8601String()] : null,
             'assignments' => optional($card->category)->pooled ? PassAssignments::history($card) : [], 'cardHistory' => $this->cardHistory($card),
-            'can' => ['give' => optional($card->category)->pooled && $card->status === IdPassCard::ACTIVE && $u->can('assign-visitor-passes'), 'assign' => $kind === 'gate' && $open && ! optional($card->category)->pooled && $this->can($kind, 'update'), 'edit' => $open && $this->can($kind, 'update'), 'approve' => $pending && $this->can($kind, 'approve') && ((int) $card->created_by_user_id !== (int) $u->id || $u->hasRole('Super Admin')),
+            'can' => ['give' => optional($card->category)->pooled && $card->status === IdPassCard::ACTIVE && $u->can('assign-visitor-passes'), 'sync' => $open && RecordSync::may($card, $u) && $this->can($kind, 'update'), 'assign' => $kind === 'gate' && $open && ! optional($card->category)->pooled && $this->can($kind, 'update'), 'edit' => $open && $this->can($kind, 'update'), 'approve' => $pending && $this->can($kind, 'approve') && ((int) $card->created_by_user_id !== (int) $u->id || $u->hasRole('Super Admin')),
                 'suspend' => $card->status === IdPassCard::ACTIVE && $this->can($kind, 'revoke'), 'reactivate' => $card->status === IdPassCard::SUSPENDED && $this->can($kind, 'revoke'), 'revoke' => $open && $this->can($kind, 'revoke'),
                 'renew' => in_array($card->status, [IdPassCard::ACTIVE, IdPassCard::SUSPENDED], true) && $this->can($kind, 'create'), 'replace' => $open && ! $pending && $this->can($kind, 'create'),
                 'print' => $this->can($kind, 'print') && ! in_array($card->status, [IdPassCard::REJECTED], true), 'download' => $this->can($kind, 'download') && ! in_array($card->status, [IdPassCard::REJECTED], true), 'number' => $u->can('manage-id-numbering')],
             'layouts' => collect(\App\Models\IdPassPrint::LAYOUTS)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(),
             'minPhotoWidth' => PhotoService::MIN_WIDTH,
+            // right after an ID was made: what the record of the person still lacks and the ID now holds (the page asks: save it to the record too?)
+            'syncOffer' => $request->query('offer') && $open && RecordSync::may($card, $u) ? $this->syncOffer($card) : null,
         ]);
+    }
+
+    private function syncOffer(IdPassCard $card): ?array
+    {
+        $d = RecordSync::diff($card);
+        $new = $d ? array_values(array_filter($d['fields'], fn ($f) => $f['state'] === 'new')) : [];
+
+        return $new ? ['target' => $d['target'], 'fields' => $new] : null;
     }
 
     /** The other IDs of the same person (a lost pass replaced, an old pass that ended): from when to when, and why it changed. */
@@ -247,6 +258,32 @@ class CardController extends Controller
             : CardService::issueStock($cat, (int) $d['quantity'], $request->user(), $d['expires_at'] ?? null, $d['issued_at'] ?? null, $d['ref']);
 
         return response()->json(['made' => collect($made)->map(fn ($c) => ['id' => $c->id, 'number' => $c->number, 'status' => $c->status])->values(), 'holder' => $made[0]->full_name]);
+    }
+
+    /** Sync Data, step 1: what the ID holds and what the company record holds, field by field, so the person sees what is different before anything is saved. */
+    public function syncPreview(Request $request)
+    {
+        $kind = $this->kindOf($request);
+        $card = $this->cardOf($request, $kind);
+        $d = RecordSync::diff($card);
+        abort_unless($d, 404);
+        $d['may'] = RecordSync::may($card, $request->user());
+
+        return response()->json($d);
+    }
+
+    /** Sync Data, step 2: saves the fields the person ticked. A field that holds other data in the record is replaced only when it is in the list (the page asked for confirmation). */
+    public function sync(Request $request)
+    {
+        $kind = $this->kindOf($request);
+        $card = $this->cardOf($request, $kind);
+        $this->must($kind, 'update');
+        $d = $request->validate(['fields' => 'required|array|min:1', 'fields.*' => 'in:phone,position,photo']);
+        $r = RecordSync::apply($card, $d['fields'], $request->user());
+        $names = ['phone' => __('contact number'), 'position' => __('position'), 'photo' => __('photograph')];
+        $msg = $r['saved'] ? __('Saved to :r: :f.', ['r' => RecordSync::target($card)['label'], 'f' => implode(', ', array_map(fn ($k) => $names[$k], $r['saved']))]) : __('Nothing needed saving: the record already holds the same.');
+
+        return $request->wantsJson() && ! $request->header('X-Inertia') ? response()->json(['message' => $msg] + $r) : back()->with('message', $msg);
     }
 
     /** Gives a Gate Pass (often one made in advance in the name of the company) to a person: a contact, a visitor of the directory or a name typed. The history keeps who held it before. */
