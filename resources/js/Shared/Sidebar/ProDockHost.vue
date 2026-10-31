@@ -1,6 +1,6 @@
 <template>
   <div v-if="proDock.visible" class="pro-dock-fixed" :class="{ 'is-collapsed': proDock.collapsed }">
-    <pro-menu :collapsed="proDock.collapsed" @toggle="proDockCollapse(!proDock.collapsed)" />
+    <pro-menu :collapsed="proDock.collapsed" @toggle="proDockCollapse(!proDock.collapsed, true)" />
   </div>
 </template>
 

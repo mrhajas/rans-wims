@@ -1,5 +1,5 @@
 <template>
-  <aside class="pm" :class="{ 'is-collapsed': collapsed && !mobile, 'is-mobile': mobile, 'is-fly': flyOpen }" :aria-label="$t('Main menu')">
+  <aside class="pm" :class="{ 'is-collapsed': collapsed && !mobile, 'is-mobile': mobile, 'is-fly': flyOpen }" :aria-label="$t('Main menu')" @mouseleave="hoverOut">
     <div class="pm-brand">
       <Link :href="route('dashboard')" class="pm-logo" :aria-label="$t('Dashboard')"><animated-logo :mark="collapsed && !mobile" /></Link>
     </div>
@@ -9,7 +9,7 @@
       <nav ref="rail" class="pm-rail" :aria-label="$t('Menu groups')">
         <ul ref="railList">
           <li v-for="(g, gi) in rail" :key="g.key" :class="['pg-' + (g.tone % 8), { 'is-on': g.key === sel, 'is-here': g.key === hereKey }]" :style="{ '--d': Math.min(gi * 22, 360) + 'ms' }">
-            <button type="button" :title="g.title" :aria-label="g.title" :aria-expanded="g.key === sel && panelShown" @click="pick(g)">
+            <button type="button" :title="g.title" :aria-label="g.title" :aria-expanded="g.key === sel && panelShown" @click="pick(g)" @mouseenter="hoverIn(g)">
               <span class="pm-tile"><Icons :name="g.icon || 'collection'" class-name="pm-ic" /></span>
               <i v-if="g.key === hereKey && g.key !== sel" class="pm-here" aria-hidden="true"></i>
             </button>
@@ -104,7 +104,7 @@ export default {
         });
       }, 0);
     },
-    collapsed() { this.flyOpen = false; },
+    collapsed() { this.flyOpen = false; this._pinned = false; },
   },
   created() { this.sel = this.hereKey; },
   mounted() {
@@ -117,9 +117,22 @@ export default {
     ...shared,
     pick(g) {
       if (this.collapsed && !this.mobile && this.sel === g.key && this.flyOpen) { this.flyOpen = false; return; }
+      clearTimeout(this._hv); this._pinned = true;
       this.sel = g.key;
       this.flyOpen = true;
       this.$nextTick(() => this.reveal(this.$refs.panel && this.$refs.panel.querySelector('.pm-tree'), '.is-on'));
+    },
+    // on a collapsed menu a pointer resting on a group opens its tree beside the rail, and leaving the menu closes it again (a click keeps it open)
+    hoverIn(g) {
+      if (!this.collapsed || this.mobile || !window.matchMedia || !window.matchMedia('(hover: hover)').matches) return;
+      clearTimeout(this._hv); clearTimeout(this._hl);
+      if (this.sel === g.key && this.flyOpen) return;
+      this._hv = setTimeout(() => { this.sel = g.key; this.flyOpen = true; this._pinned = false; this.$nextTick(() => this.reveal(this.$refs.panel && this.$refs.panel.querySelector('.pm-tree'), '.is-on')); }, 110);
+    },
+    hoverOut() {
+      clearTimeout(this._hv);
+      if (!this.collapsed || this.mobile || !this.flyOpen || this._pinned) return;
+      clearTimeout(this._hl); this._hl = setTimeout(() => { if (!this._pinned) this.flyOpen = false; }, 320);
     },
     onNavigate() { this.flyOpen = false; this.$emit('navigate'); },
     onKey(e) { if (e.key === 'Escape' && this.flyOpen) this.flyOpen = false; },
@@ -162,9 +175,9 @@ export default {
 .pm.is-mobile .pm-rail { flex-basis: 72px; width: 72px; }
 .pm-rail ul { list-style: none; margin: 0; padding: 2px 0 8px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; display: grid; gap: 4px; align-content: start; }
 .pm-rail ul::-webkit-scrollbar { display: none; }
-.pm-rail li { position: relative; margin-left: 10px; height: 56px; animation: pm-in 0.55s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pm-rail li { position: relative; margin-right: 10px; height: 56px; animation: pm-in 0.55s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes pm-in { from { opacity: 0; transform: translateX(-16px); } }
-.pm-rail li button { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; cursor: pointer; padding: 0; border-radius: 28px 0 0 28px; transition: background 0.3s ease; }
+.pm-rail li button { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; cursor: pointer; padding: 0; border-radius: 0 28px 28px 0; transition: background 0.3s ease; }
 .pm-tile { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 15px; color: var(--fg); background: var(--bg); transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3), background 0.25s ease; position: relative; z-index: 2; }
 .pm-rail li:hover .pm-tile { transform: translateY(-1px) scale(1.07); background: var(--bg2); }
 .pm-rail li:hover .pm-ic { transform: scale(1.14) rotate(-8deg); }
@@ -174,10 +187,10 @@ export default {
 .pm-here { position: absolute; right: 9px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px rgba(242, 169, 59, 0.25); z-index: 3; animation: pm-pulse 2s ease-in-out infinite; } @keyframes pm-pulse { 50% { box-shadow: 0 0 0 6px rgba(242, 169, 59, 0); } }
 /* the chosen group sits in a white tab that flares into the panel */
 .pm-rail li.is-on button { background: var(--tab); }
-.pm-rail li.is-on::before, .pm-rail li.is-on::after { content: ''; position: absolute; right: 0; width: 26px; height: 26px; pointer-events: none; z-index: 1; animation: pm-flare 0.4s ease both; }
+.pm-rail li.is-on::before, .pm-rail li.is-on::after { content: ''; position: absolute; left: 0; width: 26px; height: 26px; pointer-events: none; z-index: 1; animation: pm-flare 0.4s ease both; }
 @keyframes pm-flare { from { opacity: 0; } }
-.pm-rail li.is-on::before { top: -26px; background: radial-gradient(circle at 0 0, transparent 26px, var(--tab) 26.5px); }
-.pm-rail li.is-on::after { bottom: -26px; background: radial-gradient(circle at 0 100%, transparent 26px, var(--tab) 26.5px); }
+.pm-rail li.is-on::before { top: -26px; background: radial-gradient(circle at 100% 0, transparent 26px, var(--tab) 26.5px); }
+.pm-rail li.is-on::after { bottom: -26px; background: radial-gradient(circle at 100% 100%, transparent 26px, var(--tab) 26.5px); }
 .pm-rail li.is-on .pm-tile { transform: scale(1.05); background: var(--bg); }
 .pm-fold { flex: 0 0 auto; align-self: center; width: 40px; height: 40px; margin: 4px 0 2px; border: 0; border-radius: 14px; cursor: pointer; display: grid; place-items: center; color: #9db4d8; background: rgba(255, 255, 255, 0.07); transition: background 0.25s, color 0.25s, transform 0.25s; } .pm-fold:hover { background: rgba(242, 169, 59, 0.2); color: var(--gold); transform: scale(1.06); } .pm-fold :deep(.pm-ic) { transition: transform 0.35s; }
 

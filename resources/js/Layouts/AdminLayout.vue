@@ -196,7 +196,7 @@ export default {
   // },
 
   data() {
-    return { show: false, rauncherOpen: false, sidebarHidden: false, swipeHint: false };
+    return { show: false, rauncherOpen: false, sidebarHidden: false, swipeHint: false, proDock };
   },
 
   computed: {
@@ -218,6 +218,8 @@ export default {
   },
 
   watch: {
+    proMenu() { this.loadSidebarState(); },
+    'proDock.collapsed'(v) { if (this.proMenu) this.sidebarHidden = v; },
     show(open) {
       document.body.classList.toggle('overflow-hidden', open);
     },
@@ -234,8 +236,7 @@ export default {
     this.stopDrawerAutoClose = this.$inertia.on('navigate', () => {
       this.show = false;
     });
-    this.sidebarHidden = window.localStorage.getItem('wims_sidebar_hidden') === '1';
-    proDockCollapse(this.sidebarHidden);
+    this.loadSidebarState();
 
     if (!heartbeatTimer && this.$connection.status !== 'offline' && !this.$page.props.impersonation?.active) {
       const touch = () => {
@@ -305,9 +306,15 @@ export default {
         setTimeout(() => { this.swipeHint = false; }, 5000);
       }
     },
+    // the Classic menu and the Pro menu each remember their own state; the Pro menu opens full the first time
+    sidebarKey() { return this.proMenu ? 'wims_pro_collapsed' : 'wims_sidebar_hidden'; },
+    loadSidebarState() {
+      try { this.sidebarHidden = window.localStorage.getItem(this.sidebarKey()) === '1'; } catch (e) { this.sidebarHidden = false; }
+      proDockCollapse(this.sidebarHidden);
+    },
     toggleSidebar() {
       this.sidebarHidden = !this.sidebarHidden;
-      window.localStorage.setItem('wims_sidebar_hidden', this.sidebarHidden ? '1' : '0');
+      try { window.localStorage.setItem(this.sidebarKey(), this.sidebarHidden ? '1' : '0'); } catch (e) { /* no storage */ }
       proDockCollapse(this.sidebarHidden);
     },
     toggleRauncher() {
