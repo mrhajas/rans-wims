@@ -12,7 +12,6 @@
         <button type="button" class="at-x" :aria-label="$t('Close')" @click.stop="dismissAlertToast(t.key)">
           <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none" /></svg>
         </button>
-        <i class="at-bar" :class="{ 'is-held': held[t.key] }"></i>
       </div>
     </transition-group>
   </div>
@@ -101,8 +100,6 @@ export default {
 .at-x { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 9999px; background: transparent; color: #94a3b8; cursor: pointer; transition: background 0.2s, color 0.2s; }
 .at-x svg { width: 11px; height: 11px; }
 .at-x:hover { background: rgba(15, 23, 42, 0.07); color: #334155; }
-.at-bar { position: absolute; left: 32px; right: 10px; bottom: 4px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 35%, #fff)); transform-origin: left center; animation: at-time var(--ms, 3000ms) linear both; opacity: 0.85; }
-.at-bar.is-held { animation-play-state: paused; }
 html.dark .at-card { background: #172036; color: #e5ecf8; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 24px -9px color-mix(in srgb, var(--accent) 45%, rgba(0, 0, 0, 0.7)), 0 0 0 1px rgba(255, 255, 255, 0.07); }
 html.dark .at-title { color: #f1f5ff; }
 html.dark .at-msg { color: #a9b8d2; }
@@ -114,6 +111,5 @@ html.dark .at-x:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .at-move { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes at-pop { from { transform: scale(0.2) rotate(-24deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes at-shine { to { transform: translateX(380%) skewX(-12deg); } }
-@keyframes at-time { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .at-enter-active, .at-leave-active, .at-move { transition: opacity 0.2s; } .at-enter-from, .at-leave-to { transform: none; } .at-badge svg, .at-shine { animation: none; } .at-shine { display: none; } }
 </style>

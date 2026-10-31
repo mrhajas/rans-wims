@@ -385,8 +385,8 @@
                 role="button"
                 tabindex="0"
                 :aria-expanded="openIndex === warehouseKey(item, ci)"
-                @click="toggleAccordion(warehouseKey(item, ci))"
-                @keydown.enter.prevent="toggleAccordion(warehouseKey(item, ci))"
+                @click="toggleAccordion(warehouseKey(item, ci), item)"
+                @keydown.enter.prevent="toggleAccordion(warehouseKey(item, ci), item)"
               >
                 <span class="sv-rank" :class="{ 'sv-rank-top': ci < 3 }">{{ ci + 1 }}</span>
                 <div class="sv-name">
@@ -427,7 +427,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template :key="si" v-for="(stock, si) in item.items">
+                    <template :key="si" v-for="(stock, si) in itemsOf(item)">
                       <tr v-if="stock.quantity > 0">
                         <td class="sv-code">{{ stock.code }}</td>
                         <td>{{ stock.name }}</td>
@@ -437,7 +437,10 @@
                         <td class="text-right sv-strong">{{ $number(stock.total_amount) }} Tsh</td>
                       </tr>
                     </template>
-                    <tr v-if="!item.items.some(i => i.quantity > 0)">
+                    <tr v-if="itemsCache[item.id] === undefined">
+                      <td class="sv-empty" colspan="6">{{ itemsFailed[item.id] ? $t('Could not load the items. Close this row and open it again.') : $t('Loading...') }}</td>
+                    </tr>
+                    <tr v-else-if="!itemsOf(item).some(i => i.quantity > 0)">
                       <td class="sv-empty" colspan="6">{{ $t('The warehouse is currently empty.') }}</td>
                     </tr>
                   </tbody>
@@ -686,6 +689,8 @@ export default {
       contractSummary: null,
       warehouseSearch: '',
       openIndex: null,
+      itemsCache: {},
+      itemsFailed: {},
       now: new Date(),
       clockTimer: null,
       svExpanded: false,
@@ -1207,8 +1212,20 @@ export default {
       }
       return `warehouse-${index}-${item?.name || 'unknown'}`;
     },
-    toggleAccordion(key) {
+    toggleAccordion(key, item) {
       this.openIndex = this.openIndex === key ? null : key;
+      if (this.openIndex === key && item) this.loadItems(item);
+    },
+    // the items of a warehouse are not sent with the page: they are fetched when its row is opened (once)
+    itemsOf(item) {
+      return (item && (this.itemsCache[item.id] || item.items)) || [];
+    },
+    loadItems(item) {
+      if (!item || !item.id || this.itemsCache[item.id] !== undefined || (Array.isArray(item.items) && item.items.length)) return;
+      this.itemsFailed[item.id] = false;
+      axios.get('/dashboard/warehouse-stock-value/' + item.id + '/items')
+        .then(res => { this.itemsCache[item.id] = Array.isArray(res.data) ? res.data : []; })
+        .catch(() => { this.itemsFailed[item.id] = true; });
     },
     escapeHtml(value) {
       return String(value ?? '')

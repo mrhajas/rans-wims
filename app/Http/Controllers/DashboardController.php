@@ -168,7 +168,8 @@ class DashboardController extends Controller
         //     ];
         // });
 
-        $listing = $this->buildWarehouseStockValueListing();
+        // the page lists each warehouse with its value; the items of a warehouse are fetched when its row is opened (warehouseStockItems)
+        $listing = $this->buildWarehouseStockValueListing(false);
 
 
 
@@ -449,21 +450,46 @@ class DashboardController extends Controller
         return view('reports.pdf', $this->warehouseStockValueReportPayload($request, $search, true));
     }
 
-    private function buildWarehouseStockValueListing()
+    /** The items of one warehouse for the dashboard's stock value list (fetched when its row is opened; the same lines the page used to carry for every warehouse). */
+    public function warehouseStockItems($warehouse)
+    {
+        $warehouse = Warehouse::visible()->findOrFail($warehouse);
+
+        $lines = Stock::query()->where('warehouse_id', $warehouse->id)->where('quantity', '>', 0)->select('item_id', 'quantity')->toBase()->get();
+        $itemRows = \App\Models\Item::query()->whereIn('id', $lines->pluck('item_id')->unique())->select('id', 'name', 'code', 'price', 'unit_id')->toBase()->get()->keyBy('id');
+        $units = \App\Models\Unit::query()->whereIn('id', $itemRows->pluck('unit_id')->unique())->select('id', 'code', 'name')->toBase()->get()->keyBy('id');
+
+        return response()->json($lines->map(function ($row) use ($itemRows, $units) {
+            $it = $itemRows->get($row->item_id);
+            $unit = $it ? $units->get($it->unit_id) : null;
+            $price = $it->price ?? 0;
+
+            return [
+                'name' => $it->name ?? 'N/A',
+                'code' => $it->code ?? 'N/A',
+                'quantity' => $row->quantity,
+                'unit' => ($unit->code ?? null) ?: ($unit->name ?? null),
+                'price' => $price,
+                'total_amount' => $row->quantity * $price,
+            ];
+        })->values());
+    }
+
+    private function buildWarehouseStockValueListing(bool $withItems = true)
     {
         $warehouses = Warehouse::visible()->get();
 
         // Lean queries (no Eloquent hydration, no per-warehouse query). The value of each warehouse is summed by the database over every stock line
         // (so it still counts all of them), and only the lines with stock on hand are brought over to be listed: about a fifth of the ~25k rows.
         $ids = $warehouses->pluck('id');
-        $stocks = Stock::query()->whereIn('warehouse_id', $ids)->where('quantity', '>', 0)
-            ->select('warehouse_id', 'item_id', 'quantity')->toBase()->get()->groupBy('warehouse_id');
+        $stocks = $withItems ? Stock::query()->whereIn('warehouse_id', $ids)->where('quantity', '>', 0)
+            ->select('warehouse_id', 'item_id', 'quantity')->toBase()->get()->groupBy('warehouse_id') : collect();
         $amounts = \Illuminate\Support\Facades\DB::table('stocks')
             ->leftJoin('items', fn ($j) => $j->on('items.id', '=', 'stocks.item_id')->whereNull('items.deleted_at'))
             ->whereNull('stocks.deleted_at')->where('stocks.account_id', getAccountId())->whereIn('stocks.warehouse_id', $ids)->where('stocks.quantity', '<>', 0) // an empty line adds nothing
             ->selectRaw('stocks.warehouse_id, SUM(stocks.quantity * COALESCE(items.price, 0)) AS amount')->groupBy('stocks.warehouse_id')->pluck('amount', 'warehouse_id');
-        $itemRows = \App\Models\Item::query()->select('id', 'name', 'code', 'price', 'unit_id')->toBase()->get()->keyBy('id');
-        $units = \App\Models\Unit::query()->select('id', 'code', 'name')->toBase()->get()->keyBy('id');
+        $itemRows = $withItems ? \App\Models\Item::query()->select('id', 'name', 'code', 'price', 'unit_id')->toBase()->get()->keyBy('id') : collect();
+        $units = $withItems ? \App\Models\Unit::query()->select('id', 'code', 'name')->toBase()->get()->keyBy('id') : collect();
 
         // highest stock value first (the dashboard then groups them and keeps this order inside each group)
         return $warehouses->map(function ($warehouse) use ($stocks, $amounts, $itemRows, $units) {

@@ -313,6 +313,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         ->name('dashboard.warehouse_stock_value_print');
     Route::get('/dashboard/warehouse-stock-value/pdf', [Controllers\DashboardController::class, 'warehouseStockValuePdf'])
         ->name('dashboard.warehouse_stock_value_pdf');
+    Route::get('/dashboard/warehouse-stock-value/{warehouse}/items', [Controllers\DashboardController::class, 'warehouseStockItems'])->whereNumber('warehouse')->name('dashboard.warehouse_stock_items');
     Route::get('/activity', [Controllers\DashboardController::class, 'activity'])->name('activity');
 
     Route::get('/alerts', [Controllers\AjaxController::class, 'alerts'])->name('alerts');
