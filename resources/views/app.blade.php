@@ -26,6 +26,8 @@
 
   <!-- Fonts -->
   {!! \App\Support\Typography::linksHtml() !!}
+  <!-- the Pro menu is set in Montserrat Light and Regular only -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap">
 
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

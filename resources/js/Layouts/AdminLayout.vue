@@ -17,7 +17,7 @@
           <transition name="swipe-hint"><div v-if="swipeHint && !show" class="swipe-hint nav:hidden print:hidden" aria-hidden="true"><i></i></div></transition>
           <transition name="drawer-backdrop"><div v-if="show" class="drawer-backdrop-root fixed inset-0 z-[100] bg-black/40 nav:hidden print:hidden" @click="show = false"></div></transition>
           <transition name="drawer-panel">
-            <div v-if="show" class="drawer-panel-root pro-drawer fixed inset-y-0 left-0 z-[101] w-[340px] max-w-[92vw] nav:hidden print:hidden"><pro-menu mobile @navigate="show = false" /></div>
+            <div v-if="show" class="drawer-panel-root pro-drawer fixed inset-y-0 left-0 z-[101] w-[300px] max-w-[88vw] nav:hidden print:hidden"><pro-menu mobile @navigate="show = false" /></div>
           </transition>
           <div class="md:flex-1 md:px-4 py-6 md:p-6 overflow-x-hidden md:overflow-y-auto print:m-0 print:p-0 print:overflow-visible" scroll-region>
             <div class="app-canvas p-4 md:p-6 print:bg-white print:border-0 print:shadow-none print:rounded-none">

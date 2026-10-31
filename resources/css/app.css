@@ -3240,8 +3240,8 @@ html:not(#_):not(#__) [data-req-state='empty'] {
 /* ---- Pro menu: the dock on the left of a wide screen, the logo card of the top bar on a tablet or a phone ---- */
 .rail-brand-pro { display: block; width: 150px; }
 @media (min-width: 1024px) { .app-shell .liquid-side-rail.rail-pro { display: none !important; } }
-.pro-dock-space { flex: 0 0 auto; width: 324px; height: 100%; transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.pro-dock-space.is-collapsed { width: 96px; }
+.pro-dock-space { flex: 0 0 auto; width: 284px; height: 100%; transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pro-dock-space.is-collapsed { width: 84px; }
 /* the menu itself is outside the page: it stays on screen while the pages change */
 .pro-dock-fixed { display: none; }
 @media (min-width: 1024px) { .pro-dock-fixed { display: block; position: fixed; left: 12px; top: 12px; bottom: 12px; z-index: 45; } .pro-dock-fixed > .pm { height: 100%; } }
