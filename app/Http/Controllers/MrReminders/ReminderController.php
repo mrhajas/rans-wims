@@ -37,12 +37,12 @@ class ReminderController extends Controller
         $this->authorize('view', $material_request);
         $me = $request->user();
         $mr = $material_request->loadMissing(['warehouse:id,name', 'user:id,name', 'items']);
-        $audience = ReminderSender::audience((int) $mr->account_id ?: (int) $me->account_id);
+        $audience = ReminderSender::audience((int) $mr->account_id ?: (int) $me->account_id, null, false, $mr);
 
         return response()->json([
             'request' => ['id' => $mr->id, 'reference' => $mr->reference, 'status' => MaterialRequest::statusLabel($mr->status), 'project' => optional($mr->warehouse)->name, 'requester' => optional($mr->user)->name,
                 'date' => optional($mr->date_requested)->format('d M Y'), 'items' => $mr->items->count()],
-            'eligible' => ReminderSender::eligible($mr), 'canSend' => ReminderSender::canSend($me, $mr),
+            'eligible' => ReminderSender::eligible($mr), 'canSend' => ReminderSender::canSend($me, $mr), 'approvalChase' => ReminderSender::isApprovalChase($mr),
             'audience' => $audience->map(fn ($u) => ['name' => $u->name, 'me' => $u->id === $me->id])->values(),
             'channels' => ['email' => ReminderSettings::email(), 'sms' => ReminderSettings::sms(), 'app' => ReminderSettings::app()],
             'limits' => ['files' => ReminderSender::MAX_FILES, 'mb' => ReminderSender::MAX_KB / 1024],
@@ -62,11 +62,13 @@ class ReminderController extends Controller
             'files.*.mimes' => __('Only PDF, DOC, DOCX, JPG or PNG files can be attached.'), 'files.*.uploaded' => __('A file could not be uploaded. Keep each file under 5 MB.'),
         ]);
         if (! ReminderSender::canSend($me, $material_request)) {
-            return response()->json(['message' => __('A reminder can only be sent for an approved request that has not reached its final status (Cleared).')], 422);
+            return response()->json(['message' => __('A reminder can only be sent for a request that is waiting for approval, or approved but not yet at its final status (Cleared).')], 422);
         }
         $leaveOut = $request->boolean('leave_me_out');
-        if (ReminderSender::audience((int) $material_request->account_id ?: (int) $me->account_id, $me, $leaveOut)->isEmpty()) {
-            return response()->json(['message' => __('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.')], 422);
+        if (ReminderSender::audience((int) $material_request->account_id ?: (int) $me->account_id, $me, $leaveOut, $material_request)->isEmpty()) {
+            return response()->json(['message' => ReminderSender::isApprovalChase($material_request)
+                ? __('Nobody else can approve this request, so there is nobody to remind.')
+                : __('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.')], 422);
         }
         $r = ReminderSender::send($material_request, $me, $d['note'] ?? null, $request->file('files', []), $leaveOut);
         $c = $r['counts'];

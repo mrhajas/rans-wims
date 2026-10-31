@@ -27,10 +27,16 @@ class ReminderSender
 
     public const MAX_KB = 5120;
 
-    /** Approved, but not yet at the final status (Cleared / Closed): Approved, Partially Issued and Fully Issued. */
+    /** Waiting for approval, or approved but not yet at the final status (Cleared / Closed): Pending Approval, Approved, Partially Issued and Fully Issued. */
     public static function eligibleStatuses(): array
     {
-        return [MaterialRequest::STATUS_APPROVED, MaterialRequest::STATUS_PARTIALLY_ISSUED, MaterialRequest::STATUS_ISSUED];
+        return [MaterialRequest::STATUS_PENDING_APPROVAL, MaterialRequest::STATUS_APPROVED, MaterialRequest::STATUS_PARTIALLY_ISSUED, MaterialRequest::STATUS_ISSUED];
+    }
+
+    /** A Pending Approval request is chased with the people who can approve it (a Quick request: the quick approvers), not the usual list of recipients. */
+    public static function isApprovalChase(MaterialRequest $mr): bool
+    {
+        return $mr->status === MaterialRequest::STATUS_PENDING_APPROVAL;
     }
 
     public static function eligible(MaterialRequest $mr): bool
@@ -45,9 +51,15 @@ class ReminderSender
     }
 
     /** The people a reminder would reach: the chosen roles and users. The sender is one of them too, unless they chose to leave themselves out. */
-    public static function audience(int $accountId, ?User $by = null, bool $leaveOut = false)
+    public static function audience(int $accountId, ?User $by = null, bool $leaveOut = false, ?MaterialRequest $mr = null)
     {
-        return ReminderSettings::recipients($accountId)->reject(fn (User $u) => $leaveOut && $by && $u->id === $by->id)->values();
+        $people = $mr && self::isApprovalChase($mr)
+            ? ($mr->quick
+                ? \App\Models\MaterialRequestWorkflowStep::usersWithPermission($accountId, \App\Models\MaterialRequestWorkflowStep::PERMISSION_QUICK_APPROVE, true)
+                : \App\Models\MaterialRequestWorkflowStep::assignedUsers($accountId, \App\Models\MaterialRequestWorkflowStep::STEP_APPROVE))
+            : ReminderSettings::recipients($accountId);
+
+        return $people->reject(fn (User $u) => $leaveOut && $by && $u->id === $by->id)->values();
     }
 
     /** @param  array<int,\Illuminate\Http\UploadedFile>  $files  @return array{reminder:MaterialRequestReminder,counts:array} */
@@ -73,12 +85,17 @@ class ReminderSender
             __('Date requested') => optional($mr->date_requested)->format('d M Y'), __('Items') => $mr->items->count(), __('Reminder from') => $by->name,
             __('Notes & Remarks') => $reminder->note, __('Files') => count($mail) ? implode(', ', array_column($mail, 'name')) : null,
         ], fn ($v) => filled($v));
-        $message = __(':by reminds you that Material Request :r (:p) was approved but has not reached its final status. It is :s.', ['by' => $by->name, 'r' => $mr->reference, 'p' => $project, 's' => $status])
+        $chase = self::isApprovalChase($mr);
+        $message = ($chase
+            ? __(':by reminds you that Material Request :r (:p) is waiting for your approval.', ['by' => $by->name, 'r' => $mr->reference, 'p' => $project])
+            : __(':by reminds you that Material Request :r (:p) was approved but has not reached its final status. It is :s.', ['by' => $by->name, 'r' => $mr->reference, 'p' => $project, 's' => $status]))
             . ($reminder->note ? "\n\n" . __('Notes & Remarks') . ': ' . $reminder->note : '');
-        $sms = GreetingTemplates::plain(__('WIMS REMINDER: Material Request :r (:p) is :s and not yet cleared. From :by.', ['r' => $mr->reference, 'p' => $project, 's' => $status, 'by' => $by->name])
+        $sms = GreetingTemplates::plain(($chase
+            ? __('WIMS REMINDER: Material Request :r (:p) is waiting for approval. From :by.', ['r' => $mr->reference, 'p' => $project, 'by' => $by->name])
+            : __('WIMS REMINDER: Material Request :r (:p) is :s and not yet cleared. From :by.', ['r' => $mr->reference, 'p' => $project, 's' => $status, 'by' => $by->name]))
             . ($reminder->note ? ' ' . Str::limit($reminder->note, 90, '...') : ''));
 
-        foreach (self::audience((int) $reminder->account_id, $by, $leaveOut) as $u) {
+        foreach (self::audience((int) $reminder->account_id, $by, $leaveOut, $mr) as $u) {
             $c = ReminderSettings::$addresses ?? RecipientDirectory::candidates($u);
             if (ReminderSettings::app()) {
                 self::try($reminder, $u, 'app', null, fn () => $u->notifyNow(new AppNotification(['module' => 'mr_reminders', 'type' => 'mr_reminder', 'title' => $title, 'message' => $message, 'url' => $url, 'status' => $mr->status,

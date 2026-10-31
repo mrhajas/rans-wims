@@ -11,13 +11,13 @@
         <div><small>{{ $t('Items') }}</small><b>{{ info.request.items }}</b></div>
       </div>
 
-      <p v-if="!info.eligible" class="lg-note lg-note-amber" style="margin: 14px 0"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('A reminder can be sent only for an approved request that has not reached its final status (Cleared).') }}</span></p>
+      <p v-if="!info.eligible" class="lg-note lg-note-amber" style="margin: 14px 0"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('A reminder can be sent only for a request that is waiting for approval, or approved but not yet at its final status (Cleared).') }}</span></p>
 
       <form v-if="info.canSend" id="mrr-form" class="mrr-form" @submit.prevent="send">
         <div class="mrr-who">
           <icons name="users" class="w-4 h-4" />
-          <span v-if="told.length"><b>{{ $t('Will be told (:n)', { n: told.length }) }}:</b> {{ told.map(a => a.name + (a.me ? ' (' + $t('you') + ')' : '')).join(', ') }}<em> · {{ channelText }}</em></span>
-          <span v-else class="is-none">{{ $t('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.') }}</span>
+          <span v-if="told.length"><b>{{ info.approvalChase ? $t('Will be asked to approve (:n)', { n: told.length }) : $t('Will be told (:n)', { n: told.length }) }}:</b> {{ told.map(a => a.name + (a.me ? ' (' + $t('you') + ')' : '')).join(', ') }}<em> · {{ channelText }}</em></span>
+          <span v-else class="is-none">{{ info.approvalChase ? $t('Nobody else can approve this request, so there is nobody to remind.') : $t('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.') }}</span>
         </div>
         <label v-if="info.audience.some(a => a.me)" class="mrr-leave"><input type="checkbox" v-model="leaveOut" /><span>{{ $t('Do not send this reminder to me') }}</span></label>
         <div class="ac-f"><label>{{ $t('Notes & Remarks') }}</label><textarea v-model="note" maxlength="2000" rows="4" :placeholder="$t('Why is this request being chased? What must happen next?')"></textarea></div>
