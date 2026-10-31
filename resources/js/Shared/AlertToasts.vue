@@ -12,6 +12,7 @@
         <button type="button" class="at-x" :aria-label="$t('Close')" @click.stop="dismissAlertToast(t.key)">
           <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none" /></svg>
         </button>
+        <i class="at-sheen" aria-hidden="true"></i>
       </div>
     </transition-group>
   </div>
@@ -86,13 +87,16 @@ export default {
 .at-host { position: fixed; left: 50%; transform: translateX(-50%); z-index: 999995; width: min(470px, calc(100vw - 48px)); pointer-events: none; }
 .at-stack { display: grid; gap: 11px; }
 @media (max-width: 767.98px) { .at-host { display: none; } }
-.at-card { --r: 18px; position: relative; display: flex; align-items: center; gap: 12px; min-height: 62px; margin-left: 31px; padding: 10px 14px 10px 48px; border-radius: 31px var(--r) var(--r) 31px; background: #fff; color: #0f172a; cursor: pointer; pointer-events: auto; overflow: visible;
+.at-card { --r: 18px; position: relative; display: flex; align-items: center; gap: 12px; min-height: 62px; margin-left: 31px; padding: 10px 14px 10px 48px; border-radius: 31px var(--r) var(--r) 31px; background: rgba(255, 255, 255, 0.8); -webkit-backdrop-filter: blur(10px) saturate(150%); backdrop-filter: blur(10px) saturate(150%); color: #0f172a; cursor: pointer; pointer-events: auto; overflow: visible;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 12px 24px -9px color-mix(in srgb, var(--accent) 38%, rgba(15, 23, 42, 0.5)), 0 0 0 1px rgba(15, 23, 42, 0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .at-card:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 16px 28px -9px color-mix(in srgb, var(--accent) 50%, rgba(15, 23, 42, 0.5)), 0 0 0 1px rgba(15, 23, 42, 0.05); }
 /* the badge: a flat colour, the glyph exactly in the middle of it */
 .at-badge { position: absolute; left: -31px; top: 50%; width: 62px; height: 62px; margin-top: -31px; display: flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; background: var(--accent); color: #fff; box-shadow: 0 7px 13px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
 .at-badge .at-ic, .at-badge svg { display: block; width: 24px; height: 24px; flex: none; animation: at-pop 0.7s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.5) both; }
-.at-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 45%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5), transparent); transform: translateX(-160%) skewX(-12deg); animation: at-shine 1.5s 0.5s ease-in-out both; }
+.at-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 45%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5), transparent); transform: translateX(-160%) skewX(-12deg); animation: at-shine 2.6s 0.35s ease-in-out infinite; }
+.at-sheen { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 2; }
+.at-sheen::before { content: ''; position: absolute; top: -30%; bottom: -30%; left: 0; width: 28%; background: linear-gradient(105deg, transparent 0%, color-mix(in srgb, var(--accent) 20%, rgba(255, 255, 255, 0.4)) 35%, rgba(255, 255, 255, 0.95) 50%, color-mix(in srgb, var(--accent) 20%, rgba(255, 255, 255, 0.4)) 65%, transparent 100%); transform: translateX(-140%) skewX(-14deg); animation: at-sweep 2.6s 0.35s ease-in-out infinite; }
+html.dark .at-sheen::before { background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.1) 35%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0.1) 65%, transparent 100%); }
 .at-body { display: grid; gap: 0; min-width: 0; flex: 1 1 auto; }
 .at-mod { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
 .at-title { font-size: 0.86rem; font-weight: 800; line-height: 1.25; color: #0f172a; overflow-wrap: anywhere; }
@@ -100,7 +104,7 @@ export default {
 .at-x { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 9999px; background: transparent; color: #94a3b8; cursor: pointer; transition: background 0.2s, color 0.2s; }
 .at-x svg { width: 13px; height: 13px; }
 .at-x:hover { background: rgba(15, 23, 42, 0.07); color: #334155; }
-html.dark .at-card { background: #172036; color: #e5ecf8; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 24px -9px color-mix(in srgb, var(--accent) 45%, rgba(0, 0, 0, 0.7)), 0 0 0 1px rgba(255, 255, 255, 0.07); }
+html.dark .at-card { background: rgba(23, 32, 54, 0.8); color: #e5ecf8; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 24px -9px color-mix(in srgb, var(--accent) 45%, rgba(0, 0, 0, 0.7)), 0 0 0 1px rgba(255, 255, 255, 0.07); }
 html.dark .at-title { color: #f1f5ff; }
 html.dark .at-msg { color: #a9b8d2; }
 html.dark .at-x:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
@@ -110,6 +114,7 @@ html.dark .at-x:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .at-leave-to { opacity: 0; transform: translateY(-10px) scale(0.94); }
 .at-move { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes at-pop { from { transform: scale(0.2) rotate(-24deg); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes at-shine { to { transform: translateX(380%) skewX(-12deg); } }
-@media (prefers-reduced-motion: reduce) { .at-enter-active, .at-leave-active, .at-move { transition: opacity 0.2s; } .at-enter-from, .at-leave-to { transform: none; } .at-badge svg, .at-shine { animation: none; } .at-shine { display: none; } }
+@keyframes at-shine { 0% { transform: translateX(-160%) skewX(-12deg); } 24%, 100% { transform: translateX(380%) skewX(-12deg); } }
+@keyframes at-sweep { 0%, 8% { transform: translateX(-140%) skewX(-14deg); } 62%, 100% { transform: translateX(430%) skewX(-14deg); } }
+@media (prefers-reduced-motion: reduce) { .at-enter-active, .at-leave-active, .at-move { transition: opacity 0.2s; } .at-enter-from, .at-leave-to { transform: none; } .at-badge svg, .at-shine, .at-sheen::before { animation: none; } .at-shine, .at-sheen { display: none; } }
 </style>
