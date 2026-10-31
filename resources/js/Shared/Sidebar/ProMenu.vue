@@ -240,7 +240,7 @@ export default {
 
 /* ----- the panel ----- */
 .pm-panel { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; border-radius: 0 var(--r) var(--r) 0; background: linear-gradient(180deg, var(--panel), #0f2d54); box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.05); overflow: hidden; }
-.pm-head { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 14px 14px 2px 16px; }
+.pm-head { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 35px 14px 2px 16px; }
 .pm-head-ico { position: relative; overflow: hidden; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; color: var(--fg); background: var(--bg); flex: none; transition: background 0.3s, color 0.3s; }
 .pm-head small { display: block; font-size: 0.744rem; font-weight: 400; letter-spacing: 0; line-height: 1.3; color: var(--gold); white-space: nowrap; }
 .pm-wims span { display: inline-block; animation: pm-write 5s calc(var(--i, 0) * 75ms) cubic-bezier(0.2, 0.8, 0.2, 1) infinite both; }
@@ -251,7 +251,7 @@ export default {
 .pm-tree { list-style: none; margin: 0; padding: 22px 0 24px 22px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; scroll-behavior: auto; }
 /* the spine of the tree and a branch to every item */
 .pm-tree::before { content: ''; position: absolute; left: 31px; top: 28px; bottom: 30px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--ln), rgba(255, 255, 255, 0.08) 85%); opacity: 0.7; }
-.pm-tree li { position: relative; margin: 8px 0; animation: pm-in 0.5s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pm-tree li { position: relative; margin: 10.5px 0; animation: pm-in 0.5s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .pm-link { position: relative; display: flex; align-items: center; gap: 9px; min-height: 40px; margin-left: 16px; padding: 6px 12px 6px 8px; color: #dbe6f8; text-decoration: none; font-size: 0.76rem; font-weight: 300; border-radius: 19px 0 0 19px; transition: background 0.25s ease, color 0.25s ease; }
 .pm-link::before { content: ''; position: absolute; left: -16px; top: 50%; width: 16px; height: 2px; background: linear-gradient(90deg, var(--ln), rgba(255, 255, 255, 0.15)); border-radius: 2px; opacity: 0.8; transition: width 0.25s; }
 .pm-node { position: absolute; left: -30px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; background: var(--panel); box-shadow: 0 0 0 2px var(--ln); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.4), background 0.25s, box-shadow 0.25s; z-index: 2; }
