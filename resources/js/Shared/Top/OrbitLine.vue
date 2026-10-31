@@ -30,11 +30,13 @@ export default {
 
 <style>
 .ol { position: absolute; left: -1px; top: -1px; pointer-events: none; z-index: 2; overflow: visible; filter: drop-shadow(0 0 3px rgba(29, 79, 143, 0.45)); }
-.ol rect { stroke-width: 2; stroke-linecap: round; animation: ol-run 9s linear infinite; stroke-dashoffset: var(--o); }
-.ol .ol-tail { --o: 0; stroke: rgba(52, 120, 220, 0.38); stroke-dasharray: 26 74; }
-.ol .ol-mid { --o: -12; stroke: #1d4f8f; stroke-dasharray: 14 86; }
-.ol .ol-head { --o: -22; stroke: #f2a93b; stroke-dasharray: 4 96; }
-@keyframes ol-run { to { stroke-dashoffset: calc(var(--o) - 100); } }
+.ol rect { stroke-width: 2; stroke-linecap: round; animation: 9s linear infinite; }
+.ol .ol-tail { animation-name: ol-t; stroke: rgba(52, 120, 220, 0.38); stroke-dasharray: 26 74; }
+.ol .ol-mid { animation-name: ol-m; stroke: #1d4f8f; stroke-dasharray: 14 86; }
+.ol .ol-head { animation-name: ol-h; stroke: #f2a93b; stroke-dasharray: 4 96; }
+@keyframes ol-t { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -100; } }
+@keyframes ol-m { from { stroke-dashoffset: -12; } to { stroke-dashoffset: -112; } }
+@keyframes ol-h { from { stroke-dashoffset: -22; } to { stroke-dashoffset: -122; } }
 html.dark .ol { filter: drop-shadow(0 0 4px rgba(96, 150, 240, 0.7)); }
 html.dark .ol .ol-tail { stroke: rgba(96, 150, 240, 0.4); }
 html.dark .ol .ol-mid { stroke: #9dc0ff; }
