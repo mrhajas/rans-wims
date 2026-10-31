@@ -82,23 +82,23 @@ export default {
 </script>
 
 <style>
-/* about 30% smaller than the first version */
-.at-host { position: fixed; left: 50%; transform: translateX(-50%); z-index: 999995; width: min(392px, calc(100vw - 48px)); pointer-events: none; }
-.at-stack { display: grid; gap: 9px; }
+/* sized for easy reading (20% larger than the compact version) */
+.at-host { position: fixed; left: 50%; transform: translateX(-50%); z-index: 999995; width: min(470px, calc(100vw - 48px)); pointer-events: none; }
+.at-stack { display: grid; gap: 11px; }
 @media (max-width: 767.98px) { .at-host { display: none; } }
-.at-card { --r: 15px; position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; margin-left: 26px; padding: 8px 12px 8px 40px; border-radius: 26px var(--r) var(--r) 26px; background: #fff; color: #0f172a; cursor: pointer; pointer-events: auto; overflow: visible;
+.at-card { --r: 18px; position: relative; display: flex; align-items: center; gap: 12px; min-height: 62px; margin-left: 31px; padding: 10px 14px 10px 48px; border-radius: 31px var(--r) var(--r) 31px; background: #fff; color: #0f172a; cursor: pointer; pointer-events: auto; overflow: visible;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 12px 24px -9px color-mix(in srgb, var(--accent) 38%, rgba(15, 23, 42, 0.5)), 0 0 0 1px rgba(15, 23, 42, 0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .at-card:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 16px 28px -9px color-mix(in srgb, var(--accent) 50%, rgba(15, 23, 42, 0.5)), 0 0 0 1px rgba(15, 23, 42, 0.05); }
 /* the badge: a flat colour, the glyph exactly in the middle of it */
-.at-badge { position: absolute; left: -26px; top: 50%; width: 52px; height: 52px; margin-top: -26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; background: var(--accent); color: #fff; box-shadow: 0 7px 13px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
-.at-badge .at-ic, .at-badge svg { display: block; width: 20px; height: 20px; flex: none; animation: at-pop 0.7s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.5) both; }
+.at-badge { position: absolute; left: -31px; top: 50%; width: 62px; height: 62px; margin-top: -31px; display: flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; background: var(--accent); color: #fff; box-shadow: 0 7px 13px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
+.at-badge .at-ic, .at-badge svg { display: block; width: 24px; height: 24px; flex: none; animation: at-pop 0.7s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.5) both; }
 .at-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 45%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5), transparent); transform: translateX(-160%) skewX(-12deg); animation: at-shine 1.5s 0.5s ease-in-out both; }
 .at-body { display: grid; gap: 0; min-width: 0; flex: 1 1 auto; }
-.at-mod { font-size: 0.52rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
-.at-title { font-size: 0.72rem; font-weight: 800; line-height: 1.25; color: #0f172a; overflow-wrap: anywhere; }
-.at-msg { font-size: 0.64rem; line-height: 1.3; color: #475569; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-.at-x { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 9999px; background: transparent; color: #94a3b8; cursor: pointer; transition: background 0.2s, color 0.2s; }
-.at-x svg { width: 11px; height: 11px; }
+.at-mod { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.at-title { font-size: 0.86rem; font-weight: 800; line-height: 1.25; color: #0f172a; overflow-wrap: anywhere; }
+.at-msg { font-size: 0.77rem; line-height: 1.3; color: #475569; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.at-x { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 9999px; background: transparent; color: #94a3b8; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.at-x svg { width: 13px; height: 13px; }
 .at-x:hover { background: rgba(15, 23, 42, 0.07); color: #334155; }
 html.dark .at-card { background: #172036; color: #e5ecf8; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 24px -9px color-mix(in srgb, var(--accent) 45%, rgba(0, 0, 0, 0.7)), 0 0 0 1px rgba(255, 255, 255, 0.07); }
 html.dark .at-title { color: #f1f5ff; }
