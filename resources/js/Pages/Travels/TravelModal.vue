@@ -1,8 +1,8 @@
 <template>
   <modal :show="show" :max-width="maxWidth" :closeable="!busy" :transparent="true" @close="close">
-    <div class="tm-card ac sc-ui tr-ui" role="document">
+    <div class="tm-card ac sc-ui tr-ui" :class="tone ? 'tm-tone-' + tone : ''" role="document">
       <header class="tm-head">
-        <span class="tm-ico" :class="{ 'is-amber': tone === 'amber' }"><icons :name="icon" class="w-6 h-6" /></span>
+        <span class="tm-ico" :class="{ 'is-amber': tone === 'amber', 'is-indigo': tone === 'indigo' }"><icons :name="icon" class="w-6 h-6" /></span>
         <div class="tm-titles"><h2 :id="'tm-' + _uid">{{ title }}</h2><p v-if="subtitle">{{ subtitle }}</p></div>
         <button type="button" class="tm-x" :aria-label="$t('Close')" :disabled="busy" @click="close"><icons name="cross" class="w-4 h-4" /></button>
       </header>

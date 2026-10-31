@@ -132,13 +132,13 @@
                     <button
                       v-if="materialRequest.can_remind || (materialRequest.can_view_reminders && materialRequest.reminder_count)"
                       type="button"
-                      class="lg-icon-btn is-amber lg-tip mr-bell"
-                      :class="{ 'has-sent': materialRequest.reminder_count }"
+                      class="lg-icon-btn lg-tip mr-bell"
+                      :class="[materialRequest.status === 'Pending Approval' ? 'is-indigo mr-bell-chase' : 'is-amber', { 'has-sent': materialRequest.reminder_count }]"
                       :data-tip="reminderTip(materialRequest)"
                       :aria-label="$t('Reminder')"
                       @click="openReminder(materialRequest)"
                     >
-                      <icons name="bell" class="w-4 h-4" />
+                      <icons :name="materialRequest.status === 'Pending Approval' ? 'speakerphone' : 'bell'" class="w-4 h-4" />
                       <b v-if="materialRequest.reminder_count" class="mr-bell-n">{{ materialRequest.reminder_count }}</b>
                     </button>
                     <Link
@@ -313,8 +313,9 @@ export default {
       this.reminderId = m.id;
     },
     reminderTip(m) {
-      if (!m.reminder_count) return this.$t('Send a reminder');
-      return this.$t('Reminder (:n sent)', { n: m.reminder_count }) + (m.last_reminder_at ? ' · ' + this.$datetime(m.last_reminder_at) : '');
+      const chase = m.status === 'Pending Approval';
+      if (!m.reminder_count) return chase ? this.$t('Remind the approvers') : this.$t('Send a reminder');
+      return (chase ? this.$t('Approver reminder (:n sent)', { n: m.reminder_count }) : this.$t('Reminder (:n sent)', { n: m.reminder_count })) + (m.last_reminder_at ? ' · ' + this.$datetime(m.last_reminder_at) : '');
     },
     onReminderSent({ id }) {
       const rows = this.materialRequests.data || [];
@@ -441,6 +442,11 @@ export default {
 <style scoped>
 .mr-bell { position: relative; }
 .mr-bell.has-sent { box-shadow: 0 4px 10px -4px rgba(217, 119, 6, 0.7); }
+.mr-bell-chase.has-sent { box-shadow: 0 4px 10px -4px rgba(79, 70, 229, 0.7); }
+.mr-bell-chase .mr-bell-n { background: #4f46e5; }
+.mr-bell-chase svg { animation: mr-chase 3.2s ease-in-out infinite; transform-origin: 30% 60%; }
+@keyframes mr-chase { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-14deg); } 86% { transform: rotate(10deg); } 94% { transform: rotate(-4deg); } }
+@media (prefers-reduced-motion: reduce) { .mr-bell-chase svg { animation: none; } }
 .mr-bell-n { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #d97706; color: #fff; font-size: 0.62rem; line-height: 16px; text-align: center; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.6); }
 .mr-status-cell { min-width: 330px; }
 /* ---- compact, easy-to-scan rows: tighter padding, names wrap instead of stretching the row, outlined icons, a soft inner shadow instead of hard lines ---- */

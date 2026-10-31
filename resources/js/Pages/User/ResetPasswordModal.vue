@@ -62,13 +62,13 @@ import DecryptText from '@/Shared/DecryptText.vue';
 
 export default {
   components: { TecDialogModal, AutoComplete, DecryptText },
-  props: { show: Boolean, users: { type: Array, default: () => [] } },
+  props: { show: Boolean, users: { type: Array, default: () => [] }, preselect: { type: Object, default: null } },
   emits: ['close'],
   data() { return { userId: null, busy: false, error: '', result: null, copied: '' }; },
   watch: { show(v) { if (v) this.again(); else this.wipe(); } },
   beforeUnmount() { clearTimeout(this._c); },
   methods: {
-    again() { this.userId = null; this.error = ''; this.result = null; this.copied = ''; },
+    again() { this.userId = this.preselect ? this.preselect.id : null; this.error = ''; this.result = null; this.copied = ''; },
     // the password is not kept in the page once the window is closed
     wipe() { this.result = null; this.copied = ''; },
     close() { this.wipe(); this.$emit('close'); },

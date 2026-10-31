@@ -1,7 +1,11 @@
 <template>
-  <travel-modal :show="show" :title="$t('Reminder')" :subtitle="info ? info.request.reference : ''" icon="bell" tone="amber" max-width="2xl" :busy="sending" @close="$emit('close')">
+  <travel-modal :show="show" :title="chase ? $t('Remind the approvers') : $t('Reminder')" :subtitle="info ? info.request.reference : ''" :icon="chase ? 'speakerphone' : 'bell'" :tone="chase ? 'indigo' : 'amber'" max-width="2xl" :busy="sending" @close="$emit('close')">
     <div v-if="loading" class="mrr-loading"><icons name="refresh" class="w-5 h-5 animate-spin" />{{ $t('Loading...') }}</div>
     <template v-else-if="info">
+      <div v-if="chase && info.waiting" class="mrr-wait" role="status">
+        <span class="mrr-wait-ico"><icons name="clock" class="w-5 h-5" /></span>
+        <div><b>{{ info.waiting.days > 0 ? $t('Waiting for approval for :n day(s)', { n: info.waiting.days }) : $t('Waiting for approval since today') }}</b><small>{{ $t('Submitted') }} {{ info.waiting.since }}</small></div>
+      </div>
       <div class="mrr-tiles">
         <div><small>{{ $t('Reference') }}</small><b>{{ info.request.reference }}</b></div>
         <div><small>{{ $t('Status') }}</small><b>{{ info.request.status }}</b></div>
@@ -14,13 +18,13 @@
       <p v-if="!info.eligible" class="lg-note lg-note-amber" style="margin: 14px 0"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('A reminder can be sent only for a request that is waiting for approval, or approved but not yet at its final status (Cleared).') }}</span></p>
 
       <form v-if="info.canSend" id="mrr-form" class="mrr-form" @submit.prevent="send">
-        <div class="mrr-who">
+        <div class="mrr-who" :class="{ 'is-chase': chase }">
           <icons name="users" class="w-4 h-4" />
           <span v-if="told.length"><b>{{ info.approvalChase ? $t('Will be asked to approve (:n)', { n: told.length }) : $t('Will be told (:n)', { n: told.length }) }}:</b> {{ told.map(a => a.name + (a.me ? ' (' + $t('you') + ')' : '')).join(', ') }}<em> · {{ channelText }}</em></span>
           <span v-else class="is-none">{{ info.approvalChase ? $t('Nobody else can approve this request, so there is nobody to remind.') : $t('Nobody is set to receive the reminders. A Super Admin chooses them on the All Requests Reminders page.') }}</span>
         </div>
         <label v-if="info.audience.some(a => a.me)" class="mrr-leave"><input type="checkbox" v-model="leaveOut" /><span>{{ $t('Do not send this reminder to me') }}</span></label>
-        <div class="ac-f"><label>{{ $t('Notes & Remarks') }}</label><textarea v-model="note" maxlength="2000" rows="4" :placeholder="$t('Why is this request being chased? What must happen next?')"></textarea></div>
+        <div class="ac-f"><label>{{ $t('Notes & Remarks') }}</label><textarea v-model="note" maxlength="2000" rows="4" :placeholder="chase ? $t('Why does this need a decision now? Anything the approver should know?') : $t('Why is this request being chased? What must happen next?')"></textarea></div>
         <div class="mrr-attach">
           <label>{{ $t('Files') }}</label>
           <button type="button" class="lg-btn tone" style="--tone: #d97706" :disabled="files.length >= info.limits.files" @click="$refs.file.click()"><span class="tone-ico"><icons name="upload" class="w-4 h-4" /></span>{{ $t('Choose files') }}</button>
@@ -46,7 +50,7 @@
     </template>
     <template #footer>
       <button type="button" class="lg-btn lg-btn-soft" :disabled="sending" @click="$emit('close')">{{ $t('Close') }}</button>
-      <button v-if="info && info.canSend" type="submit" form="mrr-form" class="lg-btn tone tone-solid" style="--tone: #d97706" :disabled="sending || !told.length"><span class="tone-ico"><icons :name="sending ? 'refresh' : 'bell'" class="w-4 h-4" :class="{ 'animate-spin': sending }" /></span>{{ $t('Send Reminder') }}</button>
+      <button v-if="info && info.canSend" type="submit" form="mrr-form" class="lg-btn tone tone-solid" :style="{ '--tone': chase ? '#4f46e5' : '#d97706' }" :disabled="sending || !told.length"><span class="tone-ico"><icons :name="sending ? 'refresh' : (chase ? 'speakerphone' : 'bell')" class="w-4 h-4" :class="{ 'animate-spin': sending }" /></span>{{ chase ? $t('Send to approvers') : $t('Send Reminder') }}</button>
     </template>
   </travel-modal>
 </template>
@@ -61,6 +65,7 @@ export default {
   emits: ['close', 'sent'],
   data() { return { loading: false, sending: false, info: null, note: '', leaveOut: false, files: [], problems: [], done: '' }; },
   computed: {
+    chase() { return !!(this.info && this.info.approvalChase); },
     told() { return (this.info?.audience || []).filter(a => !(this.leaveOut && a.me)); },
     channelText() {
       const c = this.info.channels;
@@ -118,6 +123,14 @@ export default {
 .mrr-who { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 14px; background: rgba(217, 119, 6, 0.1); color: var(--lg-ink); font-size: 0.84rem; line-height: 1.5; }
 .mrr-leave { display: flex; align-items: center; gap: 8px; margin: 2px 0 12px; font-size: 0.84rem; font-weight: 600; color: var(--lg-ink); cursor: pointer; }
 .mrr-leave input[type='checkbox'] { width: 1.05rem !important; height: 1.05rem !important; flex: none; accent-color: #b45309; cursor: pointer; }
+.mrr-who.is-chase { background: rgba(79, 70, 229, 0.1); }
+.mrr-wait { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(14, 165, 233, 0.1)); border: 1px solid rgba(79, 70, 229, 0.3); }
+.mrr-wait-ico { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 12px; color: #fff; background: linear-gradient(145deg, #818cf8, #4338ca); box-shadow: 0 8px 14px -8px rgba(67, 56, 202, 0.9); animation: mrr-tick 2.4s ease-in-out infinite; }
+.mrr-wait b { display: block; font-size: 0.92rem; color: var(--lg-ink); } .mrr-wait small { display: block; font-size: 0.74rem; color: var(--lg-mute); }
+.mrr-form:has(.mrr-who.is-chase) textarea:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
+.mrr-form:has(.mrr-who.is-chase) .mrr-leave input[type='checkbox'] { accent-color: #4f46e5; }
+@keyframes mrr-tick { 0%, 100% { transform: rotate(0); } 8% { transform: rotate(-12deg); } 16% { transform: rotate(10deg); } 24% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .mrr-wait-ico { animation: none; } }
 .mrr-who em { color: var(--lg-mute); font-style: normal; } .mrr-who .is-none { color: #be123c; font-weight: 700; }
 .mrr-form textarea { width: 100%; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--lg-line); background: var(--lg-card); color: var(--lg-ink); font: inherit; line-height: 1.5; box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.3); }
 .mrr-form textarea:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18); }

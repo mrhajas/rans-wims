@@ -5,7 +5,7 @@
         <Link v-if="$can('create-users')" :href="route('users.create')" class="lg-btn lg-btn-primary">
           <icons name="plus" class="w-4 h-4" />{{ $t('create_x', { x: $t('User') }) }}
         </Link>
-        <button v-if="canResetPassword" type="button" class="lg-btn tone" style="--tone: #d97706" @click="resetOpen = true">
+        <button v-if="canResetPassword" type="button" class="lg-btn tone" style="--tone: #d97706" @click="openReset(null)">
           <span class="tone-ico"><icons name="key" class="w-4 h-4" /></span>{{ $t('Reset Password') }}
         </button>
         <button v-if="$can('audit-users')" type="button" class="lg-btn tone" style="--tone: #4f46e5" @click="openAudit(null)">
@@ -121,6 +121,10 @@
                       <button type="button" class="usr-audit" :aria-label="$t('Audit History')" @click.stop="openAudit(user)"><icons name="clock" class="w-4 h-4" /></button>
                       <span class="usr-audit-tip">{{ $t('Audit History') }}</span>
                     </span>
+                    <span v-if="canReset(user)" class="usr-audit-wrap">
+                      <button type="button" class="usr-audit usr-reset" :aria-label="$t('Reset Password') + ': ' + user.name" @click.stop="openReset(user)"><icons name="key" class="w-4 h-4" /></button>
+                      <span class="usr-audit-tip">{{ $t('Reset Password') }}</span>
+                    </span>
                     <login-as-user-action v-if="canImpersonate(user)" :user="user" @click.stop />
                     <icons v-if="$can('update-users')" name="chevron-down" class="usr-go transform -rotate-90 block w-4 h-4" />
                   </div>
@@ -139,7 +143,7 @@
 
       <pagination class="mt-6" :meta="users.meta" :links="users.links" />
 
-      <reset-password-modal v-if="canResetPassword" :show="resetOpen" :users="resetUsers" @close="resetOpen = false" />
+      <reset-password-modal v-if="canResetPassword" :show="resetOpen" :users="resetUsers" :preselect="resetPick" @close="resetOpen = false" />
       <audit-modal v-if="$can('audit-users')" :show="auditOpen" :user-id="auditUser ? auditUser.id : null" :user-name="auditUser ? auditUser.name : ''" @close="auditOpen = false" />
     </div>
   </admin-layout>
@@ -184,6 +188,7 @@ export default {
   data() {
     return {
       resetOpen: false,
+      resetPick: null,
       auditOpen: false,
       auditUser: null,
       form: {
@@ -238,6 +243,17 @@ export default {
 
   methods: {
     // the audit history window: of one user (the clock beside the row) or of everyone (the button at the top)
+    // the reset password window with this user already chosen (or empty, from the button at the top)
+    openReset(user) {
+      this.resetPick = user ? { id: user.id, label: user.name + ' (@' + user.username + ')' } : null;
+      this.resetOpen = true;
+    },
+    // a Super Admin's password can only be reset by a Super Admin; the person who can reset passwords also sees the key on a disabled or trashed account's row only when the account is live
+    canReset(user) {
+      if (!this.canResetPassword || user.deleted_at) return false;
+      if ((user.roles || []).includes('Super Admin') && !this.$super) return false;
+      return true;
+    },
     openAudit(user) {
       this.auditUser = user ? { id: user.id, name: user.name } : null;
       this.auditOpen = true;
@@ -333,6 +349,8 @@ tr:hover .usr-go { color: #4f6df5; transform: translateX(2px) rotate(-90deg); }
 .usr-audit-wrap { position: relative; display: inline-flex; }
 .usr-audit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 1.9rem; height: 1.9rem; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0; border-radius: 9999px; cursor: pointer; color: #fff; background: linear-gradient(145deg, #6366f1, #3730a3); box-shadow: 0 2px 6px -2px rgba(55, 48, 163, 0.65); transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
 .usr-audit:hover { background: linear-gradient(145deg, #818cf8, #4338ca); box-shadow: 0 6px 14px -4px rgba(55, 48, 163, 0.7); transform: translateY(-1px); }
+.usr-reset { background: linear-gradient(145deg, #f59e0b, #b45309); box-shadow: 0 2px 6px -2px rgba(180, 83, 9, 0.7); }
+.usr-reset:hover { background: linear-gradient(145deg, #fbbf24, #c2410c); box-shadow: 0 6px 14px -4px rgba(180, 83, 9, 0.75); }
 .usr-audit :deep(div) { flex: none; margin: 0; }
 .usr-audit :deep(svg) { width: 16px !important; height: 16px !important; }
 .usr-audit-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%) translateY(4px); white-space: nowrap; padding: 0.35rem 0.6rem; border-radius: 0.45rem; font-size: 0.68rem; font-weight: 600; background: #0f172a; color: #f1f5f9; box-shadow: 0 10px 24px -8px rgba(15, 23, 42, 0.45); opacity: 0; visibility: hidden; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }

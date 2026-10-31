@@ -43,6 +43,7 @@ class ReminderController extends Controller
             'request' => ['id' => $mr->id, 'reference' => $mr->reference, 'status' => MaterialRequest::statusLabel($mr->status), 'project' => optional($mr->warehouse)->name, 'requester' => optional($mr->user)->name,
                 'date' => optional($mr->date_requested)->format('d M Y'), 'items' => $mr->items->count()],
             'eligible' => ReminderSender::eligible($mr), 'canSend' => ReminderSender::canSend($me, $mr), 'approvalChase' => ReminderSender::isApprovalChase($mr),
+            'waiting' => ReminderSender::isApprovalChase($mr) ? ['since' => optional($mr->created_at)->format('d M Y, H:i'), 'days' => (int) optional($mr->created_at)->diffInDays(now())] : null,
             'audience' => $audience->map(fn ($u) => ['name' => $u->name, 'me' => $u->id === $me->id])->values(),
             'channels' => ['email' => ReminderSettings::email(), 'sms' => ReminderSettings::sms(), 'app' => ReminderSettings::app()],
             'limits' => ['files' => ReminderSender::MAX_FILES, 'mb' => ReminderSender::MAX_KB / 1024],

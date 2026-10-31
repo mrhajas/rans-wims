@@ -3295,3 +3295,4 @@ html:not(#_):not(#__) [data-req-state='empty'] {
 html.dark .pw-gen-top { color: #cbd5e1; } html.dark .pw-gen-code { background: #0f172a; color: #f1f5f9; border-color: #475569; } html.dark .pw-level { color: #94a3b8; }
 @media (max-width: 520px) { .pw-rules li { padding: 3px 8px; font-size: 0.72rem; } .pw-genbtn { width: 100%; justify-content: center; } .pw-bars { flex-basis: 90px; } .pw-gen-code { font-size: 1.1rem; } .pw-gen-btns { width: 100%; } .pw-gen-btns .lg-btn { flex: 1; justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .pw-pop-enter-active, .pw-pop-leave-active { transition: none; } }
+.lg-icon-btn.is-indigo { color: #4338ca; background: rgba(99, 102, 241, 0.16); }
