@@ -108,6 +108,7 @@
                       :tabindex="materialRequest.force_cleared ? 0 : null"
                       style="text-transform: none"
                     >{{ statusLabel(materialRequest) }}</span>
+                    <span v-if="materialRequest.quick" class="lg-chip lg-chip-indigo mr-chip" style="text-transform: none">{{ $t('Quick') }}</span>
                     <span v-if="materialRequest.delivery_state" class="lg-chip mr-chip" :class="materialRequest.delivery_state === 'Fully Delivered' ? 'mr-chip-fdel' : 'lg-chip-amber'" style="text-transform: none">
                       <icons name="tick" class="w-3 h-3" /><icons v-if="materialRequest.delivery_state === 'Fully Delivered'" name="tick" class="w-3 h-3 mr-tick2" />{{ $t(materialRequest.delivery_state) }}
                     </span>
@@ -237,6 +238,7 @@ export default {
       form: {
         search: this.filters.search,
         status: this.filters.status,
+        quick: this.filters.quick,
         warehouse_id: this.filters.warehouse_id,
         user_id: this.filters.user_id,
         start_date: this.filters.start_date,
@@ -272,7 +274,8 @@ export default {
       return [
         { icon: 'clip', tone: 'navy', label: this.$t('All Requests'), value: this.stats.total, status: null, active: !this.form.status },
         { icon: 'lock-closed', tone: 'emerald', label: this.$t('Cleared'), value: this.stats.cleared, status: 'Cleared', active: this.form.status === 'Cleared' },
-        { icon: 'clock', tone: 'amber', label: this.$t('Pending Approval'), value: this.stats.pending, status: 'Pending Approval', active: this.form.status === 'Pending Approval' },
+        { icon: 'clock', tone: 'amber', label: this.$t('Pending Approval'), value: this.stats.pending, status: 'Pending Approval', active: this.form.status === 'Pending Approval' && !this.form.quick },
+        { icon: 'lightning-bolt', tone: 'indigo', label: this.$t('Quick Pending Approval'), value: this.stats.quick_pending, status: 'Pending Approval', quick: true, active: this.form.status === 'Pending Approval' && !!this.form.quick },
         { icon: 'tick', tone: 'sky', label: this.$t('Approved'), value: this.stats.approved, status: 'Approved', active: this.form.status === 'Approved' },
         { icon: 'x-circle', tone: 'rose', label: this.$t('Rejected'), value: this.stats.rejected, status: 'Rejected', active: this.form.status === 'Rejected' },
         { icon: 'truck', tone: 'teal', label: this.$t('Fully Issued'), value: this.stats.issued, status: 'Issued', active: this.form.status === 'Issued' },
@@ -343,6 +346,7 @@ export default {
       });
     },
     pickTile(item) {
+      this.form.quick = item.quick ? 1 : null;
       this.form.status = item.status || null;
     },
     statusChip(materialRequest) {

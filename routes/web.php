@@ -426,6 +426,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('media/{media}/download', [Controllers\AjaxController::class, 'download'])->name('media.download');
     Route::delete('users/{user}/disable_2fa', [Controllers\UserController::class, 'disable2FA'])->name('users.disable.2fa');
     Route::get('users/audit-history', [Controllers\UserAuditController::class, 'index'])->name('users.audit-history');
+    Route::post('users/reset-password', [Controllers\UserController::class, 'resetPassword'])->middleware('throttle:30,1,users.reset-password')->name('users.reset-password');
     Route::post('users/{user}/disable-account', [Controllers\UserController::class, 'disableAccount'])->name('users.disable.account');
     Route::post('users/{user}/enable-account', [Controllers\UserController::class, 'enableAccount'])->name('users.enable.account');
 

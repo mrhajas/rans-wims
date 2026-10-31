@@ -56,6 +56,7 @@ class MaterialRequestResource extends JsonResource
             'date_requested' => $this->date_requested?->format('Y-m-d'),
             'status' => $this->status,
             'status_label' => MaterialRequest::statusLabel($this->status),
+            'quick' => (bool) $this->quick,
             'reason' => $this->reason,
             'comments' => $this->comments,
             'approval_remarks' => $this->approval_remarks,

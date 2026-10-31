@@ -5,6 +5,9 @@
         <Link v-if="$can('create-users')" :href="route('users.create')" class="lg-btn lg-btn-primary">
           <icons name="plus" class="w-4 h-4" />{{ $t('create_x', { x: $t('User') }) }}
         </Link>
+        <button v-if="canResetPassword" type="button" class="lg-btn tone" style="--tone: #d97706" @click="resetOpen = true">
+          <span class="tone-ico"><icons name="key" class="w-4 h-4" /></span>{{ $t('Reset Password') }}
+        </button>
         <button v-if="$can('audit-users')" type="button" class="lg-btn tone" style="--tone: #4f46e5" @click="openAudit(null)">
           <span class="tone-ico"><icons name="clock" class="w-4 h-4" /></span>{{ $t('Audit History') }}
         </button>
@@ -136,6 +139,7 @@
 
       <pagination class="mt-6" :meta="users.meta" :links="users.links" />
 
+      <reset-password-modal v-if="canResetPassword" :show="resetOpen" :users="resetUsers" @close="resetOpen = false" />
       <audit-modal v-if="$can('audit-users')" :show="auditOpen" :user-id="auditUser ? auditUser.id : null" :user-name="auditUser ? auditUser.name : ''" @close="auditOpen = false" />
     </div>
   </admin-layout>
@@ -153,6 +157,7 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import LoginAsUserAction from '@/Shared/Administration/LoginAsUserAction.vue';
 import AuditModal from './Parts/AuditModal.vue';
+import ResetPasswordModal from './ResetPasswordModal.vue';
 
 export default {
   components: {
@@ -164,6 +169,7 @@ export default {
     StatTiles,
     LoginAsUserAction,
     AuditModal,
+    ResetPasswordModal,
   },
 
   props: {
@@ -171,10 +177,13 @@ export default {
     users: Object,
     filters: Object,
     stats: Object,
+    canResetPassword: Boolean,
+    resetUsers: { type: Array, default: () => [] },
   },
 
   data() {
     return {
+      resetOpen: false,
       auditOpen: false,
       auditUser: null,
       form: {

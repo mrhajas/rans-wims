@@ -53,10 +53,35 @@
               <h2 class="lg-card-title">{{ $t('Password') }}</h2>
               <p class="lg-card-sub">{{ $t('Password') }} / {{ $t('Confirm Password') }}</p>
             </div>
+            <button type="button" class="lg-btn tone ml-auto" style="--tone: #d97706" @click="generatePw">
+              <span class="tone-ico"><icons name="key" class="w-4 h-4" /></span>{{ $t('Generate password') }}
+            </button>
           </header>
           <div class="lg-fields">
             <div>
               <text-input id="password" type="password" :label="$t('Password')" v-model="form.password" :error="$page.props.errors.password" />
+            </div>
+            <div class="lg-span-all">
+              <ul class="pw-rules" :aria-label="$t('Password rules')">
+                <li v-for="r in passwordRules" :key="r.key" :class="{ 'is-ok': r.ok, 'is-bad': !r.ok && form.password }">
+                  <icons :name="r.ok ? 'tick' : 'info'" class="w-3.5 h-3.5" />{{ r.label }}
+                </li>
+              </ul>
+              <div v-if="generated" class="pw-gen" role="status">
+                <div class="pw-gen-top">{{ $t('New password (filled in both boxes)') }}</div>
+                <div class="pw-gen-box">
+                  <code class="pw-gen-code" :title="$t('Click to copy')" @click="copyPw"><decrypt-text :text="generated" /></code>
+                  <button type="button" class="lg-btn tone" style="--tone: #4f46e5" @click="copyPw">
+                    <span class="tone-ico"><icons :name="copied ? 'tick' : 'duplicate'" class="w-4 h-4" /></span>{{ copied ? $t('Copied') : $t('Copy') }}
+                  </button>
+                  <button type="button" class="lg-btn tone" style="--tone: #475569" @click="generatePw">
+                    <span class="tone-ico"><icons name="refresh" class="w-4 h-4" /></span>{{ $t('Another one') }}
+                  </button>
+                </div>
+                <p class="pw-gen-note">{{ $t('It is applied when you save the user. Copy it now: it is not shown again after that.') }}</p>
+              </div>
+              <p v-if="!edit" class="lg-sub" style="margin-top: 6px">{{ $t('Type the password twice (below) so a typing mistake is caught.') }}</p>
+              <p v-else class="lg-sub" style="margin-top: 6px">{{ $t('Leave both password boxes empty to keep the current password.') }}</p>
             </div>
             <div>
               <text-input
@@ -330,9 +355,11 @@ import TrashedMessage from '@/Shared/TrashedMessage.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import TecActionMessage from '@/Jetstream/ActionMessage.vue';
+import DecryptText from '@/Shared/DecryptText.vue';
+import { generatePassword } from '@/Core/passwordGen';
 
 export default {
-  props: ['edit', 'roles', 'warehouses', 'staffLink', 'faceEnrolled'],
+  props: ['edit', 'roles', 'warehouses', 'staffLink', 'faceEnrolled', 'passwordHint'],
 
   components: {
     StaffLinkPanel,
@@ -349,10 +376,13 @@ export default {
     TrashedMessage,
     TecSectionTitle,
     TecActionMessage,
+    DecryptText,
   },
 
   data() {
     return {
+      generated: '',
+      copied: false,
       confirm: false,
       disabling: false,
       permanent: false,
@@ -385,6 +415,8 @@ export default {
   },
 
   watch: {
+    // typing a different password by hand hides the generated one
+    'form.password'(v) { if (this.generated && v !== this.generated) this.generated = ''; },
     // Choosing Super Admin ticks every project / warehouse and both "all record" boxes (they can still be unticked afterwards).
     'form.roles'(now, before) {
       const had = (before || []).includes('Super Admin');
@@ -397,6 +429,19 @@ export default {
   },
 
   computed: {
+    // what a password must have (the same rule the server applies), ticked off as it is typed
+    passwordRules() {
+      const p = this.form.password || '';
+      const rules = [
+        { key: 'len', label: this.$t('At least :n characters', { n: 8 }), ok: p.length >= 8 },
+        { key: 'up', label: this.$t('An upper case letter (A-Z)'), ok: /[A-Z]/.test(p) },
+        { key: 'low', label: this.$t('A lower case letter (a-z)'), ok: /[a-z]/.test(p) },
+        { key: 'num', label: this.$t('A number (0-9)'), ok: /[0-9]/.test(p) },
+      ];
+      if (p) rules.push({ key: 'same', label: this.$t('Both password boxes are the same'), ok: p === (this.form.password_confirmation || '') });
+
+      return rules;
+    },
     filteredWarehouses() {
       const q = this.warehouseSearch.trim().toLowerCase();
       if (!q) {
@@ -414,6 +459,19 @@ export default {
   },
 
   methods: {
+    // fills both password boxes with a new password that follows the rule, and shows it (decrypting) so it can be copied
+    generatePw() {
+      const pw = generatePassword(10);
+      this.form.password = pw;
+      this.form.password_confirmation = pw;
+      this.generated = pw;
+      this.copied = false;
+    },
+    copyPw() {
+      const done = () => { this.copied = true; setTimeout(() => (this.copied = false), 2000); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(this.generated).then(done, done);
+      else done();
+    },
     checkAllWarehouses() {
       this.form.warehouses = this.warehouses.map(warehouse => warehouse.id);
     },

@@ -43,6 +43,7 @@ class MaterialRequest extends Model
         'warehouse_id',
         'user_id',
         'status',
+        'quick',
         'reason',
         'comments',
         'approval_remarks',
@@ -56,6 +57,7 @@ class MaterialRequest extends Model
         'date_requested' => 'date:Y-m-d',
         'cleared_at' => 'datetime',
         'force_cleared' => 'boolean',
+        'quick' => 'boolean',
     ];
 
     public static function statuses(): array
@@ -242,6 +244,7 @@ class MaterialRequest extends Model
 
                 return $q->where('status', $s);
             })
+            ->when(! empty($filters['quick']), fn ($q) => $q->where('quick', true))
             ->when($filters['warehouse_id'] ?? null, fn ($q, $id) => $q->where('warehouse_id', $id))
             ->when($filters['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id))
             ->when($filters['start_date'] ?? null, fn ($q, $d) => $q->whereDate('date_requested', '>=', $d))

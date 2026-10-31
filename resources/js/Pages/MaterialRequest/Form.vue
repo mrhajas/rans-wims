@@ -18,7 +18,15 @@
               <h2 class="lg-card-title">{{ $t('Details') }}</h2>
               <p class="lg-card-sub">{{ $t('Request Number') }} / {{ $t('Date Requested') }} / {{ $t('Warehouse / Site') }}</p>
             </div>
+            <span v-if="quick" class="lg-chip lg-chip-indigo" style="text-transform: none">{{ $t('Quick request') }}</span>
           </header>
+          <div v-if="!edit && canQuick && canNormal" class="pf-toggle-row" style="margin: 0 0 12px">
+            <label class="wims-toggle">
+              <input v-model="quick" type="checkbox" />
+              <span class="wims-toggle-track"><span class="wims-toggle-thumb"></span></span>
+              <span class="wims-toggle-label">{{ $t('Quick request: a shorter form, approved by a quick approver') }}</span>
+            </label>
+          </div>
           <div class="lg-fields">
             <div>
               <text-input :label="$t('Request Number')" :model-value="requestNumber" disabled />
@@ -59,8 +67,8 @@
                   <th>{{ $t('Item') }}</th>
                   <th class="w-40">{{ $t('Quantity') }}</th>
                   <th class="w-40">{{ $t('Unit') }}</th>
-                  <th class="w-48">{{ $t('Priority') }}</th>
-                  <th>{{ $t('Remarks') }}</th>
+                  <th v-if="!quick" class="w-48">{{ $t('Priority') }}</th>
+                  <th v-if="!quick">{{ $t('Remarks') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,7 +108,7 @@
                       <text-input :model-value="unitName(item.unit_id) || '-'" disabled class="w-full" />
                     </div>
                   </td>
-                  <td :data-label="$t('Priority')">
+                  <td v-if="!quick" :data-label="$t('Priority')">
                     <div class="fx-cell">
                       <select-input v-model="item.priority" class="w-full">
                         <option value="Low">{{ $t('Low') }}</option>
@@ -110,14 +118,14 @@
                       </select-input>
                     </div>
                   </td>
-                  <td :data-label="$t('Remarks')">
+                  <td v-if="!quick" :data-label="$t('Remarks')">
                     <div class="fx-cell">
                       <text-input v-model="item.remarks" />
                     </div>
                   </td>
                 </tr>
                 <tr v-if="form.items.length === 0" class="lg-empty-row">
-                  <td class="lg-empty" colspan="6">{{ $t('Add at least one item') }}</td>
+                  <td class="lg-empty" :colspan="quick ? 4 : 6">{{ $t('Add at least one item') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -151,7 +159,7 @@
             </div>
           </header>
           <div class="fx-notes">
-            <div class="fx-attach">
+            <div v-if="!quick" class="fx-attach">
               <label class="fx-label">{{ $t('Attachments') }}</label>
               <div class="flex flex-col gap-2 items-start">
                 <button type="button" class="lg-btn tone" style="--tone: #d97706" :disabled="filesLeft <= 0" @click.prevent="$refs.file?.click()">
@@ -188,9 +196,9 @@
             </div>
             <div class="lg-fields fx-notes-fields">
               <div class="lg-span-all">
-                <textarea-input v-model="form.reason" :error="$page.props.errors.reason" :label="$t('Reason for Request')" />
+                <textarea-input v-model="form.reason" :error="$page.props.errors.reason" :label="quick ? $t('Reason for Request (optional)') : $t('Reason for Request')" />
               </div>
-              <div class="lg-span-all">
+              <div v-if="!quick" class="lg-span-all">
                 <textarea-input v-model="form.comments" :error="$page.props.errors.comments" :label="$t('Comments & Notes')" />
               </div>
             </div>
@@ -242,6 +250,8 @@ export default {
     requestNumber: String,
     requestedBy: Object,
     dateRequested: String,
+    canQuick: Boolean,
+    canNormal: { type: Boolean, default: true },
   },
 
   data() {
@@ -253,6 +263,8 @@ export default {
       fileProblems: [],
       maxFiles: 5,
       maxMb: 5,
+      // the Quick path: an existing request keeps its own kind; a new one is quick when the person can only raise quick requests
+      quick: this.edit ? !!this.edit.quick : !!(this.canQuick && !this.canNormal),
       form: this.$inertia.form({
         _method: this.edit ? 'PUT' : 'POST',
         warehouse_id: this.edit ? this.edit.warehouse_id : null,
@@ -382,6 +394,7 @@ export default {
       this.form.attachments = this.files.length ? this.files : null;
 
       const payload = pick(this.form, ['warehouse_id', 'date_requested', 'reason', 'comments', 'attachments', 'items', '_method']);
+      if (!this.edit && this.quick) payload.quick = 1;
       this.form.transform(() => payload);
 
       if (this.edit) {

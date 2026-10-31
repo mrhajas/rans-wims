@@ -649,6 +649,7 @@ class PermissionRegistry
                     'update-users' => __('update_x', ['x' => __('Users')]),
                     'delete-users' => __('delete_x', ['x' => __('Users')]),
                     'audit-users' => __('View the User Audit History'),
+                    'reset-password-users' => __('Reset a User Password (generates a new one)'),
                 ],
             ],
 
@@ -689,6 +690,8 @@ class PermissionRegistry
                     'update-material-requests' => __('Edit Any Material Request (until Procurement starts)'),
                     'delete-material-requests' => __('Delete Any Material Request (until it is cleared)'),
                     'approve-material-requests' => __('Approve / Reject'),
+                    'quick-material-requests' => __('Raise Quick Material Requests (shorter form, own approver)'),
+                    'quick-approve-material-requests' => __('Approve / Reject Quick Material Requests'),
                     'procure-material-requests' => __('Procurement: Set Procedures'),
                     'issue-material-requests' => __('Mark Partially / Fully Issued'),
                     'receive-material-requests' => __('Confirm Delivery on Site'),

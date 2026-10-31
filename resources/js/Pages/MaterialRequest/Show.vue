@@ -73,6 +73,7 @@
             <dt>{{ $t('Status') }}</dt>
             <dd>
               <span class="lg-chip" :class="'lg-chip-' + headerTone" style="text-transform: none">{{ statusLabel }}</span>
+              <span v-if="materialRequest.quick" class="lg-chip lg-chip-indigo" style="text-transform: none">{{ $t('Quick') }}</span>
               <span v-if="materialRequest.delivery_state" class="lg-chip mr-delivery-gap" :class="materialRequest.delivery_state === 'Fully Delivered' ? 'mr-chip-fdel' : 'lg-chip-amber'" style="text-transform: none">
                 <icons name="tick" class="w-3 h-3" /><icons v-if="materialRequest.delivery_state === 'Fully Delivered'" name="tick" class="w-3 h-3 mr-tick2" />{{ $t(materialRequest.delivery_state) }}
               </span>

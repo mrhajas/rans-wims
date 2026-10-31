@@ -12,6 +12,28 @@ class UserRequest extends FormRequest
         return true;
     }
 
+    /** One clear message for a password that is too weak (the rule would otherwise give one short message per missing part). */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($v) {
+            $errors = $v->errors();
+            if (! $errors->has('password')) {
+                return;
+            }
+            $all = $errors->get('password');
+            $weak = array_filter($all, fn ($m) => stripos($m, 'confirm') === false);
+            if (! $weak) {
+                return;
+            }
+            $confirm = array_filter($all, fn ($m) => stripos($m, 'confirm') !== false);
+            $errors->forget('password');
+            $errors->add('password', \App\Support\PasswordPolicy::failMessage());
+            foreach ($confirm as $m) {
+                $errors->add('password', $m);
+            }
+        });
+    }
+
     public function rules()
     {
         return [

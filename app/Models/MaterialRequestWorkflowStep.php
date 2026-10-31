@@ -116,6 +116,10 @@ class MaterialRequestWorkflowStep extends Model
         self::STEP_VIEW_PROCEDURES => 'view-procedures-material-requests',
     ];
 
+    /** Permissions of the Quick path (not workflow steps of the normal flow, so they are not in STEP_PERMISSIONS). */
+    public const PERMISSION_QUICK_CREATE = 'quick-material-requests';
+    public const PERMISSION_QUICK_APPROVE = 'quick-approve-material-requests';
+
     /** The permission for a step, or null for a step that no longer exists in the active flow (the legacy "close"). */
     public static function permissionFor(string $stepKey): ?string
     {
@@ -140,7 +144,13 @@ class MaterialRequestWorkflowStep extends Model
         // Super Admin was only ever told about the two steps it was assigned (approve, clear / complete); for the other steps it is told
         // only when it has been given the permission explicitly, so the "it is your turn" notices stay as they were
         $includeSuperAdmin ??= in_array($stepKey, [self::STEP_APPROVE, self::STEP_COMPLETE], true);
-        $permissionName = self::permissionFor($stepKey);
+
+        return self::usersWithPermission($accountId, self::permissionFor($stepKey), $includeSuperAdmin);
+    }
+
+    /** Every active user holding a permission, directly or through a role (Super Admin too when $includeSuperAdmin). */
+    public static function usersWithPermission(int $accountId, ?string $permissionName, bool $includeSuperAdmin): \Illuminate\Support\Collection
+    {
         $permissionId = $permissionName ? Permission::where('name', $permissionName)->where('guard_name', 'web')->value('id') : null;
 
         if (! $permissionId && ! $includeSuperAdmin) {

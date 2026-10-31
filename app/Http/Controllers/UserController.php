@@ -48,6 +48,7 @@ class UserController extends Controller
     public function create()
     {
         return Inertia::render('User/Form', [
+            'passwordHint' => \App\Support\PasswordPolicy::hint(),
             'roles'      => $this->selectableRoles(),
             'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
         ]);
@@ -101,6 +102,32 @@ class UserController extends Controller
         UserNotifier::fire('two_factor_disabled', $user, __('Two-Factor Switched Off'), 'Two-factor sign-in was switched off for ' . $user->name . ' (' . $user->username . ') by ' . (auth()->user()?->name ?? 'an administrator') . '.');
 
         return back()->with('message', __choice('action_text', ['record' => 'Tow factor authentication', 'action' => 'disabled']));
+    }
+
+    /**
+     * Reset Password (Users page): makes a new password for the chosen user and shows it to the person who asked, once. Needs the "reset-password-users"
+     * permission (Super Admin has it; assign it to others on the Roles screen). Only a Super Admin can reset a Super Admin's password.
+     */
+    public function resetPassword(Request $request)
+    {
+        abort_unless($request->user()?->can('reset-password-users'), 403, __('You are not allowed to reset passwords.'));
+
+        $data = $request->validate(['user_id' => 'required|integer']);
+        $target = User::ofAccount()->findOrFail($data['user_id']);
+
+        if ($this->blockedFromActingOnSuperAdmin($target)) {
+            return response()->json(['message' => __('Only a Super Admin can reset the password of a Super Admin.')], 403);
+        }
+        if (demo() && $target->id == 1) {
+            return response()->json(['message' => 'This feature is disabled on demo'], 403);
+        }
+
+        $password = \App\Support\PasswordPolicy::generate();
+        $target->forceFill(['password' => Hash::make($password)])->save();
+        UserNotifier::fire('password_set_by_admin', $target, __('Password Set by an Administrator'), 'A new password was generated for ' . $target->name . ' (' . $target->username . ') by ' . ($request->user()->name ?? 'an administrator') . '.');
+
+        return response()->json(['password' => $password, 'user' => ['id' => $target->id, 'name' => $target->name, 'username' => $target->username]])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     public function disableAccount(Request $request, User $user)
@@ -161,6 +188,7 @@ class UserController extends Controller
         }
 
         return Inertia::render('User/Form', [
+            'passwordHint' => \App\Support\PasswordPolicy::hint(),
             'edit'       => new UserResource($user),
             'roles'      => $this->selectableRoles(),
             'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
@@ -197,7 +225,12 @@ class UserController extends Controller
         // Account-wide figures for the summary cards (live users only, unaffected by the filters above).
         $base = fn () => User::ofAccount();
 
+        $canReset = (bool) auth()->user()?->can('reset-password-users');
+
         return Inertia::render('User/Index', [
+            'canResetPassword' => $canReset,
+            // the people the Reset Password window lets you pick (only sent to someone who may use it)
+            'resetUsers' => $canReset ? User::ofAccount()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'username'])->map(fn ($u) => ['id' => $u->id, 'label' => $u->name . ' (@' . $u->username . ')'])->values() : [],
             'filters' => $filters,
             'roles'   => Role::ofAccount()->get(),
             'users'   => new UserCollection($users),

@@ -19,7 +19,14 @@ class MaterialRequestPolicy
      */
     public function create(User $user): bool
     {
-        return MaterialRequestWorkflowStep::isAllowed($user, MaterialRequestWorkflowStep::STEP_CREATE);
+        // the form is open to whoever can raise a normal request or a quick one (the Store request then checks which of the two it is)
+        return MaterialRequestWorkflowStep::isAllowed($user, MaterialRequestWorkflowStep::STEP_CREATE) || $this->createQuick($user);
+    }
+
+    /** The Quick path: a shorter request with its own approver (Roles > Material Requests > Raise Quick Material Requests). */
+    public function createQuick(User $user): bool
+    {
+        return $user->can(MaterialRequestWorkflowStep::PERMISSION_QUICK_CREATE);
     }
 
     /** The hard gate for reaching the Material Requests list at all: "View" or "View all" (see MaterialRequestVisibility). */
@@ -47,7 +54,7 @@ class MaterialRequestPolicy
                 && ! $materialRequest->items()->whereNotNull('procedure')->exists();
         }
 
-        return MaterialRequestWorkflowStep::isAllowed($user, MaterialRequestWorkflowStep::STEP_CREATE)
+        return ($materialRequest->quick ? $this->createQuick($user) : MaterialRequestWorkflowStep::isAllowed($user, MaterialRequestWorkflowStep::STEP_CREATE))
             && $materialRequest->status === MaterialRequest::STATUS_PENDING_APPROVAL
             && (int) $materialRequest->user_id === (int) $user->id;
     }
@@ -78,7 +85,8 @@ class MaterialRequestPolicy
         $can = fn (string $step) => MaterialRequestWorkflowStep::isAllowed($user, $step);
 
         return match ($materialRequest->status) {
-            MaterialRequest::STATUS_PENDING_APPROVAL => $can(MaterialRequestWorkflowStep::STEP_APPROVE)
+            // a Quick request is approved by the Quick approvers only; a normal one by the normal approvers (Super Admin holds both permissions)
+            MaterialRequest::STATUS_PENDING_APPROVAL => ($materialRequest->quick ? $user->can(MaterialRequestWorkflowStep::PERMISSION_QUICK_APPROVE) : $can(MaterialRequestWorkflowStep::STEP_APPROVE))
                 ? [MaterialRequest::STATUS_APPROVED, MaterialRequest::STATUS_REJECTED]
                 : [],
             MaterialRequest::STATUS_APPROVED => $can(MaterialRequestWorkflowStep::STEP_ISSUE)

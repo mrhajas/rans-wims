@@ -47,7 +47,7 @@ class MaterialRequestController extends Controller
         $user = $request->user();
         $this->authorize('viewAny', MaterialRequest::class);
 
-        $filters = $request->all('search', 'warehouse_id', 'user_id', 'status', 'start_date', 'end_date');
+        $filters = $request->all('search', 'warehouse_id', 'user_id', 'status', 'start_date', 'end_date', 'quick');
 
         $query = MaterialRequest::query()
             ->select('material_requests.*')
@@ -124,11 +124,15 @@ class MaterialRequestController extends Controller
             ->select('status', DB::raw('COUNT(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
+        // Quick requests waiting for approval (the Quick card), over the same visibility scope
+        $quickPending = MaterialRequestVisibility::scopeQueryFor(MaterialRequest::query(), $user)
+            ->where('quick', true)->where('status', MaterialRequest::STATUS_PENDING_APPROVAL)->count();
 
         return Inertia::render('MaterialRequest/Index', [
             'stats' => [
                 'total' => (int) $statusCounts->sum(),
                 'pending' => (int) ($statusCounts[MaterialRequest::STATUS_PENDING_APPROVAL] ?? 0),
+                'quick_pending' => $quickPending,
                 'approved' => (int) ($statusCounts[MaterialRequest::STATUS_APPROVED] ?? 0),
                 'rejected' => (int) ($statusCounts[MaterialRequest::STATUS_REJECTED] ?? 0),
                 'partially_issued' => (int) ($statusCounts[MaterialRequest::STATUS_PARTIALLY_ISSUED] ?? 0),
@@ -145,6 +149,7 @@ class MaterialRequestController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'canCreate' => $user->can('create', MaterialRequest::class),
+            'canQuick' => $user->can('createQuick', MaterialRequest::class),
             'ownRequestsOnly' => MaterialRequestVisibility::isOwnOnly($user),
             'materialRequests' => new MaterialRequestCollection($materialRequests),
             // Super Admin: every request that Admin Force Clearance can still reach (id => reference), so "select all" can go past this page and the dialog can name them.
@@ -174,6 +179,9 @@ class MaterialRequestController extends Controller
             'requestNumber' => $this->nextReference(),
             'requestedBy' => $request->user()->only(['id', 'name']),
             'dateRequested' => now()->format('Y-m-d'),
+            // the Quick toggle: shown to whoever holds the Quick permission; a person with only that permission can only raise Quick requests
+            'canQuick' => $request->user()->can('createQuick', MaterialRequest::class),
+            'canNormal' => \App\Models\MaterialRequestWorkflowStep::isAllowed($request->user(), \App\Models\MaterialRequestWorkflowStep::STEP_CREATE),
         ]);
     }
 
@@ -185,6 +193,12 @@ class MaterialRequestController extends Controller
         }
         $data['user_id'] = $request->user()->id;
         $data['status'] = MaterialRequest::STATUS_PENDING_APPROVAL;
+        $data['quick'] = $request->boolean('quick');
+        if ($data['quick']) {
+            // the shorter form leaves these out: fill in what the tables need
+            $data['reason'] = trim((string) ($data['reason'] ?? '')) !== '' ? $data['reason'] : __('Quick request');
+            $data['items'] = array_map(fn ($i) => $i + ['priority' => 'Normal'], array_map(fn ($i) => array_filter($i, fn ($v, $k) => $k !== 'priority' || $v, ARRAY_FILTER_USE_BOTH), $data['items']));
+        }
 
         $materialRequest = null;
         for ($attempt = 0; $attempt < 3; $attempt++) {
@@ -514,7 +528,8 @@ class MaterialRequestController extends Controller
         $user = $request->user();
 
         // Issuing needs the procurement procedures to be in place: at least one for "Partially Issued", every item for "Fully Issued".
-        if (in_array($targetStatus, [MaterialRequest::STATUS_PARTIALLY_ISSUED, MaterialRequest::STATUS_ISSUED], true)) {
+        // (a Quick request skips the procurement procedures and the delivery check: that is what makes it quick)
+        if (! $material_request->quick && in_array($targetStatus, [MaterialRequest::STATUS_PARTIALLY_ISSUED, MaterialRequest::STATUS_ISSUED], true)) {
             $total = $material_request->items()->count();
             $withProcedure = $material_request->items()->whereNotNull('procedure')->count();
             if ($withProcedure === 0) {
@@ -527,7 +542,7 @@ class MaterialRequestController extends Controller
 
         // Clear / Complete: how strictly to check that Site has received everything (a Super Admin setting).
         $clearNote = null;
-        if ($targetStatus === MaterialRequest::STATUS_CLEARED) {
+        if ($targetStatus === MaterialRequest::STATUS_CLEARED && ! $material_request->quick) {
             $undelivered = $material_request->undeliveredItems();
             if ($undelivered) {
                 $mode = MaterialRequestWorkflowStep::clearDeliveryMode(getAccountId(1));
@@ -924,12 +939,17 @@ class MaterialRequestController extends Controller
     {
         $alreadyTold = MaterialRequestNotificationRule::recipientsFor(getAccountId(1), MaterialRequestNotificationRule::EVENT_CREATED, $materialRequest, (int) $materialRequest->user_id)->pluck('id');
 
-        MaterialRequestWorkflowStep::assignedUsers(getAccountId(1), MaterialRequestWorkflowStep::STEP_APPROVE)
+        // a Quick request goes to the Quick approvers, a normal one to the normal approvers
+        $approvers = $materialRequest->quick
+            ? MaterialRequestWorkflowStep::usersWithPermission(getAccountId(1), MaterialRequestWorkflowStep::PERMISSION_QUICK_APPROVE, true)
+            : MaterialRequestWorkflowStep::assignedUsers(getAccountId(1), MaterialRequestWorkflowStep::STEP_APPROVE);
+
+        $approvers
             ->reject(fn ($u) => (int) $u->id === (int) $materialRequest->user_id || $alreadyTold->contains($u->id))
             ->each(fn ($approver) => $approver->notify(new AppNotification([
                 'module' => 'material_requests',
                 'type' => 'material_request_awaiting_approval',
-                'title' => 'Material Request Awaiting Approval',
+                'title' => $materialRequest->quick ? 'Quick Material Request Awaiting Approval' : 'Material Request Awaiting Approval',
                 'message' => $materialRequest->reference . ' was submitted by ' . $actorName . ' and is waiting for your approval.',
                 'status' => $materialRequest->status,
                 'reference' => $materialRequest->reference,

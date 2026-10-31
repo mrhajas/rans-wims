@@ -18,15 +18,19 @@ class MaterialRequestStoreRequest extends FormRequest
         // role list — this used to be a completely separate, out-of-sync
         // copy of that check that ignored Administration → Material
         // Request Workflow entirely.
-        return auth()->user()->can('create', MaterialRequest::class);
+        // a Quick request needs the Quick permission, a normal one the normal Create step
+        return $this->boolean('quick')
+            ? auth()->user()->can(\App\Models\MaterialRequestWorkflowStep::PERMISSION_QUICK_CREATE)
+            : \App\Models\MaterialRequestWorkflowStep::isAllowed(auth()->user(), \App\Models\MaterialRequestWorkflowStep::STEP_CREATE);
     }
 
     public function rules()
     {
         return [
+            'quick' => 'sometimes|boolean',
             'warehouse_id' => 'required|exists:warehouses,id',
             'date_requested' => 'required|date',
-            'reason' => 'required|string',
+            'reason' => $this->boolean('quick') ? 'nullable|string' : 'required|string',
             'comments' => 'nullable|string',
             'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'file|mimes:pdf,doc,docx|max:5120',
@@ -34,7 +38,7 @@ class MaterialRequestStoreRequest extends FormRequest
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.quantity' => 'required|numeric|gt:0',
             'items.*.unit_id' => 'nullable|exists:units,id',
-            'items.*.priority' => 'required|in:Low,Normal,High,Emergency',
+            'items.*.priority' => ($this->boolean('quick') ? 'nullable' : 'required') . '|in:Low,Normal,High,Emergency',
             'items.*.remarks' => 'nullable|string',
         ];
     }
