@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/vue3';
+import { proDockRemount } from '@/Core/proDock';
 
 // The look of the main menu (Classic, Pro or Glass) is the person's own choice. It changes at once, without reloading, and is kept on their own settings.
 // Pro and Glass are both allowed by the same Global Feature Control switch (pro_menu) and permission (use-pro-menu).
@@ -63,7 +64,12 @@ export function applyMenuStyle(page, style) {
         // whatever happens, the motion classes never stay on the page (they would hide or block the menu)
         root.classList.remove('menu-out');
         root.classList.add('menu-in');
-        setTimeout(() => root.classList.remove('menu-in'), 900);
+        setTimeout(() => {
+          root.classList.remove('menu-in');
+          // the slide is over: the Pro / Glass menu is drawn once more as a brand new element, so nothing of the slide (a layer, a stale click area) is left on it
+          proDockRemount();
+          void document.body.offsetWidth;
+        }, 900);
         setTimeout(freeTheMenu, 80);
         setTimeout(freeTheMenu, 1000);
         save.finally(() => setTimeout(settlePage, 900));

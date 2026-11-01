@@ -1,7 +1,7 @@
 <template>
   <div v-if="proDock.visible" class="pro-dock-fixed" :class="{ 'is-collapsed': menuCollapsed, 'is-glass': glass, 'is-autohide': auto, 'is-reveal': auto && reveal }" @mouseenter="show" @mouseleave="leave">
-    <glass-menu v-if="glass" :collapsed="menuCollapsed" @toggle="proDockCollapse(!proDock.collapsed, true)" />
-    <pro-menu v-else :collapsed="proDock.collapsed" @toggle="proDockCollapse(!proDock.collapsed, true)" />
+    <glass-menu v-if="glass" :key="'g' + proDock.epoch" :collapsed="menuCollapsed" @toggle="proDockCollapse(!proDock.collapsed, true)" />
+    <pro-menu v-else :key="'p' + proDock.epoch" :collapsed="proDock.collapsed" @toggle="proDockCollapse(!proDock.collapsed, true)" />
   </div>
 
   <glass-profile-drawer v-if="proDock.visible" :open="proDock.profileOpen" :anchor="anchorEl" @close="proDock.profileOpen = false" />
@@ -27,6 +27,7 @@ export default {
     auto(v) { if (!v) this.reveal = false; },
     'proDock.profileOpen'(v) { if (v) this.findAnchor(); },
     'proDock.style'() { if (this.proDock.profileOpen) setTimeout(this.findAnchor, 700); },
+    'proDock.epoch'() { if (this.proDock.profileOpen) this.$nextTick(this.findAnchor); },
   },
   mounted() {
     document.addEventListener('pointerdown', this.onOutside, true);

@@ -6,6 +6,7 @@ import { reactive } from 'vue';
 export const proDock = reactive({
   style: 'pro', // which menu the dock draws: 'pro' or 'glass'
   collapsed: false,
+  epoch: 0, // counts how many times the menu has been drawn fresh (after a change of theme)
   profileOpen: false, // the profile drawer of the Glass menu (it lives beside the dock, so it stays when the menu changes)
   want: {},
   get visible() { return Object.values(this.want).some(Boolean); },
@@ -19,3 +20,6 @@ export function proDockCollapse(v, save = false) {
   if (save) { try { window.localStorage.setItem(proDock.style === 'glass' ? 'wims_glass_collapsed' : 'wims_pro_collapsed', v ? '1' : '0'); } catch (e) { /* no storage */ } }
 }
 export function proDockStyle(v) { proDock.style = v === 'glass' ? 'glass' : 'pro'; }
+
+// draws the dock menu again as a brand new element (used once the slide of a theme change has finished, so the browser starts from a clean element)
+export function proDockRemount() { proDock.epoch += 1; }
