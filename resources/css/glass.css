@@ -173,7 +173,11 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm-open-enter-active, .gm-open-leave-active { transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: top; }
 .gm-open-enter-from, .gm-open-leave-to { opacity: 0; transform: translateY(-6px) scaleY(0.92); }
 
-.gm-foot { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.14); margin-top: 6px; }
+.gm-foot { position: relative; display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.14); margin-top: 6px; }
+/* the line above the night mode switch carries a light that runs from its start to its end and back, with a soft shadow */
+.gm-foot::before { content: ''; position: absolute; top: -2px; left: 0; width: 34%; height: 3px; border-radius: 3px; pointer-events: none; background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, #a5b4fc 30%, #67e8f9 55%, #fff 80%, rgba(255, 255, 255, 0) 100%); box-shadow: 0 0 10px 2px rgba(103, 232, 249, 0.55), 0 3px 12px 1px rgba(129, 140, 252, 0.45); animation: gm-line 3.4s ease-in-out infinite alternate; }
+@keyframes gm-line { from { left: 0; } to { left: 66%; } }
+@media (prefers-reduced-motion: reduce) { .gm-foot::before { animation: none; left: 33%; } }
 .gm.is-compact .gm-foot { justify-items: center; border-top: 0; }
 .gm-night { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 46px; padding: 0 14px; border: 0; border-radius: 18px; color: var(--gm-ink); background: transparent; font: inherit; font-size: 0.97rem; text-align: left; cursor: pointer; transition: background 0.2s; }
 .gm-night:hover { background: rgba(255, 255, 255, 0.1); }
@@ -562,3 +566,11 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 .gn .gn-it { width: 74px; }
 /* the two scroll arrows are exact circles (a global minimum height for buttons made them oval) */
 .gn .gn-mini { width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; max-width: 36px !important; max-height: 36px !important; border-radius: 50% !important; }
+
+
+/* ---- the Glass screen is set in Montserrat, Light (300) for the text and Regular (400) for titles, buttons and the menu: no other weights ---- */
+html.glass-ui, html.glass-ui body, html.glass-ui body *:not(svg):not(svg *):not(.fa):not(.fas):not(.far):not(.fab):not([class*='fa-']),
+.auth-glass, .auth-glass *, .err-glass, .err-glass *, .dl-glass, .dl-glass *, .fu-glass, .fu-glass *, .jc-glass, .jc-glass *,
+.gm, .gm *, .gp, .gp *, .gn, .gn *, .gm-tip { font-family: Montserrat, 'Segoe UI', Arial, sans-serif !important; font-weight: 300 !important; font-style: normal; }
+html.glass-ui body :is(b, strong, h1, h2, h3, h4, h5, h6, th, button, label, legend, .gm-item, .gm-item *, .gm-sub, .gm-sub *, .gm-user *, .gp-item b, .gp-name, .gn-cap, .gm-tip, [class*='font-medium'], [class*='font-semibold'], [class*='font-bold'], [class*='font-extrabold'], [class*='font-black'], [class*='-title'], [class*='-name']),
+.auth-glass :is(b, strong, h1, h2, h3, h4, h5, h6, button, label), .err-glass :is(b, strong, h1, h2, h3, h4, h5, h6, button), .gm-item, .gm-item *, .gm-sub, .gm-sub *, .gm-tip, .gn-cap, .gp-name, .gp-item b { font-weight: 400 !important; }
