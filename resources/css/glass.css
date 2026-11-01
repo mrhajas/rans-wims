@@ -129,7 +129,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm.is-compact .gm-brand { flex: none; }
 .gm.is-compact .gm-fold { position: absolute; top: 22px; right: -21px; width: 34px; height: 34px; z-index: 3; }
 
-.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 68px; margin-top: 16px; padding: 0 20px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 24px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 58px; margin-top: 16px; padding: 0 20px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 24px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
 .gm-search:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.4); color: #fff; box-shadow: 0 16px 28px -14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.36); }
 .gm-search:active { transform: scale(0.99); }
 .gm-search-txt { flex: 1; font-size: 1.02rem; }
@@ -145,7 +145,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm-label { margin: 8px 8px 4px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gm-mute); }
 .gm-div { display: block; width: 22px; height: 2px; margin: 4px 0 6px; border-radius: 2px; background: rgba(255, 255, 255, 0.28); }
 
-.gm-item { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid transparent; border-radius: 20px; color: var(--gm-ink); background: transparent; text-decoration: none; text-align: left; font: inherit; font-size: 0.97rem; cursor: pointer; transition: background 0.2s, border-color 0.2s, box-shadow 0.25s, transform 0.15s; }
+.gm-item { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 43px; padding: 0 14px; border: 1px solid transparent; border-radius: 20px; color: var(--gm-ink); background: transparent; text-decoration: none; text-align: left; font: inherit; font-size: 0.97rem; cursor: pointer; transition: background 0.2s, border-color 0.2s, box-shadow 0.25s, transform 0.15s; }
 .gm-item:hover { background: rgba(255, 255, 255, 0.1); }
 .gm-item:active { transform: scale(0.985); }
 /* the page you are on: a raised piece of glass */
@@ -218,7 +218,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 @keyframes gn-spin { to { transform: rotate(360deg); } }
 @keyframes gn-glow { 0%, 100% { filter: drop-shadow(0 0 3px rgba(186, 230, 253, 0.7)) drop-shadow(0 0 8px rgba(56, 189, 248, 0.55)); } 50% { filter: drop-shadow(0 0 5px #e0f2fe) drop-shadow(0 0 14px #38bdf8) drop-shadow(0 0 24px rgba(129, 140, 248, 0.8)); } }
 .gn-body { position: relative; display: grid; grid-template-rows: 0fr; width: 0; overflow: hidden; border-radius: 34px 0 0 34px; background: var(--gn-bg); box-shadow: -14px 10px 34px -10px rgba(0, 0, 0, 0.65), inset 1px 0 0 rgba(255, 255, 255, 0.14); opacity: 0; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; z-index: 1; }
-.gn.is-open .gn-body { grid-template-rows: 1fr; width: 100px; opacity: 1; }
+.gn.is-open .gn-body { grid-template-rows: 1fr; width: 108px; opacity: 1; }
 .gn.is-open .gn-tab { opacity: 0; pointer-events: none; }
 .gn-inner { min-height: 0; max-height: min(78vh, 640px); overflow-y: auto; scrollbar-width: none; display: grid; justify-items: center; gap: 12px; padding: 26px 8px 22px; }
 .gn-inner::-webkit-scrollbar { display: none; }
@@ -232,8 +232,8 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gn-cap { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.82); white-space: nowrap; }
 .gn-badge { position: absolute; top: -3px; right: -4px; z-index: 2; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px; font-size: 0.64rem; line-height: 18px; font-weight: 800; text-align: center; color: #fff; background: #ef4444; box-shadow: 0 0 0 2px var(--gn-bg); }
 .gn-sep { display: block; width: 28px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
-.gn-jump { display: flex; justify-content: center; gap: 10px; width: 100%; }
-.gn-mini { position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50% !important; color: #e0f2fe; background: radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.28), rgba(129, 140, 248, 0.14) 70%); box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.5), 0 0 12px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(125, 211, 252, 0.25); cursor: pointer; animation: gn-pulse 2.6s ease-in-out infinite; transition: transform 0.2s, background 0.2s; }
+.gn-jump { display: flex; justify-content: center; align-items: center; gap: 10px; width: 100%; padding: 0; margin: 0 auto; }
+.gn-mini { position: relative; display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; margin: 0; padding: 0; border: 0; border-radius: 50% !important; color: #e0f2fe; background: radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.28), rgba(129, 140, 248, 0.14) 70%); box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.5), 0 0 12px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(125, 211, 252, 0.25); cursor: pointer; animation: gn-pulse 2.6s ease-in-out infinite; transition: transform 0.2s, background 0.2s; }
 .gn-mini + .gn-mini { animation-delay: 1.3s; }
 @keyframes gn-pulse { 50% { box-shadow: 0 0 0 1px rgba(186, 230, 253, 0.85), 0 0 20px rgba(56, 189, 248, 0.95), 0 0 34px rgba(129, 140, 248, 0.5), inset 0 0 12px rgba(125, 211, 252, 0.4); } }
 .gn-mini:hover { transform: translateY(-2px) scale(1.06); }
@@ -520,3 +520,23 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 /* quiet labels, dates and sub-text on glass cards */
 .app-shell.wims-glass :is(.lg-stat-label, .lg-subtext, .mr-date) { color: var(--lg-mute) !important; }
 .app-shell.wims-glass :is(.lg-card, .lg-table-wrap, .lg-stat) em { color: var(--lg-faint) !important; }
+
+
+/* ---- the notch reaches the very edge of the screen: the page scrollbar is hidden on the Glass screen (the wheel, the keys and the scroll buttons of the notch still work) ---- */
+@media (min-width: 768px) {
+  html.glass-ui { scrollbar-width: none; }
+  html.glass-ui::-webkit-scrollbar { display: none; width: 0; }
+}
+
+/* ---- the Quick Access bar on the Glass screen: it opens beside the notch while the pointer is on "Quick", dark glass like the notch ---- */
+@media (min-width: 768px) {
+  .app-shell.wims-glass .qam-wrap { right: 128px; pointer-events: none; z-index: 46; }
+  .app-shell.wims-glass .qam-panel { pointer-events: auto; right: 0; gap: 10px; padding: 12px 10px; border-radius: 32px; border: 1px solid rgba(125, 211, 252, 0.28); background: #0a0d18; box-shadow: 0 18px 40px -14px rgba(0, 0, 0, 0.75), 0 0 22px -4px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+  .app-shell.wims-glass .qam-item { width: 42px; height: 42px; color: #bae6fd; background: radial-gradient(circle at 50% 30%, rgba(125, 211, 252, 0.26), rgba(129, 140, 248, 0.12) 72%); box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.4), 0 0 10px rgba(56, 189, 248, 0.35); }
+  .app-shell.wims-glass .qam-item:hover { color: #fff; background: linear-gradient(145deg, #38bdf8, #6366f1); box-shadow: 0 0 0 1px rgba(224, 242, 254, 0.9), 0 0 18px rgba(56, 189, 248, 0.85); }
+  .app-shell.wims-glass .qam-item-qr { color: #fff; background: linear-gradient(145deg, #6366f1, #0ea5e9); box-shadow: 0 0 0 1px rgba(224, 242, 254, 0.7), 0 0 16px rgba(14, 165, 233, 0.8); }
+}
+/* "Quick" in the notch glows orange all the time */
+.gn-ring.is-glow { box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.55), 0 0 14px rgba(251, 146, 60, 0.6); animation: gn-quick 2.2s ease-in-out infinite; }
+@keyframes gn-quick { 50% { box-shadow: 0 0 0 1px rgba(253, 186, 116, 0.95), 0 0 24px 3px rgba(251, 146, 60, 0.95), 0 0 40px 8px rgba(251, 146, 60, 0.35); } }
+@media (prefers-reduced-motion: reduce) { .gn-ring.is-glow { animation: none; } }

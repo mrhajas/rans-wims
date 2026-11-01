@@ -41,8 +41,8 @@
           <span class="gn-cap">{{ $t('Chat') }}</span>
         </button>
 
-        <button type="button" class="gn-it lg-tip tip-left" :data-tip="$t('Quick Access Menu')" :aria-label="$t('Quick Access Menu')" @click="openQuick">
-          <span class="gn-ring" style="--c: #fb923c"><i class="gn-arc" style="--p: 100"></i><Icons name="lightning-bolt" class-name="gn-ic" /></span>
+        <button type="button" class="gn-it" :aria-label="$t('Quick Access Menu')" @mouseenter="quickIn" @mouseleave="quickOut" @focus="quickIn" @click="quickIn">
+          <span class="gn-ring is-glow" style="--c: #fb923c"><i class="gn-arc" style="--p: 100"></i><Icons name="lightning-bolt" class-name="gn-ic" /></span>
           <span class="gn-cap">{{ $t('Quick') }}</span>
         </button>
 
@@ -67,7 +67,7 @@ import { toastSettings } from '@/Core/alertToasts';
 // opens to the quick settings: light / dark, how strong the glass is, toast alerts, alert sound, WIMSChat, the Quick Access Menu and the two scroll buttons.
 // The floating round buttons of WIMSChat, the Quick Access Menu and Scroll jump are hidden on the Glass screen: this notch is where they live.
 export default {
-  data() { return { open: false, pinned: false, dark: false, glassPrefs, chat }; },
+  data() { return { open: false, over: false, quickOpen: false, pinned: false, dark: false, glassPrefs, chat }; },
   computed: {
     me() { return this.$page.props.auth?.user || {}; },
     darkAllowed() { return this.$page.props.enabledFeatures?.dark_mode !== false || this.$super; },
@@ -83,20 +83,26 @@ export default {
     if (this._mo) this._mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     document.addEventListener('keydown', this.onKey);
     document.addEventListener('pointerdown', this.onOutside, true);
+    window.addEventListener('wims:quick-state', this.onQuickState);
   },
   beforeUnmount() {
     if (this._mo) this._mo.disconnect();
     clearTimeout(this._t);
     document.removeEventListener('keydown', this.onKey);
     document.removeEventListener('pointerdown', this.onOutside, true);
+    window.removeEventListener('wims:quick-state', this.onQuickState);
   },
   methods: {
     cycleGlassLevel,
     syncTheme() { this.dark = document.documentElement.classList.contains('dark'); },
     toggleTheme() { this.$setTheme(this.dark ? 'light' : 'dark'); this.syncTheme(); },
     // the pointer opens it at once and the notch closes a moment after it leaves (a tap or a click keeps it open until the next tap elsewhere)
-    hoverIn() { clearTimeout(this._t); this.open = true; },
-    hoverOut() { clearTimeout(this._t); if (this.pinned) return; this._t = setTimeout(() => { this.open = false; }, 380); },
+    hoverIn() { clearTimeout(this._t); this.over = true; this.open = true; },
+    hoverOut() { this.over = false; clearTimeout(this._t); if (this.pinned || this.quickOpen) return; this._t = setTimeout(() => { this.open = false; window.dispatchEvent(new Event('wims:quick-close')); }, 380); },
+    // the Quick Access bar opens beside the notch while the pointer is on "Quick" (and stays while it is on the bar itself, so an icon can be picked)
+    quickIn() { window.dispatchEvent(new Event('wims:quick-open')); },
+    quickOut() { window.dispatchEvent(new Event('wims:quick-close')); },
+    onQuickState(e) { this.quickOpen = !!(e.detail && e.detail.open); if (!this.quickOpen && !this.over && !this.pinned) this.hoverOut(); },
     onFocusOut(e) { if (!this.pinned && !(e.relatedTarget && this.$el.contains(e.relatedTarget))) this.hoverOut(); },
     onKey(e) { if (e.key === 'Escape' && this.open) { this.open = false; this.pinned = false; } },
     onOutside(e) { if (this.open && this.pinned && this.$el && !this.$el.contains(e.target)) { this.open = false; this.pinned = false; } },
@@ -112,8 +118,6 @@ export default {
         this.me.chime_enabled = !!res.data.chime_enabled;
       }).catch(() => {});
     },
-    // the Quick Access Menu keeps its own (hidden here) button: pressing it opens its panel as always
-    openQuick() { const b = document.querySelector('.qam-trigger'); if (b) b.click(); },
     // the element that scrolls: the main content region when it has its own scrollbar, otherwise the whole page (as the round Scroll jump buttons did)
     go(where) {
       const region = document.querySelector('[scroll-region]');

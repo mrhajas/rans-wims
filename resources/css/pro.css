@@ -21,9 +21,19 @@ html:not(.dark) .app-shell.wims-float.wims-pro:not(.wims-glass) {
     border-radius: 24px;
     box-shadow: 0 16px 30px -16px rgba(11, 29, 54, 0.5), 0 3px 8px -3px rgba(11, 29, 54, 0.18), inset 0 -3px 0 rgba(242, 169, 59, 0.85), inset 0 1px 0 #fff;
   }
+  /* night mode: the same floating bar with its round ends (the layout rules of the light mode were written for it only) */
+  html.dark .app-shell.wims-float.wims-pro .liquid-side-rail + div {
+    margin: 12px 12px 0 12px;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    border-radius: 24px;
+    animation: wims-float-in 0.45s ease 0.05s both;
+  }
   html.dark .app-shell.wims-float.wims-pro:not(.wims-glass) .liquid-side-rail + div {
-    border-color: rgba(242, 169, 59, 0.28);
-    box-shadow: 0 16px 30px -16px rgba(0, 0, 0, 0.7), inset 0 -3px 0 rgba(242, 169, 59, 0.6);
+    border: 1px solid rgba(242, 169, 59, 0.28);
+    background: linear-gradient(180deg, #121f3d 0%, #0b1730 100%);
+    box-shadow: 0 16px 30px -16px rgba(0, 0, 0, 0.7), 0 3px 8px -3px rgba(0, 0, 0, 0.5), inset 0 -3px 0 rgba(242, 169, 59, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }
 

@@ -127,14 +127,23 @@ export default {
     },
   },
 
+  watch: {
+    open(v) { window.dispatchEvent(new CustomEvent('wims:quick-state', { detail: { open: v } })); },
+  },
+
   mounted() {
     window.addEventListener('wims-quick-menu-reset-position', this.onResetPositionEvent);
+    // the Glass notch asks for the bar while the pointer is on its "Quick" button
+    window.addEventListener('wims:quick-open', this.onNotchOpen);
+    window.addEventListener('wims:quick-close', this.onNotchClose);
   },
 
   beforeUnmount() {
     window.removeEventListener('pointermove', this.onDragMove);
     window.removeEventListener('pointerup', this.onDragEnd);
     window.removeEventListener('wims-quick-menu-reset-position', this.onResetPositionEvent);
+    window.removeEventListener('wims:quick-open', this.onNotchOpen);
+    window.removeEventListener('wims:quick-close', this.onNotchClose);
     document.removeEventListener('click', this.onOutsideClick);
     clearTimeout(this.closeTimer);
   },
@@ -178,6 +187,18 @@ export default {
 
     onResetPositionEvent() {
       this.topPercent = 50;
+    },
+
+    onNotchOpen() {
+      clearTimeout(this.closeTimer);
+      this.open = true;
+    },
+
+    onNotchClose() {
+      clearTimeout(this.closeTimer);
+      this.closeTimer = setTimeout(() => {
+        this.open = false;
+      }, 320);
     },
 
     onMouseEnter() {

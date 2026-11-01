@@ -265,7 +265,18 @@ export default {
 .pm-txt { min-width: 0; line-height: 1.25; overflow-wrap: anywhere; }
 .pm-off { margin-left: auto; font-size: 0.56rem; font-weight: 400; padding: 1px 7px; border-radius: 999px; background: #fee2e2; color: #b91c1c; text-transform: uppercase; }
 /* the page you are on: a white pill that reaches the edge of the menu, with flares above and below, a gold node */
-.pm-tree li.is-on .pm-link { background: var(--tab); color: #0b1d36; font-weight: 400; box-shadow: 3px 0 0 var(--tab); }
+.pm-tree li.is-on .pm-link { background: var(--tab); color: #0b1d36; font-weight: 400; box-shadow: 3px 0 0 var(--tab), 0 0 0 1.5px rgba(242, 169, 59, 0.7), 0 0 10px 1px rgba(242, 169, 59, 0.55); animation: pm-outline 2.4s ease-in-out infinite; }
+/* the page you are on carries a gold outline that breathes (a soft glow around the white tab) */
+@keyframes pm-outline {
+  0%, 100% { box-shadow: 3px 0 0 var(--tab), 0 0 0 1.5px rgba(242, 169, 59, 0.55), 0 0 8px 0 rgba(242, 169, 59, 0.35); }
+  50% { box-shadow: 3px 0 0 var(--tab), 0 0 0 2px rgba(255, 206, 110, 1), 0 0 18px 3px rgba(242, 169, 59, 0.85), 0 0 30px 6px rgba(242, 169, 59, 0.35); }
+}
+.pm-rail li.is-on button { animation: pm-outline-rail 2.4s ease-in-out infinite; }
+@keyframes pm-outline-rail {
+  0%, 100% { box-shadow: 0 0 0 1.5px rgba(242, 169, 59, 0.55), 0 0 8px 0 rgba(242, 169, 59, 0.35); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 206, 110, 1), 0 0 16px 3px rgba(242, 169, 59, 0.8); }
+}
+@media (prefers-reduced-motion: reduce) { .pm-tree li.is-on .pm-link, .pm-rail li.is-on button { animation: none; } }
 .pm-tree li.is-on .pm-node { background: var(--gold); box-shadow: 0 0 0 2px var(--tab), 0 0 0 4px var(--gold), 0 0 12px 2px rgba(242, 169, 59, 0.65); animation: pm-pulse2 2.2s ease-in-out infinite; }
 @keyframes pm-pulse2 { 50% { box-shadow: 0 0 0 2px var(--tab), 0 0 0 6px rgba(242, 169, 59, 0.25), 0 0 12px 2px rgba(242, 169, 59, 0.4); } }
 .pm-tree li.is-on::before, .pm-tree li.is-on::after { content: ''; position: absolute; right: 0; width: 19px; height: 19px; pointer-events: none; z-index: 1; animation: pm-flare 0.4s ease both; }
