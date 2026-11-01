@@ -4,6 +4,7 @@
       <svg class="gn-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
     </button>
 
+    <div class="gn-shell">
     <div class="gn-body">
       <div class="gn-inner">
         <button v-if="darkAllowed" type="button" class="gn-it lg-tip tip-left" :data-tip="dark ? $t('Switch to normal mode') : $t('Switch to dark mode')" :aria-label="dark ? $t('Switch to normal mode') : $t('Switch to dark mode')" @click="toggleTheme">
@@ -52,6 +53,7 @@
           <button type="button" class="gn-mini lg-tip tip-left" :data-tip="$t('Scroll to the bottom')" :aria-label="$t('Scroll to the bottom')" @click="go('bottom')"><Icons name="chevron-down" class-name="gn-ic" /></button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

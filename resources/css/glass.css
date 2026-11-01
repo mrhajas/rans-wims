@@ -204,12 +204,21 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
    The notch on the right edge (components/Sidebar/GlassNotch.vue)
    ===================================================================================================================== */
 .gn { --gn-bg: #0a0d18; position: fixed; right: 0; top: 50%; z-index: 44; display: flex; align-items: center; transform: translateY(-50%); }
-.gn-tab { position: relative; z-index: 2; display: grid; place-items: center; width: 40px; height: 66px; padding: 0 0 0 4px; border: 0; border-radius: 24px 0 0 24px; color: #fff; background: var(--gn-bg); cursor: pointer; box-shadow: -10px 8px 26px -10px rgba(0, 0, 0, 0.6), inset 1px 0 0 rgba(255, 255, 255, 0.14); transition: width 0.3s ease, background 0.2s; }
-.gn-tab:hover { background: #151a2c; }
-.gn-gear { width: 22px; height: 22px; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.gn.is-open .gn-gear { transform: rotate(120deg); }
-.gn-body { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: grid; grid-template-rows: 0fr; width: 0; overflow: hidden; border-radius: 34px 0 0 34px; background: var(--gn-bg); box-shadow: -14px 10px 34px -10px rgba(0, 0, 0, 0.65), inset 1px 0 0 rgba(255, 255, 255, 0.14); opacity: 0; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; z-index: 1; }
-.gn.is-open .gn-body { grid-template-rows: 1fr; width: 92px; opacity: 1; }
+.gn-tab { position: relative; z-index: 2; display: grid; place-items: center; width: 46px; height: 88px; padding: 0; border: 0; border-radius: 30px 0 0 30px; color: #e0f2fe; background: var(--gn-bg); cursor: pointer; box-shadow: -10px 8px 26px -10px rgba(0, 0, 0, 0.6), inset 1px 0 0 rgba(255, 255, 255, 0.14); transition: opacity 0.2s; }
+/* the notch grows out of the screen edge: a concave curve above and below joins it to the edge (the same rounded joins at the open panel) */
+.gn-tab::before, .gn-tab::after, .gn-shell::before, .gn-shell::after { content: ''; position: absolute; right: 0; width: 26px; height: 26px; pointer-events: none; }
+.gn-tab::before, .gn-shell::before { top: -26px; background: radial-gradient(circle at 0 0, transparent 26px, var(--gn-bg) 26.6px); }
+.gn-tab::after, .gn-shell::after { bottom: -26px; background: radial-gradient(circle at 0 100%, transparent 26px, var(--gn-bg) 26.6px); }
+.gn-shell { position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 1; }
+.gn-shell::before, .gn-shell::after { opacity: 0; transition: opacity 0.25s; }
+.gn.is-open .gn-shell::before, .gn.is-open .gn-shell::after { opacity: 1; transition-delay: 0.15s; }
+.gn-tab:hover .gn-gear { filter: drop-shadow(0 0 5px #bae6fd) drop-shadow(0 0 14px #38bdf8) drop-shadow(0 0 26px #818cf8); }
+/* the gear sits in the middle of the tab and never rests: it turns slowly and breathes a blue-violet glow */
+.gn-gear { width: 26px; height: 26px; color: #e0f2fe; animation: gn-spin 10s linear infinite, gn-glow 2.6s ease-in-out infinite; transition: filter 0.3s; }
+@keyframes gn-spin { to { transform: rotate(360deg); } }
+@keyframes gn-glow { 0%, 100% { filter: drop-shadow(0 0 3px rgba(186, 230, 253, 0.7)) drop-shadow(0 0 8px rgba(56, 189, 248, 0.55)); } 50% { filter: drop-shadow(0 0 5px #e0f2fe) drop-shadow(0 0 14px #38bdf8) drop-shadow(0 0 24px rgba(129, 140, 248, 0.8)); } }
+.gn-body { position: relative; display: grid; grid-template-rows: 0fr; width: 0; overflow: hidden; border-radius: 34px 0 0 34px; background: var(--gn-bg); box-shadow: -14px 10px 34px -10px rgba(0, 0, 0, 0.65), inset 1px 0 0 rgba(255, 255, 255, 0.14); opacity: 0; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; z-index: 1; }
+.gn.is-open .gn-body { grid-template-rows: 1fr; width: 100px; opacity: 1; }
 .gn.is-open .gn-tab { opacity: 0; pointer-events: none; }
 .gn-inner { min-height: 0; max-height: min(78vh, 640px); overflow-y: auto; scrollbar-width: none; display: grid; justify-items: center; gap: 12px; padding: 26px 8px 22px; }
 .gn-inner::-webkit-scrollbar { display: none; }
@@ -223,14 +232,16 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gn-cap { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.82); white-space: nowrap; }
 .gn-badge { position: absolute; top: -3px; right: -4px; z-index: 2; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px; font-size: 0.64rem; line-height: 18px; font-weight: 800; text-align: center; color: #fff; background: #ef4444; box-shadow: 0 0 0 2px var(--gn-bg); }
 .gn-sep { display: block; width: 28px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
-.gn-jump { display: flex; gap: 8px; }
-.gn-mini { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, 0.1); cursor: pointer; transition: background 0.2s, transform 0.2s; }
-.gn-mini:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.gn-jump { display: flex; justify-content: center; gap: 10px; width: 100%; }
+.gn-mini { position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50% !important; color: #e0f2fe; background: radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.28), rgba(129, 140, 248, 0.14) 70%); box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.5), 0 0 12px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(125, 211, 252, 0.25); cursor: pointer; animation: gn-pulse 2.6s ease-in-out infinite; transition: transform 0.2s, background 0.2s; }
+.gn-mini + .gn-mini { animation-delay: 1.3s; }
+@keyframes gn-pulse { 50% { box-shadow: 0 0 0 1px rgba(186, 230, 253, 0.85), 0 0 20px rgba(56, 189, 248, 0.95), 0 0 34px rgba(129, 140, 248, 0.5), inset 0 0 12px rgba(125, 211, 252, 0.4); } }
+.gn-mini:hover { transform: translateY(-2px) scale(1.06); }
 .gn-mini .gn-ic { width: 18px; height: 18px; }
 .gn :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (max-width: 767.98px), print { .gn { display: none !important; } }
 @media (max-height: 520px) { .gn-inner { gap: 8px; padding: 18px 8px 14px; } .gn-cap { display: none; } .gn-it { width: 56px; } }
-@media (prefers-reduced-motion: reduce) { .gn-body, .gn-tab, .gn-gear, .gn-ring, .gn-arc { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .gn-body, .gn-tab, .gn-ring, .gn-arc { transition: none; } .gn-gear, .gn-mini { animation: none; } }
 
 /* =====================================================================================================================
    The sign-in and error pages in Glass. They cannot know who is about to sign in, so they follow the last menu style used on this device

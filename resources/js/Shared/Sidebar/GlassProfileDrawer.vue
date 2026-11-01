@@ -92,6 +92,8 @@ export default {
   },
   watch: {
     open(v) { if (v) { this.place(); this.$nextTick(this.place); } },
+    // the menu under it changed (another theme): sit beside the new menu, not where the old one was
+    anchor() { this.place(); this.$nextTick(this.place); },
     '$page.url'() { this.$emit('close'); },
   },
   mounted() {
