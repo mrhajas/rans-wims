@@ -248,7 +248,7 @@ export default {
 .pm-head h2 { margin: 1px 0 0; font-size: 0.92rem; font-weight: 400; color: #fff; line-height: 1.2; overflow-wrap: anywhere; animation: pm-title 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes pm-title { from { opacity: 0; transform: translateY(6px); } }
 .pm-close { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: #c9d8f3; cursor: pointer; display: grid; place-items: center; transition: background 0.2s; } .pm-close:hover { background: rgba(255, 255, 255, 0.16); }
-.pm-tree { list-style: none; margin: 0; padding: 22px 0 24px 38px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; scroll-behavior: auto; }
+.pm-tree { list-style: none; margin: 0; padding: 22px 0 24px 38px; flex: 1 1 auto; min-height: 0; margin-right: -3px; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; scroll-behavior: auto; }
 /* the spine of the tree and a branch to every item */
 .pm-tree::before { content: ''; position: absolute; left: 47px; top: 28px; bottom: 30px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--ln), rgba(255, 255, 255, 0.08) 85%); opacity: 0.7; }
 .pm-tree li { position: relative; margin: 10.5px 0; animation: pm-in 0.5s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -265,11 +265,12 @@ export default {
 .pm-txt { min-width: 0; line-height: 1.25; overflow-wrap: anywhere; }
 .pm-off { margin-left: auto; font-size: 0.56rem; font-weight: 400; padding: 1px 7px; border-radius: 999px; background: #fee2e2; color: #b91c1c; text-transform: uppercase; }
 /* the page you are on: a white pill that reaches the edge of the menu, with flares above and below, a gold node */
-.pm-tree li.is-on .pm-link { background: var(--tab); color: #0b1d36; font-weight: 400; }
+.pm-tree li.is-on .pm-link { background: var(--tab); color: #0b1d36; font-weight: 400; box-shadow: 3px 0 0 var(--tab); }
 .pm-tree li.is-on .pm-node { background: var(--gold); box-shadow: 0 0 0 2px var(--tab), 0 0 0 4px var(--gold), 0 0 12px 2px rgba(242, 169, 59, 0.65); animation: pm-pulse2 2.2s ease-in-out infinite; }
 @keyframes pm-pulse2 { 50% { box-shadow: 0 0 0 2px var(--tab), 0 0 0 6px rgba(242, 169, 59, 0.25), 0 0 12px 2px rgba(242, 169, 59, 0.4); } }
-/* the pill ends inside the panel with a round end (no flares at the right edge, they left white slivers beside the page) */
-.pm-tree li.is-on .pm-link { margin-right: 12px; border-radius: 19px; }
+.pm-tree li.is-on::before, .pm-tree li.is-on::after { content: ''; position: absolute; right: 0; width: 19px; height: 19px; pointer-events: none; z-index: 1; animation: pm-flare 0.4s ease both; }
+.pm-tree li.is-on::before { top: -19px; background: radial-gradient(circle at 0 0, transparent 19px, var(--tab) 19.5px); }
+.pm-tree li.is-on::after { bottom: -19px; background: radial-gradient(circle at 0 100%, transparent 19px, var(--tab) 19.5px); }
 .pm-foot { flex: 0 0 auto; padding: 10px 14px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: #c9d8f3; }
 
 /* ----- group colours: the lighter, nude version of RANS gold, blue, violet, green, orange, rose, cyan and indigo. --bg the tile, --bg2 when it is touched, --fg the icon, --ln the line of the tree ----- */
