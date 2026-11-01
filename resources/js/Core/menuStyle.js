@@ -30,15 +30,28 @@ function freeTheMenu() {
   });
 }
 
-// After the menu has changed the page is fetched again in place (the same address, scroll kept, no browser reload): everything on screen is then built
-// fresh with the saved choice, exactly as after a reload, so the new menu and the page work from the first click. A page where something is being typed is left alone.
+// After the menu has changed and the slide is over, the page reloads once, exactly like pressing refresh: the new menu then works from the first click (a menu
+// changed live could be left unclickable in some browsers). A page where something is being typed, or with a dialog open, is not reloaded: it is fetched
+// again in place instead (the same address, scroll kept), and the typed text stays.
+// (what counts as typing: a letter the person has entered in a field of this page since it was opened; fields that only show a chosen value do not count)
+let typed = false;
+if (typeof document !== 'undefined') {
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (e.isTrusted && t && t.matches && t.matches('textarea, input:not([type=search]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file])') && !t.matches('[readonly], .sv-search-input')) typed = true;
+  }, true);
+  document.addEventListener('inertia:navigate', () => { typed = false; });
+}
+
 function settlePage() {
   try {
-    if ([...document.querySelectorAll('[role="dialog"]')].some(d => d.getClientRects().length)) return;
-    const typing = [...document.querySelectorAll('[scroll-region] input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=search]), [scroll-region] textarea')].some(e => String(e.value || '').trim() !== '');
-    if (typing) return;
-    router.visit(window.location.pathname + window.location.search, { replace: true, preserveScroll: true, preserveState: false, headers: { 'X-Quiet': '1' } });
-  } catch (e) { /* the menu already works; nothing more to do */ }
+    const dialog = [...document.querySelectorAll('[role="dialog"]')].some(d => d.getClientRects().length);
+    if (dialog || typed) {
+      if (!dialog) router.visit(window.location.pathname + window.location.search, { replace: true, preserveScroll: true, preserveState: true, headers: { 'X-Quiet': '1' } });
+      return;
+    }
+    window.location.reload();
+  } catch (e) { /* the menu already shows; nothing more to do */ }
 }
 
 // The choice is saved at once. On screen the menu in use slides out to the left and the new one slides in (html.menu-out, then html.menu-in: see glass.css);
