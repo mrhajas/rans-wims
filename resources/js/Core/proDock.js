@@ -4,6 +4,7 @@ import { reactive } from 'vue';
 // changes the content: the menu is never drawn again, keeps its scroll position and only moves its highlight. The pages that show it say so here.
 
 export const proDock = reactive({
+  style: 'pro', // which menu the dock draws: 'pro' or 'glass'
   collapsed: false,
   want: {},
   get visible() { return Object.values(this.want).some(Boolean); },
@@ -14,5 +15,6 @@ export function proDockDrop(uid) { const w = { ...proDock.want }; delete w[uid];
 // `save` is for the person pressing the fold button of the Pro menu: it keeps its own remembered state, apart from the Classic menu's
 export function proDockCollapse(v, save = false) {
   proDock.collapsed = !!v;
-  if (save) { try { window.localStorage.setItem('wims_pro_collapsed', v ? '1' : '0'); } catch (e) { /* no storage */ } }
+  if (save) { try { window.localStorage.setItem(proDock.style === 'glass' ? 'wims_glass_collapsed' : 'wims_pro_collapsed', v ? '1' : '0'); } catch (e) { /* no storage */ } }
 }
+export function proDockStyle(v) { proDock.style = v === 'glass' ? 'glass' : 'pro'; }

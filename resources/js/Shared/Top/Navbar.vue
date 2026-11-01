@@ -1,5 +1,5 @@
 <template>
-  <div ref="navRoot" class="relative z-50 md:flex md:shrink-0 nb-root" :class="{ 'nb-pro': pro }">
+  <div ref="navRoot" class="relative z-50 md:flex md:shrink-0 nb-root" :class="{ 'nb-pro': pro && !glass, 'nb-glass': glass }">
     <div
       v-if="$page.props.settings.sidebar == 'mini'"
       class="liquid-side-rail md:shrink-0 md:w-16 px-6 py-3 flex items-center justify-between md:justify-center"
@@ -16,7 +16,7 @@
         <img class="rail-brand-mark" src="/images/logo-white-mark.png" alt="RANS" />
       </Link>
       <mobile-menu-icon :show="show" @on-change="v => (show = v)" />
-      <orbit-line v-if="pro" class="ol-rail" :length="90" :speed="150" :out="-1" />
+      <orbit-line v-if="pro && !glass" class="ol-rail" :length="90" :speed="150" :out="-1" />
     </div>
     <div class="bg-white border-b border-slate-100 shadow-sm w-full pt-3.5 pb-2 px-4 md:py-2.5 md:text-md flex flex-wrap justify-between items-start md:items-center gap-y-2">
       <!-- <div class="mt-1 mr-4">{{ $page.props.auth.user.name.account.name }}</div> -->
@@ -336,8 +336,8 @@
               <div class="pm-list">
                 <div v-if="proAllowed" class="pm-item pm-style" @click.stop>
                   <span class="profile-menu-icon-chip chip-violet"><icons name="collection" class="h-4 w-4" /></span>
-                  <span class="min-w-0"><span class="pm-title">{{ $t('Menu style') }}</span><span class="pm-sub">{{ $t('Classic or Pro') }}</span></span>
-                  <span class="pm-seg" role="group" :aria-label="$t('Menu style')"><button type="button" :class="{ on: menuStyle !== 'pro' }" @click.stop.prevent="setMenuStyle('classic')">{{ $t('Classic') }}</button><button type="button" :class="{ on: menuStyle === 'pro' }" @click.stop.prevent="setMenuStyle('pro')">{{ $t('Pro') }}</button></span>
+                  <span class="min-w-0"><span class="pm-title">{{ $t('Menu style') }}</span><span class="pm-sub">{{ $t('Classic, Pro or Glass') }}</span></span>
+                  <span class="pm-seg" role="group" :aria-label="$t('Menu style')"><button type="button" :class="{ on: menuStyle === 'classic' }" @click.stop.prevent="setMenuStyle('classic')">{{ $t('Classic') }}</button><button type="button" :class="{ on: menuStyle === 'pro' }" @click.stop.prevent="setMenuStyle('pro')">{{ $t('Pro') }}</button><button type="button" :class="{ on: menuStyle === 'glass' }" @click.stop.prevent="setMenuStyle('glass')">{{ $t('Glass') }}</button></span>
                 </div>
                 <Link :href="route('profile.show')" class="pm-item">
                   <span class="profile-menu-icon-chip chip-blue"><icons name="user" class="h-4 w-4" /></span>
@@ -390,7 +390,7 @@
           </template>
         </tec-dropdown>
       </div>
-      <orbit-line v-if="pro" class="ol-bar" />
+      <orbit-line v-if="pro && !glass" class="ol-bar" />
     </div>
 
     <pwa-install-dialog v-if="pwaDialog" :kind="pwaDialog.kind" :guide="pwaDialog.guide" @close="pwaDialog = null" />
@@ -413,7 +413,7 @@ import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
 import AnimatedLogo from '@/Shared/AnimatedLogo.vue';
 import OrbitLine from '@/Shared/Top/OrbitLine.vue';
-import { applyMenuStyle, pageAllowsPro } from '@/Core/menuStyle';
+import { applyMenuStyle, pageAllowsPro, menuStyleOf } from '@/Core/menuStyle';
 import { LANGUAGES, loadLocale } from '@/Core/i18n.js';
 import { SITE_ENGINEER_ROLES } from '@/Core/siteEngineerRoles';
 import QuickCreateMenu from '@/Shared/Top/QuickCreateMenu.vue';
@@ -442,6 +442,8 @@ export default {
     menuUnavailable: { type: Boolean, default: false },
     // the Pro menu carries the logo itself on a wide screen; below that the bar keeps its own logo card (with the animated house)
     pro: { type: Boolean, default: false },
+    // the Glass look: no moving light round the bar, and the bar is frosted glass (see glass.css)
+    glass: { type: Boolean, default: false },
   },
   emits: ['on-mobile-menu-change', 'on-sidebar-toggle'],
   components: {
@@ -500,7 +502,7 @@ export default {
 
   computed: {
     proAllowed() { return pageAllowsPro(this.$page, this.$can); },
-    menuStyle() { return this.$page.props.auth?.user?.extra_attributes?.menu_style === 'pro' ? 'pro' : 'classic'; },
+    menuStyle() { return menuStyleOf(this.$page, this.$can); },
     pwaSub() {
       if (pwa.standalone) return this.$t('You are using the installed app');
       if (pwa.installed && !pwa.canPrompt) return this.$t('Already installed on this device');

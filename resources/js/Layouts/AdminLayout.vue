@@ -1,10 +1,10 @@
 <template>
   <Head :title="title" />
-  <div v-if="proMenu" class="app-shell wims-float wims-pro bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard }">
+  <div v-if="proMenu" class="app-shell wims-float wims-pro bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard, 'wims-glass': glass }" :data-glass="glass ? glassPrefs.level : null">
     <div class="pro-shell md:flex md:h-screen">
-      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden }" aria-hidden="true"></div>
+      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden, 'is-glass': glass }" aria-hidden="true"></div>
       <div class="pro-main md:flex md:flex-col md:flex-1 min-w-0 md:h-screen">
-        <top-bar pro class="print:hidden" :mobile-menu-open="show" :sidebar-hidden="sidebarHidden" :menu-unavailable="offlineReadMode" @on-mobile-menu-change="v => (show = v)" @on-sidebar-toggle="toggleSidebar" />
+        <top-bar pro :glass="glass" class="print:hidden" :mobile-menu-open="show" :sidebar-hidden="sidebarHidden" :menu-unavailable="offlineReadMode" @on-mobile-menu-change="v => (show = v)" @on-sidebar-toggle="toggleSidebar" />
         <impersonation-banner class="print:hidden" />
         <simulation-badge class="print:hidden" />
         <div v-if="offlineReadMode" class="md:flex md:grow md:items-stretch overflow-hidden">
@@ -17,7 +17,7 @@
           <transition name="swipe-hint"><div v-if="swipeHint && !show" class="swipe-hint nav:hidden print:hidden" aria-hidden="true"><i></i></div></transition>
           <transition name="drawer-backdrop"><div v-if="show" class="drawer-backdrop-root fixed inset-0 z-[100] bg-black/40 nav:hidden print:hidden" @click="show = false"></div></transition>
           <transition name="drawer-panel">
-            <div v-if="show" class="drawer-panel-root pro-drawer fixed inset-y-0 left-0 z-[101] w-[300px] max-w-[88vw] nav:hidden print:hidden"><pro-menu mobile @navigate="show = false" /></div>
+            <div v-if="show" class="drawer-panel-root pro-drawer fixed inset-y-0 left-0 z-[101] w-[300px] max-w-[88vw] nav:hidden print:hidden"><glass-menu v-if="glass" mobile @navigate="show = false" /><pro-menu v-else mobile @navigate="show = false" /></div>
           </transition>
           <div class="md:flex-1 md:px-4 py-6 md:p-6 overflow-x-hidden md:overflow-y-auto print:m-0 print:p-0 print:overflow-visible" scroll-region>
             <div class="app-canvas p-4 md:p-6 print:bg-white print:border-0 print:shadow-none print:rounded-none">
@@ -36,6 +36,7 @@
     <quick-access-menu />
     <wims-chat-launcher />
     <scroll-jump />
+    <glass-notch v-if="glass && !offlineReadMode" />
     <rauncher :show="rauncherOpen" @close="rauncherOpen = false" />
     <prayer-layer v-if="$page.props.prayer" />
     <gate-reveal :show="!!$page.props.flash.just_logged_in" />
@@ -116,7 +117,11 @@ import PrintAnimationHost from '@/Shared/PrintAnimationHost.vue';
 import FullMainMenu from '@/Shared/Sidebar/FullMainMenu.vue';
 import MiniMainMenu from '@/Shared/Sidebar/MiniMainMenu.vue';
 import ProMenu from '@/Shared/Sidebar/ProMenu.vue';
-import { proDock, proDockWant, proDockDrop, proDockCollapse } from '@/Core/proDock';
+import GlassMenu from '@/Shared/Sidebar/GlassMenu.vue';
+import GlassNotch from '@/Shared/Sidebar/GlassNotch.vue';
+import { glassPrefs } from '@/Core/glassPrefs';
+import { menuStyleOf } from '@/Core/menuStyle';
+import { proDock, proDockWant, proDockDrop, proDockCollapse, proDockStyle } from '@/Core/proDock';
 import InstallPwaBanner from '@/Shared/InstallPwaBanner.vue';
 import UpdateAvailableBanner from '@/Shared/UpdateAvailableBanner.vue';
 import ConnectionStatusBanner from '@/Shared/ConnectionStatusBanner.vue';
@@ -166,6 +171,8 @@ export default {
     FullMainMenu,
     MiniMainMenu,
     ProMenu,
+    GlassMenu,
+    GlassNotch,
     InstallPwaBanner,
     UpdateAvailableBanner,
     ConnectionStatusBanner,
@@ -196,14 +203,17 @@ export default {
   // },
 
   data() {
-    return { show: false, rauncherOpen: false, sidebarHidden: false, swipeHint: false, proDock };
+    return { show: false, rauncherOpen: false, sidebarHidden: false, swipeHint: false, proDock, glassPrefs };
   },
 
   computed: {
     // the Pro menu (a rail of coloured icons and a tree beside it) is a personal choice; the classic menu stays the default
     dockWanted() { return this.proMenu && !this.offlineReadMode; },
+    // 'classic', 'pro' or 'glass' (the person's choice, when they may use it); Pro and Glass both draw their menu beside the page
+    menuStyle() { return menuStyleOf(this.$page, this.$can); },
+    glass() { return this.menuStyle === 'glass' && this.$page.props.settings.sidebar !== 'mini'; },
     proMenu() {
-      return this.$page.props.auth?.user?.extra_attributes?.menu_style === 'pro' && this.$page.props.settings.sidebar !== 'mini' && this.$page.props.enabledFeatures?.pro_menu !== false && this.$can(['use-pro-menu']);
+      return this.menuStyle !== 'classic' && this.$page.props.settings.sidebar !== 'mini';
     },
     isMainDashboard() {
       return this.$page.component === 'Dashboard/Index';
@@ -219,6 +229,7 @@ export default {
 
   watch: {
     proMenu() { this.loadSidebarState(); },
+    glass: { immediate: true, handler(v) { proDockStyle(v ? 'glass' : 'pro'); this.loadSidebarState(); } },
     'proDock.collapsed'(v) { if (this.proMenu) this.sidebarHidden = v; },
     show(open) {
       document.body.classList.toggle('overflow-hidden', open);
@@ -307,7 +318,7 @@ export default {
       }
     },
     // the Classic menu and the Pro menu each remember their own state; the Pro menu opens full the first time
-    sidebarKey() { return this.proMenu ? 'wims_pro_collapsed' : 'wims_sidebar_hidden'; },
+    sidebarKey() { return this.glass ? 'wims_glass_collapsed' : (this.proMenu ? 'wims_pro_collapsed' : 'wims_sidebar_hidden'); },
     loadSidebarState() {
       try { this.sidebarHidden = window.localStorage.getItem(this.sidebarKey()) === '1'; } catch (e) { this.sidebarHidden = false; }
       proDockCollapse(this.sidebarHidden);

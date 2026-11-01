@@ -14,10 +14,10 @@ class MenuStyleController extends Controller
 
     public function update(Request $request)
     {
-        $d = $request->validate(['style' => 'required|in:classic,pro']);
+        $d = $request->validate(['style' => 'required|in:classic,pro,glass']);
         $user = $request->user();
-        // the Pro menu needs the feature switched on and the permission (Classic is always allowed)
-        abort_if($d['style'] === 'pro' && ! ($user->can('use-pro-menu') && \App\Services\FeatureManager::canAccess('pro_menu', $user)), 403, __('The Pro menu is not available to you.'));
+        // the Pro and Glass menus need the feature switched on and the permission (Classic is always allowed)
+        abort_if(in_array($d['style'], ['pro', 'glass'], true) && ! ($user->can('use-pro-menu') && \App\Services\FeatureManager::canAccess('pro_menu', $user)), 403, __('This menu style is not available to you.'));
         $extra = $user->extra_attributes ?? [];
         $extra['menu_style'] = $d['style'];
         $user->extra_attributes = $extra;

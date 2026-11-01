@@ -40,6 +40,7 @@ const ACCOUNT_ENTRIES = [
 // The look of the main menu: Classic or Pro (kept on the person's own settings; offered only when the feature is on and the role has the permission)
 const MENU_STYLE_ENTRIES = [
   { title: 'Switch to the Pro menu', words: 'pro menu style rail', icon: 'collection', action: 'menu-style:pro' },
+  { title: 'Switch to the Glass menu', words: 'glass menu style frosted transparent', icon: 'sparkles', action: 'menu-style:glass' },
   { title: 'Switch to the Classic menu', words: 'classic menu style sidebar', icon: 'list', action: 'menu-style:classic' },
 ];
 
