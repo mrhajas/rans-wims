@@ -1,7 +1,7 @@
 <template>
-  <div class="ts" :class="['ts-' + modelValue, { 'on-dark': dark }]" :style="{ '--i': index }" role="radiogroup" :aria-label="$t('Themes')">
+  <div class="ts" :class="['ts-' + current, { 'on-dark': dark }]" :style="{ '--i': index }" role="radiogroup" :aria-label="$t('Themes')">
     <i class="ts-thumb" aria-hidden="true"><b></b></i>
-    <button v-for="o in options" :key="o.key" type="button" role="radio" class="ts-btn" :class="{ on: modelValue === o.key }" :aria-checked="String(modelValue === o.key)" @click.stop.prevent="$emit('pick', o.key)">
+    <button v-for="o in options" :key="o.key" type="button" role="radio" class="ts-btn" :class="{ on: current === o.key }" :aria-checked="String(current === o.key)" @click.stop.prevent="choose(o.key)">
       <svg class="ts-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <template v-if="o.key === 'classic'"><path d="M4 6.5h16M4 12h16M4 17.5h10" /></template>
         <template v-else-if="o.key === 'pro'"><rect x="3.5" y="4" width="5" height="16" rx="2" /><path d="M13 7h7.5M13 12h7.5M13 17h5" /></template>
@@ -17,9 +17,13 @@
 export default {
   props: { modelValue: { type: String, default: 'classic' }, dark: Boolean },
   emits: ['pick'],
+  data() { return { chosen: '' }; },
+  methods: { choose(k) { if (k === this.current) return; this.chosen = k; this.$emit('pick', k); } },
   computed: {
+    // the choice just made shows at once (the pill glides to it) while the page reloads with the new look
+    current() { return this.chosen || this.modelValue; },
     options() { return [{ key: 'classic', label: this.$t('Classic') }, { key: 'pro', label: this.$t('Pro') }, { key: 'glass', label: this.$t('Glass') }]; },
-    index() { return Math.max(0, this.options.findIndex(o => o.key === this.modelValue)); },
+    index() { return Math.max(0, this.options.findIndex(o => o.key === this.current)); },
   },
 };
 </script>
