@@ -37,6 +37,17 @@ export default defineConfig({
     outDir: './public',
     emptyOutDir: false,
     sourcemap: process.env.NODE_ENV == 'development',
+    rollupOptions: {
+      output: {
+        // The framework libraries every page needs (Vue, the translation engine, Inertia, axios and what they use) are kept in one file of their own. It only changes
+        // when a library is upgraded, so after a release the browser keeps it from its cache and downloads just the application's own code again.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules\/(vue|@vue|vue-i18n|@intlify|@inertiajs|axios|qs|lodash\.isequal|lodash\.clonedeep|object-inspect|side-channel[a-z-]*|get-intrinsic|call-bind[a-z-]*|call-bound|function-bind|has-symbols|hasown|es-errors|es-define-property|es-object-atoms|gopd|dunder-proto|math-intrinsics|get-proto|form-data|follow-redirects|proxy-from-env)\//.test(id)) return 'vendor-core';
+          return undefined;
+        },
+      },
+    },
   },
   plugins: [
     slimEnglishMessages(),

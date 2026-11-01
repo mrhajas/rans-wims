@@ -20,8 +20,13 @@
 </template>
 
 <script>
-import ChatWorkspace from './ChatWorkspace.vue';
+import { defineAsyncComponent } from 'vue';
 import { chat, start, tickSoon } from '@/Core/wimschat';
+import { prefetchLater } from '@/Core/idlePrefetch';
+
+// the chat window (about a third of the layout's code) is downloaded when the browser is idle, not with the first page
+const loadWorkspace = () => import('./ChatWorkspace.vue');
+const ChatWorkspace = defineAsyncComponent(loadWorkspace);
 
 export default {
   components: { ChatWorkspace },
@@ -41,7 +46,7 @@ export default {
     },
   },
   watch: {
-    visible: { immediate: true, handler(v) { if (v) start(); } },
+    visible: { immediate: true, handler(v) { if (v) { start(); prefetchLater(loadWorkspace); } } },
     onModulePage(v) {
       if (v) chat.drawerOpen = false;
     },

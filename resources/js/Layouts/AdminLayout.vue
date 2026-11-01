@@ -126,7 +126,8 @@ import { proDock, proDockWant, proDockDrop, proDockCollapse, proDockStyle } from
 import InstallPwaBanner from '@/Shared/InstallPwaBanner.vue';
 import UpdateAvailableBanner from '@/Shared/UpdateAvailableBanner.vue';
 import ConnectionStatusBanner from '@/Shared/ConnectionStatusBanner.vue';
-import OfflineShell from '@/Shared/OfflineShell.vue';
+import { defineAsyncComponent } from 'vue';
+import { prefetchLater } from '@/Core/idlePrefetch';
 import Rauncher from '@/Shared/Rauncher/Rauncher.vue';
 import PrayerLayer from '@/Shared/Prayer/PrayerLayer.vue';
 import { syncPrayer } from '@/Shared/Prayer/prayerStore';
@@ -139,6 +140,12 @@ import GateReveal from '@/Shared/GateReveal.vue';
 import ImpersonationBanner from '@/Shared/Administration/ImpersonationBanner.vue';
 import SimulationBadge from '@/Shared/SimulationBadge.vue';
 import SecurityReminderPopup from '@/Shared/SecurityReminderPopup.vue';
+
+// The offline reading screen (with the detail pages it shows) is only drawn when the connection is lost, so it is not part of the first download: it is
+// fetched a moment after the page is ready (and then kept by the offline cache), well before it can be needed.
+const loadOfflineShell = () => import('@/Shared/OfflineShell.vue');
+const OfflineShell = defineAsyncComponent(loadOfflineShell);
+prefetchLater(loadOfflineShell, 2500);
 
 // Module-level, not component state — every page currently embeds
 // <admin-layout> directly in its own template rather than going through

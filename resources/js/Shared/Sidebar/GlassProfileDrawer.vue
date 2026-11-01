@@ -68,7 +68,8 @@ import { Link } from '@inertiajs/vue3';
 import { applyMenuStyle, menuStyleOf } from '@/Core/menuStyle';
 import { pwa, installApp, installGuide } from '@/Core/pwaInstall';
 import { clearAllStores } from '@/Core/offlineDb';
-import PwaInstallDialog from '@/Shared/PwaInstallDialog.vue';
+import { defineAsyncComponent } from 'vue';
+const PwaInstallDialog = defineAsyncComponent(() => import('@/Shared/PwaInstallDialog.vue'));
 import ThemeSwitch from '@/Shared/ThemeSwitch.vue';
 
 // The profile drawer of the Glass menu: the same entries as the profile menu at the top right, opened beside the menu instead of under the bar.

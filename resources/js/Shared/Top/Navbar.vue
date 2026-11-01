@@ -427,14 +427,21 @@ import TecApplicationMark from '@/Jetstream/ApplicationMark.vue';
 import Icons from '@/Shared/Icons.vue';
 import ThemeIcon from '@/Shared/Top/ThemeIcon.vue';
 import StatusIndicator from '@/Shared/Top/StatusIndicator.vue';
-import KnowledgeBaseSoon from '@/Shared/KnowledgeBaseSoon.vue';
+import { defineAsyncComponent } from 'vue';
+import { prefetchLater } from '@/Core/idlePrefetch';
 import { pwa, startPwaWatch, installApp, installGuide } from '@/Core/pwaInstall';
-import PwaInstallDialog from '@/Shared/PwaInstallDialog.vue';
 import { clearAllStores } from '@/Core/offlineDb';
 import PrayerPill from '@/Shared/Prayer/PrayerPill.vue';
 import PrayerDrawer from '@/Shared/Prayer/PrayerDrawer.vue';
 import { prayerState, adhan as adhanState } from '@/Shared/Prayer/prayerStore';
 import { DEFAULT_SHORTCUT, formatShortcut } from '@/Shared/Rauncher/shortcut';
+// two rarely opened dialogs: fetched when the browser is idle, not with the first page
+const loadKb = () => import('@/Shared/KnowledgeBaseSoon.vue');
+const loadPwaDialog = () => import('@/Shared/PwaInstallDialog.vue');
+const KnowledgeBaseSoon = defineAsyncComponent(loadKb);
+const PwaInstallDialog = defineAsyncComponent(loadPwaDialog);
+prefetchLater(loadKb, 8000);
+prefetchLater(loadPwaDialog, 8000);
 
 export default {
   props: {

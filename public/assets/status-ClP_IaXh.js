@@ -1,0 +1,1 @@
+const t={chip:e=>({Pending:"lg-chip-amber",Approved:"lg-chip-green",Rejected:"lg-chip-red"})[e]||"lg-chip-slate",icon:e=>({Pending:"clock",Approved:"tick",Rejected:"cross"})[e]||"info",label:e=>({Pending:"Pending approval",Approved:"Approved",Rejected:"Rejected"})[e]||e||""},c={statusChip:e=>t.chip(e),statusIcon:e=>t.icon(e),statusLabel:e=>t.label(e)};export{t as a,c as b};
