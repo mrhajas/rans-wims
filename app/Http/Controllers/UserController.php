@@ -265,6 +265,9 @@ class UserController extends Controller
         $data['extra_attributes'] = empty($extraAttributes) ? null : $extraAttributes;
 
         $user = User::create($data);
+        if ($request->hasFile('photo')) {
+            $user->updateProfilePhoto($request->file('photo')); // the photo taken or picked in the form
+        }
         $user->assignRole($this->guardedRoles($request->input('roles')));
         $user->warehouses()->sync($request->input('warehouses', []));
         \App\Support\AllWarehouseRoles::apply($user); // a role with "All warehouses" means every warehouse
@@ -304,6 +307,9 @@ class UserController extends Controller
         $rolesBefore = $user->getRoleNames()->all();
         $warehousesBefore = $user->warehouses()->withoutGlobalScopes()->pluck('warehouses.name')->all();
         $user->update($data);
+        if ($request->hasFile('photo')) {
+            $user->updateProfilePhoto($request->file('photo'));
+        }
         $roles = $this->guardedRoles($request->input('roles'));
         if ($self && ! in_array('Super Admin', $roles, true)) {
             $roles[] = 'Super Admin'; // Dr Hajas edits himself but can never lock himself out of the system

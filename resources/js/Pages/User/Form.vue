@@ -38,6 +38,21 @@
               <p class="lg-card-sub">{{ $t('Name') }} / {{ $t('Username') }} / {{ $t('Email') }} / {{ $t('Phone') }}</p>
             </div>
           </header>
+          <div class="uf-photo">
+            <div class="uf-photo-box">
+              <img v-if="photoUrl" :src="photoUrl" alt="" />
+              <icons v-else name="user" class="w-10 h-10" />
+            </div>
+            <div class="uf-photo-side">
+              <b>{{ $t('Photo') }}</b>
+              <small>{{ $t('Take a photo with the camera: the background is removed, the person is put on white and the photo is made small. It is saved when you save the user.') }}</small>
+              <div class="uf-photo-actions">
+                <take-photo :max-side="600" @photo="onPhotoTaken" />
+                <button v-if="form.photo" type="button" class="lg-btn lg-btn-soft" @click="form.photo = null">{{ $t('Undo') }}</button>
+              </div>
+              <small v-if="$page.props.errors.photo" class="uf-err">{{ $page.props.errors.photo }}</small>
+            </div>
+          </div>
           <div class="lg-fields">
             <div><text-input v-model="form.name" :error="$page.props.errors.name" :label="$t('Name')" /></div>
             <div><text-input v-model="form.username" :error="$page.props.errors.username" :label="$t('Username')" /></div>
@@ -339,6 +354,7 @@
 
 <script>
 import StaffLinkPanel from '@/Shared/User/StaffLinkPanel.vue';
+import TakePhoto from '@/Shared/TakePhoto.vue';
 import Dialog from '@/Shared/Dialog.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -360,6 +376,7 @@ export default {
   props: ['edit', 'roles', 'warehouses', 'staffLink', 'faceEnrolled', 'passwordHint'],
 
   components: {
+    TakePhoto,
     StaffLinkPanel,
     Dialog,
     CheckBox,
@@ -428,6 +445,11 @@ export default {
   },
 
   computed: {
+    // the photo shown: the one just taken, else the saved one
+    photoUrl() {
+      if (this.form.photo instanceof File) return this._photoUrl || (this._photoUrl = URL.createObjectURL(this.form.photo));
+      return this.edit && this.edit.profile_photo_url ? this.edit.profile_photo_url : null;
+    },
     // what a password must have (the same rule the server applies), ticked off as it is typed
     // 0-4 bars: how many of the four rules are met (a 12+ character password that meets them all is "Strong")
     passwordStrength() {
@@ -499,6 +521,11 @@ export default {
     },
     resetWarehouses() {
       this.form.warehouses = [];
+    },
+    onPhotoTaken(file) {
+      if (this._photoUrl) URL.revokeObjectURL(this._photoUrl);
+      this._photoUrl = null;
+      this.form.photo = file;
     },
     update() {
       this.form.post(this.edit ? this.route('users.update', this.edit.id) : this.route('users.store'), {
@@ -594,6 +621,13 @@ export default {
 </script>
 
 <style scoped>
+.uf-photo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--lg-line); background: var(--lg-soft); }
+.uf-photo-box { display: grid; place-items: center; width: 96px; height: 112px; border-radius: 14px; overflow: hidden; background: #fff; border: 2px dashed #c7d2fe; color: #818cf8; flex: none; }
+.uf-photo-box img { width: 100%; height: 100%; object-fit: cover; }
+.uf-photo-side { display: grid; gap: 6px; min-width: 0; flex: 1 1 260px; }
+.uf-photo-side b { font-size: 0.85rem; color: var(--lg-ink); } .uf-photo-side small { font-size: 0.74rem; line-height: 1.4; color: var(--lg-mute); }
+.uf-photo-actions { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.uf-err { color: #dc2626; font-weight: 600; }
 .us-qbtn { padding: 7px 13px; }
 .us-search { position: relative; }
 .us-search-ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--lg-faint); pointer-events: none; }

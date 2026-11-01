@@ -20,6 +20,7 @@
             </div>
           </header>
           <div class="stf-identity">
+            <div class="stf-photo-col">
             <div class="stf-photo-picker flex-none" @click="$refs.photoInput.click()">
               <img v-if="photoPreviewUrl" :src="photoPreviewUrl" class="stf-photo-img" alt="" />
               <div v-else class="stf-photo-placeholder">{{ $t('PHOTO') }}</div>
@@ -38,6 +39,9 @@
               </button>
             </div>
             <input ref="photoInput" type="file" accept="image/png,image/jpeg,image/svg+xml" class="hidden" @change="onPhotoChosen" />
+            <!-- the camera: the background is removed on this device, the person is put on white and the photo is made small; it is saved with the record -->
+            <take-photo :max-side="800" @photo="onPhotoTaken" />
+            </div>
 
             <div class="lg-fields stf-identity-fields">
               <div><text-input :label="$t('Name')" v-model="form.name" :error="$page.props.errors.name" required /></div>
@@ -187,9 +191,10 @@ import AutoComplete from '@/Shared/AutoComplete.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import AttachmentPicker from '@/Shared/AttachmentPicker.vue';
 import DeleteStaff from '@/Shared/Staff/DeleteStaff.vue';
+import TakePhoto from '@/Shared/TakePhoto.vue';
 
 export default {
-  components: { AdminLayout, TextInput, DatePicker, TextareaInput, AutoComplete, PageHeader, AttachmentPicker, DeleteStaff },
+  components: { AdminLayout, TextInput, DatePicker, TextareaInput, AutoComplete, PageHeader, AttachmentPicker, DeleteStaff, TakePhoto },
 
   props: {
     staff: Object,
@@ -309,6 +314,11 @@ export default {
     hideAttachmentZoom() {
       this.attachmentZoom.show = false;
     },
+    // a photo taken with the camera (already on white and small): it takes the place of the photo, like a picked file
+    onPhotoTaken(file) {
+      this.photoFile = file;
+      this.photoRemoved = false;
+    },
     onPhotoChosen(e) {
       const file = e.target.files && e.target.files[0];
       if (file) {
@@ -383,6 +393,7 @@ export default {
 
 .stf-identity { display: flex; flex-direction: column; gap: 1.25rem; align-items: flex-start; }
 .stf-identity-fields { flex: 1 1 auto; width: 100%; min-width: 0; }
+.stf-photo-col { display: grid; gap: 10px; justify-items: center; flex: none; }
 @media (min-width: 768px) {
   .stf-identity { flex-direction: row; }
 }

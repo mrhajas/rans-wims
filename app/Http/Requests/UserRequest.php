@@ -38,6 +38,7 @@ class UserRequest extends FormRequest
     {
         return [
             'phone'        => ['nullable', 'string', 'max:50', new \App\Rules\TzMobile],
+            'photo'        => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
             'roles'        => 'array|min:1',
             'name'         => 'required|max:50',
             'edit_all'     => 'nullable|boolean',
@@ -65,9 +66,7 @@ class UserRequest extends FormRequest
             unset($data['password']);
         }
 
-        // if ($this->file('photo')) {
-        //     $data['photo_path'] = $this->file('photo')->store('users');
-        // }
+        unset($data['photo']); // the photo is stored by the controller (User::updateProfilePhoto), not mass-assigned
 
         return $data;
     }
