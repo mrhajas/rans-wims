@@ -121,7 +121,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 
 .gm-head { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 2px 2px 0; }
 .gm-brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
-.gm-logo { display: block; width: 184px; padding: 4px 4px 4px 6px; filter: drop-shadow(0 4px 14px rgba(255, 150, 40, 0.45)); }
+.gm-logo { display: block; width: 202px; padding: 4px 4px 4px 6px; filter: drop-shadow(0 4px 14px rgba(255, 150, 40, 0.45)); }
 .gm.is-compact .gm-logo { width: 46px; padding: 0; }
 .gm-fold { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; color: #1e293b; background: rgba(255, 255, 255, 0.95); cursor: pointer; box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.55), 0 0 0 5px rgba(255, 255, 255, 0.12); transition: transform 0.2s, box-shadow 0.2s; }
 .gm-fold:hover { transform: scale(1.08); }
@@ -129,7 +129,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm.is-compact .gm-brand { flex: none; }
 .gm.is-compact .gm-fold { position: absolute; top: 22px; right: -21px; width: 34px; height: 34px; z-index: 3; }
 
-.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 55px; margin-top: 16px; padding: 0 20px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 24px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 52px; margin-top: 16px; padding: 0 20px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 24px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
 .gm-search:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.4); color: #fff; box-shadow: 0 16px 28px -14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.36); }
 .gm-search:active { transform: scale(0.99); }
 .gm-search-txt { flex: 1; font-size: 1.02rem; }
@@ -204,12 +204,12 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 /* =====================================================================================================================
    The notch on the right edge (components/Sidebar/GlassNotch.vue)
    ===================================================================================================================== */
-.gn { --gn-bg: #0a0d18; position: fixed; right: 0; top: 50%; z-index: 44; display: flex; align-items: center; transform: translateY(-50%); }
+.gn { --gn-bg: #0a0d18; position: fixed; right: 0; top: 50%; z-index: 44; display: flex; align-items: center; transform: translateY(-50%) scale(0.8); transform-origin: 100% 50%; }
 .gn-tab { position: relative; z-index: 2; display: grid; place-items: center; width: 46px; height: 88px; padding: 0; border: 0; border-radius: 30px 0 0 30px; color: #e0f2fe; background: var(--gn-bg); cursor: pointer; box-shadow: -10px 8px 26px -10px rgba(0, 0, 0, 0.6), inset 1px 0 0 rgba(255, 255, 255, 0.14); transition: opacity 0.2s; }
 /* the notch grows out of the screen edge: a concave curve above and below joins it to the edge (the same rounded joins at the open panel) */
-.gn-tab::before, .gn-tab::after, .gn-shell::before, .gn-shell::after { content: ''; position: absolute; right: 0; width: 26px; height: 26px; pointer-events: none; }
-.gn-tab::before, .gn-shell::before { top: -26px; background: radial-gradient(circle at 0 0, transparent 26px, var(--gn-bg) 26.6px); }
-.gn-tab::after, .gn-shell::after { bottom: -26px; background: radial-gradient(circle at 0 100%, transparent 26px, var(--gn-bg) 26.6px); }
+.gn-shell::before, .gn-shell::after { content: ''; position: absolute; right: 0; width: 26px; height: 26px; pointer-events: none; }
+.gn-shell::before { top: -26px; background: radial-gradient(circle at 0 0, transparent 26px, var(--gn-bg) 26.6px); }
+.gn-shell::after { bottom: -26px; background: radial-gradient(circle at 0 100%, transparent 26px, var(--gn-bg) 26.6px); }
 .gn-shell { position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 1; }
 .gn-shell::before, .gn-shell::after { opacity: 0; transition: opacity 0.25s; }
 .gn.is-open .gn-shell::before, .gn.is-open .gn-shell::after { opacity: 1; transition-delay: 0.15s; }
@@ -234,7 +234,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gn-badge { position: absolute; top: -3px; right: -4px; z-index: 2; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px; font-size: 0.64rem; line-height: 18px; font-weight: 800; text-align: center; color: #fff; background: #ef4444; box-shadow: 0 0 0 2px var(--gn-bg); }
 .gn-sep { display: block; width: 28px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
 .gn-jump { display: flex; justify-content: center; align-items: center; gap: 10px; width: 100%; padding: 0; margin: 0 auto; }
-.gn-mini { position: relative; display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; margin: 0; padding: 0; border: 0; border-radius: 50% !important; color: #e0f2fe; background: radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.28), rgba(129, 140, 248, 0.14) 70%); box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.5), 0 0 12px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(125, 211, 252, 0.25); cursor: pointer; animation: gn-pulse 2.6s ease-in-out infinite; transition: transform 0.2s, background 0.2s; }
+.gn-mini { position: relative; display: grid; place-items: center; flex: 0 0 36px; box-sizing: border-box; width: 36px; height: 36px; min-width: 36px; min-height: 36px; max-width: 36px; max-height: 36px; aspect-ratio: 1 / 1; margin: 0; overflow: visible; padding: 0; border: 0; border-radius: 50% !important; color: #e0f2fe; background: radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.28), rgba(129, 140, 248, 0.14) 70%); box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.5), 0 0 12px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(125, 211, 252, 0.25); cursor: pointer; animation: gn-pulse 2.6s ease-in-out infinite; transition: transform 0.2s, background 0.2s; }
 .gn-mini + .gn-mini { animation-delay: 1.3s; }
 @keyframes gn-pulse { 50% { box-shadow: 0 0 0 1px rgba(186, 230, 253, 0.85), 0 0 20px rgba(56, 189, 248, 0.95), 0 0 34px rgba(129, 140, 248, 0.5), inset 0 0 12px rgba(125, 211, 252, 0.4); } }
 .gn-mini:hover { transform: translateY(-2px) scale(1.06); }
@@ -384,7 +384,7 @@ html .dl-page.dl-glass .dl-btn.is-main { background: linear-gradient(180deg, rgb
 @keyframes menu-slide-out { to { opacity: 0; transform: translateX(-70px) scale(0.97); } }
 @keyframes menu-slide-in { from { opacity: 0; transform: translateX(-84px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes dock-space-in { from { width: 0; } }
-@keyframes notch-slide-in { from { opacity: 0; transform: translate(70px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+@keyframes notch-slide-in { from { opacity: 0; transform: translate(70px, -50%) scale(0.8); } to { opacity: 1; transform: translate(0, -50%) scale(0.8); } }
 html.menu-out .gm, html.menu-out .pm, html.menu-out .liquid-full-sidebar, html.menu-out .liquid-mini-sidebar { animation: menu-slide-out 0.28s cubic-bezier(0.5, 0, 0.8, 0.4) both !important; }
 html.menu-in .gm, html.menu-in .pm, html.menu-in .liquid-full-sidebar, html.menu-in .liquid-mini-sidebar { animation: menu-slide-in 0.62s cubic-bezier(0.2, 0.9, 0.3, 1.05) both !important; }
 html.menu-in .pro-dock-space { animation: dock-space-in 0.62s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
@@ -545,11 +545,15 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 
 /* ---- the page you are on: a light that runs round its outline, with a glow that breathes ---- */
 @property --gm-a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-.gm-item.is-on { animation: gm-glow 2.6s ease-in-out infinite; }
-.gm-item.is-on::before { content: ''; position: absolute; inset: -2px; padding: 2px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--gm-a), rgba(255, 255, 255, 0) 0deg, #a5b4fc 70deg, #67e8f9 120deg, #fff 150deg, rgba(255, 255, 255, 0) 210deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-run 3.2s linear infinite; }
+.gm-item.is-on, .gm-item.is-here { animation: gm-glow 2.6s ease-in-out infinite; }
+.gm-item.is-on::before, .gm-item.is-here::before { content: ''; position: absolute; inset: -2px; padding: 2px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--gm-a), rgba(255, 255, 255, 0) 0deg, #a5b4fc 70deg, #67e8f9 120deg, #fff 150deg, rgba(255, 255, 255, 0) 210deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-run 3.2s linear infinite; }
 @keyframes gm-run { to { --gm-a: 360deg; } }
 @keyframes gm-glow { 0%, 100% { box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 0 8px 0 rgba(165, 180, 252, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55); } 50% { box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 0 22px 3px rgba(129, 140, 252, 0.8), 0 0 36px 6px rgba(103, 232, 249, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.55); } }
-@media (prefers-reduced-motion: reduce) { .gm-item.is-on, .gm-item.is-on::before { animation: none; } }
+/* inside a group: the entry you are on runs its own (smaller) outline, and its parent group carries the big one */
+.gm-sub.is-on { animation: gm-glow-s 2.6s ease-in-out infinite; }
+.gm-sub.is-on::before { content: ''; position: absolute; inset: -1.5px; padding: 1.5px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--gm-a), rgba(255, 255, 255, 0) 0deg, #a5b4fc 70deg, #67e8f9 120deg, #fff 150deg, rgba(255, 255, 255, 0) 210deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-run 3.2s linear infinite; }
+@keyframes gm-glow-s { 0%, 100% { box-shadow: 0 0 6px 0 rgba(165, 180, 252, 0.3); } 50% { box-shadow: 0 0 16px 2px rgba(129, 140, 252, 0.7); } }
+@media (prefers-reduced-motion: reduce) { .gm-item.is-on, .gm-item.is-here, .gm-item.is-on::before, .gm-item.is-here::before, .gm-sub.is-on, .gm-sub.is-on::before { animation: none; } }
 
 /* the scrolling page area has no scrollbar on the Glass screen, so nothing light shows beside the notch */
 @media (min-width: 768px) {
@@ -560,3 +564,5 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 /* a global button rule gave the notch buttons side padding that pushed their rings off centre: none here */
 .gn .gn-it, .gn .gn-mini, .gn .gn-tab { padding: 0 !important; }
 .gn .gn-it { width: 74px; }
+/* the two scroll arrows are exact circles (a global minimum height for buttons made them oval) */
+.gn .gn-mini { width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; max-width: 36px !important; max-height: 36px !important; border-radius: 50% !important; }
