@@ -569,7 +569,7 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 
 
 /* ---- the Glass MENU (only the menu: the top bar, the page and the footer keep the application font) is set in Montserrat, Light (300) for the text and
-   Regular (400) for the entries, at 96% of the size: Montserrat's x-height is 0.517 of its size, so a font-size-adjust of 0.497 draws every letter at 96%
+   Regular (400) for the entries, at 86% of the size: Montserrat's x-height is 0.517 of its size, so a font-size-adjust of 0.447 draws every letter at 86%
    (nothing in the layout changes) ---- */
-.gm, .gm *, .gm-tip { font-family: Montserrat, 'Segoe UI', Arial, sans-serif !important; font-weight: 300 !important; font-style: normal; font-size-adjust: 0.497 !important; }
+.gm, .gm *, .gm-tip { font-family: Montserrat, 'Segoe UI', Arial, sans-serif !important; font-weight: 300 !important; font-style: normal; font-size-adjust: 0.447 !important; }
 .gm-item, .gm-item *, .gm-sub, .gm-sub *, .gm-user *, .gm-tip, .gm-search *, .gm-night *, .gm-auto * { font-weight: 400 !important; }
