@@ -568,9 +568,8 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 .gn .gn-mini { width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; max-width: 36px !important; max-height: 36px !important; border-radius: 50% !important; }
 
 
-/* ---- the Glass screen is set in Montserrat, Light (300) for the text and Regular (400) for titles, buttons and the menu: no other weights ---- */
-html.glass-ui, html.glass-ui body, html.glass-ui body *:not(svg):not(svg *):not(.fa):not(.fas):not(.far):not(.fab):not([class*='fa-']),
-.auth-glass, .auth-glass *, .err-glass, .err-glass *, .dl-glass, .dl-glass *, .fu-glass, .fu-glass *, .jc-glass, .jc-glass *,
-.gm, .gm *, .gp, .gp *, .gn, .gn *, .gm-tip { font-family: Montserrat, 'Segoe UI', Arial, sans-serif !important; font-weight: 300 !important; font-style: normal; /* 20% smaller type: Montserrat's x-height is 0.517 of its size, so an adjust of 0.414 draws every letter at 80% (nothing else in the layout changes) */ font-size-adjust: 0.414 !important; }
-html.glass-ui body :is(b, strong, h1, h2, h3, h4, h5, h6, th, button, label, legend, .gm-item, .gm-item *, .gm-sub, .gm-sub *, .gm-user *, .gp-item b, .gp-name, .gn-cap, .gm-tip, [class*='font-medium'], [class*='font-semibold'], [class*='font-bold'], [class*='font-extrabold'], [class*='font-black'], [class*='-title'], [class*='-name']),
-.auth-glass :is(b, strong, h1, h2, h3, h4, h5, h6, button, label), .err-glass :is(b, strong, h1, h2, h3, h4, h5, h6, button), .gm-item, .gm-item *, .gm-sub, .gm-sub *, .gm-tip, .gn-cap, .gp-name, .gp-item b { font-weight: 400 !important; }
+/* ---- the Glass MENU (only the menu: the top bar, the page and the footer keep the application font) is set in Montserrat, Light (300) for the text and
+   Regular (400) for the entries, at 80% of the size: Montserrat's x-height is 0.517 of its size, so a font-size-adjust of 0.414 draws every letter at 80%
+   (nothing in the layout changes) ---- */
+.gm, .gm *, .gm-tip { font-family: Montserrat, 'Segoe UI', Arial, sans-serif !important; font-weight: 300 !important; font-style: normal; font-size-adjust: 0.414 !important; }
+.gm-item, .gm-item *, .gm-sub, .gm-sub *, .gm-user *, .gm-tip, .gm-search *, .gm-night *, .gm-auto * { font-weight: 400 !important; }
