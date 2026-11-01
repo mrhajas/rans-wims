@@ -1,5 +1,5 @@
 <template>
-  <div class="dl-page">
+  <div class="dl-page" :class="{ 'dl-glass': glassUi }">
     <Head :title="$t('Too many devices')" />
     <main class="dl-card" role="main">
       <header class="dl-head">
@@ -45,12 +45,13 @@
 
 <script>
 import { Head, router } from '@inertiajs/vue3';
+import { glassUiOn } from '@/Core/glassUi';
 
 // Shown to a sign-in that would be one device too many (Settings > Devices per user). Nothing else in WIMS can be reached until there is room.
 export default {
   components: { Head },
   props: { limit: Number, devices: { type: Array, default: () => [] }, here: Object, userName: String },
-  data() { return { busy: false }; },
+  data() { return { busy: false, glassUi: glassUiOn() }; },
   computed: {
     intro() {
       return this.limit === 1

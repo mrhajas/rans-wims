@@ -1,6 +1,6 @@
 <template>
   <Head :title="title" />
-  <div class="err-shell min-h-screen px-4 py-6 sm:px-8 sm:py-10 flex items-center justify-center">
+  <div class="err-shell min-h-screen px-4 py-6 sm:px-8 sm:py-10 flex items-center justify-center" :class="{ 'err-glass': glassUi }">
     <div class="err-orb err-orb-a"></div>
     <div class="err-orb err-orb-b"></div>
     <div class="err-orb err-orb-c"></div>
@@ -105,6 +105,7 @@
 
 <script>
 import { Head, Link } from '@inertiajs/vue3';
+import { glassUiOn } from '@/Core/glassUi';
 
 export default {
   components: { Head, Link },
@@ -114,7 +115,7 @@ export default {
   },
 
   data() {
-    return { recovering: false, canBack: false };
+    return { recovering: false, canBack: false, glassUi: glassUiOn() };
   },
 
   mounted() {

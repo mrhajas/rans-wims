@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen w-full flex items-center justify-center bg-gray-100 px-4">
-    <div class="max-w-md w-full bg-white rounded-lg shadow-md overflow-hidden text-center">
+  <div class="fu-page min-h-screen w-full flex items-center justify-center bg-gray-100 px-4" :class="{ 'fu-glass': glassUi }">
+    <div class="fu-card max-w-md w-full bg-white rounded-lg shadow-md overflow-hidden text-center">
       <div class="p-8">
         <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-amber-100 text-amber-600 mb-4">
           <icons name="lock-closed" className="h-7 w-7" />
@@ -21,10 +21,15 @@
 </template>
 
 <script>
+import { glassUiOn } from '@/Core/glassUi';
+
 export default {
   props: {
     featureName: String,
     message: String,
+  },
+  data() {
+    return { glassUi: glassUiOn() };
   },
 };
 </script>

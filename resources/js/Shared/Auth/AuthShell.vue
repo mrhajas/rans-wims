@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-shell min-h-screen">
+  <div class="auth-shell min-h-screen" :class="{ 'auth-glass': glassUi }">
     <!-- today's prayers at the top right of every sign-in page (sign in, forgot / reset password, two-step code) -->
     <login-prayer-strip v-if="$page.props.loginPrayer" />
     <div class="auth-bg-orb auth-bg-orb-a"></div>
@@ -50,10 +50,12 @@
 <script>
 import LoginPrayerStrip from '@/Shared/Prayer/LoginPrayerStrip.vue';
 import { syncPrayer } from '@/Shared/Prayer/prayerStore';
+import { glassUiOn } from '@/Core/glassUi';
 
 export default {
   components: { LoginPrayerStrip },
   props: { ctx: { type: Boolean, default: false } },
+  data() { return { glassUi: glassUiOn() }; },
   created() {
     if (this.$page.props.loginPrayer) syncPrayer(this.$page.props.loginPrayer);
   },

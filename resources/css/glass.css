@@ -225,3 +225,94 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 @media (max-width: 767.98px), print { .gn { display: none !important; } }
 @media (max-height: 520px) { .gn-inner { gap: 8px; padding: 18px 8px 14px; } .gn-cap { display: none; } .gn-it { width: 56px; } }
 @media (prefers-reduced-motion: reduce) { .gn-body, .gn-tab, .gn-gear, .gn-ring, .gn-arc { transition: none; } }
+
+/* =====================================================================================================================
+   The sign-in and error pages in Glass. They cannot know who is about to sign in, so they follow the last menu style used on this device
+   (Core/glassUi.js). Same arrangement, same content: only the look changes. Always light glass (these pages are never dark).
+   ===================================================================================================================== */
+.auth-shell.auth-glass,
+html .err-shell.err-glass,
+html .dl-page.dl-glass,
+.fu-page.fu-glass,
+.jc-page.jc-glass {
+  background:
+    radial-gradient(60vw 52vh at 8% 6%, rgba(99, 102, 241, 0.38), transparent 62%),
+    radial-gradient(52vw 52vh at 94% 10%, rgba(236, 72, 153, 0.28), transparent 62%),
+    radial-gradient(60vw 60vh at 86% 96%, rgba(45, 212, 191, 0.34), transparent 62%),
+    radial-gradient(52vw 52vh at 4% 94%, rgba(251, 146, 60, 0.3), transparent 62%),
+    linear-gradient(160deg, #e0e9ff 0%, #f0eaff 48%, #e4f6f1 100%) !important;
+}
+
+/* -- sign in, forgot / reset password, two-step code (AuthShell) -- */
+.auth-shell.auth-glass .auth-bg-orb-a { background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.85), rgba(99, 102, 241, 0.34) 55%, rgba(99, 102, 241, 0) 76%); }
+.auth-shell.auth-glass .auth-bg-orb-b { background: radial-gradient(circle at 45% 45%, rgba(255, 255, 255, 0.8), rgba(45, 212, 191, 0.34) 52%, rgba(45, 212, 191, 0) 76%); }
+.auth-shell.auth-glass .auth-glow-spin-layer { display: none; }
+.auth-shell.auth-glass .auth-glow-halo { opacity: 0.24; filter: blur(44px); }
+.auth-shell.auth-glass .auth-card {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(26px) saturate(185%); backdrop-filter: blur(26px) saturate(185%);
+  box-shadow: 0 40px 90px -34px rgba(49, 46, 129, 0.5), 0 10px 30px -14px rgba(49, 46, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.auth-shell.auth-glass label { color: #334155; }
+.auth-shell.auth-glass .auth-input {
+  background: rgba(255, 255, 255, 0.58) !important; border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 2px rgba(49, 46, 129, 0.08), 0 8px 18px -12px rgba(49, 46, 129, 0.4) !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.auth-shell.auth-glass .auth-input:hover { border-color: rgba(129, 140, 248, 0.7) !important; }
+.auth-shell.auth-glass .auth-input:focus { background: rgba(255, 255, 255, 0.8) !important; border-color: #6366f1 !important; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.22) !important; }
+.auth-shell.auth-glass .auth-note { background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.85); box-shadow: 0 8px 18px -14px rgba(49, 46, 129, 0.4); }
+.auth-shell.auth-glass .auth-submit,
+.auth-shell.auth-glass .login-submit {
+  background: linear-gradient(180deg, rgba(48, 56, 108, 0.94), rgba(17, 22, 48, 0.96)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 18px 32px -14px rgba(30, 27, 75, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+}
+.auth-shell.auth-glass .auth-link { color: #4338ca; } .auth-shell.auth-glass .auth-link:hover { color: #312e81; }
+.auth-shell.auth-glass .auth-back:hover { background: rgba(255, 255, 255, 0.65); }
+.auth-shell.auth-glass .login-or { color: #64748b; }
+/* the right-hand panel: smoked glass with light text (the same glass as the menu) */
+.auth-shell.auth-glass .auth-art {
+  color: #fff; border: 1px solid rgba(255, 255, 255, 0.34);
+  background: radial-gradient(420px 220px at 85% 12%, rgba(255, 255, 255, 0.22), transparent 70%), linear-gradient(172deg, rgba(24, 30, 62, 0.8), rgba(34, 26, 56, 0.76) 55%, rgba(78, 44, 30, 0.68));
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 24px 50px -28px rgba(15, 23, 42, 0.85);
+}
+.auth-shell.auth-glass .auth-art-badge { background: rgba(255, 255, 255, 0.16); color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.auth-shell.auth-glass .auth-art-title { color: #fff; }
+.auth-shell.auth-glass .auth-art-text { color: rgba(255, 255, 255, 0.8); }
+.auth-shell.auth-glass .auth-tile { background: linear-gradient(145deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.08)); border-color: rgba(255, 255, 255, 0.5); box-shadow: 0 14px 22px -10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.65); }
+.auth-shell.auth-glass .auth-row { color: #fff; background: rgba(255, 255, 255, 0.13); border-color: rgba(255, 255, 255, 0.32); box-shadow: 0 14px 24px -16px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.auth-shell.auth-glass .auth-row:hover { background: rgba(255, 255, 255, 0.22); }
+/* the two-step code boxes and tabs */
+.auth-shell.auth-glass .tfa-tabs { background: rgba(255, 255, 255, 0.5); border-color: rgba(255, 255, 255, 0.85); }
+.auth-shell.auth-glass .tfa-tab:hover { background: rgba(255, 255, 255, 0.8); }
+.auth-shell.auth-glass .tfa-box { background: rgba(255, 255, 255, 0.58); border-color: rgba(255, 255, 255, 0.95); }
+.auth-shell.auth-glass .tfa-box-filled { background: rgba(255, 255, 255, 0.85); border-color: #818cf8; }
+.auth-shell.auth-glass .tfa-sent { background: rgba(255, 255, 255, 0.5); border-color: rgba(255, 255, 255, 0.85); }
+
+/* -- error pages (404, 403, 419, 500 ...) -- */
+html .err-shell.err-glass .err-orb-a { background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.85), rgba(99, 102, 241, 0.3) 52%, rgba(99, 102, 241, 0) 76%); }
+html .err-shell.err-glass .err-orb-b { background: radial-gradient(circle at 45% 35%, rgba(255, 255, 255, 0.8), rgba(45, 212, 191, 0.3) 52%, rgba(45, 212, 191, 0) 76%); }
+html .err-shell.err-glass .err-orb-c { background: radial-gradient(circle at 45% 45%, rgba(255, 255, 255, 0.75), rgba(251, 146, 60, 0.26) 48%, rgba(251, 146, 60, 0) 74%); }
+html .err-shell.err-glass .err-glow-halo { background: linear-gradient(135deg, #818cf8, #ec4899, #2dd4bf, #818cf8); opacity: 0.3; }
+html .err-shell.err-glass .err-card {
+  background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(26px) saturate(185%); backdrop-filter: blur(26px) saturate(185%);
+  box-shadow: 0 40px 90px -34px rgba(49, 46, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* -- too many devices -- */
+html .dl-page.dl-glass .dl-card { background: rgba(255, 255, 255, 0.52); border: 1px solid rgba(255, 255, 255, 0.8); -webkit-backdrop-filter: blur(26px) saturate(185%); backdrop-filter: blur(26px) saturate(185%); box-shadow: 0 40px 90px -34px rgba(49, 46, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.95); }
+html .dl-page.dl-glass .dl-dev { background: rgba(255, 255, 255, 0.5); border-color: rgba(255, 255, 255, 0.85); }
+html .dl-page.dl-glass .dl-dev-ico { background: rgba(255, 255, 255, 0.7); }
+html .dl-page.dl-glass .dl-btn { background: rgba(255, 255, 255, 0.6); border-color: rgba(255, 255, 255, 0.9); }
+html .dl-page.dl-glass .dl-btn.is-main { background: linear-gradient(180deg, rgba(48, 56, 108, 0.94), rgba(17, 22, 48, 0.96)); color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+
+/* -- feature unavailable, and the plain Jetstream card pages -- */
+.fu-glass .fu-card, .jc-glass .jc-card { background: rgba(255, 255, 255, 0.52) !important; border: 1px solid rgba(255, 255, 255, 0.8) !important; border-radius: 28px; -webkit-backdrop-filter: blur(26px) saturate(185%); backdrop-filter: blur(26px) saturate(185%); box-shadow: 0 40px 90px -34px rgba(49, 46, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important; }
+.fu-glass .fu-card > div:last-child { background: rgba(255, 255, 255, 0.4) !important; border-color: rgba(255, 255, 255, 0.7) !important; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .auth-shell.auth-glass .auth-card, html .err-shell.err-glass .err-card, html .dl-page.dl-glass .dl-card { background: rgba(255, 255, 255, 0.92); }
+}

@@ -120,6 +120,7 @@ import ProMenu from '@/Shared/Sidebar/ProMenu.vue';
 import GlassMenu from '@/Shared/Sidebar/GlassMenu.vue';
 import GlassNotch from '@/Shared/Sidebar/GlassNotch.vue';
 import { glassPrefs } from '@/Core/glassPrefs';
+import { setGlassUi } from '@/Core/glassUi';
 import { menuStyleOf } from '@/Core/menuStyle';
 import { proDock, proDockWant, proDockDrop, proDockCollapse, proDockStyle } from '@/Core/proDock';
 import InstallPwaBanner from '@/Shared/InstallPwaBanner.vue';
@@ -229,7 +230,7 @@ export default {
 
   watch: {
     proMenu() { this.loadSidebarState(); },
-    glass: { immediate: true, handler(v) { proDockStyle(v ? 'glass' : 'pro'); this.loadSidebarState(); } },
+    glass: { immediate: true, handler(v) { proDockStyle(v ? 'glass' : 'pro'); this.loadSidebarState(); setGlassUi(v); } },
     'proDock.collapsed'(v) { if (this.proMenu) this.sidebarHidden = v; },
     show(open) {
       document.body.classList.toggle('overflow-hidden', open);
