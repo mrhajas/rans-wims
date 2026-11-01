@@ -129,7 +129,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm.is-compact .gm-brand { flex: none; }
 .gm.is-compact .gm-fold { position: absolute; top: 22px; right: -21px; width: 34px; height: 34px; z-index: 3; }
 
-.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 58px; margin-top: 16px; padding: 0 20px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 24px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 55px; margin-top: 16px; padding: 0 20px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 24px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
 .gm-search:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.4); color: #fff; box-shadow: 0 16px 28px -14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.36); }
 .gm-search:active { transform: scale(0.99); }
 .gm-search-txt { flex: 1; font-size: 1.02rem; }
@@ -139,7 +139,8 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm-scroll { flex: 1 1 auto; min-height: 0; margin: 10px -8px 0; padding: 0 8px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%); }
 .gm-scroll::-webkit-scrollbar { display: none; }
 .gm-sec { display: grid; gap: 4px; padding: 8px 0 4px; }
-.gm-scroll > .gm-grp { margin: 2px 0; }
+.gm-scroll > .gm-grp { margin: 0 0 8px; }
+.gm-scroll > .gm-item { margin: 0 0 8px; }
 .gm.is-compact .gm-sec { justify-items: center; }
 .gm.is-compact .gm-scroll { margin-left: -4px; margin-right: -4px; padding-left: 4px; padding-right: 4px; }
 .gm-label { margin: 8px 8px 4px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gm-mute); }
@@ -220,9 +221,9 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gn-body { position: relative; display: grid; grid-template-rows: 0fr; width: 0; overflow: hidden; border-radius: 34px 0 0 34px; background: var(--gn-bg); box-shadow: -14px 10px 34px -10px rgba(0, 0, 0, 0.65), inset 1px 0 0 rgba(255, 255, 255, 0.14); opacity: 0; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s; z-index: 1; }
 .gn.is-open .gn-body { grid-template-rows: 1fr; width: 108px; opacity: 1; }
 .gn.is-open .gn-tab { opacity: 0; pointer-events: none; }
-.gn-inner { min-height: 0; max-height: min(78vh, 640px); overflow-y: auto; scrollbar-width: none; display: grid; justify-items: center; gap: 12px; padding: 26px 8px 22px; }
+.gn-inner { min-height: 0; max-height: min(78vh, 640px); overflow-y: auto; scrollbar-width: none; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; padding: 26px 8px 22px; }
 .gn-inner::-webkit-scrollbar { display: none; }
-.gn-it { display: grid; justify-items: center; gap: 5px; width: 74px; padding: 0; border: 0; background: transparent; color: #fff; cursor: pointer; font: inherit; }
+.gn-it { display: grid; justify-items: center; justify-self: center; gap: 5px; width: 74px; padding: 0; border: 0; background: transparent; color: #fff; cursor: pointer; font: inherit; }
 .gn-ring { position: relative; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, 0.07); transition: transform 0.2s, background 0.2s; }
 .gn-it:hover .gn-ring { transform: scale(1.08); background: rgba(255, 255, 255, 0.14); }
 .gn-it:active .gn-ring { transform: scale(0.94); }
@@ -540,3 +541,22 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 .gn-ring.is-glow { box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.55), 0 0 14px rgba(251, 146, 60, 0.6); animation: gn-quick 2.2s ease-in-out infinite; }
 @keyframes gn-quick { 50% { box-shadow: 0 0 0 1px rgba(253, 186, 116, 0.95), 0 0 24px 3px rgba(251, 146, 60, 0.95), 0 0 40px 8px rgba(251, 146, 60, 0.35); } }
 @media (prefers-reduced-motion: reduce) { .gn-ring.is-glow { animation: none; } }
+
+
+/* ---- the page you are on: a light that runs round its outline, with a glow that breathes ---- */
+@property --gm-a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.gm-item.is-on { animation: gm-glow 2.6s ease-in-out infinite; }
+.gm-item.is-on::before { content: ''; position: absolute; inset: -2px; padding: 2px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--gm-a), rgba(255, 255, 255, 0) 0deg, #a5b4fc 70deg, #67e8f9 120deg, #fff 150deg, rgba(255, 255, 255, 0) 210deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-run 3.2s linear infinite; }
+@keyframes gm-run { to { --gm-a: 360deg; } }
+@keyframes gm-glow { 0%, 100% { box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 0 8px 0 rgba(165, 180, 252, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55); } 50% { box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 0 22px 3px rgba(129, 140, 252, 0.8), 0 0 36px 6px rgba(103, 232, 249, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.55); } }
+@media (prefers-reduced-motion: reduce) { .gm-item.is-on, .gm-item.is-on::before { animation: none; } }
+
+/* the scrolling page area has no scrollbar on the Glass screen, so nothing light shows beside the notch */
+@media (min-width: 768px) {
+  .app-shell.wims-glass [scroll-region] { scrollbar-width: none; }
+  .app-shell.wims-glass [scroll-region]::-webkit-scrollbar { display: none; width: 0; }
+}
+
+/* a global button rule gave the notch buttons side padding that pushed their rings off centre: none here */
+.gn .gn-it, .gn .gn-mini, .gn .gn-tab { padding: 0 !important; }
+.gn .gn-it { width: 74px; }

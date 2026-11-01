@@ -22,7 +22,7 @@
       <!-- <div class="mt-1 mr-4">{{ $page.props.auth.user.name.account.name }}</div> -->
       <div class="order-2 md:order-1 nb-left mt-1 mr-0 md:mr-4 flex flex-nowrap items-center gap-y-2 min-w-0 w-full md:w-auto overflow-visible">
         <button
-          v-if="!menuUnavailable"
+          v-if="!menuUnavailable && !glass"
           type="button"
           @click="$emit('on-sidebar-toggle')"
           :data-tip="sidebarHidden ? $t('Show menu') : $t('Hide menu')"
