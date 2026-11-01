@@ -385,6 +385,14 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
 
     Route::get('feature-unavailable', [Controllers\SystemFeatureController::class, 'unavailable'])->name('feature-unavailable');
     // Settings > Performance & Data (Super Admin): retention numbers, the activity archive, slow queries, sending in the background
+    // Settings > Optimize: make the data on the server smaller and faster, with an audit history that can be printed (permissions read-optimizer / run-optimizer)
+    Route::get('settings/optimize', [Controllers\OptimizerController::class, 'index'])->name('optimizer.index');
+    Route::get('settings/optimize/scan', [Controllers\OptimizerController::class, 'scan'])->middleware('throttle:12,1,optimizer.scan')->name('optimizer.scan');
+    Route::put('settings/optimize', [Controllers\OptimizerController::class, 'updateSettings'])->middleware('throttle:20,1,optimizer.settings')->name('optimizer.settings');
+    Route::post('settings/optimize/run', [Controllers\OptimizerController::class, 'run'])->middleware('throttle:4,1,optimizer.run')->name('optimizer.run');
+    Route::get('settings/optimize/runs/{run}', [Controllers\OptimizerController::class, 'show'])->whereNumber('run')->name('optimizer.show');
+    Route::get('settings/optimize/runs/{run}/print', [Controllers\OptimizerController::class, 'print'])->whereNumber('run')->middleware('throttle:60,1,optimizer.print')->name('optimizer.print');
+    Route::get('settings/optimize/runs/{run}/pdf', [Controllers\OptimizerController::class, 'pdf'])->whereNumber('run')->middleware('throttle:30,1,optimizer.pdf')->name('optimizer.pdf');
     Route::get('settings/performance', [Controllers\PerformanceController::class, 'index'])->name('performance.index');
     Route::put('settings/performance', [Controllers\PerformanceController::class, 'update'])->middleware('throttle:20,1,performance.update')->name('performance.update');
     Route::post('settings/performance/housekeeping', [Controllers\PerformanceController::class, 'housekeeping'])->middleware('throttle:4,1,performance.housekeeping')->name('performance.housekeeping');

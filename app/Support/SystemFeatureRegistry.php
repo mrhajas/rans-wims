@@ -880,6 +880,13 @@ class SystemFeatureRegistry
                 'icon' => 'chart-bar',
                 'route_prefixes' => ['performance.'],
             ],
+            'optimizer' => [
+                'name' => __('Optimize'),
+                'description' => __('Makes the data already on the server smaller and faster (database tables, uploaded pictures, log files, technical leftovers), measures what was gained and keeps a printable audit history. Super Admin, or a role given the Optimize permissions.'),
+                'module' => __('Administration'),
+                'icon' => 'chart-bar',
+                'route_prefixes' => ['optimizer.'],
+            ],
             'low_stock_alert' => [
                 'name' => __('Low Stock Alert'),
                 'description' => __('The daily Low Stock Alert email / text message: who receives it, at what time, and which materials and projects it watches. Turning this off returns to the older alert.'),

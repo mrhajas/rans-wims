@@ -47,6 +47,18 @@
             </header>
           </section>
 
+          <!-- Optimize: Super Admin, or a role given the Optimize permission -->
+          <section v-if="$can('read-optimizer')" id="st-optimize" class="lg-card">
+            <header class="lg-card-head">
+              <span class="lg-card-ico lg-ico-indigo"><icons name="chart-bar" class="w-5 h-5" /></span>
+              <div class="min-w-0">
+                <h2 class="lg-card-title">{{ $t('Optimize') }}</h2>
+                <p class="lg-card-sub">{{ $t('Make the data on the server smaller and faster, with a printable history of who did it and what was gained.') }}</p>
+              </div>
+              <Link :href="route('optimizer.index')" class="lg-btn lg-btn-primary st-card-action">{{ $t('Open Optimize') }}</Link>
+            </header>
+          </section>
+
           <!-- Main settings form -->
           <form @submit.prevent="submit" class="st-form">
             <section id="st-general" class="lg-card">

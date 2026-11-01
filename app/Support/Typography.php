@@ -72,7 +72,11 @@ class Typography
     public static function current(): array
     {
         $out = self::defaults();
-        $raw = get_settings(self::KEY);
+        try {
+            $raw = get_settings(self::KEY);
+        } catch (\Throwable $e) {
+            $raw = null; // no settings table yet (a fresh install, a test database): the defaults
+        }
         $saved = is_string($raw) ? json_decode($raw, true) : (is_array($raw) ? $raw : []);
 
         return is_array($saved) ? self::merge($out, $saved) : $out;

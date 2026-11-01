@@ -66,7 +66,7 @@ const FEATURES = [
 ];
 
 export default {
-  props: { launchAt: { type: String, default: '2026-10-20T12:00:00+03:00' } },
+  props: { launchAt: { type: String, default: '2026-11-23T03:00:00+03:00' } },
   emits: ['close'],
   data() {
     return { shown: false, now: Date.now(), timer: null, features: FEATURES, previous: null, fit: 1 };

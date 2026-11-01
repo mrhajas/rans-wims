@@ -272,6 +272,51 @@ class PrintDocuments
         ]);
     }
 
+    /** One optimisation (Settings > Optimize) as a WIMS document: who ran it, what was done, and what was gained in space and in database speed. */
+    public static function optimizerRun(\App\Models\OptimizerRun $run): array
+    {
+        $b = (array) $run->before;
+        $a = (array) $run->after;
+        $by = fn ($v) => \App\Support\Optimizer\Runner::bytes($v);
+        $sb = (float) $run->speed_before_ms;
+        $sa = (float) $run->speed_after_ms;
+        $speed = $sb > 0 ? round((($sb - $sa) / $sb) * 100, 1) : 0;
+        $rows = [];
+        foreach ((array) $run->results as $r) {
+            $notes = implode(' ', array_map('strval', (array) ($r['notes'] ?? [])));
+            $rows[] = [['v' => $r['title'] ?? '-', 'a' => 'l'], ['v' => $r['summary'] ?? '-', 'a' => 'l'], ['v' => number_format((int) ($r['changed'] ?? 0)), 'a' => 'r', 'nw' => true],
+                ['v' => $by((int) ($r['bytes'] ?? 0)), 'a' => 'r', 'nw' => true], ['v' => ($r['ok'] ?? false) ? 'Done' : 'Error', 'a' => 'l', 'nw' => true], ['v' => $notes ?: '-', 'a' => 'l']];
+        }
+        $status = ['done' => ['Completed', 'status-info'], 'partial' => ['Partly done', 'status-warn'], 'failed' => ['Failed', 'status-warn'], 'running' => ['Running', 'status-warn']][$run->status] ?? ['Completed', 'status-info'];
+
+        return self::base([
+            'accent' => '#4f46e5', 'accent_dark' => '#3730a3', 'accent_soft' => '#eef2ff', 'accent_line' => '#c7d2fe',
+            'icon' => 'file', 'title' => 'DATA OPTIMISATION REPORT', 'subtitle' => 'What was optimised, who did it, and what was gained',
+            'reference' => 'OPT-' . str_pad((string) $run->id, 5, '0', STR_PAD_LEFT),
+            'status' => ['label' => $status[0], 'class' => $status[1]],
+            'show_values' => false, 'compact' => true,
+            'stats' => [
+                ['icon' => 'package', 'label' => 'Space gained', 'value' => $by((int) $run->saved_bytes)],
+                ['icon' => 'clock', 'label' => 'Database speed', 'value' => ($sb > 0 ? ($speed >= 0 ? '+' : '') . $speed . '%' : '-')],
+                ['icon' => 'hash', 'label' => 'Files changed', 'value' => number_format((int) $run->files_changed)],
+                ['icon' => 'hash', 'label' => 'Tables rebuilt', 'value' => number_format((int) $run->tables_changed)],
+            ],
+            'parties' => [
+                ['title' => 'Run', 'icon' => 'file', 'rows' => [['Started', optional($run->started_at)->format('d/m/Y H:i:s') ?: '-'], ['Finished', optional($run->finished_at)->format('d/m/Y H:i:s') ?: '-'], ['Took', (int) $run->seconds . ' s'], ['Status', $status[0]]]],
+                ['title' => 'Done by', 'icon' => 'user', 'rows' => [['Name', $run->user_name ?: '-'], ['Tasks', count((array) $run->tasks)]]],
+            ],
+            'table' => [
+                'title' => 'What was done', 'note' => 'Every figure was measured by the system before and after the run. Database speed is the time of a fixed set of typical reads: ' . number_format($sb, 1) . ' ms before, ' . number_format($sa, 1) . ' ms after (small differences are normal noise).', 'start' => 0,
+                'cols' => [['label' => 'Task', 'a' => 'l'], ['label' => 'Result', 'a' => 'l'], ['label' => 'Changed', 'a' => 'r'], ['label' => 'Space', 'a' => 'r'], ['label' => 'Outcome', 'a' => 'l'], ['label' => 'Notes', 'a' => 'l']],
+                'rows' => $rows,
+            ],
+            'lines' => [], 'total' => '', 'total_qty' => '',
+            'notes' => 'Before: database ' . $by((int) ($b['db_total_bytes'] ?? $b['db_bytes'] ?? 0)) . ', pictures ' . $by((int) ($b['images_bytes'] ?? 0)) . ', logs ' . $by((int) ($b['logs_bytes'] ?? 0)) . ', free disk ' . $by((int) ($b['disk_free_bytes'] ?? 0)) . '. After: database ' . $by((int) ($a['db_total_bytes'] ?? $a['db_bytes'] ?? 0)) . ', pictures ' . $by((int) ($a['images_bytes'] ?? 0)) . ', logs ' . $by((int) ($a['logs_bytes'] ?? 0)) . ', free disk ' . $by((int) ($a['disk_free_bytes'] ?? 0)) . '. Kept originals of compressed pictures: ' . $by((int) ($a['originals_bytes'] ?? 0)) . ' (removed automatically after the days set in Settings > Optimize).',
+            'signatures' => [['role' => 'Run By', 'name' => $run->user_name, 'date' => optional($run->finished_at ?: $run->started_at)->format('d/m/Y')]],
+            'footer' => 'Data optimisation OPT-' . str_pad((string) $run->id, 5, '0', STR_PAD_LEFT),
+        ]);
+    }
+
     /** The BinCard of an item as a WIMS document: the picture, the item, its Last update and who printed it, and when. */
     public static function binCard(\App\Models\Item $item, string $imageSrc, ?\App\Models\User $by = null): array
     {

@@ -538,6 +538,14 @@ class PermissionRegistry
                 ],
             ],
 
+            'optimizer' => [
+                'label' => __('Optimize'),
+                'abilities' => [
+                    'read-optimizer' => __('Open Settings > Optimize: see the sizes, the audit history of every optimisation, and print it. Only the Super Admin has it by default.'),
+                    'run-optimizer' => __('Scan and run optimisations (rebuild database tables, compress uploaded pictures and log files, remove technical leftovers) and change the Optimize numbers. Only the Super Admin has it by default.'),
+                ],
+            ],
+
             'pro_menu' => [
                 'label' => __('Pro menu'),
                 'abilities' => [

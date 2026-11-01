@@ -54,6 +54,13 @@ const BACKUP_ENTRIES = [
   { route: 'backup.index', title: 'Create System Backup', icon: 'download', permission: 'manage-backup' },
 ];
 
+// Settings > Optimize: for the Super Admin and any role given the Optimize permission
+const OPTIMIZER_ENTRIES = [
+  { route: 'optimizer.index', title: 'Optimize (make data smaller and faster)', icon: 'chart-bar', permission: 'read-optimizer' },
+  { route: 'optimizer.index', title: 'Optimization History', icon: 'clock', hash: '#op-history', permission: 'read-optimizer' },
+  { route: 'optimizer.index', title: 'Compress Pictures', icon: 'image', hash: '#op-tasks', permission: 'read-optimizer' },
+];
+
 // Settings > Performance & Data (Super Admin only), reachable by what a person would type
 const PERFORMANCE_ENTRIES = [
   { route: 'performance.index', title: 'Performance & Data', icon: 'chart-bar' },
@@ -155,6 +162,15 @@ export function searchMenu(query, ctx) {
       url: ctx.route(entry.route),
       rank: haystack.startsWith(q) ? 0 : 1,
     });
+  }
+
+  for (const entry of OPTIMIZER_ENTRIES) {
+    if (!ctx.can([entry.permission])) continue;
+
+    const haystack = entry.title.toLowerCase();
+    if (!haystack.includes(q)) continue;
+
+    results.push({ category: 'system', label: 'System', icon: entry.icon, title: entry.title, subtitle: '', url: ctx.route(entry.route) + (entry.hash || ''), rank: haystack.startsWith(q) ? 0 : 1 });
   }
 
   if (ctx.isAdmin) {

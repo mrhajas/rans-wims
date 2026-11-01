@@ -33,6 +33,11 @@ class Housekeeping
         $r['exports_removed'] = Tables::has('activity_archive_exports') ? ArchiveExport::purge(7) : 0;
         $r['log_files_removed'] = self::logFiles(PerfSettings::get('perf_log_keep_days'));
         $r['schedule_log_trimmed'] = self::trimScheduleLog();
+        try {
+            $r['optimizer_originals_removed'] = \App\Support\Optimizer\Tasks::purgeOldOriginals();
+        } catch (\Throwable $e) {
+            $r['optimizer_originals_removed'] = 0;
+        }
 
         try {
             Setting::updateOrCreate(['tec_key' => self::LAST_KEY, 'account_id' => 1], ['tec_value' => json_encode($r)]);

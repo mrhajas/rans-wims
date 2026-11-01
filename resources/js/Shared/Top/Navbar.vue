@@ -526,7 +526,7 @@ export default {
     },
     // The knowledge base opens in a new tab once `knowledge_base_live` is switched on in the settings table; until then a countdown box shows.
     kbLive() { return ['1', 1, true, 'true'].includes(this.$page.props.settings?.knowledge_base_live); },
-    kbLaunchAt() { return this.$page.props.settings?.knowledge_base_launch_at || '2026-10-20T12:00:00+03:00'; },
+    kbLaunchAt() { return this.$page.props.settings?.knowledge_base_launch_at || '2026-11-23T03:00:00+03:00'; },
     current() {
       return LANGUAGES.find(l => l.value == this.$root.$i18n.locale)?.flag || 'US';
     },
