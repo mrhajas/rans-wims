@@ -64,11 +64,16 @@ html.dark .app-shell.wims-float.wims-glass .app-canvas { background: transparent
   --lg-line: var(--gl-line);
   --lg-soft: rgba(255, 255, 255, 0.35);
   --lg-shadow: 0 14px 36px -16px rgba(49, 46, 129, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  /* the quiet greys are one step darker on glass so small print stays readable over the coloured wallpaper */
+  --lg-mute: #475569;
+  --lg-faint: #5b6b82;
 }
 html.dark .wims-glass .lg-page {
   --lg-card: rgba(15, 23, 42, calc(var(--gl-a) + 0.14));
   --lg-soft: rgba(255, 255, 255, 0.06);
   --lg-shadow: 0 14px 36px -16px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --lg-mute: #b6c3d6;
+  --lg-faint: #94a3b8;
 }
 .wims-glass .lg-card,
 .wims-glass .lg-stat,
@@ -383,12 +388,12 @@ html.menu-in .liquid-side-rail + div { animation: none !important; }
 html.dark .app-shell.wims-glass { --ui-card: rgba(15, 23, 42, calc(var(--gl-a) + 0.14)); --ui-panel: rgba(15, 23, 42, calc(var(--gl-a) + 0.06)); --ui-border: rgba(255, 255, 255, 0.14); }
 
 /* the card-like surfaces */
-html:not(.dark) .app-shell.wims-glass :is(.liquid-panel, .liquid-chart-shell, .liquid-table-shell, .liquid-stat-card, .liquid-lockdown, .liquid-filter-row, .kpi-card, .lg-card, .lg-stat, .lg-hero, .lg-actionbar, .lg-table-wrap, .dash-card, .slp) {
+html:not(.dark) .app-shell.wims-glass :is(.liquid-panel, .liquid-chart-shell, .liquid-table-shell, .liquid-stat-card, .liquid-filter-row, .kpi-card, .lg-card, .lg-stat, .lg-hero, .lg-actionbar, .lg-table-wrap, .dash-card, .slp) {
   background: rgba(255, 255, 255, var(--gl-a)) !important; border-color: var(--gl-line) !important;
   box-shadow: 0 14px 36px -16px rgba(49, 46, 129, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
   -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(170%); backdrop-filter: blur(var(--gl-blur)) saturate(170%);
 }
-html.dark .app-shell.wims-glass :is(.liquid-panel, .liquid-chart-shell, .liquid-table-shell, .liquid-stat-card, .liquid-lockdown, .liquid-filter-row, .kpi-card, .lg-card, .lg-stat, .lg-hero, .lg-actionbar, .lg-table-wrap, .dash-card, .slp) {
+html.dark .app-shell.wims-glass :is(.liquid-panel, .liquid-chart-shell, .liquid-table-shell, .liquid-stat-card, .liquid-filter-row, .kpi-card, .lg-card, .lg-stat, .lg-hero, .lg-actionbar, .lg-table-wrap, .dash-card, .slp) {
   background: rgba(15, 23, 42, calc(var(--gl-a) + 0.14)) !important; border-color: var(--gl-line) !important;
   box-shadow: 0 14px 36px -16px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(160%); backdrop-filter: blur(var(--gl-blur)) saturate(160%);
@@ -443,23 +448,13 @@ html.dark.glass-ui [role='dialog'] .bg-gray-100 { background: rgba(255, 255, 255
 .gm.is-compact .gm-auto { width: 50px; height: 50px; min-height: 50px; padding: 0; justify-content: center; border-radius: 50%; }
 
 /* =====================================================================================================================
-   Auto-hide (Glass only, wide screens): the menu leaves the page, a round handle and a hot edge remain; the pointer on either brings the menu out
+   Auto-hide (Glass only, wide screens): the menu rests as the narrow icon menu; while the pointer is on it, it opens wide over the page
+   (the page does not move: the space beside the menu stays narrow). A click elsewhere, Escape or a reload narrows it again.
    ===================================================================================================================== */
-.gm-edge, .gm-hot { display: none; }
 @media (min-width: 1024px) {
-  .pro-dock-space.is-glass.is-autohide { width: 0; }
-  .pro-dock-fixed.is-glass.is-autohide { transform: translateX(calc(-100% - 28px)); opacity: 0; pointer-events: none; transition: transform 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.05), opacity 0.35s ease; }
-  .pro-dock-fixed.is-glass.is-autohide.is-reveal { transform: none; opacity: 1; pointer-events: auto; }
-  .gm-edge { display: block; position: fixed; left: 0; top: 70px; bottom: 0; width: 10px; z-index: 46; }
-  .gm-hot { display: grid; place-items: center; position: fixed; left: 12px; top: 50%; z-index: 46; width: 46px; height: 46px; margin-top: -23px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 50%; color: #fff; cursor: pointer;
-    background: linear-gradient(160deg, rgba(79, 70, 229, 0.78), rgba(147, 51, 234, 0.7)); -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
-    box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.55); transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3), opacity 0.25s; animation: gm-hot-breathe 3.2s ease-in-out infinite; }
-  .gm-hot svg { width: 20px; height: 20px; }
-  .gm-hot:hover { transform: scale(1.12) translateX(3px); }
-  .gm-hot.is-gone { opacity: 0; transform: translateX(-30px); pointer-events: none; }
+  .pro-dock-fixed.is-glass.is-autohide.is-reveal { z-index: 60; }
+  .pro-dock-fixed.is-glass.is-autohide.is-reveal .gm { box-shadow: 0 40px 90px -24px rgba(15, 23, 42, 0.85), 0 12px 30px -10px rgba(15, 23, 42, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
 }
-@keyframes gm-hot-breathe { 0%, 100% { box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7), 0 0 0 0 rgba(168, 85, 247, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.55); } 50% { box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7), 0 0 0 10px rgba(168, 85, 247, 0), inset 0 1px 0 rgba(255, 255, 255, 0.55); } }
-@media (prefers-reduced-motion: reduce) { .gm-hot { animation: none; } .pro-dock-fixed.is-glass.is-autohide { transition: none; } }
 
 /* =====================================================================================================================
    The Themes slider (components/ThemeSwitch.vue)
@@ -505,3 +500,12 @@ html.menu-boot .gm .gm-scroll > *:nth-child(10) { --bi: 9; } html.menu-boot .gm 
 html.menu-boot .gn { animation: notch-slide-in 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.05) 0.5s both; }
 html.menu-boot .app-shell.wims-glass .liquid-side-rail + div { animation: boot-bar 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.15s both !important; }
 @media (prefers-reduced-motion: reduce) { html.menu-boot .liquid-full-sidebar, html.menu-boot .pm, html.menu-boot .gm, html.menu-boot .gm .gm-scroll > *, html.menu-boot .gn, html.menu-boot .app-shell.wims-glass .liquid-side-rail + div { animation: none !important; } }
+
+/* page footer and small print under the cards, over the wallpaper */
+html:not(.dark) .app-shell.wims-glass :is(footer, .app-footer) { color: #475569; }
+html:not(.dark) .app-shell.wims-glass :is(footer, .app-footer) :is(a, span, p, small) { color: inherit; }
+html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
+
+/* quiet labels, dates and sub-text on glass cards */
+.app-shell.wims-glass :is(.lg-stat-label, .lg-subtext, .mr-date) { color: var(--lg-mute) !important; }
+.app-shell.wims-glass :is(.lg-card, .lg-table-wrap, .lg-stat) em { color: var(--lg-faint) !important; }

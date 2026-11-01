@@ -19,16 +19,23 @@ export function applyMenuStyle(page, style) {
   const swap = () => { u.extra_attributes = { ...(u.extra_attributes || {}), menu_style: style }; };
   const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const root = document.documentElement;
+  // any open dropdown (the profile menu, the language list ...) is closed first: its full-screen layer would sit over the new menu and take the first click
+  // (the Dropdown component closes on key code 27; the Glass profile drawer listens for key "Escape" only, so it stays open on purpose)
+  document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 27 }));
   if (calm || root.classList.contains('menu-out')) { swap(); return save; }
 
   root.classList.add('menu-out');
 
   return new Promise(resolve => {
     setTimeout(() => {
-      swap();
-      root.classList.remove('menu-out');
-      root.classList.add('menu-in');
-      setTimeout(() => root.classList.remove('menu-in'), 900);
+      try {
+        swap();
+      } finally {
+        // whatever happens, the motion classes never stay on the page (they would hide or block the menu)
+        root.classList.remove('menu-out');
+        root.classList.add('menu-in');
+        setTimeout(() => root.classList.remove('menu-in'), 900);
+      }
       save.then(resolve, resolve);
     }, 290);
   });

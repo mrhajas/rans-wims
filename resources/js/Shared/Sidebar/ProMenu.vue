@@ -268,9 +268,8 @@ export default {
 .pm-tree li.is-on .pm-link { background: var(--tab); color: #0b1d36; font-weight: 400; }
 .pm-tree li.is-on .pm-node { background: var(--gold); box-shadow: 0 0 0 2px var(--tab), 0 0 0 4px var(--gold), 0 0 12px 2px rgba(242, 169, 59, 0.65); animation: pm-pulse2 2.2s ease-in-out infinite; }
 @keyframes pm-pulse2 { 50% { box-shadow: 0 0 0 2px var(--tab), 0 0 0 6px rgba(242, 169, 59, 0.25), 0 0 12px 2px rgba(242, 169, 59, 0.4); } }
-.pm-tree li.is-on::before, .pm-tree li.is-on::after { content: ''; position: absolute; right: 0; width: 19px; height: 19px; pointer-events: none; z-index: 1; animation: pm-flare 0.4s ease both; }
-.pm-tree li.is-on::before { top: -19px; background: radial-gradient(circle at 0 0, transparent 19px, var(--tab) 19.5px); }
-.pm-tree li.is-on::after { bottom: -19px; background: radial-gradient(circle at 0 100%, transparent 19px, var(--tab) 19.5px); }
+/* the pill ends inside the panel with a round end (no flares at the right edge, they left white slivers beside the page) */
+.pm-tree li.is-on .pm-link { margin-right: 12px; border-radius: 19px; }
 .pm-foot { flex: 0 0 auto; padding: 10px 14px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: #c9d8f3; }
 
 /* ----- group colours: the lighter, nude version of RANS gold, blue, violet, green, orange, rose, cyan and indigo. --bg the tile, --bg2 when it is touched, --fg the icon, --ln the line of the tree ----- */

@@ -4,7 +4,7 @@
       <Link :href="route('dashboard')" class="gm-brand" :aria-label="$t('Dashboard')" :data-tip="compact ? $t('Dashboard') : null">
         <span class="gm-logo"><animated-logo :mark="compact" :color="logoColor" glint="rgba(255, 255, 255, 0.98)" /></span>
       </Link>
-      <button v-if="!mobile" type="button" class="gm-fold" :data-tip="collapsed ? $t('Show menu') : $t('Hide menu')" :aria-label="collapsed ? $t('Show menu') : $t('Hide menu')" @click="$emit('toggle')">
+      <button v-if="!mobile && !prefs.autohide" type="button" class="gm-fold" :data-tip="collapsed ? $t('Show menu') : $t('Hide menu')" :aria-label="collapsed ? $t('Show menu') : $t('Hide menu')" @click="$emit('toggle')">
         <Icons name="chevron-down" class-name="gm-ic gm-ic-s" :class="collapsed ? '-rotate-90' : 'rotate-90'" />
       </button>
     </header>

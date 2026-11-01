@@ -2,7 +2,7 @@
   <Head :title="title" />
   <div v-if="proMenu" class="app-shell wims-float wims-pro bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard, 'wims-glass': glass }" :data-glass="glass ? glassPrefs.level : null">
     <div class="pro-shell md:flex md:h-screen">
-      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden, 'is-glass': glass, 'is-autohide': glass && glassPrefs.autohide }" aria-hidden="true"></div>
+      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden || (glass && glassPrefs.autohide), 'is-glass': glass }" aria-hidden="true"></div>
       <div class="pro-main md:flex md:flex-col md:flex-1 min-w-0 md:h-screen">
         <top-bar pro :glass="glass" class="print:hidden" :mobile-menu-open="show" :sidebar-hidden="sidebarHidden" :menu-unavailable="offlineReadMode" @on-mobile-menu-change="v => (show = v)" @on-sidebar-toggle="toggleSidebar" />
         <impersonation-banner class="print:hidden" />
