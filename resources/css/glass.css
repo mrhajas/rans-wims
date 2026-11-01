@@ -543,16 +543,12 @@ html.dark .app-shell.wims-glass :is(footer, .app-footer) { color: #cbd5e1; }
 @media (prefers-reduced-motion: reduce) { .gn-ring.is-glow { animation: none; } }
 
 
-/* ---- the page you are on: a light that runs round its outline, with a glow that breathes ---- */
+/* ---- the page you are on: a light that runs round its outline (no glow around it) ---- */
 @property --gm-a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-.gm-item.is-on, .gm-item.is-here { animation: gm-glow 2.6s ease-in-out infinite; }
 .gm-item.is-on::before, .gm-item.is-here::before { content: ''; position: absolute; inset: -2px; padding: 2px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--gm-a), rgba(255, 255, 255, 0) 0deg, #a5b4fc 70deg, #67e8f9 120deg, #fff 150deg, rgba(255, 255, 255, 0) 210deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-run 3.2s linear infinite; }
 @keyframes gm-run { to { --gm-a: 360deg; } }
-@keyframes gm-glow { 0%, 100% { box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 0 8px 0 rgba(165, 180, 252, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55); } 50% { box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 0 22px 3px rgba(129, 140, 252, 0.8), 0 0 36px 6px rgba(103, 232, 249, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.55); } }
 /* inside a group: the entry you are on runs its own (smaller) outline, and its parent group carries the big one */
-.gm-sub.is-on { animation: gm-glow-s 2.6s ease-in-out infinite; }
 .gm-sub.is-on::before { content: ''; position: absolute; inset: -1.5px; padding: 1.5px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--gm-a), rgba(255, 255, 255, 0) 0deg, #a5b4fc 70deg, #67e8f9 120deg, #fff 150deg, rgba(255, 255, 255, 0) 210deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-run 3.2s linear infinite; }
-@keyframes gm-glow-s { 0%, 100% { box-shadow: 0 0 6px 0 rgba(165, 180, 252, 0.3); } 50% { box-shadow: 0 0 16px 2px rgba(129, 140, 252, 0.7); } }
 @media (prefers-reduced-motion: reduce) { .gm-item.is-on, .gm-item.is-here, .gm-item.is-on::before, .gm-item.is-here::before, .gm-sub.is-on, .gm-sub.is-on::before { animation: none; } }
 
 /* the scrolling page area has no scrollbar on the Glass screen, so nothing light shows beside the notch */
