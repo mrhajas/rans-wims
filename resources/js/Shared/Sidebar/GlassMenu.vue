@@ -58,15 +58,17 @@
         <span v-if="!compact" class="gm-txt">{{ $t('Night mode') }}</span>
         <span v-if="!compact" class="gm-switch" :class="{ on: dark }" aria-hidden="true"><i></i></span>
       </button>
-      <button ref="userBtn" type="button" class="gm-user" :class="{ 'is-open': profileOpen }" :aria-expanded="String(profileOpen)" aria-haspopup="menu" :data-tip="compact ? me.name : null" :aria-label="$t('Profile')" @click="profileOpen = !profileOpen">
+      <button v-if="!mobile" type="button" class="gm-auto" role="switch" :aria-checked="String(prefs.autohide)" :data-tip="compact ? (prefs.autohide ? $t('Auto-hide is on') : $t('Auto-hide the menu')) : null" @click="toggleAutohide">
+        <svg class="gm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16.5V22M8.5 3h7l-1 6.2 3 3.3H6.500l3-3.300z" /></svg>
+        <span v-if="!compact" class="gm-txt">{{ $t('Auto-hide') }}</span>
+        <span v-if="!compact" class="gm-switch" :class="{ on: prefs.autohide }" aria-hidden="true"><i></i></span>
+      </button>
+      <button ref="userBtn" type="button" class="gm-user" :class="{ 'is-open': dock.profileOpen }" :aria-expanded="String(dock.profileOpen)" aria-haspopup="menu" :data-tip="compact ? me.name : null" :aria-label="$t('Profile')" @click="dock.profileOpen = !dock.profileOpen">
         <span class="gm-av"><img v-if="me.profile_photo_url" :src="me.profile_photo_url" alt="" draggable="false" /><i class="gm-online" aria-hidden="true"></i></span>
         <span v-if="!compact" class="gm-who"><b>{{ me.name }}</b><small>{{ me.email }}</small></span>
         <Icons v-if="!compact" name="chevron-down" class-name="gm-ic gm-ic-s gm-chev-r" />
       </button>
     </footer>
-
-    <!-- the profile drawer: opens beside the menu, like the profile menu at the top right -->
-    <glass-profile-drawer :open="profileOpen" :anchor="userBtnEl" :compact="compact" @close="profileOpen = false" />
 
     <!-- the tooltip is drawn on the page itself, so no panel can cut it and nothing can cover it -->
     <teleport to="body">
@@ -81,7 +83,8 @@ import Menus from '@/Core/menu';
 import sortMenus from '@/Core/sortMenus';
 import FullMainMenu from '@/Shared/Sidebar/FullMainMenu.vue';
 import AnimatedLogo from '@/Shared/AnimatedLogo.vue';
-import GlassProfileDrawer from '@/Shared/Sidebar/GlassProfileDrawer.vue';
+import { proDock } from '@/Core/proDock';
+import { glassPrefs, setGlassAutohide } from '@/Core/glassPrefs';
 import { DEFAULT_SHORTCUT, formatShortcut } from '@/Shared/Rauncher/shortcut';
 
 // The Glass menu: a floating panel of frosted glass. Wide: search, the single links under "Main", every group under "Workspace" that opens to its own items, the
@@ -95,11 +98,11 @@ SAME.forEach(k => { shared[k] = M[k]; });
 const DOTS = ['#34d399', '#fb923c', '#a78bfa', '#60a5fa', '#f472b6', '#fbbf24', '#2dd4bf', '#f87171'];
 
 export default {
-  components: { Link, AnimatedLogo, GlassProfileDrawer },
+  components: { Link, AnimatedLogo },
   props: { collapsed: Boolean, mobile: Boolean },
   emits: ['toggle', 'navigate'],
   data() {
-    return { rawMenus: Menus, openKey: '', tick: 0, dark: false, profileOpen: false, userBtnEl: null, logoColor: 'linear-gradient(135deg, #ffe27a 0%, #ffb02e 48%, #ff7a1a 100%)', tip: { on: false, ready: false, text: '', x: 0, y: 0 } };
+    return { rawMenus: Menus, openKey: '', tick: 0, dark: false, dock: proDock, prefs: glassPrefs, logoColor: 'linear-gradient(135deg, #ffe27a 0%, #ffb02e 48%, #ff7a1a 100%)', tip: { on: false, ready: false, text: '', x: 0, y: 0 } };
   },
   computed: {
     compact() { return this.collapsed && !this.mobile; },
@@ -154,7 +157,6 @@ export default {
     this.syncTheme();
   },
   mounted() {
-    this.userBtnEl = this.$refs.userBtn;
     this.$nextTick(this.revealActive);
     this._mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(this.syncTheme) : null;
     if (this._mo) this._mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
@@ -164,6 +166,8 @@ export default {
     ...shared,
     dotColor(i) { return DOTS[(i || 0) % DOTS.length]; },
     syncTheme() { this.dark = document.documentElement.classList.contains('dark'); },
+    // the menu hides itself and comes out when the pointer rests on its handle at the left edge
+    toggleAutohide() { proDock.profileOpen = false; setGlassAutohide(!glassPrefs.autohide); },
     toggleTheme() { this.$setTheme(this.dark ? 'light' : 'dark'); this.syncTheme(); },
     // the search box opens the page launcher (the same one the keyboard shortcut opens)
     openSearch() { window.dispatchEvent(new Event('wims:rauncher')); },

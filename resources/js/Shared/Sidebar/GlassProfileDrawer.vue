@@ -13,10 +13,8 @@
 
         <div class="gp-list">
           <div class="gp-style">
-            <div class="gp-style-t"><span class="gp-chip gp-violet"><Icons name="collection" class-name="gp-ic" /></span><span class="min-w-0"><b>{{ $t('Menu style') }}</b><small>{{ $t('Classic, Pro or Glass') }}</small></span></div>
-            <span class="gp-seg" role="group" :aria-label="$t('Menu style')">
-              <button v-for="s in styles" :key="s.key" type="button" :class="{ on: style === s.key }" @click="setStyle(s.key)">{{ s.label }}</button>
-            </span>
+            <div class="gp-style-t"><span class="gp-chip gp-violet"><Icons name="collection" class-name="gp-ic" /></span><span class="min-w-0"><b>{{ $t('Themes') }}</b><small>{{ $t('Classic, Pro or Glass') }}</small></span></div>
+            <theme-switch :model-value="style" dark @pick="setStyle" />
           </div>
 
           <Link :href="route('profile.show')" class="gp-item" role="menuitem" @click="$emit('close')">
@@ -71,10 +69,11 @@ import { applyMenuStyle, menuStyleOf } from '@/Core/menuStyle';
 import { pwa, installApp, installGuide } from '@/Core/pwaInstall';
 import { clearAllStores } from '@/Core/offlineDb';
 import PwaInstallDialog from '@/Shared/PwaInstallDialog.vue';
+import ThemeSwitch from '@/Shared/ThemeSwitch.vue';
 
 // The profile drawer of the Glass menu: the same entries as the profile menu at the top right, opened beside the menu instead of under the bar.
 export default {
-  components: { Link, PwaInstallDialog },
+  components: { Link, PwaInstallDialog, ThemeSwitch },
   props: { open: Boolean, anchor: { type: Object, default: null }, compact: Boolean },
   emits: ['close'],
   data() { return { pos: {}, pwa, pwaDialog: null }; },
@@ -125,7 +124,8 @@ export default {
       if (!inside) this.$emit('close');
     },
     onKey(e) { if (e.key === 'Escape' && this.open) this.$emit('close'); },
-    setStyle(s) { if (s !== this.style) applyMenuStyle(this.$page, s); this.$emit('close'); },
+    // the drawer stays open while the theme changes (it belongs to the dock, not to one menu)
+    setStyle(s) { if (s !== this.style) applyMenuStyle(this.$page, s); },
     async installPwa() {
       const done = await installApp();
       this.$emit('close');

@@ -2,7 +2,7 @@
   <Head :title="title" />
   <div v-if="proMenu" class="app-shell wims-float wims-pro bg-gray-100 min-h-screen print:bg-white" :class="{ 'wims-float-dash': isMainDashboard, 'wims-glass': glass }" :data-glass="glass ? glassPrefs.level : null">
     <div class="pro-shell md:flex md:h-screen">
-      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden, 'is-glass': glass }" aria-hidden="true"></div>
+      <div v-if="!offlineReadMode" class="pro-dock-space hidden nav:block print:hidden" :class="{ 'is-collapsed': sidebarHidden, 'is-glass': glass, 'is-autohide': glass && glassPrefs.autohide }" aria-hidden="true"></div>
       <div class="pro-main md:flex md:flex-col md:flex-1 min-w-0 md:h-screen">
         <top-bar pro :glass="glass" class="print:hidden" :mobile-menu-open="show" :sidebar-hidden="sidebarHidden" :menu-unavailable="offlineReadMode" @on-mobile-menu-change="v => (show = v)" @on-sidebar-toggle="toggleSidebar" />
         <impersonation-banner class="print:hidden" />
@@ -148,6 +148,7 @@ import SecurityReminderPopup from '@/Shared/SecurityReminderPopup.vue';
 // running once per session; keeping it here (surviving every remount) is
 // what actually fixes that, without needing to restructure all 223 pages.
 let heartbeatTimer = null;
+let bootPlayed = false;
 // Presence: we only report "I'm here" while the tab is visible AND the person touched the page in the last 3 minutes,
 // so a forgotten open tab goes Idle instead of looking online all day.
 let lastActivityAt = Date.now();
@@ -202,6 +203,16 @@ export default {
   // created() {
   //   this.$root.$i18n.locale(this.$page.props.language);
   // },
+
+  // each look of the menu comes in its own way when the page is first opened or reloaded (not on every move between pages)
+  created() {
+    if (!bootPlayed && typeof document !== 'undefined') {
+      bootPlayed = true;
+      const root = document.documentElement;
+      root.classList.add('menu-boot');
+      setTimeout(() => root.classList.remove('menu-boot'), 2200);
+    }
+  },
 
   data() {
     return { show: false, rauncherOpen: false, sidebarHidden: false, swipeHint: false, proDock, glassPrefs };

@@ -6,6 +6,7 @@ import { reactive } from 'vue';
 export const proDock = reactive({
   style: 'pro', // which menu the dock draws: 'pro' or 'glass'
   collapsed: false,
+  profileOpen: false, // the profile drawer of the Glass menu (it lives beside the dock, so it stays when the menu changes)
   want: {},
   get visible() { return Object.values(this.want).some(Boolean); },
 });

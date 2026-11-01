@@ -8,7 +8,16 @@ function load() {
   try { const v = window.localStorage.getItem(KEY); return LEVELS.includes(v) ? v : 'medium'; } catch (e) { return 'medium'; }
 }
 
-export const glassPrefs = reactive({ level: load() });
+const HIDE_KEY = 'wims_glass_autohide';
+function loadHide() { try { return window.localStorage.getItem(HIDE_KEY) === '1'; } catch (e) { return false; } }
+
+// `autohide`: the menu hides itself and shows when the pointer rests on its handle (kept on this device; after a reload it starts hidden)
+export const glassPrefs = reactive({ level: load(), autohide: loadHide() });
+
+export function setGlassAutohide(on) {
+  glassPrefs.autohide = !!on;
+  try { window.localStorage.setItem(HIDE_KEY, on ? '1' : '0'); } catch (e) { /* no storage */ }
+}
 
 export function setGlassLevel(v) {
   glassPrefs.level = LEVELS.includes(v) ? v : 'medium';

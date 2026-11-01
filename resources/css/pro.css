@@ -1,0 +1,44 @@
+/* =====================================================================================================================
+   The Pro look beyond the menu: a navy-and-gold top bar and page, so Pro does not look like Classic with another menu.
+   Scoped to .wims-pro without .wims-glass (the Glass look has its own); Classic is untouched. Text and icon colours stay as they are.
+   ===================================================================================================================== */
+:root { --pro-navy: #12335a; --pro-deep: #0b1d36; --pro-gold: #f2a93b; }
+
+/* the page: a cooler blue-grey with a faint navy glow at the top and a fine dotted grid */
+html:not(.dark) .app-shell.wims-float.wims-pro:not(.wims-glass) {
+  background:
+    radial-gradient(900px 380px at 18% -8%, rgba(18, 51, 90, 0.13), transparent 70%),
+    radial-gradient(700px 420px at 100% 100%, rgba(242, 169, 59, 0.1), transparent 68%),
+    radial-gradient(rgba(18, 51, 90, 0.07) 1px, transparent 1.4px) 0 0 / 22px 22px,
+    linear-gradient(160deg, #e7eef9 0%, #f3f6fc 55%, #eaf0f9 100%) fixed;
+}
+
+/* the top bar: crisp white with a navy edge, a gold line under it and a navy-tinted shadow */
+@media (min-width: 768px) {
+  html:not(.dark) .app-shell.wims-float.wims-pro:not(.wims-glass) .liquid-side-rail + div {
+    background: linear-gradient(180deg, #ffffff 0%, #f3f6fc 100%);
+    border: 1px solid rgba(18, 51, 90, 0.16);
+    border-radius: 24px;
+    box-shadow: 0 16px 30px -16px rgba(11, 29, 54, 0.5), 0 3px 8px -3px rgba(11, 29, 54, 0.18), inset 0 -3px 0 rgba(242, 169, 59, 0.85), inset 0 1px 0 #fff;
+  }
+  html.dark .app-shell.wims-float.wims-pro:not(.wims-glass) .liquid-side-rail + div {
+    border-color: rgba(242, 169, 59, 0.28);
+    box-shadow: 0 16px 30px -16px rgba(0, 0, 0, 0.7), inset 0 -3px 0 rgba(242, 169, 59, 0.6);
+  }
+}
+
+/* the content: cards with a navy hairline and a deep soft shadow; the page header carries a navy and gold tab on its left */
+.app-shell.wims-pro:not(.wims-glass) .lg-page {
+  --lg-line: rgba(18, 51, 90, 0.12);
+  --lg-shadow: 0 14px 30px -20px rgba(11, 29, 54, 0.45), 0 2px 4px rgba(11, 29, 54, 0.04);
+}
+html.dark .app-shell.wims-pro:not(.wims-glass) .lg-page { --lg-line: rgba(255, 255, 255, 0.1); }
+.app-shell.wims-pro:not(.wims-glass) :is(.lg-card, .lg-stat, .lg-table-wrap) { border-radius: 18px; }
+.app-shell.wims-pro:not(.wims-glass) .lg-hero { position: relative; border-radius: 18px; border-left: 4px solid var(--pro-navy); overflow: hidden; }
+.app-shell.wims-pro:not(.wims-glass) .lg-hero::after { content: ''; position: absolute; left: -4px; top: 0; width: 4px; height: 38%; background: linear-gradient(180deg, var(--pro-gold), #ffd98a); }
+.app-shell.wims-pro:not(.wims-glass) .lg-stat { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s; }
+.app-shell.wims-pro:not(.wims-glass) .lg-stat:hover { border-color: rgba(242, 169, 59, 0.7); box-shadow: 0 14px 28px -16px rgba(242, 169, 59, 0.7), 0 0 0 3px rgba(242, 169, 59, 0.14); }
+
+/* tables: a navy-tinted header band, a gold bar on the row under the pointer */
+html:not(.dark) .app-shell.wims-pro:not(.wims-glass) :is(.lg-table, table) thead th { background: #edf2fa; color: #12335a; }
+html:not(.dark) .app-shell.wims-pro:not(.wims-glass) :is(.lg-table, table) tbody tr:hover { background: rgba(242, 169, 59, 0.07); box-shadow: inset 3px 0 0 var(--pro-gold); }

@@ -280,6 +280,7 @@
         <icon-menus class="flex gap-x-3 items-center" />
 
         <tec-dropdown
+          ref="profileDd"
           align="right"
           width="72"
           :content-classes="['bg-white']"
@@ -336,8 +337,8 @@
               <div class="pm-list">
                 <div v-if="proAllowed" class="pm-item pm-style" @click.stop>
                   <span class="profile-menu-icon-chip chip-violet"><icons name="collection" class="h-4 w-4" /></span>
-                  <span class="min-w-0"><span class="pm-title">{{ $t('Menu style') }}</span><span class="pm-sub">{{ $t('Classic, Pro or Glass') }}</span></span>
-                  <span class="pm-seg" role="group" :aria-label="$t('Menu style')"><button type="button" :class="{ on: menuStyle === 'classic' }" @click.stop.prevent="setMenuStyle('classic')">{{ $t('Classic') }}</button><button type="button" :class="{ on: menuStyle === 'pro' }" @click.stop.prevent="setMenuStyle('pro')">{{ $t('Pro') }}</button><button type="button" :class="{ on: menuStyle === 'glass' }" @click.stop.prevent="setMenuStyle('glass')">{{ $t('Glass') }}</button></span>
+                  <span class="min-w-0"><span class="pm-title">{{ $t('Themes') }}</span><span class="pm-sub">{{ $t('Classic, Pro or Glass') }}</span></span>
+                  <theme-switch :model-value="menuStyle" @pick="setMenuStyle" />
                 </div>
                 <Link :href="route('profile.show')" class="pm-item">
                   <span class="profile-menu-icon-chip chip-blue"><icons name="user" class="h-4 w-4" /></span>
@@ -413,6 +414,7 @@ import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
 import AnimatedLogo from '@/Shared/AnimatedLogo.vue';
 import OrbitLine from '@/Shared/Top/OrbitLine.vue';
+import ThemeSwitch from '@/Shared/ThemeSwitch.vue';
 import { applyMenuStyle, pageAllowsPro, menuStyleOf } from '@/Core/menuStyle';
 import { LANGUAGES, loadLocale } from '@/Core/i18n.js';
 import { SITE_ENGINEER_ROLES } from '@/Core/siteEngineerRoles';
@@ -449,6 +451,7 @@ export default {
   components: {
     AnimatedLogo,
     OrbitLine,
+    ThemeSwitch,
     ThemeIcon,
     QuickCreateMenu,
     PhotoZoom,
@@ -684,6 +687,8 @@ export default {
   methods: {
     // the menu changes at once; the choice is kept on the person's own settings
     setMenuStyle(style) {
+      // the profile menu closes at once: its full-screen overlay would otherwise sit over the new menu and swallow the first click on it
+      if (this.$refs.profileDd) this.$refs.profileDd.open = false;
       applyMenuStyle(this.$page, style);
     },
     // Phones: the logo bar and icon row stay pinned (CSS: .nb-root is sticky). Once the page scrolls, the project/role row is hidden
