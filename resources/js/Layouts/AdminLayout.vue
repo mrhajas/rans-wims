@@ -230,7 +230,7 @@ export default {
 
   watch: {
     proMenu() { this.loadSidebarState(); },
-    glass: { immediate: true, handler(v) { proDockStyle(v ? 'glass' : 'pro'); this.loadSidebarState(); setGlassUi(v); } },
+    glass: { immediate: true, handler(v) { proDockStyle(v ? 'glass' : 'pro'); this.loadSidebarState(); setGlassUi(v); document.documentElement.classList.toggle('glass-ui', v); } },
     'proDock.collapsed'(v) { if (this.proMenu) this.sidebarHidden = v; },
     show(open) {
       document.body.classList.toggle('overflow-hidden', open);

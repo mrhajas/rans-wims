@@ -192,7 +192,7 @@ export default {
 </script>
 
 <style scoped>
-.pm { --rail: #0b1d36; --panel: #123763; --ink: #dbe7fb; --gold: #f2a93b; --tab: #ffffff; --r: 28px; position: relative; display: flex; flex-direction: column; height: 100%; width: 272px; flex: 0 0 auto; color: var(--ink); font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 400; border-radius: var(--r); background: linear-gradient(180deg, var(--rail) 0%, #0e2748 100%); box-shadow: 0 24px 44px -22px rgba(7, 18, 38, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pm { --rail: #0b1d36; --panel: #123763; --ink: #dbe7fb; --gold: #f2a93b; --tab: #ffffff; --r: 28px; position: relative; display: flex; flex-direction: column; height: 100%; width: 290px; flex: 0 0 auto; color: var(--ink); font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 400; border-radius: var(--r); background: linear-gradient(180deg, var(--rail) 0%, #0e2748 100%); box-shadow: 0 24px 44px -22px rgba(7, 18, 38, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .pm :deep(*) { font-family: inherit; }
 .pm.is-collapsed { width: 72px; }
 .pm.is-mobile { width: 100%; border-radius: 0 var(--r) var(--r) 0; }
@@ -248,9 +248,9 @@ export default {
 .pm-head h2 { margin: 1px 0 0; font-size: 0.92rem; font-weight: 400; color: #fff; line-height: 1.2; overflow-wrap: anywhere; animation: pm-title 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes pm-title { from { opacity: 0; transform: translateY(6px); } }
 .pm-close { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: #c9d8f3; cursor: pointer; display: grid; place-items: center; transition: background 0.2s; } .pm-close:hover { background: rgba(255, 255, 255, 0.16); }
-.pm-tree { list-style: none; margin: 0; padding: 22px 0 24px 22px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; scroll-behavior: auto; }
+.pm-tree { list-style: none; margin: 0; padding: 22px 0 24px 38px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent; scroll-behavior: auto; }
 /* the spine of the tree and a branch to every item */
-.pm-tree::before { content: ''; position: absolute; left: 31px; top: 28px; bottom: 30px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--ln), rgba(255, 255, 255, 0.08) 85%); opacity: 0.7; }
+.pm-tree::before { content: ''; position: absolute; left: 47px; top: 28px; bottom: 30px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--ln), rgba(255, 255, 255, 0.08) 85%); opacity: 0.7; }
 .pm-tree li { position: relative; margin: 10.5px 0; animation: pm-in 0.5s var(--d, 0ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .pm-link { position: relative; display: flex; align-items: center; gap: 9px; min-height: 40px; margin-left: 16px; padding: 6px 12px 6px 8px; color: #dbe6f8; text-decoration: none; font-size: 0.76rem; font-weight: 300; border-radius: 19px 0 0 19px; transition: background 0.25s ease, color 0.25s ease; }
 .pm-link::before { content: ''; position: absolute; left: -16px; top: 50%; width: 16px; height: 2px; background: linear-gradient(90deg, var(--ln), rgba(255, 255, 255, 0.15)); border-radius: 2px; opacity: 0.8; transition: width 0.25s; }

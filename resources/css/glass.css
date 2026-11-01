@@ -29,7 +29,7 @@ html.dark .app-shell.wims-float.wims-glass {
 }
 
 /* ---- the layout beside the floating menu ---- */
-.pro-dock-space.is-glass { width: 330px; }
+.pro-dock-space.is-glass { width: 348px; }
 .pro-dock-space.is-glass.is-collapsed { width: 108px; }
 .pro-dock-fixed.is-glass { z-index: 45; }
 @media (min-width: 1024px) { .pro-dock-fixed.is-glass { left: 14px; top: 14px; bottom: 14px; } .pro-dock-fixed.is-glass > .gm { height: 100%; } }
@@ -101,7 +101,7 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
    ===================================================================================================================== */
 .gm {
   --gm-ink: rgba(255, 255, 255, 0.94); --gm-mute: rgba(255, 255, 255, 0.6); --gm-line: rgba(255, 255, 255, 0.2);
-  position: relative; display: flex; flex-direction: column; width: 302px; height: 100%; flex: 0 0 auto; padding: 16px 14px 14px; box-sizing: border-box; color: var(--gm-ink);
+  position: relative; display: flex; flex-direction: column; width: 320px; height: 100%; flex: 0 0 auto; padding: 16px 12px 14px; box-sizing: border-box; color: var(--gm-ink);
   border-radius: 38px; border: 1px solid rgba(255, 255, 255, 0.34);
   background: linear-gradient(172deg, rgba(24, 30, 62, var(--gl-menu-a, 0.68)) 0%, rgba(34, 26, 56, var(--gl-menu-a, 0.68)) 55%, rgba(78, 44, 30, calc(var(--gl-menu-a, 0.68) - 0.06)) 100%);
   -webkit-backdrop-filter: blur(28px) saturate(190%) brightness(0.9); backdrop-filter: blur(28px) saturate(190%) brightness(0.9);
@@ -116,23 +116,21 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 
 .gm-head { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 2px 2px 0; }
 .gm-brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
-.gm-logo { display: grid; place-items: center; width: 50px; height: 50px; flex: none; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #ff9a62, #e8501f 62%, #b93a12); box-shadow: 0 10px 22px -8px rgba(232, 80, 31, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
-.gm-logo img { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)); }
-.gm-title { display: grid; min-width: 0; line-height: 1.2; }
-.gm-title b { font-size: 1.12rem; font-weight: 800; letter-spacing: 0.01em; white-space: nowrap; }
-.gm-title small { font-size: 0.74rem; color: var(--gm-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-logo { display: block; width: 184px; padding: 4px 4px 4px 6px; filter: drop-shadow(0 4px 14px rgba(255, 150, 40, 0.45)); }
+.gm.is-compact .gm-logo { width: 46px; padding: 0; }
 .gm-fold { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; color: #1e293b; background: rgba(255, 255, 255, 0.95); cursor: pointer; box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.55), 0 0 0 5px rgba(255, 255, 255, 0.12); transition: transform 0.2s, box-shadow 0.2s; }
 .gm-fold:hover { transform: scale(1.08); }
-.gm.is-compact .gm-head { justify-content: center; padding-top: 6px; }
+.gm.is-compact .gm-head { justify-content: center; padding-top: 6px; min-height: 58px; }
 .gm.is-compact .gm-brand { flex: none; }
 .gm.is-compact .gm-fold { position: absolute; top: 22px; right: -21px; width: 34px; height: 34px; z-index: 3; }
 
-.gm-search { display: flex; align-items: center; gap: 10px; width: 100%; height: 48px; margin-top: 16px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 18px; color: var(--gm-mute); background: rgba(255, 255, 255, 0.1); text-align: left; cursor: pointer; font: inherit; transition: background 0.2s, border-color 0.2s; }
-.gm-search:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.3); color: var(--gm-ink); }
-.gm-search-txt { flex: 1; font-size: 0.94rem; }
-.gm-kbd { padding: 3px 9px; border-radius: 10px; font-size: 0.74rem; font-family: inherit; color: var(--gm-mute); background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.12); }
-.gm.is-compact .gm-search { width: 48px; justify-content: center; padding: 0; border-radius: 50%; }
-
+.gm-search { display: flex; align-items: center; gap: 12px; width: 100%; height: 54px; margin-top: 16px; padding: 0 18px; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 20px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.13); text-align: left; cursor: pointer; font: inherit; box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.28); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+.gm-search:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.4); color: #fff; box-shadow: 0 16px 28px -14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.36); }
+.gm-search:active { transform: scale(0.99); }
+.gm-search-txt { flex: 1; font-size: 0.97rem; }
+.gm-kbd { padding: 3px 10px; border-radius: 10px; font-size: 0.76rem; font-family: inherit; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.16); }
+/* narrow menu: a true circle */
+.gm.is-compact .gm-search { width: 52px; min-width: 52px; height: 52px; flex: none; aspect-ratio: 1 / 1; padding: 0; justify-content: center; border-radius: 50%; }
 .gm-scroll { flex: 1 1 auto; min-height: 0; margin: 10px -8px 0; padding: 0 8px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%); }
 .gm-scroll::-webkit-scrollbar { display: none; }
 .gm-sec { display: grid; gap: 4px; padding: 8px 0 4px; }
@@ -179,11 +177,13 @@ html.dark .wims-glass .lg-stat:hover, html.dark .wims-glass .lg-card:hover { bor
 .gm-switch.on { background: #34d399; border-color: #34d399; }
 .gm-switch.on i { transform: translateX(22px); }
 .gm.is-compact .gm-night { width: 50px; height: 50px; min-height: 50px; padding: 0; justify-content: center; border-radius: 50%; }
-.gm-user { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border-radius: 22px; color: var(--gm-ink); text-decoration: none; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); transition: background 0.2s; }
+.gm-user { font: inherit; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border-radius: 22px; color: var(--gm-ink); text-decoration: none; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); transition: background 0.2s; }
 .gm-user:hover { background: rgba(255, 255, 255, 0.15); }
 .gm-av { position: relative; display: block; width: 46px; height: 46px; flex: none; border-radius: 50%; background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); }
 .gm-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .gm-online { position: absolute; right: -2px; bottom: -2px; width: 14px; height: 14px; border-radius: 50%; background: #22c55e; border: 2px solid #2b2a44; box-shadow: 0 0 8px rgba(34, 197, 94, 0.8); }
+.gm-chev-r { transform: rotate(-90deg); transition: transform 0.25s; color: var(--gm-mute); } .gm-user.is-open .gm-chev-r { transform: rotate(90deg); color: #fff; }
+.gm-user.is-open { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.34); }
 .gm-who { display: grid; min-width: 0; flex: 1; line-height: 1.25; }
 .gm-who b { font-size: 0.98rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gm-who small { font-size: 0.78rem; color: var(--gm-mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -316,3 +316,110 @@ html .dl-page.dl-glass .dl-btn.is-main { background: linear-gradient(180deg, rgb
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .auth-shell.auth-glass .auth-card, html .err-shell.err-glass .err-card, html .dl-page.dl-glass .dl-card { background: rgba(255, 255, 255, 0.92); }
 }
+
+
+/* =====================================================================================================================
+   The profile drawer beside the Glass menu (components/Sidebar/GlassProfileDrawer.vue)
+   ===================================================================================================================== */
+.gp {
+  position: fixed; z-index: 60; display: flex; flex-direction: column; overflow: hidden; border-radius: 30px; color: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: linear-gradient(172deg, rgba(24, 30, 62, 0.82), rgba(34, 26, 56, 0.8) 55%, rgba(78, 44, 30, 0.74));
+  -webkit-backdrop-filter: blur(28px) saturate(190%) brightness(0.9); backdrop-filter: blur(28px) saturate(190%) brightness(0.9);
+  box-shadow: 0 34px 80px -26px rgba(15, 23, 42, 0.8), 0 10px 26px -12px rgba(15, 23, 42, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.gp-head { display: flex; align-items: center; gap: 14px; padding: 18px 18px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+.gp-av { position: relative; display: block; width: 62px; height: 62px; flex: none; border-radius: 50%; background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); }
+.gp-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.gp-online { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; border-radius: 50%; background: #22c55e; border: 2px solid #2b2a44; box-shadow: 0 0 8px rgba(34, 197, 94, 0.8); }
+.gp-name { font-size: 1.08rem; font-weight: 800; overflow-wrap: anywhere; }
+.gp-mail { font-size: 0.8rem; color: rgba(255, 255, 255, 0.66); overflow-wrap: anywhere; }
+.gp-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.gp-role { padding: 2px 10px; border-radius: 9999px; font-size: 0.7rem; font-weight: 800; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.22); }
+.gp-live { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 700; color: #86efac; } .gp-live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.gp-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; display: grid; gap: 3px; padding: 10px; align-content: start; }
+.gp-list::-webkit-scrollbar { display: none; }
+.gp-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border: 1px solid transparent; border-radius: 18px; color: inherit; text-decoration: none; text-align: left; font: inherit; background: transparent; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+.gp-item:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.2); }
+.gp-item b, .gp-style-t b { display: block; font-size: 0.92rem; font-weight: 700; line-height: 1.25; }
+.gp-item small, .gp-style-t small { display: block; font-size: 0.74rem; color: rgba(255, 255, 255, 0.6); line-height: 1.3; overflow-wrap: anywhere; }
+.gp-chip { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 13px; color: #fff; box-shadow: 0 8px 16px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.gp-chip .gp-ic { width: 18px; height: 18px; display: block; }
+.gp-blue { background: linear-gradient(145deg, #60a5fa, #2563eb); } .gp-amber { background: linear-gradient(145deg, #fbbf24, #d97706); } .gp-crimson { background: linear-gradient(145deg, #fb7185, #be123c); }
+.gp-emerald { background: linear-gradient(145deg, #34d399, #047857); } .gp-teal { background: linear-gradient(145deg, #2dd4bf, #0f766e); } .gp-violet { background: linear-gradient(145deg, #a78bfa, #6d28d9); } .gp-rose { background: linear-gradient(145deg, #fb7185, #e11d48); }
+.gp-style { display: grid; gap: 10px; padding: 10px; border-radius: 18px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); margin-bottom: 4px; }
+.gp-style-t { display: flex; align-items: center; gap: 12px; }
+.gp-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 9999px; background: rgba(255, 255, 255, 0.1); }
+.gp-seg button { padding: 8px 6px; border: 0; border-radius: 9999px; font: inherit; font-size: 0.82rem; font-weight: 800; color: rgba(255, 255, 255, 0.75); background: transparent; cursor: pointer; transition: background 0.25s, color 0.25s, box-shadow 0.25s; }
+.gp-seg button:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.gp-seg button.on { color: #1e293b; background: rgba(255, 255, 255, 0.96); box-shadow: 0 8px 16px -8px rgba(0, 0, 0, 0.6); }
+.gp-foot { padding: 6px 10px 10px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+.gp-logout:hover { background: rgba(244, 63, 94, 0.2); border-color: rgba(244, 63, 94, 0.4); }
+.gp :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.gp-enter-active { transition: opacity 0.28s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.15); } .gp-leave-active { transition: opacity 0.18s ease, transform 0.2s ease; }
+.gp-enter-from, .gp-leave-to { opacity: 0; transform: translateX(-14px) scale(0.97); }
+@media (prefers-reduced-motion: reduce) { .gp-enter-active, .gp-leave-active { transition: opacity 0.15s; } .gp-enter-from, .gp-leave-to { transform: none; } }
+
+/* =====================================================================================================================
+   Changing the menu style without a reload: the old menu slides away, the new one slides in (menuStyle.js sets html.menu-out, then html.menu-in)
+   ===================================================================================================================== */
+@keyframes menu-slide-out { to { opacity: 0; transform: translateX(-70px) scale(0.97); } }
+@keyframes menu-slide-in { from { opacity: 0; transform: translateX(-84px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes dock-space-in { from { width: 0; } }
+@keyframes notch-slide-in { from { opacity: 0; transform: translate(70px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+html.menu-out .gm, html.menu-out .pm, html.menu-out .liquid-full-sidebar, html.menu-out .liquid-mini-sidebar { animation: menu-slide-out 0.28s cubic-bezier(0.5, 0, 0.8, 0.4) both !important; }
+html.menu-in .gm, html.menu-in .pm, html.menu-in .liquid-full-sidebar, html.menu-in .liquid-mini-sidebar { animation: menu-slide-in 0.62s cubic-bezier(0.2, 0.9, 0.3, 1.05) both !important; }
+html.menu-in .pro-dock-space { animation: dock-space-in 0.62s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+html.menu-in .gn { animation: notch-slide-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.05) 0.2s both; }
+html.menu-in .liquid-side-rail + div { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { html.menu-out .gm, html.menu-out .pm, html.menu-out .liquid-full-sidebar, html.menu-out .liquid-mini-sidebar, html.menu-in .gm, html.menu-in .pm, html.menu-in .liquid-full-sidebar, html.menu-in .liquid-mini-sidebar, html.menu-in .pro-dock-space, html.menu-in .gn { animation: none !important; } }
+
+/* =====================================================================================================================
+   Glass everywhere: every surface of the Glass screen (menu, top bar, cards, tables, fields, dropdowns, dialogs) is frosted glass.
+   ".bg-white" and the panel colours read these variables, so the pages that do not use the card classes below follow too.
+   ===================================================================================================================== */
+.app-shell.wims-glass { --ui-card: rgba(255, 255, 255, var(--gl-a)); --ui-panel: rgba(255, 255, 255, calc(var(--gl-a) - 0.1)); --ui-border: rgba(255, 255, 255, 0.7); }
+html.dark .app-shell.wims-glass { --ui-card: rgba(15, 23, 42, calc(var(--gl-a) + 0.14)); --ui-panel: rgba(15, 23, 42, calc(var(--gl-a) + 0.06)); --ui-border: rgba(255, 255, 255, 0.14); }
+
+/* the card-like surfaces */
+html:not(.dark) .app-shell.wims-glass :is(.liquid-panel, .liquid-chart-shell, .liquid-table-shell, .liquid-stat-card, .liquid-lockdown, .liquid-filter-row, .kpi-card, .lg-card, .lg-stat, .lg-hero, .lg-actionbar, .lg-table-wrap, .dash-card, .slp) {
+  background: rgba(255, 255, 255, var(--gl-a)) !important; border-color: var(--gl-line) !important;
+  box-shadow: 0 14px 36px -16px rgba(49, 46, 129, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(170%); backdrop-filter: blur(var(--gl-blur)) saturate(170%);
+}
+html.dark .app-shell.wims-glass :is(.liquid-panel, .liquid-chart-shell, .liquid-table-shell, .liquid-stat-card, .liquid-lockdown, .liquid-filter-row, .kpi-card, .lg-card, .lg-stat, .lg-hero, .lg-actionbar, .lg-table-wrap, .dash-card, .slp) {
+  background: rgba(15, 23, 42, calc(var(--gl-a) + 0.14)) !important; border-color: var(--gl-line) !important;
+  box-shadow: 0 14px 36px -16px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(160%); backdrop-filter: blur(var(--gl-blur)) saturate(160%);
+}
+.app-shell.wims-glass .lg-card :is(.lg-table-wrap, .liquid-table-shell) { background: transparent !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* white boxes with a shadow (dropdown panels, popovers, small cards) get the blur too */
+.app-shell.wims-glass :is(.bg-white.shadow-lg, .bg-white.shadow-xl, .bg-white.shadow-2xl, .bg-white.shadow-md, .bg-white.ring-1) { -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(170%); backdrop-filter: blur(var(--gl-blur)) saturate(170%); }
+
+/* tables: the header band and the rows let the glass show through */
+html:not(.dark) .app-shell.wims-glass :is(thead, thead tr, thead th) { background: rgba(255, 255, 255, 0.34) !important; }
+html:not(.dark) .app-shell.wims-glass tbody tr:hover { background: rgba(255, 255, 255, 0.4); }
+html.dark .app-shell.wims-glass :is(thead, thead tr, thead th) { background: rgba(255, 255, 255, 0.06) !important; }
+.app-shell.wims-glass :is(.lg-table tbody tr, table tbody tr) { background-color: transparent; }
+
+/* fields */
+html:not(.dark) .app-shell.wims-glass :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']), select, textarea) {
+  background-color: rgba(255, 255, 255, 0.55); border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 2px rgba(49, 46, 129, 0.07), 0 6px 14px -10px rgba(49, 46, 129, 0.3);
+}
+html.dark .app-shell.wims-glass :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']), select, textarea) { background-color: rgba(15, 23, 42, 0.5); border-color: rgba(255, 255, 255, 0.16); }
+
+/* the top bar: its pills, buttons and the profile menu */
+html:not(.dark) .app-shell.wims-glass .liquid-side-rail + div :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) { background-color: rgba(255, 255, 255, 0.42) !important; border-color: rgba(255, 255, 255, 0.85); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+html.dark .app-shell.wims-glass .liquid-side-rail + div :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) { background-color: rgba(255, 255, 255, 0.08) !important; border-color: rgba(255, 255, 255, 0.14); }
+html:not(.dark) .app-shell.wims-glass .liquid-side-rail + div .pm { background: rgba(255, 255, 255, 0.72); }
+html.dark .app-shell.wims-glass .liquid-side-rail + div .pm { background: rgba(15, 23, 42, 0.72); }
+.app-shell.wims-glass .liquid-side-rail + div .pm { -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-radius: 22px; }
+
+/* dialogs and their backdrop (they are drawn on the page itself, so they follow the class set on the page root) */
+html.glass-ui [role='dialog'] > div > .fixed.inset-0.bg-gray-500 { background: rgba(30, 27, 75, 0.34) !important; opacity: 1 !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+html:not(.dark).glass-ui [role='dialog'] .bg-white { background: rgba(255, 255, 255, 0.74) !important; -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.85); border-radius: 26px; box-shadow: 0 40px 90px -34px rgba(49, 46, 129, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.95); }
+html.dark.glass-ui [role='dialog'] .bg-white { background: rgba(15, 23, 42, 0.78) !important; -webkit-backdrop-filter: blur(26px) saturate(170%); backdrop-filter: blur(26px) saturate(170%); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 26px; }
+html.glass-ui [role='dialog'] .bg-gray-100 { background: rgba(255, 255, 255, 0.28) !important; }
+html.dark.glass-ui [role='dialog'] .bg-gray-100 { background: rgba(255, 255, 255, 0.06) !important; }
