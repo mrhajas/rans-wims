@@ -162,6 +162,11 @@ class CardRenderer
             // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows the drawn blue person, cropped to fill it
             $photo = self::src($d['photo'], $mode);
             $frame = self::img($photo !== '' ? $photo : self::src(CardAssets::art($mode === 'pdf' ? 'person-flat.svg' : 'person.svg'), $mode), 0, 0, 31.0, 38.75);
+            // a card that is suspended, expired or revoked carries a stamp over the photograph (in the colour of its status)
+            $stamp = CardAssets::stamp($d['status'] ?? null);
+            if ($stamp) {
+                $frame .= self::img(self::src($stamp, $mode), 1.0, 5.4, 29.0, 21.0); // the stamp is 1.38 times as wide as high, centred on the part of the photo the name band leaves free
+            }
             $h .= self::box(19.4, 6.1, 31.0, 38.75, ['background' => '#afb3b6', 'border-radius' => 2.9, 'overflow' => 'hidden'], $frame);
             if ($d['template'] === 'staff') {
                 $h .= self::img(self::src(CardAssets::logoUp(), $mode), 5.7, 7.0, 10.4, 27.9);

@@ -48,7 +48,7 @@
           <div v-for="(r, i) in rows" :key="r.key" class="bk-item" :class="{ 'is-bad': !r.ok || r.state === 'bad', 'is-done': r.state === 'ok' }">
             <span class="bk-no">{{ i + 1 }}</span>
             <div class="bk-photo" @click="r.state !== 'ok' && openPhoto(r)" :class="{ 'is-add': !r.thumb && !r.hasPhoto && !r.avatar }">
-              <img v-if="r.thumb" :src="r.thumb" alt="" /><img v-else-if="info.kind === 'staff' && r.hasPhoto" :src="route('id-passes.lookup.staff-photo', r.id)" alt="" loading="lazy" /><span v-else-if="r.avatar" class="bk-avimg" :style="{ background: avatarBg }"><img :src="'/images/avatars/' + r.avatar + '.png'" alt="" /></span><img v-else src="/images/avatars/person-gradient.png" class="bk-none" alt="" />
+              <img v-if="r.thumb" :src="r.thumb" alt="" /><img v-else-if="info.kind === 'staff' && r.hasPhoto" :src="route('id-passes.lookup.staff-photo', r.id)" alt="" loading="lazy" /><span v-else-if="r.avatar" class="bk-avimg" :style="{ background: avatarBg }"><img :src="'/images/avatars/' + r.avatar + '.png'" alt="" /></span><img v-else src="/images/avatars/person-blue.svg" class="bk-none" alt="" />
             </div>
             <div class="bk-who"><b>{{ r.name }}</b><small>{{ r.sub }}</small>
               <div class="bk-flags"><span v-for="m in r.missing" :key="m" class="lg-chip lg-chip-red">{{ $t('Missing :x', { x: m }) }}</span><span v-if="!r.missing.length && r.state !== 'ok' && r.state !== 'bad'" class="lg-chip lg-chip-green">{{ $t('Ready') }}</span><span v-if="dup[i]" class="lg-chip lg-chip-red">{{ $t('Number used twice') }}</span></div>

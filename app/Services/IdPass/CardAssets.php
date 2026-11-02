@@ -142,6 +142,84 @@ class CardAssets
         return is_file($p) ? $p : null;
     }
 
+    /** The stamp laid over the photo of a card that is not valid: label and colour per status. */
+    public const STAMPS = ['Suspended' => ['SUSPENDED', '#d92d20'], 'Expired' => ['EXPIRED', '#e8710a'], 'Revoked' => ['REVOKED', '#7c2d92']];
+
+    /** A transparent PNG of a tilted rubber stamp (double frame with notched corners, bold letters) in the colour of the status. Drawn once and kept in the cache. Null for a status that has no stamp. */
+    public static function stamp(?string $status): ?string
+    {
+        if (! isset(self::STAMPS[(string) $status])) {
+            return null;
+        }
+        [$label, $hex] = self::STAMPS[$status];
+        $out = self::dir('cache') . '/stamp-v2-' . strtolower($status) . '.png';
+        if (is_file($out)) {
+            return $out;
+        }
+        $k = 2; // drawn twice as large, then reduced, so the edges are smooth
+        $W = 760 * $k;
+        $H = 420 * $k;
+        $im = imagecreatetruecolor($W, $H);
+        imagealphablending($im, false);
+        imagesavealpha($im, true);
+        imagefill($im, 0, 0, imagecolorallocatealpha($im, 255, 255, 255, 127));
+        imagealphablending($im, true);
+        [$r, $g, $b] = sscanf($hex, '#%02x%02x%02x');
+        $ink = imagecolorallocatealpha($im, $r, $g, $b, 8);
+        $clear = imagecolorallocatealpha($im, 255, 255, 255, 127);
+        // the frame: a thick rounded rectangle with a thin one inside it
+        $rect = function (int $x1, int $y1, int $x2, int $y2, int $rad, int $t) use ($im, $ink, $clear) {
+            self::roundRect($im, $x1, $y1, $x2, $y2, $rad, $ink);
+            imagealphablending($im, false);
+            self::roundRect($im, $x1 + $t, $y1 + $t, $x2 - $t, $y2 - $t, max(2, $rad - $t), $clear);
+            imagealphablending($im, true);
+        };
+        $rect(20 * $k, 20 * $k, $W - 20 * $k, $H - 20 * $k, 46 * $k, 16 * $k);
+        $rect(46 * $k, 46 * $k, $W - 46 * $k, $H - 46 * $k, 26 * $k, 5 * $k);
+        // the letters, as large as the frame lets them be
+        $font = self::font('PillGothic-600.ttf');
+        $maxW = $W - 130 * $k;
+        $size = 150 * $k;
+        do {
+            $box = imagettfbbox($size, 0, $font, $label);
+            $tw = $box[2] - $box[0];
+            $size -= 4;
+        } while ($tw > $maxW && $size > 20);
+        $box = imagettfbbox($size, 0, $font, $label);
+        $x = (int) (($W - ($box[2] - $box[0])) / 2 - $box[0]);
+        $y = (int) (($H - ($box[1] - $box[7])) / 2 - $box[7]);
+        // the font is a light one: drawn several times a hair apart it takes the weight of a stamp
+        foreach ([[0, 0], [-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [-2, 2], [2, -2]] as [$dx, $dy]) {
+            imagettftext($im, $size, 0, $x + $dx * $k, $y + $dy * $k, $ink, $font, $label);
+        }
+        // tilted a little, as a real stamp is, and reduced
+        $rot = imagerotate($im, 16, imagecolorallocatealpha($im, 255, 255, 255, 127));
+        imagedestroy($im);
+        imagealphablending($rot, false);
+        imagesavealpha($rot, true);
+        $rw = imagesx($rot) / $k;
+        $rh = imagesy($rot) / $k;
+        $dst = imagecreatetruecolor((int) $rw, (int) $rh);
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 255, 255, 255, 127));
+        imagecopyresampled($dst, $rot, 0, 0, 0, 0, (int) $rw, (int) $rh, imagesx($rot), imagesy($rot));
+        imagepng($dst, $out, 6);
+        imagedestroy($rot);
+        imagedestroy($dst);
+
+        return $out;
+    }
+
+    private static function roundRect($im, int $x1, int $y1, int $x2, int $y2, int $r, int $col): void
+    {
+        imagefilledrectangle($im, $x1 + $r, $y1, $x2 - $r, $y2, $col);
+        imagefilledrectangle($im, $x1, $y1 + $r, $x2, $y2 - $r, $col);
+        foreach ([[$x1 + $r, $y1 + $r], [$x2 - $r, $y1 + $r], [$x1 + $r, $y2 - $r], [$x2 - $r, $y2 - $r]] as [$cx, $cy]) {
+            imagefilledellipse($im, $cx, $cy, $r * 2, $r * 2, $col);
+        }
+    }
+
     public static function font(string $file): string
     {
         return resource_path('idpass/fonts/' . $file);
