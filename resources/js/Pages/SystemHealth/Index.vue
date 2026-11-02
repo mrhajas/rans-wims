@@ -609,7 +609,7 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 
 /* buttons: colour, icon chip, shadow, a shine that crosses them */
 .sh-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.95rem 0.5rem 0.55rem; border-radius: 0.85rem; border: 0; font-size: 0.82rem; font-weight: 800; color: #fff; cursor: pointer; text-decoration: none; transition: transform 0.18s, box-shadow 0.18s, filter 0.18s; }
-.sh-btn::after { content: ''; position: absolute; top: 0; bottom: 0; width: 45%; left: -70%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.45), transparent); transform: skewX(-18deg); animation: sh-btn-shine 4.2s ease-in-out infinite; }
+.sh-btn::after { content: ''; position: absolute; top: 0; bottom: 0; width: 45%; left: -70%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.2), transparent); transform: skewX(-18deg); animation: sh-btn-shine 4.2s ease-in-out infinite; }
 .sh-btn-ic { display: inline-flex; align-items: center; justify-content: center; width: 1.7rem; height: 1.7rem; border-radius: 0.55rem; background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
 .sh-btn:hover:not(:disabled) { transform: translateY(-2px); filter: saturate(1.1); } .sh-btn:active:not(:disabled) { transform: translateY(0); }
 .sh-btn:disabled { opacity: 0.65; cursor: wait; }
@@ -625,7 +625,7 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-orb { position: relative; overflow: hidden; display: flex; gap: 1.3rem; align-items: center; padding: 1.2rem 1.3rem 2rem; border-radius: 1.2rem; border: 1px solid var(--line); box-shadow: 0 16px 36px -22px rgba(15, 23, 42, 0.5); color: var(--ink); --tone: var(--ok); }
 .sh-orb.is-excellent { --tone: #059669; } .sh-orb.is-very_good { --tone: #16a34a; } .sh-orb.is-good { --tone: #2563eb; } .sh-orb.is-fair { --tone: #d97706; } .sh-orb.is-bad { --tone: #dc2626; } .sh-orb.is-unknown { --tone: #64748b; }
 .sh-orb { background: linear-gradient(135deg, color-mix(in srgb, var(--tone) 11%, transparent), transparent 60%), var(--card); }
-.sh-orb::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; left: -50%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.3), transparent); transform: skewX(-18deg); animation: sh-sweep 8s ease-in-out infinite; pointer-events: none; }
+.sh-orb::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; left: -50%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.12), transparent); transform: skewX(-18deg); animation: sh-sweep 8s ease-in-out infinite; pointer-events: none; }
 .sh-ring-wrap { position: relative; width: 9.8rem; flex: none; }
 .sh-ring { width: 100%; display: block; overflow: visible; }
 .sh-ring-bg { fill: none; stroke: var(--track); stroke-width: 11; }
@@ -682,7 +682,7 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-bar-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mute); font-weight: 700; } .sh-bar-row b { font-variant-numeric: tabular-nums; white-space: nowrap; } .sh-tight { margin-top: 0.3rem; }
 .sh-bar { height: 0.6rem; border-radius: 999px; background: var(--track); overflow: hidden; position: relative; }
 .sh-bar i { display: block; height: 100%; border-radius: 999px; background: var(--a); transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); position: relative; overflow: hidden; }
-.sh-bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%); transform: translateX(-100%); animation: sh-bar-shine 3.4s ease-in-out infinite; }
+.sh-bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%); transform: translateX(-100%); animation: sh-bar-shine 3.4s ease-in-out infinite; }
 .sh-bar i.is-ok { background: var(--ok); } .sh-bar i.is-warn { background: var(--warn); } .sh-bar i.is-bad { background: var(--bad); } .sh-bar i.is-a { background: var(--a); } .sh-bar i.is-b { background: var(--b); }
 .sh-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.7rem; } .sh-chips span { padding: 0.18rem 0.6rem; border-radius: 999px; background: var(--track); font-size: 0.7rem; font-weight: 700; } .sh-chips span.is-ok { color: var(--ok); } .sh-chips span.is-warn { color: var(--warn); }
 .sh-donut-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.4rem; }
@@ -699,8 +699,8 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-batt { display: flex; align-items: center; flex: 1 1 11rem; min-width: 10rem; --bc: var(--ok); } .sh-batt.is-warn { --bc: var(--warn); } .sh-batt.is-bad { --bc: var(--bad); } .sh-batt.is-na { --bc: var(--na); }
 .sh-batt-body { position: relative; flex: 1; height: 4.2rem; border-radius: 1rem; border: 3px solid color-mix(in srgb, var(--bc) 70%, var(--line)); background: var(--track); overflow: hidden; box-shadow: inset 0 3px 8px rgba(15, 23, 42, 0.12), 0 8px 20px -12px color-mix(in srgb, var(--bc) 70%, transparent); }
 .sh-batt-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--bc) 82%, #fff), var(--bc)); transition: width 1.8s cubic-bezier(0.2, 0.8, 0.2, 1); overflow: hidden; }
-.sh-batt-stripes { position: absolute; inset: 0; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0 10px, transparent 10px 22px); background-size: 44px 100%; animation: sh-stripes 1.2s linear infinite; }
-.sh-batt-gloss { position: absolute; left: 0; right: 0; top: 0; height: 45%; background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent); border-radius: 0 0 40% 40%; }
+.sh-batt-stripes { position: absolute; inset: 0; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.14) 0 10px, transparent 10px 22px); background-size: 44px 100%; animation: sh-stripes 1.2s linear infinite; }
+.sh-batt-gloss { position: absolute; left: 0; right: 0; top: 0; height: 45%; background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent); border-radius: 0 0 40% 40%; }
 .sh-batt-cut { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.55); }
 .sh-batt-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); }
 .sh-batt-num b { font-size: 1.8rem; font-weight: 900; font-variant-numeric: tabular-nums; } .sh-batt-num em { font-style: normal; font-size: 1rem; }

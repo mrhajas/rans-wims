@@ -61,7 +61,7 @@ export default { props: { type: { type: String, default: 'you' }, tone: { type: 
 
 <style scoped>
 .hi { display: inline-flex; width: 2.7rem; height: 2.7rem; align-items: center; justify-content: center; border-radius: 0.9rem; flex: none; position: relative; overflow: hidden; color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent); }
-.hi::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); animation: hi-shine 4.5s ease-in-out infinite; }
+.hi::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.24) 50%, transparent 65%); transform: translateX(-120%); animation: hi-shine 4.5s ease-in-out infinite; }
 .hi svg { width: 74%; height: 74%; overflow: visible; }
 .is-excellent { --tone: #059669; } .is-very_good { --tone: #16a34a; } .is-good { --tone: #2563eb; } .is-fair { --tone: #d97706; } .is-bad { --tone: #dc2626; } .is-unknown { --tone: #64748b; }
 .w { animation: hi-wave 2.4s ease-out infinite; opacity: 0; } .w1 { animation-delay: 0s; } .w2 { animation-delay: 0.4s; } .w3 { animation-delay: 0.8s; }

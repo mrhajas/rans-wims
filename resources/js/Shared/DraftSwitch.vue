@@ -90,7 +90,7 @@ export default {
 .dsw-track:disabled { opacity: 0.55; cursor: not-allowed; }
 .dsw-track:hover:not(:disabled) .dsw-thumb-in { transform: scale(1.04); }
 /* a band of light that crosses the pill from time to time */
-.dsw-gloss { position: absolute; top: 0; bottom: 0; left: -45%; width: 38%; z-index: 3; pointer-events: none; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.42), transparent); transform: skewX(-18deg); animation: dsw-gloss 5.5s ease-in-out infinite; }
+.dsw-gloss { position: absolute; top: 0; bottom: 0; left: -45%; width: 38%; z-index: 3; pointer-events: none; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.17), transparent); transform: skewX(-18deg); animation: dsw-gloss 5.5s ease-in-out infinite; }
 
 /* the two sides, laid out in the same two halves the thumb travels between */
 .dsw-side { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; height: 100%; color: rgba(255, 255, 255, 0.95); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28); pointer-events: none; transition: opacity 0.3s ease 0.1s, transform 0.4s ease; }

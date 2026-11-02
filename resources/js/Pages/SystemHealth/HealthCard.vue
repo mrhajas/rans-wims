@@ -61,7 +61,7 @@ export default {
 <style scoped>
 .hc { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 1.1rem; border: 1px solid var(--line, #e5e7eb); background: var(--card, #fff); color: var(--ink, #0f172a); box-shadow: 0 10px 28px -20px rgba(15, 23, 42, 0.4); transition: transform 0.25s, box-shadow 0.25s; }
 .hc::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--tone), transparent); background-size: 200% 100%; animation: hc-run 4s linear infinite; }
-.hc::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.28), transparent); transform: skewX(-18deg); animation: hc-shine 7s ease-in-out infinite; pointer-events: none; }
+.hc::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.11), transparent); transform: skewX(-18deg); animation: hc-shine 7s ease-in-out infinite; pointer-events: none; }
 .hc:hover { transform: translateY(-2px); box-shadow: 0 16px 34px -18px color-mix(in srgb, var(--tone) 55%, transparent); }
 .is-wide { grid-column: 1 / -1; }
 .enter-up { animation: hc-rise 0.75s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
