@@ -18,6 +18,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use Illuminate\Support\Facades\RateLimiter;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -32,6 +33,15 @@ class FortifyServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        // The link in the "reset your password" e-mail is built from the address WIMS is installed at (APP_URL), never from the Host header of the request: a forged Host
+        // header could otherwise make the e-mail point at somebody else's site and hand the reset token to them.
+        \Illuminate\Auth\Notifications\ResetPassword::createUrlUsing(function ($notifiable, string $token) {
+            $path = route('password.reset', ['token' => $token, 'email' => $notifiable->getEmailForPasswordReset()], false);
+            $root = rtrim((string) config('app.url'), '/');
+
+            return ($root !== '' ? $root : url('/')) . $path;
+        });
+
         // Fortify's own logout() call invalidates the session (regenerates
         // + flushes it) *before* redirecting, which would wipe out a normal
         // session-flash flag set from a Logout event listener. A query
@@ -141,7 +151,10 @@ class FortifyServiceProvider extends ServiceProvider
             }
 
             $user = User::query()->where('username', $request->input(Fortify::username()))->first();
-            if (! $user || ! Hash::check((string) $request->input('password'), $user->password)) {
+            // A name that does not exist costs the same time as a wrong password for a name that does (the password is checked against a throw-away hash),
+            // so the speed of the answer cannot be used to find out which usernames exist.
+            $passwordOk = Hash::check((string) $request->input('password'), $user ? $user->password : $this->decoyHash());
+            if (! $user || ! $passwordOk) {
                 return null;
             }
 
@@ -255,7 +268,31 @@ class FortifyServiceProvider extends ServiceProvider
 
     public function register()
     {
-        //
+        // "Forgot password" answers the same whether or not the e-mail address belongs to an account (and whether or not a link was sent a minute ago), so it cannot be
+        // used to find out which addresses are registered.
+        $same = function () {
+            return new class implements \Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse, \Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse
+            {
+                public function toResponse($request)
+                {
+                    return back()->with('status', __('If that e-mail address belongs to an account, a link to reset the password has been sent to it.'));
+                }
+            };
+        };
+        $this->app->bind(\Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse::class, $same);
+        $this->app->bind(\Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse::class, $same);
+    }
+
+    /** A real hash of a random password, made once and kept, for the comparison made when a username does not exist. */
+    private function decoyHash(): string
+    {
+        return Cache::rememberForever('login.decoy-hash', function () {
+            // the same cost as the passwords already stored, so the comparison takes the same time
+            $sample = (string) User::query()->value('password');
+            $cost = $sample !== '' ? (int) (password_get_info($sample)['options']['cost'] ?? 10) : 10;
+
+            return Hash::make(Str::random(40), ['rounds' => max(4, $cost)]);
+        });
     }
 
     /**
