@@ -316,6 +316,8 @@ export default {
         },
         // the same payee and amount twice (or a recent identical voucher): the person decides
         onError: async errors => {
+          // the form's own request key was refused (it was saved once already): say so plainly, never offer "Continue anyway"
+          if (errors.request_key && this.$page.props.flash) this.$page.props.flash.error = errors.request_key;
           if (errors.duplicate && await this.$confirm(errors.duplicate + ' ' + this.$t('Continue anyway?'))) {
             this.submit(true);
           }

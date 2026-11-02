@@ -74,6 +74,9 @@ return [
     |
     */
 
+    // the php program that runs a background task, when the default cannot be found (set BACKGROUND_PHP_BINARY in .env)
+    'background_php_binary' => env('BACKGROUND_PHP_BINARY'),
+
     'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*

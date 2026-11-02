@@ -202,7 +202,7 @@ class Collector
             $dirs = ['uploads' => public_path('uploads'), 'documents' => storage_path('app'), 'logs' => storage_path('logs')];
             $sizes = [];
             foreach ($dirs as $label => $dir) {
-                $sizes[$label] = self::dirMb($dir, 2.5);
+                $sizes[$label] = self::dirMb($dir, 0.8);
             }
             $quota = (int) (get_settings('system_health_disk_quota_mb') ?: 0);
 
@@ -272,7 +272,10 @@ class Collector
 
     private static function backups(): array
     {
-        $last = Schema::hasTable('backup_activities') ? DB::table('backup_activities')->where('activity', 'like', '%backup%')->orderByDesc('id')->first() : null;
+        // a backup that was MADE: the automatic and system ones, and manual ones; the rows named "Backup" that only record the download of an old backup do not count
+        $last = Schema::hasTable('backup_activities') ? DB::table('backup_activities')->where(function ($q) {
+            $q->whereIn('activity', ['Auto Back Up', 'System BackUp'])->orWhere(fn ($m) => $m->where('activity', 'Backup')->where('filename', 'not like', 'Auto backup:%')->where('filename', 'not like', 'System backup:%'));
+        })->orderByDesc('id')->first() : null;
         $at = $last ? \Carbon\Carbon::parse($last->created_at) : null;
         $auto = \App\Support\Backup\AutoBackupSettings::class;
 
@@ -347,8 +350,9 @@ class Collector
         $sent = (clone $base)->whereIn('status', ['sent', 'delivered'])->count();
         $failed = (clone $base)->whereIn('status', ['failed', 'error'])->count();
         $last = DB::table('wims_connect_logs')->where('channel', 'sms')->whereIn('status', ['sent', 'delivered'])->max('sent_at');
+        $thirty = DB::table('wims_connect_logs')->where('channel', 'sms')->whereIn('status', ['sent', 'delivered'])->where('created_at', '>=', now()->subDays(30))->count();
 
-        return ['sent_month' => $sent, 'failed_month' => $failed, 'last_at' => $last ? \Carbon\Carbon::parse($last)->toIso8601String() : null];
+        return ['sent_month' => $sent, 'failed_month' => $failed, 'sent_30d' => $thirty, 'last_at' => $last ? \Carbon\Carbon::parse($last)->toIso8601String() : null];
     }
 
     // ---------------------------------------------------------------------------------------------------------------- the person looking, and where they are
@@ -397,12 +401,15 @@ class Collector
         // the percentage is the credit left compared with the most credit seen on this account (or a full level set in `system_health_sms_full_credit`)
         $balance = (float) ($r['balance'] ?? 0);
         $set = (float) (get_settings('system_health_sms_full_credit') ?: 0);
-        $peak = max($set, (float) Cache::get('system-health.sms-peak', 0), $balance);
-        if ($set <= 0 && $peak > (float) Cache::get('system-health.sms-peak', 0)) {
-            Cache::forever('system-health.sms-peak', $peak);
+        // the highest credit seen is kept in the settings table (not the cache, which is emptied now and then), and only ever raised
+        $saved = (float) get_settings('system_health_sms_peak');
+        $peak = max($set, $saved, $balance);
+        if ($set <= 0 && $balance > $saved) {
+            \App\Models\Setting::query()->updateOrCreate(['tec_key' => 'system_health_sms_peak', 'account_id' => (int) auth()->user()->account_id], ['tec_value' => (string) round($balance)]);
         }
+        $perDay = ($u = self::smsUsage()) && ! empty($u['sent_30d']) ? $u['sent_30d'] / 30 : 0;
 
-        return ['supported' => true, 'provider' => 'Beem Africa', 'percent' => $peak > 0 ? (int) round(min(100, $balance / $peak * 100)) : 0, 'full_credit' => (int) round($peak), 'full_credit_set' => $set > 0] + $r;
+        return ['supported' => true, 'provider' => 'Beem Africa', 'percent' => $peak > 0 ? (int) round(min(100, $balance / $peak * 100)) : 0, 'full_credit' => (int) round($peak), 'full_credit_set' => $set > 0, 'per_day' => round($perDay, 1), 'days_left' => $perDay > 0 ? (int) floor($balance / $perDay) : null] + $r;
     }
 
     private static function drive(): array
@@ -544,6 +551,16 @@ class Collector
             $out['licence'] = self::sec($score, $score < 85 ? [['text' => __('Renew the licence before it ends.'), 'route' => 'wims-licence.show']] : []);
         }
 
+        // a part whose figures could not be read is shown as "not rated" (never silently left out, which would flatter the whole)
+        foreach (['speed' => 'speed', 'system' => 'server', 'database' => 'database', 'disk' => 'disk', 'backups' => 'backups', 'licence' => 'licence'] as $key => $probe) {
+            if (! isset($out[$key]) && is_array($d[$probe] ?? null) && ! empty($d[$probe]['error'])) {
+                $out[$key] = self::sec(null, [], __('The figures for this part could not be read.')) + ['unreadable' => true];
+            }
+        }
+        if (! isset($out['safety']) && (is_array($d['logs'] ?? null) && ! empty($d['logs']['error'])) && (is_array($d['people'] ?? null) && ! empty($d['people']['error']))) {
+            $out['safety'] = self::sec(null, [], __('The figures for this part could not be read.')) + ['unreadable' => true];
+        }
+
         return $out;
     }
 
@@ -552,11 +569,17 @@ class Collector
         if (! is_array($sms) || ! empty($sms['error']) || empty($sms['supported']) || empty($sms['ok'])) {
             return self::sec(null, [], __('The credit could not be read.'));
         }
-        $p = (int) ($sms['percent'] ?? 0);
-        $score = self::band($p, [8, 20, 40, 65], [20, 45, 68, 85, 98]);
+        // the rating follows how long the credit lasts at the recent rate of sending; with no sending to measure it follows the share of the usual full level
+        if (isset($sms['days_left'])) {
+            $score = self::band($sms['days_left'], [7, 14, 30, 60], [20, 45, 68, 85, 98]);
+            $note = __('About :d day(s) of credit left at :n SMS a day (last 30 days).', ['d' => $sms['days_left'], 'n' => $sms['per_day']]);
+        } else {
+            $score = self::band((int) ($sms['percent'] ?? 0), [8, 20, 40, 65], [20, 45, 68, 85, 98]);
+            $note = ! empty($sms['full_credit_set']) ? __('Compared with the full level set for this system.') : __('Compared with the most credit this system has seen.');
+        }
         $act = $score < 80 ? [['text' => __('Top up SMS credit with Beem Africa before alerts stop going out.')]] : [];
 
-        return self::sec($score, $act, ! empty($sms['full_credit_set']) ? __('Compared with the full level set for this system.') : __('Compared with the most credit this system has seen.'));
+        return self::sec($score, $act, $note);
     }
 
     private static function driveSection(?array $drive): array

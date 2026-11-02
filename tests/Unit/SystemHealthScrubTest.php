@@ -35,4 +35,28 @@ class SystemHealthScrubTest extends TestCase
         $this->assertSame('fair', Collector::rate(50));
         $this->assertSame('bad', Collector::rate(20));
     }
+
+    /** @dataProvider secrets */
+    public function test_adversarial_secrets_never_survive(string $line, array $mustNotContain): void
+    {
+        $out = ReportBuilder::scrub($line);
+        foreach ($mustNotContain as $bad) {
+            $this->assertStringNotContainsString($bad, $out, $line);
+        }
+    }
+
+    public static function secrets(): array
+    {
+        return [
+            'underscore names' => ['access_token=abc123secret DB_PASSWORD=hunter2 client_secret=zzz999', ['abc123secret', 'hunter2', 'zzz999']],
+            'bearer header' => ['Authorization: Bearer abc.def.ghi-jkl', ['abc.def.ghi-jkl']],
+            'jwt' => ['seen eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fw', ['eyJhbGciOiJIUzI1NiJ9', 'SflKxwRJSMeKKF2QT4fw']],
+            'password is' => ['the password is hunter2 and ok', ['hunter2']],
+            'quoted key' => ['api_key: "abc def ghi" end', ['abc def ghi', 'abc', 'ghi']],
+            'url credentials' => ['connect https://apikey:s3cretValue@host.example/path failed', ['s3cretValue', 'apikey']],
+            'duplicate entry name' => ["Duplicate entry 'John Mwakyusa' for key 'users_name_unique'", ['John', 'Mwakyusa']],
+            'phone with spaces' => ['call +255 712 345 678 now', ['712 345 678', '255 712']],
+            'path outside the project' => ['failed in /Users/someone/secret-project/app/Models/User.php', ['/Users/someone', 'secret-project']],
+        ];
+    }
 }

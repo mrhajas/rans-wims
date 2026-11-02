@@ -30,7 +30,7 @@ class IdempotencyGuard
             return null; // an old client or an API call: no protection, nothing breaks
         }
         if (! is_string($key) || ! preg_match('/^[A-Za-z0-9_-]{16,64}$/', $key)) {
-            throw ValidationException::withMessages(['duplicate' => __('This form could not be checked. Reload the page and try again.')]);
+            throw ValidationException::withMessages(['request_key' => __('This form could not be checked. Reload the page and try again.')]);
         }
         $user = $request->user();
         if (! $user || ! self::ready()) {
@@ -72,12 +72,20 @@ class IdempotencyGuard
             }
             // the key is already taken (or the database picked this request to give way): read what the first one saved
             $row = self::lookup($key, true);
+            // after a deadlock the twin may not have committed yet: wait a moment and look again before giving up
+            for ($i = 0; ! $row && self::isDeadlock($e) && $i < 4; $i++) {
+                usleep(200000);
+                $row = self::lookup($key, false);
+            }
             if (! $row) {
+                if (self::isDeadlock($e)) {
+                    throw ValidationException::withMessages(['request_key' => __('This form is being saved by another request. Wait a moment, check the list, then try again if it is not there.')]);
+                }
                 throw $e;
             }
         }
         if (! hash_equals((string) $row->request_hash, $key['hash'])) {
-            throw ValidationException::withMessages(['duplicate' => __('This form was already used for a different record. Open a new form to create another one.')]);
+            throw ValidationException::withMessages(['request_key' => __('This form was already saved once, with different details. Check the list to see what was saved, then reload the page to start a new form.')]);
         }
         throw new IdempotentReplay((string) $row->record_type, $row->record_id ? (int) $row->record_id : null);
     }
@@ -97,7 +105,7 @@ class IdempotencyGuard
             return null;
         }
         if (! hash_equals((string) $row->request_hash, $key['hash'])) {
-            throw ValidationException::withMessages(['duplicate' => __('This form was already used for a different record. Open a new form to create another one.')]);
+            throw ValidationException::withMessages(['request_key' => __('This form was already saved once, with different details. Check the list to see what was saved, then reload the page to start a new form.')]);
         }
 
         return $row;

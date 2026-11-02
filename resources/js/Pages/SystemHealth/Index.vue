@@ -372,14 +372,17 @@ export default {
       if (!rated.length) return (this.d.score || {}).value || 0;
       const worst = Math.min(...rated.map(x => x.s.score));
       const mean = rated.reduce((a, x) => a + x.s.score, 0) / rated.length;
-      return Math.round(mean * 0.6 + worst * 0.4); // one weak part pulls the whole down, but does not erase the good ones
+      const whole = Math.round(mean * 0.6 + worst * 0.4); // one weak part pulls the whole down, but does not erase the good ones
+      return this.unreadable ? Math.min(79, whole) : whole; // a part that could not be read means the whole cannot be called better than Good
     },
+    unreadable() { return this.allSections.filter(x => x.s.unreadable).length; },
     overallRating() { return RATE(this.overallScore); },
     verdictTitle() { return { excellent: this.$t('Excellent shape'), very_good: this.$t('In very good shape'), good: this.$t('In good shape'), fair: this.$t('Fair: a few things to fix'), bad: this.$t('Needs attention'), unknown: this.$t('Reading...') }[this.overallRating]; },
     verdictText() {
       const bad = this.allSections.filter(x => x.s.rating === 'bad').length;
       const fair = this.allSections.filter(x => x.s.rating === 'fair').length;
-      return bad || fair ? this.$t(':a part(s) to fix and :b to watch.', { a: bad, b: fair }) : this.$t('Every part is rated Good or better.');
+      const base = bad || fair ? this.$t(':a part(s) to fix and :b to watch.', { a: bad, b: fair }) : this.$t('Every part is rated Good or better.');
+      return this.unreadable ? base + ' ' + this.$t(':n part(s) could not be read.', { n: this.unreadable }) : base;
     },
     tally() {
       return ['excellent', 'very_good', 'good', 'fair', 'bad'].map(k => ({ key: k, n: this.allSections.filter(x => x.s.rating === k).length, label: this.ratingLabel(k) })).filter(t => t.n > 0);

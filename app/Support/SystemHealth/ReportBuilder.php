@@ -228,16 +228,35 @@ class ReportBuilder
         ])->all();
     }
 
-    /** Takes out of a log line everything that could be personal or secret before it goes into an e-mail. */
+    /** Takes out of a log line everything that could be personal or secret before it goes into an e-mail. When in doubt it removes more, never less. */
     public static function scrub(string $s): string
     {
         // a logged context ({"userId":1,...}) is dropped, and so is everything after SQL: (a database message repeats the query with its values)
         $s = preg_replace('/\s\{".*$/s', '', $s);
         $s = preg_replace('/\(?(?:Connection: \w+, )?SQL:.*$/s', '(query hidden)', $s);
+        // the value of a unique-key clash is a person's data
+        $s = preg_replace("/(Duplicate entry )'[^']*'/i", "$1'[value]'", $s);
+        // web addresses with a name and password in them
+        $s = preg_replace('~(\w+://)[^/\s@]+@~', '$1[hidden]@', $s);
+        // names of server folders: only the file name stays
+        try {
+            $base = base_path();
+        } catch (\Throwable $e) {
+            $base = ''; // used outside the application (a plain test): the general folder rule below still applies
+        }
+        if ($base !== '') {
+            $s = str_replace([$base . '/', $base], '', $s);
+        }
+        $s = preg_replace('~(?:/[\w.\-]+){3,}/([\w.\-]+)~', '.../$1', $s);
+        // tokens: Bearer ..., JSON web tokens, long ids
+        $s = preg_replace('/\bBearer\s+\S+/i', 'Bearer [hidden]', $s);
+        $s = preg_replace('/\beyJ[\w-]+\.[\w-]+\.[\w-]+/', '[token]', $s);
+        // anything NAMED like a secret (access_token, DB_PASSWORD, client-secret, api key, private key ...), with its quoted or bare value, or the words "is"/":"/"=" before it
+        $s = preg_replace('/[\w-]*(?:password|passwd|pwd|secret|token|api[_\s-]?key|apikey|authorization|credential|private[_\s-]?key|access[_\s-]?key|passphrase|otp|pin)[\w-]*\s*(?:[:=]|\bis\b|\bwas\b)?\s*(?:"[^"]*"|\'[^\']*\'|\S+)/i', '[secret hidden]', $s);
         $s = preg_replace('/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/', '[email]', $s);
-        $s = preg_replace('/\b(password|passwd|pwd|secret|token|api[_-]?key|authorization|bearer)\b\s*[:=]?\s*\S+/i', '$1 [hidden]', $s);
         $s = preg_replace('/\b[A-Fa-f0-9]{24,}\b/', '[id]', $s);
-        $s = str_replace([base_path() . '/', base_path()], '', $s);
+        // telephone numbers, written with spaces, dashes or brackets
+        $s = preg_replace('/\+?\d[\d\s().-]{7,}\d/', '[number]', $s);
         $s = preg_replace('/\b\d{7,}\b/', '#', $s);
         $s = preg_replace('/\s+/', ' ', trim($s));
 

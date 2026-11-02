@@ -77,6 +77,12 @@ class TaskService
             if ($existing) {
                 return [$existing, false];
             }
+            if (self::isDuplicate($e)) {
+                // the other one finished between the refusal and the look: its lock is free now, so this one is simply started
+                usleep(100000);
+
+                return self::start($user, $kind, $params);
+            }
             throw $e;
         }
         self::note('Background task queued', ['kind' => $task->kind, 'task' => $task->id, 'by' => $user->id], $task);
@@ -122,7 +128,7 @@ class TaskService
     public static function phpBinary(): ?string
     {
         $candidates = array_filter([
-            env('BACKGROUND_PHP_BINARY'),
+            config('app.background_php_binary'),
             PHP_SAPI === 'cli' ? PHP_BINARY : null,
             PHP_BINDIR . '/php',
             '/opt/cpanel/ea-php83/root/usr/bin/php', '/opt/cpanel/ea-php82/root/usr/bin/php', '/opt/cpanel/ea-php81/root/usr/bin/php',
@@ -253,7 +259,7 @@ class TaskService
         // running, but the process is gone (checked when the system allows it) or has said nothing for too long
         foreach (BackgroundTask::query()->where('status', BackgroundTask::RUNNING)->get() as $t) {
             $silent = $t->last_heartbeat_at && $t->last_heartbeat_at->lt(now()->subMinutes(self::RUNNING_STUCK_MINUTES));
-            $gone = $t->pid && function_exists('posix_kill') && $t->started_at && $t->started_at->lt(now()->subMinute()) && ! @posix_kill((int) $t->pid, 0);
+            $gone = $t->pid && function_exists('posix_kill') && $t->started_at && $t->started_at->lt(now()->subMinute()) && ! @posix_kill((int) $t->pid, 0) && posix_get_last_error() !== 1; // error 1 = the process exists but belongs to another user: still alive
             if ($silent || $gone) {
                 if (self::fail($t->id, __('The report stopped before it was finished. Try again.'), $gone ? 'process gone' : 'silent too long')) {
                     $r['failed_stuck']++;
