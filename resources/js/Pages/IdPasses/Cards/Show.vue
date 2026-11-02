@@ -69,9 +69,9 @@
             </dl>
             <div v-if="cardHistory.length" class="ids-earlier"><b>{{ $t('Other IDs of this person') }}</b>
               <a v-for="h in cardHistory" :key="h.id" :href="h.url"><span>{{ h.number }}</span><em>{{ h.from ? $date(h.from) : '' }} - {{ h.to ? $date(h.to) : $t('now') }}</em><i class="lg-chip" :class="statusChip(h.status)">{{ $t(h.status) }}</i><small v-if="h.reason">{{ h.reason }}</small></a></div>
-            <div v-if="can.edit && !pooled" class="ids-photo"><b>{{ $t('Photograph') }}</b><span v-if="card.avatar" class="lg-chip lg-chip-amber">{{ $t('Avatar') }}</span>
+            <div class="ids-photo"><b>{{ $t('Photograph') }}</b><span v-if="card.avatar" class="lg-chip lg-chip-amber">{{ $t('Avatar') }}</span>
               <img v-if="card.has_photo" :src="route('id-passes.' + info.route + '.photo-file', [card.id]) + '?w=160&v=' + card.photo_v + '-' + photoV" alt="" /><img v-else :src="'/id-passes/avatar/' + card.person + '.svg'"  class="ids-noph" alt="" />
-              <button type="button" class="lg-btn tone" @click="photoOpen = true" style="--tone: #0284c7"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ card.has_photo ? $t('Change photo') : $t('Add photo') }}</button></div>
+              <button v-if="can.edit && !pooled" type="button" class="lg-btn tone" @click="photoOpen = true" style="--tone: #0284c7"><span class="tone-ico"><icons name="camera" class="w-4 h-4" /></span>{{ card.has_photo ? $t('Change photo') : $t('Add photo') }}</button></div>
           </section>
 
           <section v-if="pooled" v-show="tab === 'holders'" class="lg-card">

@@ -158,6 +158,10 @@ class CardRenderer
                 $h .= self::text($a['text'], 3.0, 17.2, 49.0, 10.0, 'gb', $a['pt'], '#111111', 'center');
                 $h .= self::text($b['text'], 3.0, 26.4, 49.0, 10.0, 'gb', $b['pt'], '#111111', 'center');
             }
+            // a pass that is not valid carries the stamp of its status across the white panel (a pass has no photograph to stamp)
+            if ($stamp = CardAssets::stamp($d['status'] ?? null)) {
+                $h .= self::img(self::src($stamp, $mode), 9.5, 12.0, 36.0, 26.1);
+            }
         } else {
             // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows the drawn blue person, cropped to fill it
             $photo = self::src($d['photo'], $mode);

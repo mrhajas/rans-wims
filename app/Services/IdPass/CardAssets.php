@@ -239,7 +239,7 @@ class CardAssets
     }
 
     /** The stamp laid over the photo of a card that is not valid: label and colour per status. */
-    public const STAMPS = ['Suspended' => ['SUSPENDED', '#d92d20'], 'Expired' => ['EXPIRED', '#e8710a'], 'Revoked' => ['REVOKED', '#7c2d92']];
+    public const STAMPS = ['Suspended' => ['SUSPENDED', '#d92d20'], 'Expired' => ['EXPIRED', '#e8710a'], 'Revoked' => ['REVOKED', '#7c2d92'], 'Rejected' => ['REJECTED', '#475569'], 'Replaced' => ['REPLACED', '#0284c7']];
 
     /** A transparent PNG of a tilted rubber stamp (double frame with notched corners, bold letters) in the colour of the status. Drawn once and kept in the cache. Null for a status that has no stamp. */
     public static function stamp(?string $status): ?string
