@@ -3303,3 +3303,9 @@ html.dark .pw-gen-top { color: #cbd5e1; } html.dark .pw-gen-code { background: #
 @media (max-width: 520px) { .pw-rules li { padding: 3px 8px; font-size: 0.72rem; } .pw-genbtn { width: 100%; justify-content: center; } .pw-bars { flex-basis: 90px; } .pw-gen-code { font-size: 1.1rem; } .pw-gen-btns { width: 100%; } .pw-gen-btns .lg-btn { flex: 1; justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .pw-pop-enter-active, .pw-pop-leave-active { transition: none; } }
 .lg-icon-btn.is-indigo { color: #4338ca; background: rgba(99, 102, 241, 0.16); }
+
+/* ---- Round containers whose labels can wrap onto a second row (found by measuring every page at phone width). A very large radius is clamped to half the height, so on a single
+   row these are still perfect pills; when the content wraps and the box gets taller the corners stay at a fixed size instead of growing and cutting the labels. ---- */
+.lg-actionbar, .sh-tabs, .pv-payee-type-toggle, .idi-src, .sc-seg, .arx-toggle, .tv-tab-group, .tv-toggle-group, .wr-seg, .ast-segment, .cmp-segment, .sl-tabs, .st-nav, .sg-method,
+.sdy-type-chip, .wcs-react { border-radius: 26px !important; }
+.lg-chip { border-radius: 14px; }

@@ -44,7 +44,7 @@
         <header class="lg-card-head">
           <span class="lg-card-ico lg-ico-emerald"><icons name="tick" class="w-5 h-5" /></span>
           <div class="min-w-0 flex-1">
-            <h2 class="lg-card-title">{{ $t('Last optimisation') }} · {{ last.ref }}</h2>
+            <h2 class="lg-card-title">{{ $t('Last optimisation') }} · {{ last.ref }} <span class="op-rate" :class="'is-' + last.rating">{{ last.rating_label }}</span></h2>
             <p class="lg-card-sub">{{ $datetime(last.at) }} · {{ last.user }} · {{ $t(':n s', { n: last.seconds }) }}</p>
           </div>
           <Link :href="route('optimizer.show', last.id)" class="lg-btn lg-btn-soft">{{ $t('Open') }}</Link>
@@ -87,19 +87,19 @@
           </div>
         </header>
         <div v-if="!runs.data.length" class="op-empty"><icons name="clock" class="w-5 h-5" />{{ $t('Nothing has been optimised yet.') }}</div>
-        <div v-else class="op-tablewrap">
-          <table class="op-table">
-            <thead><tr><th>{{ $t('Reference') }}</th><th>{{ $t('When') }}</th><th>{{ $t('Done by') }}</th><th>{{ $t('What') }}</th><th class="r">{{ $t('Space gained') }}</th><th class="r">{{ $t('Speed') }}</th><th>{{ $t('Status') }}</th><th></th></tr></thead>
+        <div v-else class="lg-table-wrap">
+          <table v-labelize class="lg-table lg-responsive">
+            <thead><tr><th>{{ $t('Reference') }}</th><th>{{ $t('When') }}</th><th>{{ $t('Done by') }}</th><th>{{ $t('What') }}</th><th>{{ $t('Space gained') }}</th><th>{{ $t('Speed') }}</th><th>{{ $t('Status') }}</th><th>{{ $t('Actions') }}</th></tr></thead>
             <tbody>
               <tr v-for="r in runs.data" :key="r.id">
-                <td class="nw"><b>{{ r.ref }}</b></td>
-                <td class="nw">{{ $datetime(r.at) }}</td>
+                <td class="op-nw"><b>{{ r.ref }}</b></td>
+                <td class="op-nw">{{ $datetime(r.at) }}</td>
                 <td>{{ r.user }}</td>
                 <td><span v-for="k in r.tasks" :key="k" class="op-chip">{{ catalog[k] ? catalog[k].title : k }}</span></td>
-                <td class="r nw"><b>{{ r.saved_text }}</b></td>
-                <td class="r nw">{{ r.speed_pct === null ? '-' : (r.speed_pct > 0 ? '+' : '') + r.speed_pct + '%' }}</td>
-                <td><span class="op-status" :class="'is-' + r.status">{{ statusText(r.status) }}</span></td>
-                <td class="r nw op-row-actions">
+                <td class="op-nw"><b>{{ r.saved_text }}</b></td>
+                <td class="op-nw">{{ r.speed_pct === null ? '-' : (r.speed_pct > 0 ? '+' : '') + r.speed_pct + '%' }}</td>
+                <td><span v-if="r.rating" class="op-rate" :class="'is-' + r.rating">{{ r.rating_label }}</span><span v-else class="op-status" :class="'is-' + r.status">{{ statusText(r.status) }}</span></td>
+                <td class="op-row-actions">
                   <Link :href="route('optimizer.show', r.id)" class="lg-btn lg-btn-soft op-sm">{{ $t('View') }}</Link>
                   <a :href="route('optimizer.print', r.id)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft op-sm"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</a>
                 </td>
@@ -113,6 +113,8 @@
           <Link v-if="runs.next_page_url" :href="runs.next_page_url" preserve-scroll class="lg-btn lg-btn-soft op-sm">{{ $t('Next') }}</Link>
         </div>
       </section>
+
+      <run-overlay :open="ov.open" :steps="ov.steps" :finished="ov.finished" :failed="ov.failed" :error="ov.error" :rating-label="ov.rating" :saved-text="ov.saved" :started="ov.started" />
 
       <!-- the password: running changes data on the server -->
       <tec-dialog-modal :show="pw.open" max-width="md" @close="pw.open = false">
@@ -136,10 +138,11 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
+import RunOverlay from '@/Shared/Optimize/RunOverlay.vue';
 import { Link } from '@inertiajs/vue3';
 
 export default {
-  components: { AdminLayout, PageHeader, StatTiles, TecDialogModal, Link },
+  components: { AdminLayout, PageHeader, StatTiles, TecDialogModal, RunOverlay, Link },
   // not named "settings": that name is the app-wide shared prop the layout and menu read
   props: { opt: Object, limits: Object, defaults: Object, catalog: Object, defaultTasks: Array, runs: Object, canRun: Boolean, last: Object },
   data() {
@@ -150,6 +153,7 @@ export default {
       scanning: false,
       busy: false,
       pw: { open: false, password: '', error: '' },
+      ov: { open: false, steps: [], finished: false, failed: false, error: '', rating: '', saved: '', started: 0 },
     };
   },
   computed: {
@@ -203,15 +207,54 @@ export default {
       this.form.put(this.route('optimizer.settings'), { preserveScroll: true });
     },
     ask() { this.pw = { open: true, password: '', error: '' }; },
-    run() {
+    // starts the run (the password is checked there), then asks for each task in turn so the window can show what is happening; a task that reached its time limit is asked again
+    async run() {
       if (!this.pw.password || this.busy) return;
       this.busy = true;
-      this.$inertia.post(this.route('optimizer.run'), { tasks: this.picked, password: this.pw.password }, {
-        headers: { 'X-Progress-Label': this.$t('Optimising'), 'X-Progress-Long': '1', 'X-Progress-Done': this.$t('Optimised') },
-        onError: e => { this.pw.error = e.password || e.tasks || this.$t('Could not do that.'); },
-        onFinish: () => { this.busy = false; },
-        onSuccess: () => { this.pw.open = false; },
-      });
+      this.pw.error = '';
+      let started;
+      try {
+        started = (await window.axios.post(this.route('optimizer.run'), { tasks: this.picked, password: this.pw.password }, { headers: { 'X-Quiet': '1' } })).data;
+      } catch (e) {
+        const er = e.response && e.response.data && e.response.data.errors;
+        this.pw.error = (er && (er.password || er.tasks) && (er.password || er.tasks)[0]) || this.$t('Could not do that.');
+        this.busy = false;
+        return;
+      }
+      this.pw.open = false;
+      this.ov = { open: true, steps: started.tasks.map(t => ({ key: t.key, title: t.title, state: 'wait', summary: '' })), finished: false, failed: false, error: '', rating: '', saved: '', started: Date.now() };
+      const guard = e => { e.preventDefault(); e.returnValue = ''; };
+      window.addEventListener('beforeunload', guard);
+      try {
+        for (const step of this.ov.steps) {
+          step.state = 'running';
+          for (let i = 0; i < 8; i++) {
+            const r = (await window.axios.post(this.route('optimizer.step', started.id), { task: step.key }, { headers: { 'X-Quiet': '1' }, timeout: 0 })).data;
+            step.summary = r.summary + (r.bytes ? ' · ' + r.bytes_text : '');
+            step.state = r.ok ? 'done' : 'error';
+            if (!r.more) break;
+            step.state = 'running';
+          }
+        }
+        const f = (await window.axios.post(this.route('optimizer.finish', started.id), {}, { headers: { 'X-Quiet': '1' } })).data;
+        this.ov.finished = true;
+        this.ov.failed = f.status === 'failed';
+        this.ov.rating = f.rating_label;
+        this.ov.saved = f.saved_text;
+        await new Promise(r => setTimeout(r, 1400));
+        window.removeEventListener('beforeunload', guard);
+        this.ov.open = false;
+        this.$inertia.visit(f.url);
+      } catch (e) {
+        window.removeEventListener('beforeunload', guard);
+        this.ov.finished = true;
+        this.ov.failed = true;
+        this.ov.error = (e.response && e.response.data && e.response.data.message) || this.$t('The optimisation could not be completed. What was done is kept in the history.');
+        this.ov.steps.forEach(s => { if (s.state === 'running') s.state = 'error'; });
+        setTimeout(() => { this.ov.open = false; this.$inertia.visit(this.route('optimizer.index')); }, 4500);
+      } finally {
+        this.busy = false;
+      }
     },
   },
 };
@@ -239,15 +282,14 @@ export default {
 .op-input em { font-style: normal; font-size: 0.78rem; font-weight: 700; color: var(--lg-mute); white-space: nowrap; }
 .op-field small { font-size: 0.72rem; line-height: 1.35; color: var(--lg-mute); }
 .op-err { color: #dc2626; font-size: 0.78rem; font-weight: 600; }
-.op-tablewrap { overflow-x: auto; }
-.op-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.op-table th { text-align: left; padding: 8px 10px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--lg-mute); border-bottom: 1px solid var(--lg-line); white-space: nowrap; }
-.op-table td { padding: 10px; border-bottom: 1px solid var(--lg-line); vertical-align: middle; }
-.op-table .r { text-align: right; } .op-table .nw { white-space: nowrap; }
+.op-nw { white-space: nowrap; }
+.op-rate { display: inline-block; margin-left: 6px; padding: 2px 10px; border-radius: 9999px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em; vertical-align: middle; background: rgba(100, 116, 139, 0.16); color: #475569; }
+.op-rate.is-excellent { background: rgba(5, 150, 105, 0.16); color: #047857; } .op-rate.is-very_good { background: rgba(13, 148, 136, 0.16); color: #0f766e; }
+.op-rate.is-good { background: rgba(2, 132, 199, 0.15); color: #0369a1; } .op-rate.is-attention { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
 .op-chip { display: inline-block; margin: 0 4px 4px 0; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; background: var(--lg-soft); border: 1px solid var(--lg-line); color: var(--lg-ink); }
 .op-status { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.72rem; font-weight: 800; background: rgba(22, 163, 74, 0.12); color: #15803d; }
 .op-status.is-partial, .op-status.is-running { background: rgba(217, 119, 6, 0.14); color: #b45309; } .op-status.is-failed { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
-.op-row-actions { display: flex; justify-content: flex-end; gap: 6px; } .op-sm { min-height: 2rem; padding: 0 12px; font-size: 0.78rem; }
+.op-row-actions { display: flex; flex-wrap: wrap; gap: 6px; } .op-sm { min-height: 2rem; padding: 0 12px; font-size: 0.78rem; }
 .op-empty { display: flex; align-items: center; gap: 8px; padding: 18px; font-weight: 600; color: var(--lg-mute); }
 .op-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; font-size: 0.8rem; font-weight: 700; color: var(--lg-mute); flex-wrap: wrap; }
 .op-dlg-title { display: inline-flex; align-items: center; gap: 8px; } .op-dlg-text { font-size: 0.85rem; line-height: 1.5; margin-bottom: 12px; }

@@ -348,7 +348,7 @@ export default {
 .sh-retired { display: flex; align-items: center; gap: 0.4rem; margin: 0.5rem 0 0; font-size: 0.82rem; font-weight: 700; color: #92400e; }
 .sh-name { font-size: 1.2rem; font-weight: 800; color: var(--lg-ink); overflow-wrap: anywhere; }
 
-.sh-tabs { display: inline-flex; gap: 6px; padding: 5px; border-radius: 9999px; background: var(--lg-card); border: 1px solid var(--lg-line); box-shadow: var(--lg-shadow); max-width: 100%; overflow-x: auto; }
+.sh-tabs { display: inline-flex; flex-wrap: wrap; gap: 6px; padding: 6px; border-radius: 26px; background: var(--lg-card); border: 1px solid var(--lg-line); box-shadow: var(--lg-shadow); max-width: 100%; }
 .sh-tab { display: inline-flex; align-items: center; gap: 6px; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.82rem; font-weight: 700; color: var(--lg-mute); white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
 .sh-tab:hover { color: var(--lg-navy); }
 .sh-tab.is-active { color: #fff; background: linear-gradient(145deg, #2f6fb3, #0f2540); box-shadow: 0 8px 14px -8px rgba(15, 37, 64, 0.9); }

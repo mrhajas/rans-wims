@@ -11,7 +11,7 @@ class OptimizerRun extends Model
 
     protected $casts = [
         'tasks' => 'array', 'options' => 'array', 'before' => 'array', 'after' => 'array', 'results' => 'array',
-        'speed_before' => 'array', 'speed_after' => 'array', 'saved_bytes' => 'integer',
+        'speed_before' => 'array', 'speed_after' => 'array', 'rating_why' => 'array', 'remaining' => 'array', 'saved_bytes' => 'integer',
         'started_at' => 'datetime', 'finished_at' => 'datetime',
     ];
 }

@@ -54,13 +54,16 @@ class Tasks
 
         return ['bytes' => (int) $free, 'items' => count($eligible), 'note' => count($eligible)
             ? __(':n table(s) hold wasted space.', ['n' => count($eligible)])
-            : __('No table holds enough wasted space to rebuild; the index figures are still refreshed.')];
+            : __('No table holds wasted space worth rebuilding (a few MB free in a table is normal). The index figures are still refreshed, which helps the database choose faster reads.')];
     }
 
-    /** Tables with at least 1 MB of free space inside them. */
+    /**
+     * Tables worth rebuilding: the free space inside their file is at least 12 MB, or at least 6 MB and a quarter of what the table holds. A few MB free in every table is
+     * normal (the database allocates in blocks of about 4 MB) and rebuilding such a table gains nothing: it only allocates a new block of free space.
+     */
     private static function tablesToRebuild(): array
     {
-        return array_values(array_filter(Metrics::tables(400), fn ($t) => $t['free'] >= 1024 * 1024));
+        return array_values(array_filter(Metrics::tables(500), fn ($t) => $t['free'] >= 12 * 1024 * 1024 || ($t['free'] >= 6 * 1024 * 1024 && $t['free'] >= $t['bytes'] / 4)));
     }
 
     private static function scanImages(): array
@@ -163,8 +166,8 @@ class Tasks
         }
         $saved = array_sum(array_map(fn ($r) => max(0, $r['before'] - $r['after']), $rebuilt));
 
-        return ['ok' => true, 'changed' => count($rebuilt), 'bytes' => (int) $saved, 'notes' => $notes,
-            'summary' => __(':a table(s) rebuilt, index figures refreshed for :b table(s).', ['a' => count($rebuilt), 'b' => $analysed]),
+        return ['ok' => true, 'more' => $skipped > 0, 'changed' => count($rebuilt), 'bytes' => (int) $saved, 'notes' => $notes,
+            'summary' => count($rebuilt) ? __(':a table(s) rebuilt, index figures refreshed for :b table(s).', ['a' => count($rebuilt), 'b' => $analysed]) : __('Nothing needed rebuilding; index figures refreshed for :b table(s).', ['b' => $analysed]),
             'items' => array_map(fn ($r) => ['name' => $r['name'], 'before' => $r['before'], 'after' => $r['after'], 'note' => $r['seconds'] . ' s'], $rebuilt)];
     }
 
@@ -217,9 +220,6 @@ class Tasks
         if ($rotated) {
             $notes[] = __(':n picture(s) carry a rotation mark and were left as they are.', ['n' => $rotated]);
         }
-        if ($stopped) {
-            $notes[] = __('The time limit was reached: run it again to continue with the rest.');
-        }
         if ($changed && $o['opt_keep_originals_days'] > 0) {
             $notes[] = __('The originals are kept for :d day(s) in storage/app/optimizer/originals and then removed; the space they hold is freed then.', ['d' => $o['opt_keep_originals_days']]);
         }
@@ -228,7 +228,7 @@ class Tasks
             $notes[] = __(':n old folder(s) of originals were removed.', ['n' => $purged]);
         }
 
-        return ['ok' => true, 'changed' => $changed, 'bytes' => (int) $saved, 'notes' => $notes, 'items' => $items,
+        return ['ok' => true, 'more' => $stopped, 'changed' => $changed, 'bytes' => (int) $saved, 'notes' => $notes, 'items' => $items,
             'summary' => $changed ? __(':n picture(s) compressed.', ['n' => $changed]) : __('No picture needed compressing.'), 'looked' => $looked];
     }
 

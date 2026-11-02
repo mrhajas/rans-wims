@@ -390,6 +390,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('settings/optimize/scan', [Controllers\OptimizerController::class, 'scan'])->middleware('throttle:12,1,optimizer.scan')->name('optimizer.scan');
     Route::put('settings/optimize', [Controllers\OptimizerController::class, 'updateSettings'])->middleware('throttle:20,1,optimizer.settings')->name('optimizer.settings');
     Route::post('settings/optimize/run', [Controllers\OptimizerController::class, 'run'])->middleware('throttle:4,1,optimizer.run')->name('optimizer.run');
+    Route::post('settings/optimize/runs/{run}/step', [Controllers\OptimizerController::class, 'step'])->whereNumber('run')->middleware('throttle:60,1,optimizer.step')->name('optimizer.step');
+    Route::post('settings/optimize/runs/{run}/finish', [Controllers\OptimizerController::class, 'finish'])->whereNumber('run')->middleware('throttle:12,1,optimizer.finish')->name('optimizer.finish');
     Route::get('settings/optimize/runs/{run}', [Controllers\OptimizerController::class, 'show'])->whereNumber('run')->name('optimizer.show');
     Route::get('settings/optimize/runs/{run}/print', [Controllers\OptimizerController::class, 'print'])->whereNumber('run')->middleware('throttle:60,1,optimizer.print')->name('optimizer.print');
     Route::get('settings/optimize/runs/{run}/pdf', [Controllers\OptimizerController::class, 'pdf'])->whereNumber('run')->middleware('throttle:30,1,optimizer.pdf')->name('optimizer.pdf');

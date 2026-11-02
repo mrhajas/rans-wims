@@ -8,7 +8,7 @@
         :data-tip="statusLabel"
        :aria-label="statusLabel">
         <span class="status-dot-wrap">
-          <icons name="wifi" class="status-icon h-3.5 w-3.5" />
+          <network-icon :percent="net.percent" :level="netLevel" :type="net.type" class="status-icon h-3.5 w-3.5" />
         </span>
         <span class="hidden sm:inline nb-c-hide">{{ statusLabel }}</span>
       </button>
@@ -18,11 +18,13 @@
       <div class="px-4 pt-3.5 pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
           <span class="status-dot-wrap status-dot-wrap--static" :class="`status-dot-wrap--${$connection.status}`">
-            <icons name="wifi" class="h-3.5 w-3.5" />
+            <network-icon :percent="net.percent" :level="netLevel" :type="net.type" class="h-3.5 w-3.5" />
           </span>
           <span class="text-sm font-semibold text-slate-800">{{ statusHeading }}</span>
         </div>
       </div>
+
+      <network-panel />
 
       <div class="px-4 py-3">
         <template v-if="$connection.status === 'online'">
@@ -91,10 +93,17 @@
 import TecDropdown from '@/Jetstream/Dropdown.vue';
 import { refreshConnectionStatus } from '@/Core/offlineStatus';
 import { runSync } from '@/Core/offlineSync';
+import NetworkIcon from '@/Shared/Top/NetworkIcon.vue';
+import NetworkPanel from '@/Shared/Top/NetworkPanel.vue';
+import { net, startNetworkSignal } from '@/Core/networkSignal';
 
 export default {
-  components: { TecDropdown },
+  components: { TecDropdown, NetworkIcon, NetworkPanel },
+  data() { return { net }; },
+  mounted() { startNetworkSignal(); },
   computed: {
+    // when WIMS itself says it is offline the icon says so too
+    netLevel() { return this.$connection.status === 'offline' ? 'offline' : this.net.level; },
     statusLabel() {
       return {
         online: this.$t('Online'),

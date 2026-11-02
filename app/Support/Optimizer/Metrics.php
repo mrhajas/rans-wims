@@ -89,7 +89,7 @@ class Metrics
         }
         $rows = DB::select("select table_name as name, (data_length + index_length) as bytes, data_free as free, table_rows as rows_n from information_schema.tables where table_schema = database() and table_type = 'BASE TABLE' order by (data_length + index_length) desc limit " . (int) $limit);
 
-        return array_map(fn ($r) => ['name' => $r->name, 'bytes' => (int) $r->bytes, 'free' => (int) $r->free, 'rows' => (int) $r->rows_n], $rows);
+        return array_map(fn ($r) => ['name' => $r->name, 'bytes' => (int) $r->bytes, 'free' => (int) $r->free, 'total' => (int) $r->bytes + (int) $r->free, 'rows' => (int) $r->rows_n], $rows);
     }
 
     public static function snapshot(): array

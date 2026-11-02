@@ -272,48 +272,85 @@ class PrintDocuments
         ]);
     }
 
-    /** One optimisation (Settings > Optimize) as a WIMS document: who ran it, what was done, and what was gained in space and in database speed. */
-    public static function optimizerRun(\App\Models\OptimizerRun $run): array
+    /**
+     * One optimisation (Settings > Optimize) as a WIMS document: the general status and why, who ran it, who prints or downloads it now and who did before, every task with what it did,
+     * the sizes before and after, the database speed read by read, and the numbers that were used.
+     */
+    public static function optimizerRun(\App\Models\OptimizerRun $run, ?\App\Models\User $by = null, array $earlier = [], string $action = 'Printed'): array
     {
         $b = (array) $run->before;
         $a = (array) $run->after;
-        $by = fn ($v) => \App\Support\Optimizer\Runner::bytes($v);
+        $by_ = fn ($v) => \App\Support\Optimizer\Runner::bytes($v);
         $sb = (float) $run->speed_before_ms;
         $sa = (float) $run->speed_after_ms;
         $speed = $sb > 0 ? round((($sb - $sa) / $sb) * 100, 1) : 0;
+        $ref = 'OPT-' . str_pad((string) $run->id, 5, '0', STR_PAD_LEFT);
+        $rating = \App\Support\Optimizer\Runner::ratingLabel($run->rating);
+
         $rows = [];
         foreach ((array) $run->results as $r) {
             $notes = implode(' ', array_map('strval', (array) ($r['notes'] ?? [])));
             $rows[] = [['v' => $r['title'] ?? '-', 'a' => 'l'], ['v' => $r['summary'] ?? '-', 'a' => 'l'], ['v' => number_format((int) ($r['changed'] ?? 0)), 'a' => 'r', 'nw' => true],
-                ['v' => $by((int) ($r['bytes'] ?? 0)), 'a' => 'r', 'nw' => true], ['v' => ($r['ok'] ?? false) ? 'Done' : 'Error', 'a' => 'l', 'nw' => true], ['v' => $notes ?: '-', 'a' => 'l']];
+                ['v' => $by_((int) ($r['bytes'] ?? 0)), 'a' => 'r', 'nw' => true], ['v' => ($r['ok'] ?? false) ? 'Done' : 'Error', 'a' => 'l', 'nw' => true], ['v' => $notes ?: '-', 'a' => 'l']];
         }
         $status = ['done' => ['Completed', 'status-info'], 'partial' => ['Partly done', 'status-warn'], 'failed' => ['Failed', 'status-warn'], 'running' => ['Running', 'status-warn']][$run->status] ?? ['Completed', 'status-info'];
+        $why = array_values(array_map('strval', (array) $run->rating_why));
+
+        $pair = fn ($label, $x, $y, $moreIsBetter = false) => [$label, $by_($x) . '  >  ' . $by_($y) . '  (' . (($moreIsBetter ? $y - $x : $x - $y) >= 0 ? '+' : '') . $by_($moreIsBetter ? $y - $x : $x - $y) . ')'];
+        $sizes = [
+            $pair('Database (with its free space)', (int) ($b['db_total_bytes'] ?? $b['db_bytes'] ?? 0), (int) ($a['db_total_bytes'] ?? $a['db_bytes'] ?? 0)),
+            $pair('Uploaded pictures', (int) ($b['images_bytes'] ?? 0), (int) ($a['images_bytes'] ?? 0)),
+            $pair('Server log files', (int) ($b['logs_bytes'] ?? 0), (int) ($a['logs_bytes'] ?? 0)),
+            $pair('Kept originals of pictures', (int) ($b['originals_bytes'] ?? 0), (int) ($a['originals_bytes'] ?? 0)),
+            $pair('Free disk space', (int) ($b['disk_free_bytes'] ?? 0), (int) ($a['disk_free_bytes'] ?? 0), true),
+        ];
+        $after = [];
+        foreach ((array) (((array) $run->speed_after)['items'] ?? []) as $i) {
+            $after[$i['name']] = $i['ms'];
+        }
+        $reads = [];
+        foreach ((array) (((array) $run->speed_before)['items'] ?? []) as $i) {
+            $y = $after[$i['name']] ?? $i['ms'];
+            $reads[] = [$i['name'], number_format($i['ms'], 2) . ' ms  >  ' . number_format($y, 2) . ' ms'];
+        }
+        $reads[] = ['All together', number_format($sb, 2) . ' ms  >  ' . number_format($sa, 2) . ' ms  (' . ($sb > 0 ? ($speed >= 0 ? '+' : '') . $speed . '%' : '-') . ')'];
+
+        $o = (array) $run->options;
+        $print = [[$action, ($by->name ?? '-') . ($by && $by->roles->first() ? ' (' . $by->roles->first()->name . ')' : '') . ', ' . now()->format('d/m/Y H:i:s')]];
+        foreach ($earlier as $e) {
+            $print[] = [$e['action'], ($e['who'] ?? '-') . ($e['role'] ? ' (' . $e['role'] . ')' : '') . ', ' . \Illuminate\Support\Carbon::parse($e['at'])->format('d/m/Y H:i:s')];
+        }
 
         return self::base([
             'accent' => '#4f46e5', 'accent_dark' => '#3730a3', 'accent_soft' => '#eef2ff', 'accent_line' => '#c7d2fe',
-            'icon' => 'file', 'title' => 'DATA OPTIMISATION REPORT', 'subtitle' => 'What was optimised, who did it, and what was gained',
-            'reference' => 'OPT-' . str_pad((string) $run->id, 5, '0', STR_PAD_LEFT),
-            'status' => ['label' => $status[0], 'class' => $status[1]],
+            'icon' => 'file', 'title' => 'DATA OPTIMISATION REPORT', 'subtitle' => 'What was optimised, who did it, what was gained and how well it went',
+            'reference' => $ref,
+            'status' => ['label' => strtoupper($rating) . ($run->rating ? '' : ' - ' . $status[0]), 'class' => in_array($run->rating, ['excellent', 'very_good'], true) ? 'status-info' : 'status-warn'],
             'show_values' => false, 'compact' => true,
             'stats' => [
-                ['icon' => 'package', 'label' => 'Space gained', 'value' => $by((int) $run->saved_bytes)],
+                ['icon' => 'package', 'label' => 'Space gained', 'value' => $by_((int) $run->saved_bytes)],
                 ['icon' => 'clock', 'label' => 'Database speed', 'value' => ($sb > 0 ? ($speed >= 0 ? '+' : '') . $speed . '%' : '-')],
                 ['icon' => 'hash', 'label' => 'Files changed', 'value' => number_format((int) $run->files_changed)],
                 ['icon' => 'hash', 'label' => 'Tables rebuilt', 'value' => number_format((int) $run->tables_changed)],
             ],
             'parties' => [
-                ['title' => 'Run', 'icon' => 'file', 'rows' => [['Started', optional($run->started_at)->format('d/m/Y H:i:s') ?: '-'], ['Finished', optional($run->finished_at)->format('d/m/Y H:i:s') ?: '-'], ['Took', (int) $run->seconds . ' s'], ['Status', $status[0]]]],
-                ['title' => 'Done by', 'icon' => 'user', 'rows' => [['Name', $run->user_name ?: '-'], ['Tasks', count((array) $run->tasks)]]],
+                ['title' => 'Overall status: ' . $rating, 'icon' => 'file', 'rows' => array_map(fn ($w, $i) => [$i === 0 ? 'Why' : '', $w], $why, array_keys($why)) ?: [['Why', '-']]],
+                ['title' => 'Run', 'icon' => 'user', 'rows' => [['Done by', ($run->user_name ?: '-')], ['Started', optional($run->started_at)->format('d/m/Y H:i:s') ?: '-'], ['Finished', optional($run->finished_at)->format('d/m/Y H:i:s') ?: '-'], ['Took', (int) $run->seconds . ' s'], ['Run status', $status[0]]]],
+            ],
+            'extra_parties' => [
+                ['title' => 'Sizes before and after (gain in brackets)', 'icon' => 'package', 'rows' => $sizes],
+                ['title' => 'Database speed, read by read (middle of five tries)', 'icon' => 'clock', 'rows' => $reads],
+                ['title' => 'Printed and downloaded by', 'icon' => 'user', 'rows' => $print],
             ],
             'table' => [
-                'title' => 'What was done', 'note' => 'Every figure was measured by the system before and after the run. Database speed is the time of a fixed set of typical reads: ' . number_format($sb, 1) . ' ms before, ' . number_format($sa, 1) . ' ms after (small differences are normal noise).', 'start' => 0,
+                'title' => 'What was done', 'note' => 'Every figure was measured by the system before and after the run. Database speed is the time of a fixed set of typical reads; small differences are normal noise.', 'start' => 0,
                 'cols' => [['label' => 'Task', 'a' => 'l'], ['label' => 'Result', 'a' => 'l'], ['label' => 'Changed', 'a' => 'r'], ['label' => 'Space', 'a' => 'r'], ['label' => 'Outcome', 'a' => 'l'], ['label' => 'Notes', 'a' => 'l']],
                 'rows' => $rows,
             ],
             'lines' => [], 'total' => '', 'total_qty' => '',
-            'notes' => 'Before: database ' . $by((int) ($b['db_total_bytes'] ?? $b['db_bytes'] ?? 0)) . ', pictures ' . $by((int) ($b['images_bytes'] ?? 0)) . ', logs ' . $by((int) ($b['logs_bytes'] ?? 0)) . ', free disk ' . $by((int) ($b['disk_free_bytes'] ?? 0)) . '. After: database ' . $by((int) ($a['db_total_bytes'] ?? $a['db_bytes'] ?? 0)) . ', pictures ' . $by((int) ($a['images_bytes'] ?? 0)) . ', logs ' . $by((int) ($a['logs_bytes'] ?? 0)) . ', free disk ' . $by((int) ($a['disk_free_bytes'] ?? 0)) . '. Kept originals of compressed pictures: ' . $by((int) ($a['originals_bytes'] ?? 0)) . ' (removed automatically after the days set in Settings > Optimize).',
-            'signatures' => [['role' => 'Run By', 'name' => $run->user_name, 'date' => optional($run->finished_at ?: $run->started_at)->format('d/m/Y')]],
-            'footer' => 'Data optimisation OPT-' . str_pad((string) $run->id, 5, '0', STR_PAD_LEFT),
+            'notes' => 'Numbers used: longest side ' . ($o['opt_image_max_px'] ?? '-') . ' px, quality ' . ($o['opt_image_quality'] ?? '-') . '%, pictures under ' . ($o['opt_image_min_kb'] ?? '-') . ' KB left alone, originals kept ' . ($o['opt_keep_originals_days'] ?? '-') . ' day(s), log files older than ' . ($o['opt_log_gzip_days'] ?? '-') . ' day(s) zipped, ' . ($o['opt_seconds'] ?? '-') . ' s per step. Backups are never touched. The kept originals of compressed pictures (' . $by_((int) ($a['originals_bytes'] ?? 0)) . ') are removed automatically after the days above, which then frees that space too.',
+            'signatures' => [['role' => 'Run By', 'name' => $run->user_name, 'date' => optional($run->finished_at ?: $run->started_at)->format('d/m/Y')], ['role' => $action . ' By', 'name' => optional($by)->name, 'date' => now()->format('d/m/Y')]],
+            'footer' => 'Data optimisation ' . $ref . ' - ' . $rating,
         ]);
     }
 

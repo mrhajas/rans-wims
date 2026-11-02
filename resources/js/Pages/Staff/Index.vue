@@ -323,6 +323,12 @@ export default {
 .stf-row--contracts { margin-bottom: 1rem; }
 .stf-actions { white-space: nowrap; text-align: right; padding-left: 4px !important; padding-right: 8px !important; } .stf-actions > * { display: inline-flex; vertical-align: middle; margin-left: 3px; } .stf-actions :deep(.lg-icon-btn) { width: 29px; height: 29px; border-radius: 9px; }
 @media (max-width: 1699px) { .stf-col-mobile { display: none; } } .stf-actions-h { text-align: right; }
+/* on a phone the row of action buttons wraps inside the card (eight buttons were wider than the card and ran out of it) */
+@media (max-width: 767.98px) {
+  .lg-table.lg-responsive tbody tr:not(.lg-empty-row) td.stf-actions { flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 8px; white-space: normal; text-align: left; padding-left: 0 !important; padding-right: 0 !important; }
+  .lg-table.lg-responsive tbody tr:not(.lg-empty-row) td.stf-actions::before { flex: 0 0 100%; }
+  .stf-actions > * { margin-left: 0; }
+}
 .stf-contract { white-space: nowrap; } .stf-no { width: 3.2rem; text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; color: #64748b; }
 .stf-hero {
   background: linear-gradient(135deg, rgba(238, 242, 255, 0.75), rgba(240, 253, 250, 0.6));

@@ -9,6 +9,18 @@
 
       <stat-tiles :items="tiles" compact />
 
+      <!-- the general status of this optimisation, and why -->
+      <section class="lg-card or-rating" :class="'is-' + (run.rating || 'none')">
+        <div class="or-rating-main">
+          <span class="or-seal"><icons :name="run.rating === 'attention' ? 'exclamation' : 'tick'" class="w-7 h-7" /></span>
+          <div class="min-w-0">
+            <small>{{ $t('General status') }}</small>
+            <h2>{{ run.rating_label || $t('Not rated') }}</h2>
+          </div>
+        </div>
+        <ul v-if="(run.rating_why || []).length" class="or-why"><li v-for="(w, i) in run.rating_why" :key="i">{{ w }}</li></ul>
+      </section>
+
       <section class="lg-card">
         <header class="lg-card-head">
           <span class="lg-card-ico lg-ico-indigo"><icons name="user" class="w-5 h-5" /></span>
@@ -28,8 +40,8 @@
             <p class="lg-card-sub">{{ $t('Sizes measured by the system at the start and at the end of the run.') }}</p>
           </div>
         </header>
-        <div class="or-tablewrap">
-          <table class="or-table">
+        <div class="lg-table-wrap">
+          <table v-labelize class="lg-table lg-responsive">
             <thead><tr><th>{{ $t('What') }}</th><th class="r">{{ $t('Before') }}</th><th class="r">{{ $t('After') }}</th><th class="r">{{ $t('Gained') }}</th></tr></thead>
             <tbody>
               <tr v-for="p in run.pairs" :key="p.key">
@@ -50,8 +62,8 @@
             <p class="lg-card-sub">{{ $t('The same typical reads, timed before and after (the middle of five tries). Small differences are normal noise.') }}</p>
           </div>
         </header>
-        <div class="or-tablewrap">
-          <table class="or-table">
+        <div class="lg-table-wrap">
+          <table v-labelize class="lg-table lg-responsive">
             <thead><tr><th>{{ $t('Read') }}</th><th class="r">{{ $t('Before (ms)') }}</th><th class="r">{{ $t('After (ms)') }}</th><th class="r">{{ $t('Change') }}</th></tr></thead>
             <tbody>
               <tr v-for="s in probes" :key="s.name">
@@ -74,8 +86,8 @@
           </div>
         </header>
         <ul v-if="(r.notes || []).length" class="or-notes"><li v-for="(n, i) in r.notes" :key="i">{{ n }}</li></ul>
-        <div v-if="(r.items || []).length" class="or-tablewrap">
-          <table class="or-table or-small">
+        <div v-if="(r.items || []).length" class="lg-table-wrap">
+          <table v-labelize class="lg-table lg-responsive or-small">
             <thead><tr><th>{{ $t('Item') }}</th><th class="r">{{ $t('Before') }}</th><th class="r">{{ $t('After') }}</th><th>{{ $t('Note') }}</th></tr></thead>
             <tbody>
               <tr v-for="(it, i) in shown(r.items)" :key="i">
@@ -87,6 +99,23 @@
             </tbody>
           </table>
           <p v-if="r.items.length > 15" class="or-foot">{{ $t('The first 15 of :n are shown here; the complete list is kept in the history.', { n: r.items.length }) }}</p>
+        </div>
+      </section>
+
+      <section class="lg-card">
+        <header class="lg-card-head">
+          <span class="lg-card-ico lg-ico-sky"><icons name="printer" class="w-5 h-5" /></span>
+          <div class="min-w-0 flex-1">
+            <h2 class="lg-card-title">{{ $t('Printed and downloaded by') }}</h2>
+            <p class="lg-card-sub">{{ $t('Every print and every PDF download of this report is recorded here and in the Download / Print log.') }}</p>
+          </div>
+        </header>
+        <p v-if="!(run.printed || []).length" class="or-foot">{{ $t('Nobody has printed or downloaded this report yet.') }}</p>
+        <div v-else class="lg-table-wrap">
+          <table v-labelize class="lg-table lg-responsive">
+            <thead><tr><th>{{ $t('Who') }}</th><th>{{ $t('Role') }}</th><th>{{ $t('What') }}</th><th>{{ $t('When') }}</th></tr></thead>
+            <tbody><tr v-for="(p, i) in run.printed" :key="i"><td>{{ p.who }}</td><td>{{ p.role || '-' }}</td><td>{{ p.action }}</td><td class="nw">{{ $datetime(p.at) }}</td></tr></tbody>
+          </table>
         </div>
       </section>
 
@@ -147,12 +176,14 @@ export default {
 </script>
 
 <style scoped>
-.or-tablewrap { overflow-x: auto; }
-.or-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-.or-table th { text-align: left; padding: 8px 10px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--lg-mute); border-bottom: 1px solid var(--lg-line); white-space: nowrap; }
-.or-table td { padding: 9px 10px; border-bottom: 1px solid var(--lg-line); }
-.or-table .r { text-align: right; } .or-table .nw { white-space: nowrap; } .or-wrap { overflow-wrap: anywhere; }
-.or-small { font-size: 0.78rem; }
+.or-small { font-size: 0.78rem; } .lg-table td.r, .lg-table th.r { text-align: right; }
+.or-rating { display: grid; gap: 10px; border-left: 6px solid #64748b; }
+.or-rating.is-excellent { border-left-color: #059669; background-image: linear-gradient(90deg, rgba(5, 150, 105, 0.10), transparent 55%); } .or-rating.is-very_good { border-left-color: #0d9488; background-image: linear-gradient(90deg, rgba(13, 148, 136, 0.10), transparent 55%); }
+.or-rating.is-good { border-left-color: #0284c7; background-image: linear-gradient(90deg, rgba(2, 132, 199, 0.10), transparent 55%); } .or-rating.is-attention { border-left-color: #dc2626; background-image: linear-gradient(90deg, rgba(220, 38, 38, 0.10), transparent 55%); }
+.or-rating-main { display: flex; align-items: center; gap: 14px; } .or-rating-main small { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--lg-mute); } .or-rating-main h2 { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--lg-ink); }
+.or-seal { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%; color: #fff; background: #64748b; box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.4); }
+.is-excellent .or-seal { background: linear-gradient(145deg, #34d399, #047857); } .is-very_good .or-seal { background: linear-gradient(145deg, #2dd4bf, #0f766e); } .is-good .or-seal { background: linear-gradient(145deg, #38bdf8, #0369a1); } .is-attention .or-seal { background: linear-gradient(145deg, #f87171, #b91c1c); }
+.or-why { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 0.84rem; line-height: 1.45; color: var(--lg-ink); }
 .or-total td { font-weight: 800; background: var(--lg-soft); }
 .or-good { color: #15803d; } .or-bad { color: #b91c1c; }
 .or-foot { margin: 10px 0 0; font-size: 0.78rem; line-height: 1.45; color: var(--lg-mute); }
