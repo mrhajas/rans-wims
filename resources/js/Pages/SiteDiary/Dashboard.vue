@@ -2,7 +2,7 @@
   <admin-layout :title="$t('Site Diary Dashboard')">
     <div class="lg-page sdy sdd px-4 md:px-0">
       <!-- welcome bar -->
-      <header class="sdd-bar">
+      <header class="sdd-top">
         <div class="sdd-hello">
           <span class="sdd-hello-ico"><icons name="camera" class="w-6 h-6" /></span>
           <div class="min-w-0">
@@ -188,10 +188,10 @@ export default {
 </script>
 
 <style scoped>
-.sdd-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-bottom: 1rem; padding: 14px 16px; border-radius: 1.6rem; background: var(--lg-card); border: 1px solid var(--lg-line); box-shadow: 0 18px 36px -26px rgba(15, 23, 42, 0.45); }
-.sdd-hello { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sdd-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-bottom: 1rem; padding: 14px 16px; border-radius: 1.6rem; background: var(--lg-card); border: 1px solid var(--lg-line); box-shadow: 0 18px 36px -26px rgba(15, 23, 42, 0.45); }
+.sdd-hello { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 18rem; }
 .sdd-hello-ico { flex: none; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 1.15rem; color: #fff; background: linear-gradient(145deg, #fb923c, #ea580c); box-shadow: 0 12px 20px -10px rgba(234, 88, 12, 0.8); }
-.sdd-hello h1 { margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--lg-ink); }
+.sdd-hello h1 { margin: 0; font-size: 1.2rem; font-weight: 900; line-height: 1.25; color: var(--lg-ink); overflow-wrap: anywhere; }
 .sdd-hello p { margin: 2px 0 0; font-size: 0.8rem; color: var(--lg-faint); }
 .sdd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sdd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 2.8rem; padding: 0 1.1rem; border: 1px solid var(--lg-line); border-radius: 1rem; font-size: 0.85rem; font-weight: 800; text-decoration: none; cursor: pointer; transition: transform 0.12s ease; touch-action: manipulation; }
@@ -230,7 +230,8 @@ html.dark .sdd-btn.is-dark { background: #e2e8f0; color: #0b1220; border-color: 
 @keyframes sdd-grow { from { width: 0 !important; } }
 @keyframes sdd-shimmer { to { background-position: -200% 0; } }
 @media (max-width: 860px) { .sdd-grid { grid-template-columns: 1fr; } }
-@media (max-width: 767.98px) { .sdd-actions { width: 100%; } .sdd-actions > * { flex: 1; } .sdd-btn span { white-space: nowrap; } }
+@media (max-width: 767.98px) { .sdd-actions { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); } .sdd-actions > * { min-width: 0; display: flex; } .sdd-actions .sdd-btn { flex: 1; min-width: 0; } .sdd-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+@media (max-width: 575.98px) { .sdd-top { padding: 12px; border-radius: 1.3rem; } .sdd-hello-ico { width: 44px; height: 44px; border-radius: 1rem; } .sdd-hello h1 { font-size: 1.05rem; } .sdd-hello p { font-size: 0.74rem; } .sdd-btn { padding: 0 0.8rem; font-size: 0.8rem; } }
 @media (max-width: 575.98px) { .sdd-cards { grid-template-columns: 1fr 1fr; gap: 10px; } }
 @media (prefers-reduced-motion: reduce) { .sdd-bar span, .sdd-skel { animation: none; } }
 </style>

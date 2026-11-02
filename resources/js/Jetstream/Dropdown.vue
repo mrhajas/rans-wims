@@ -230,6 +230,17 @@ export default {
 @media (max-width: 639.98px) {
   .dd-mobile-anchored {
     top: var(--dd-mobile-top, 96px);
+    /* the panel starts below its trigger, so its height is what is left of the screen under it (the old fixed 80vh ran off the bottom) */
+    max-height: calc(100vh - var(--dd-mobile-top, 96px) - 12px);
+    max-height: calc(100dvh - var(--dd-mobile-top, 96px) - 12px);
+  }
+  /* a tall panel (WIMS Online, the profile card...) scrolls inside itself, so every part of it can be reached with a finger */
+  .dd-mobile-anchored > .tdd-body {
+    max-height: inherit;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 </style>
