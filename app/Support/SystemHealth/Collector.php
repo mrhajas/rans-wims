@@ -26,13 +26,14 @@ class Collector
             'speed' => self::probe(fn () => self::speed()),
             'database' => self::probe(fn () => self::database()),
             'disk' => self::probe(fn () => self::disk()),
-            'people' => self::probe(fn () => self::people($user)),
-            'jobs' => self::probe(fn () => self::jobs()),
-            'backups' => self::probe(fn () => self::backups()),
-            'logs' => self::probe(fn () => self::logs()),
-            'slow' => self::probe(fn () => self::slow()),
-            'licence' => self::probe(fn () => self::licence()),
-            'sms_usage' => self::probe(fn () => self::smsUsage()),
+            // the counts below are remembered for 20 seconds per account: the page asks every 30 seconds and several people may have it open, so the database is not asked each time
+            'people' => self::probe(fn () => self::brief('people', $user, fn () => self::people($user))),
+            'jobs' => self::probe(fn () => self::brief('jobs', $user, fn () => self::jobs())),
+            'backups' => self::probe(fn () => self::brief('backups', $user, fn () => self::backups())),
+            'logs' => self::probe(fn () => self::brief('logs', $user, fn () => self::logs())),
+            'slow' => self::probe(fn () => self::brief('slow', $user, fn () => self::slow())),
+            'licence' => self::probe(fn () => self::brief('licence', $user, fn () => self::licence())),
+            'sms_usage' => self::probe(fn () => self::brief('sms', $user, fn () => self::smsUsage())),
             'you' => self::probe(fn () => self::you($user)),
         ];
         $out['build_ms'] = (int) round((microtime(true) - $t0) * 1000);
@@ -83,6 +84,11 @@ class Collector
         Cache::forget('system-health.speed');
 
         return self::speed(true);
+    }
+
+    private static function brief(string $key, User $user, callable $fn): ?array
+    {
+        return Cache::remember('system-health.' . $key . '.' . (int) $user->account_id, 20, $fn);
     }
 
     private static function probe(callable $fn): ?array
