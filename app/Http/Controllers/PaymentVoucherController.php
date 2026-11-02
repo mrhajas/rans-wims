@@ -433,12 +433,20 @@ class PaymentVoucherController extends Controller
             throw ValidationException::withMessages(['subcontract_claim_id' => __('A voucher pays one subcontract request or one contract payment request, not both.')]);
         }
 
+        // Double-submit protection: a retried or double-clicked form (same request key) creates nothing and goes to the voucher the first submission made
+        $idem = \App\Support\IdempotencyGuard::fromRequest($request, 'payment_voucher.store', $data + ['fund_allocation_item_id' => $fundItemId, 'subcontract_payment_id' => $subPaymentId, 'subcontract_claim_id' => $subClaimId]);
+        if ($done = \App\Support\IdempotencyGuard::peek($idem)) {
+            return $this->alreadySaved($done);
+        }
+
         $this->guardAgainstDuplicate($request, $data);
 
         // Optional Funds Allocation link: the voucher and the link are created atomically,
         // and the item row is locked so two vouchers cannot claim the same line.
         // The numbering lock is taken before the transaction opens, so the next number is read from a fresh snapshot.
-        [$voucher, $subPayment, $claimInfo] = PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($request, $data, $fundItemId, $subPaymentId, $subClaimId) {
+        try {
+        [$voucher, $subPayment, $claimInfo] = PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($request, $data, $fundItemId, $subPaymentId, $subClaimId, $idem) {
+            \App\Support\IdempotencyGuard::claim($idem); // first: a twin request that got here first has already saved this form
             $fundItem = $fundItemId ? $this->lockFundItemForLink($request, (int) $fundItemId) : null;
             $subPayment = $subPaymentId ? $this->lockSubcontractPayment($request, (int) $subPaymentId, $data) : null;
             $claimInfo = $subClaimId ? $this->lockSubcontractClaim($request, (int) $subClaimId, $data) : null;
@@ -476,8 +484,13 @@ class PaymentVoucherController extends Controller
                 );
             }
 
+            \App\Support\IdempotencyGuard::finish($idem, $voucher);
+
             return [$voucher, $subPayment, $claimInfo];
         }));
+        } catch (\App\Support\IdempotentReplay $replay) {
+            return $this->alreadySaved(new \App\Models\IdempotencyKey(['record_id' => $replay->recordId]));
+        }
 
         if (! empty($claimInfo)) {
             \App\Services\Subcontracts\SubcontractNotifier::fire('claim_voucher_started', 'claim', $claimInfo['claim'], $request->user(), $voucher->pv_number, ['amount' => (string) $claimInfo['total']]);
@@ -488,6 +501,18 @@ class PaymentVoucherController extends Controller
         PaymentVoucherNotifier::fire('created', $voucher, $request->user(), 'Payment Voucher Created', 'Payment Voucher ' . $voucher->pv_number . ' was created by ' . $request->user()->name . '.', ['skip_actor' => true]);
 
         return redirect()->route('payment-vouchers.show', $voucher->id)->with('message', __('Payment Voucher created.'));
+    }
+
+    /** The form was already saved (a double click or a retry): nothing new is made, the person is taken to the voucher that was. */
+    private function alreadySaved(\App\Models\IdempotencyKey $row)
+    {
+        $voucher = $row->record_id ? PaymentVoucher::query()->find($row->record_id) : null;
+        log_activity(__('Payment Voucher duplicate submission blocked.'), ['pv_number' => optional($voucher)->pv_number], $voucher, 'Payment Voucher');
+        if (! $voucher) {
+            return redirect()->route('payment-vouchers.index')->with('message', __('This voucher form was already saved. Nothing new was created.'));
+        }
+
+        return redirect()->route('payment-vouchers.show', $voucher->id)->with('message', __('This voucher was already saved as :pv. Nothing new was created.', ['pv' => $voucher->pv_number]));
     }
 
     /** A rejected voucher of a subcontract payment may be corrected and sent again only while its payment is still alive: once the payment was cancelled (and the request can be paid again), reviving the voucher would pay it twice. */

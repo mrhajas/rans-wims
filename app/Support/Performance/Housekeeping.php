@@ -27,6 +27,7 @@ class Housekeeping
         $r['notifications_removed'] = self::removeOlder('notifications', 'created_at', PerfSettings::get('perf_notification_keep_days'), fn ($q) => $q->whereNotNull('read_at'));
         $r['weather_removed'] = self::removeOlder('weather_snapshots', 'created_at', PerfSettings::get('perf_weather_keep_days'));
         $r['slow_removed'] = self::removeOlder('slow_logs', 'created_at', PerfSettings::get('perf_slow_keep_days'));
+        $r['idempotency_keys_removed'] = self::removeOlder('idempotency_keys', 'created_at', \App\Support\IdempotencyGuard::KEEP_DAYS);
         $r['failed_jobs_removed'] = self::removeOlder('failed_jobs', 'failed_at', 60);
         $r['reset_tokens_removed'] = self::removeOlder('password_reset_tokens', 'created_at', 2);
         $r['sessions_removed'] = self::expiredSessions();

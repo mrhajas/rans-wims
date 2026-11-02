@@ -54,6 +54,14 @@ const BACKUP_ENTRIES = [
   { route: 'backup.index', title: 'Create System Backup', icon: 'download', permission: 'manage-backup' },
 ];
 
+// System Health (profile menu): for the Super Admin and any role given the System Health permission
+const SYSTEM_HEALTH_ENTRIES = [
+  { route: 'system-health.index', title: 'System Health (signal, speed, space, SMS credit)', icon: 'chart-pie', permission: 'read-system-health' },
+  { route: 'system-health.index', title: 'Server Speed Test', icon: 'chart-bar', permission: 'read-system-health' },
+  { route: 'system-health.index', title: 'Database Space', icon: 'collection', permission: 'read-system-health' },
+  { route: 'system-health.index', title: 'SMS Balance', icon: 'sms', permission: 'read-system-health' },
+];
+
 // Settings > Optimize: for the Super Admin and any role given the Optimize permission
 const OPTIMIZER_ENTRIES = [
   { route: 'optimizer.index', title: 'Optimize (make data smaller and faster)', icon: 'chart-bar', permission: 'read-optimizer' },
@@ -164,7 +172,7 @@ export function searchMenu(query, ctx) {
     });
   }
 
-  for (const entry of OPTIMIZER_ENTRIES) {
+  for (const entry of [...OPTIMIZER_ENTRIES, ...SYSTEM_HEALTH_ENTRIES]) {
     if (!ctx.can([entry.permission])) continue;
 
     const haystack = entry.title.toLowerCase();

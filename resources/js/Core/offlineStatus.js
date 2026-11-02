@@ -166,7 +166,13 @@ export function refreshConnectionStatus() {
 }
 
 export function markSyncing(isSyncing) {
-  offlineState.status = isSyncing ? 'syncing' : offlineState.status;
+  if (isSyncing) {
+    offlineState.status = 'syncing';
+  } else if (offlineState.status === 'syncing') {
+    // a sync that stopped without finishing (a failed page, a timeout) must not leave the top bar on "Syncing..." for good:
+    // the next look at the server (probe) sets the real state; until then the link is the one that was working a moment ago
+    offlineState.status = 'online';
+  }
 }
 
 export function markSyncComplete() {

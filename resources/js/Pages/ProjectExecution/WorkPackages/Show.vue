@@ -239,7 +239,7 @@
 
         <form v-if="canManageForecast" @submit.prevent="addMaterialForecast" class="lg-fields wps-add">
           <div class="lg-span-2 relative">
-            <auto-complete :suggestions="itemSuggestions" :placeholder="$t('Search item')" position="bottom-100 mb-2" v-model="materialForm.item_id" clearable />
+            <auto-complete resolve-qr-codes :suggestions="itemSuggestions" :placeholder="$t('Search item')" position="bottom-100 mb-2" v-model="materialForm.item_id" clearable />
           </div>
           <tec-input type="number" step="0.01" min="0.01" v-model="materialForm.required_quantity" :placeholder="$t('Required Qty')" />
           <tec-input type="date" v-model="materialForm.required_date" />
@@ -345,7 +345,7 @@
 
         <form v-if="canManageForecast" @submit.prevent="addEquipmentForecast" class="lg-fields wps-add">
           <div class="lg-span-2 relative">
-            <auto-complete :suggestions="itemSuggestions" :placeholder="$t('Search item')" position="bottom-100 mb-2" v-model="equipmentForm.item_id" clearable />
+            <auto-complete resolve-qr-codes :suggestions="itemSuggestions" :placeholder="$t('Search item')" position="bottom-100 mb-2" v-model="equipmentForm.item_id" clearable />
           </div>
           <tec-input type="number" step="0.01" min="0.01" v-model="equipmentForm.required_quantity" :placeholder="$t('Required Qty')" />
           <loading-button :loading="equipmentForm.processing">{{ $t('Add') }}</loading-button>

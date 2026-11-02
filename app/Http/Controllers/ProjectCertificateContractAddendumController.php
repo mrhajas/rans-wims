@@ -172,9 +172,6 @@ class ProjectCertificateContractAddendumController extends Controller
         if ($fromDraft && ! $request->boolean('remove_draft')) {
             return back()->with('error', __('This addendum is still a draft. Remove the draft status first, then approve it.'));
         }
-        if ($fromDraft) {
-            $addendum->update(['status' => ProjectCertificateContractAddendum::STATUS_PENDING_APPROVAL]);
-        }
         abort_unless(
             $fromDraft || in_array($data['status'], $allowedTransitions[$addendum->status] ?? [], true),
             422,
@@ -187,11 +184,17 @@ class ProjectCertificateContractAddendumController extends Controller
             return back()->with('error', $blocked);
         }
 
-        $addendum->update([
-            'status' => $data['status'],
-            'approved_by' => $data['status'] === ProjectCertificateContractAddendum::STATUS_APPROVED ? $request->user()->id : $addendum->approved_by,
-            'approved_at' => $data['status'] === ProjectCertificateContractAddendum::STATUS_APPROVED ? now() : $addendum->approved_at,
-        ]);
+        // both moves of a draft (to Pending Approval, then to Approved) happen together or not at all, and only after the signature check above
+        \Illuminate\Support\Facades\DB::transaction(function () use ($addendum, $data, $fromDraft, $request) {
+            if ($fromDraft) {
+                $addendum->update(['status' => ProjectCertificateContractAddendum::STATUS_PENDING_APPROVAL]);
+            }
+            $addendum->update([
+                'status' => $data['status'],
+                'approved_by' => $data['status'] === ProjectCertificateContractAddendum::STATUS_APPROVED ? $request->user()->id : $addendum->approved_by,
+                'approved_at' => $data['status'] === ProjectCertificateContractAddendum::STATUS_APPROVED ? now() : $addendum->approved_at,
+            ]);
+        });
 
         log_activity(
             'Project Contract Addendum Status Changed',

@@ -69,7 +69,7 @@ class TransferApproval
                     }
                 }
             }
-            $locked->forceFill(['approval_status' => Transfer::APPROVAL_APPROVED, 'approved_by' => $user->id, 'approved_at' => now(), 'approval_remark' => $remark, 'draft' => false])->save();
+            $locked->forceFill(['approval_status' => Transfer::APPROVAL_APPROVED, 'approved_by' => $user->id, 'approved_at' => now(), 'draft' => false] + (self::remarkColumnReady() ? ['approval_remark' => $remark] : []))->save();
             $transfer->setRawAttributes($locked->getAttributes(), true);
         });
         if ($error) {
@@ -83,6 +83,17 @@ class TransferApproval
         MultiTransferNotifier::childChanged($transfer, $user);
 
         return null;
+    }
+
+    /** The remark column arrives with a migration; until it has run (the code is copied before it does on a deploy) approving works without storing the remark. */
+    private static function remarkColumnReady(): bool
+    {
+        static $ready = null;
+        try {
+            return $ready ??= \Illuminate\Support\Facades\Schema::hasColumn('transfers', 'approval_remark');
+        } catch (\Throwable $e) {
+            return $ready = false;
+        }
     }
 
     /** The ready-made remarks an approver can pick (type to search, or write their own). Soft-coded: one remark per line in the setting `transfer_approval_remarks`. */

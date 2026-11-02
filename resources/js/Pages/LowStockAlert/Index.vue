@@ -75,7 +75,7 @@
                 <div class="ls-tags ls-tags--out"><span v-for="(k, ki) in g.exclude" :key="k + ki" class="ls-tag">{{ k }}<button type="button" :aria-label="$t('Remove')" @click="g.exclude.splice(ki, 1)">×</button></span>
                   <input class="ls-tagin" :placeholder="$t('e.g. white, sample')" @keydown="tagKey(g.exclude, $event)" @blur="addTag(g.exclude, $event)" /></div>
                 <h4>{{ $t('Also watch these exact items') }}</h4>
-                <auto-complete :id="'ls_item_' + g.id" json keep-focus reset-search :suggestions="route('items.search')" :placeholder="$t('Search an item to add')" @update:model-value="it => addItem(g, it)" />
+                <auto-complete resolve-qr-codes :id="'ls_item_' + g.id" json keep-focus reset-search :suggestions="route('items.search')" :placeholder="$t('Search an item to add')" @update:model-value="it => addItem(g, it)" />
                 <div class="ls-tags"><span v-for="id in g.item_ids" :key="id" class="ls-tag ls-tag--item">{{ itemName(id) }}<button type="button" :aria-label="$t('Remove')" @click="g.item_ids = g.item_ids.filter(x => x !== id)">×</button></span></div>
               </div>
 

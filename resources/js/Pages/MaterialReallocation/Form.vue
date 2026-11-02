@@ -63,7 +63,7 @@
                     </button>
                   </td>
                   <td class="px-4 py-3 min-w-72 relative">
-                    <auto-complete
+                    <auto-complete resolve-qr-codes
                       :id="`mrr-item-${index}`"
                       :suggestions="itemSuggestions"
                       :placeholder="$t('Search item')"
@@ -108,7 +108,7 @@
 
               <div class="pr-10">
                 <label class="mrf-label">{{ $t('Item') }}</label>
-                <auto-complete
+                <auto-complete resolve-qr-codes
                   :id="`mrr-item-mobile-${index}`"
                   :suggestions="itemSuggestions"
                   :placeholder="$t('Search item')"

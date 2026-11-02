@@ -134,7 +134,7 @@
               <tbody>
                 <tr v-for="(line, i) in form.items" :key="line._row_key">
                   <td class="p-2 align-top relative" :data-label="$t('Item')">
-                    <auto-complete
+                    <auto-complete resolve-qr-codes
                       :id="`line-item-${line._row_key}`"
                       :suggestions="itemSuggestionsForRow(line)"
                       v-model="line.item_id"

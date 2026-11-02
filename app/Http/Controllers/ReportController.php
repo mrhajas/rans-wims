@@ -1263,7 +1263,7 @@ class ReportController extends Controller
     {
         $filters = $request->all('start_date', 'end_date', 'start_created_at', 'end_created_at', 'reference', 'contact_id', 'user_id', 'warehouse_id', 'draft', 'trashed', 'category_id', 'item_id', 'search');
 
-        $query = Checkout::with(['contact', 'warehouse', 'user'])
+        $query = Checkout::with(['contact', 'warehouse', 'user', 'workActivity'])
             ->reportFilter($filters)
             ->when(!empty($filters['search']), fn ($q) => $q->search($filters['search']))
             ->orderByDesc('id');

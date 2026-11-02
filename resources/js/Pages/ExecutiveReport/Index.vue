@@ -85,7 +85,7 @@
         <section class="lg-card er-content-bar">
           <div class="min-w-0"><h2 class="lg-card-title">{{ $t('What is in the report') }}</h2><p class="lg-card-sub">{{ $t('Choose the sections, the transactions counted, the projects and the items the report covers. The next weekly report follows this exactly.') }}</p></div>
           <div class="er-btn-row" style="margin: 0">
-            <button type="button" class="lg-btn lg-btn-soft" :disabled="savingContent" @click="saveContent(true)"><icons name="eye" class="w-4 h-4" />{{ $t('Save and preview PDF') }}</button>
+            <button type="button" class="lg-btn lg-btn-soft" :disabled="savingContent || previewRunning" :class="{ 'opacity-60 cursor-not-allowed': previewRunning }" @click="saveContent(true)"><icons name="eye" class="w-4 h-4" />{{ previewRunning ? $t('Already running') : $t('Save and preview PDF') }}</button>
             <button type="button" class="lg-btn lg-btn-primary" :disabled="savingContent" @click="saveContent(false)"><icons name="tick" class="w-4 h-4" />{{ $t('Save') }}</button>
           </div>
         </section>
@@ -118,7 +118,7 @@
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="collection" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Which items') }}</h2><p class="lg-card-sub">{{ $t('Stock value, consumption and the materials list are limited to these items.') }}</p></div></header>
           <div class="er-modes"><label :class="{ on: content.items.mode === 'all' }"><input v-model="content.items.mode" type="radio" value="all" />{{ $t('All items') }}</label><label :class="{ on: content.items.mode === 'selected' }"><input v-model="content.items.mode" type="radio" value="selected" />{{ $t('Only selected items') }}</label></div>
           <div v-if="content.items.mode === 'selected'" class="er-projects">
-            <auto-complete id="er_pick_item" json keep-focus reset-search :suggestions="route('items.search')" :placeholder="$t('Search an item to add')" @update:model-value="itemPicked" />
+            <auto-complete resolve-qr-codes id="er_pick_item" json keep-focus reset-search :suggestions="route('items.search')" :placeholder="$t('Search an item to add')" @update:model-value="itemPicked" />
             <div class="er-plist"><span v-for="it in pickedItems" :key="it.id" class="er-pill">{{ it.name }} <em v-if="it.code">{{ it.code }}</em><button type="button" :aria-label="$t('Remove')" @click="removeItem(it.id)">×</button></span><span v-if="!pickedItems.length" class="er-hint">{{ $t('No items chosen yet. Nothing will be counted until you add some.') }}</span></div>
           </div>
         </section>
@@ -244,6 +244,7 @@
 
 <script>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { startBackgroundTask, isTaskRunning } from '@/Core/backgroundTasks';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
@@ -307,6 +308,7 @@ export default {
   },
 
   computed: {
+    previewRunning() { return isTaskRunning('executive-report-preview'); },
     statItems() {
       return [
         { icon: 'users', tone: 'emerald', label: this.$t('Active Subscribers'), value: this.activeSubscriberCount },
@@ -364,7 +366,12 @@ export default {
       this.savingContent = true;
       this.$inertia.put(this.route('executive-report.content.update'), this.content, {
         preserveScroll: true,
-        onSuccess: () => { if (thenPreview) window.open(this.route('executive-report.preview'), '_blank'); },
+        onSuccess: async () => {
+          if (!thenPreview) return;
+          // the saved choices are what the preview is made from; it is prepared in the background (toast), or the old way when that is switched off
+          if (await startBackgroundTask(this, 'executive-report-preview', {})) return;
+          window.open(this.route('executive-report.preview'), '_blank');
+        },
         onFinish: () => { this.savingContent = false; },
       });
     },

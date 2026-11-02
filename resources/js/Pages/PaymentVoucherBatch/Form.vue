@@ -188,6 +188,7 @@
 </template>
 
 <script>
+import { newRequestKey } from '@/Core/requestKey';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -214,6 +215,7 @@ export default {
 
   data() {
     return {
+      requestKey: newRequestKey(), // one per opened form: a double click or a retry cannot create a second batch
       selectedFiles: [],
       showContactModal: false,
       activeRow: null,
@@ -288,6 +290,7 @@ export default {
       row.fieldKey++;
     },
     submit(confirmDuplicate = false) {
+      if (this.form.processing) return; // a second click while the first is still being saved does nothing
       this.form.transform(data => ({
         type: data.type,
         payee_type: data.payee_type,
@@ -306,7 +309,11 @@ export default {
         })),
         attachments: this.selectedFiles,
         confirm_duplicate: confirmDuplicate === true,
+        request_key: this.requestKey,
       })).post(route('payment-vouchers.batches.store'), {
+        onSuccess: () => {
+          this.requestKey = newRequestKey(); // if this page stays open after a save, the next batch is a new form
+        },
         // the same payee and amount twice (or a recent identical voucher): the person decides
         onError: async errors => {
           if (errors.duplicate && await this.$confirm(errors.duplicate + ' ' + this.$t('Continue anyway?'))) {

@@ -230,9 +230,8 @@ class AcctPosting
         if ($t->status !== 'draft') {
             throw new AcctException(__('Only a draft can be approved this way.'));
         }
-        if (! $by->can(AcctPermissions::need('approve', $t))) {
-            throw new AcctException(__('You are not allowed to approve this kind of record.'));
-        }
+        // the same audited refusal (and security alert) as a normal approval attempt without the right
+        $this->denyUnlessCanApprove($t, $t instanceof AcctTransfer ? 'transfer' : 'transaction', $by);
         $settings = AcctSettings::get();
         if ($settings['maker_checker'] && ! ($by->hasRole('Super Admin') && $settings['super_admin_self_approval'])) {
             throw new AcctException(__('Separation of duties is on, so the person who approves cannot also be the one who submits. Ask the maker to submit this draft, then approve it.'));

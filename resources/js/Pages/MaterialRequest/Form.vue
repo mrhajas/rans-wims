@@ -80,7 +80,7 @@
                   </td>
                   <td :data-label="$t('Item')" class="fx-item-td">
                     <div class="fx-cell">
-                      <auto-complete
+                      <auto-complete resolve-qr-codes
                         :id="`mr-item-${index}`"
                         :suggestions="itemSuggestions"
                         :placeholder="$t('Search item')"

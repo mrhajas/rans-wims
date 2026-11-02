@@ -26,7 +26,7 @@
         </header>
         <form class="item-tx-filter-form" @submit.prevent="applyFilters">
           <div class="lg-fields">
-            <auto-complete clearable :label="$t('Item')" v-model="form.item_id" :suggestions="itemSuggestions" />
+            <auto-complete resolve-qr-codes clearable :label="$t('Item')" v-model="form.item_id" :suggestions="itemSuggestions" />
             <auto-complete clearable :label="$t('Category')" v-model="form.category_id" :suggestions="categorySuggestions" />
             <auto-complete clearable :label="$t('Warehouse')" v-model="form.warehouse_id" :suggestions="warehouseSuggestions" />
             <div class="item-tx-from w-full">

@@ -887,6 +887,20 @@ class SystemFeatureRegistry
                 'icon' => 'chart-bar',
                 'route_prefixes' => ['optimizer.'],
             ],
+            'background_tasks' => [
+                'name' => __('Background Tasks'),
+                'description' => __('Long reports (PDF) are prepared in the background so people can keep working, with a toast that shows progress and a lock against starting the same report twice. Switched off, every report is made on the page as before.'),
+                'module' => __('Administration'),
+                'icon' => 'clock',
+                'route_prefixes' => ['background-tasks.'],
+            ],
+            'system_health' => [
+                'name' => __('System Health'),
+                'description' => __('A page of live pictures (signal, server and database speed, space, SMS credit, cloud drive, backups, jobs, people) that also shows where the person looking is. Super Admin, or a role given the System Health permission.'),
+                'module' => __('Administration'),
+                'icon' => 'chart-pie',
+                'route_prefixes' => ['system-health.'],
+            ],
             'low_stock_alert' => [
                 'name' => __('Low Stock Alert'),
                 'description' => __('The daily Low Stock Alert email / text message: who receives it, at what time, and which materials and projects it watches. Turning this off returns to the older alert.'),

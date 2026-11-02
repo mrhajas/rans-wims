@@ -215,6 +215,8 @@ export default {
     // a field that takes a handheld (keyboard-wedge) barcode scanner: a code that arrives as a quick burst of keys ending in Enter is looked up at once and picked,
     // one scan = one pick, whatever the list was showing; the same code scanned twice is picked twice
     scan: { type: Boolean, default: false },
+    // an ITEM picker: a WIMS QR code address typed, pasted or read into the box picks the item it names (never set on a supplier, warehouse or user picker)
+    resolveQrCodes: { type: Boolean, default: false },
   },
 
   watch: {
@@ -253,7 +255,7 @@ export default {
         return;
       }
       // a WIMS QR code read into the box (a handheld reader types its address): the item it names is picked
-      if (this.searchable && QR_TEXT.test(search || '')) {
+      if (this.searchable && (this.scan || this.resolveQrCodes) && QR_TEXT.test(search || '')) {
         this.resolveQr(search);
         return;
       }

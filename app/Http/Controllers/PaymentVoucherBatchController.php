@@ -212,10 +212,19 @@ class PaymentVoucherBatchController extends Controller
         }
         $data['common_particulars'] = trim($data['common_particulars']);
         $isStaffBatch = $data['payee_type'] === PaymentVoucher::PAYEE_TYPE_STAFF;
+
+        // Double-submit protection: a retried or double-clicked form (same request key) creates nothing and goes to the batch the first submission made
+        $idem = \App\Support\IdempotencyGuard::fromRequest($request, 'payment_voucher.batch', $data);
+        if ($done = \App\Support\IdempotencyGuard::peek($idem)) {
+            return $this->alreadySaved($done);
+        }
+
         $this->guardDuplicateRows($request, $data, $isStaffBatch);
 
         // The numbering lock is taken before the transaction opens, so every number is read from a fresh snapshot (see PaymentVoucherNumbers).
-        $batch = PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($data, $request, $isStaffBatch) {
+        try {
+        $batch = PaymentVoucherNumbers::locked(fn () => DB::transaction(function () use ($data, $request, $isStaffBatch, $idem) {
+            \App\Support\IdempotencyGuard::claim($idem); // first: a twin request that got here first has already saved this form
             $batch = PaymentVoucherNumbers::createBatch([
                 'type' => $data['type'],
                 'payee_type' => $data['payee_type'],
@@ -280,13 +289,29 @@ class PaymentVoucherBatchController extends Controller
             }
 
             log_activity(__('Payment Voucher Batch created.'), ['batch_number' => $batch->batch_number, 'voucher_count' => count($data['rows'])], $batch, 'Payment Voucher Batch');
+            \App\Support\IdempotencyGuard::finish($idem, $batch);
 
             return $batch;
         }));
+        } catch (\App\Support\IdempotentReplay $replay) {
+            return $this->alreadySaved(new \App\Models\IdempotencyKey(['record_id' => $replay->recordId]));
+        }
 
         \App\Services\PaymentVoucherNotifier::batch($batch, $request->user());
 
         return redirect()->route('payment-vouchers.batches.show', $batch->id)->with('message', __('Payment Voucher Batch created.'));
+    }
+
+    /** The form was already saved (a double click or a retry): nothing new is made, the person is taken to the batch that was. */
+    private function alreadySaved(\App\Models\IdempotencyKey $row)
+    {
+        $batch = $row->record_id ? PaymentVoucherBatch::query()->find($row->record_id) : null;
+        log_activity(__('Payment Voucher Batch duplicate submission blocked.'), ['batch_number' => optional($batch)->batch_number], $batch, 'Payment Voucher Batch');
+        if (! $batch) {
+            return redirect()->route('payment-vouchers.batches.index')->with('message', __('This batch form was already saved. Nothing new was created.'));
+        }
+
+        return redirect()->route('payment-vouchers.batches.show', $batch->id)->with('message', __('This batch was already saved as :b. Nothing new was created.', ['b' => $batch->batch_number]));
     }
 
     public function show($id)

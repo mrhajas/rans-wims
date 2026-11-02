@@ -9,7 +9,7 @@
         </div>
         <div class="lg-hero-actions">
           <button type="button" class="lg-btn lg-btn-soft" @click="printPage"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</button>
-          <button type="button" class="lg-btn lg-btn-primary" @click="downloadPdf"><icons name="download" class="w-4 h-4" />{{ $t('Download') }}</button>
+          <button type="button" class="lg-btn lg-btn-primary" :disabled="pdfRunning" :class="{ 'opacity-60 cursor-not-allowed': pdfRunning }" @click="downloadPdf"><icons name="download" class="w-4 h-4" />{{ pdfRunning ? $t('Already running') : $t('Download') }}</button>
         </div>
       </header>
 
@@ -101,6 +101,7 @@
 
 <script>
 import pickBy from 'lodash/pickBy';
+import { startBackgroundTask, isTaskRunning } from '@/Core/backgroundTasks';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
 import Pagination from '@/Shared/Pagination.vue';
@@ -140,6 +141,7 @@ export default {
   },
 
   computed: {
+    pdfRunning() { return isTaskRunning('download-print-logs-pdf'); },
     actionOptions() {
       return [
         { id: 'download', label: this.$t('Download') },
@@ -198,8 +200,10 @@ export default {
       const query = pickBy(this.form);
       window.open(this.route('download-print-logs.print', Object.keys(query).length ? query : {}), '_blank');
     },
-    downloadPdf() {
+    async downloadPdf() {
       const query = pickBy(this.form);
+      // made in the background (the toast shows it and says when it is ready); if that is switched off or cannot start, the old way still works
+      if (await startBackgroundTask(this, 'download-print-logs-pdf', query)) return;
       window.open(this.route('download-print-logs.pdf', Object.keys(query).length ? query : {}), '_blank');
     },
   },

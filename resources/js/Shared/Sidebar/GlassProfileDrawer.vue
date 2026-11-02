@@ -37,6 +37,10 @@
             <span class="gp-chip gp-emerald"><Icons name="check-double" class-name="gp-ic" /></span>
             <span class="min-w-0"><b>{{ $t('WIMS Licence') }}</b><small>{{ $page.props.licenceStatus?.label || $t('Licence status and key') }}</small></span>
           </Link>
+          <Link v-if="$can('read-system-health') && flag('system_health')" :href="route('system-health.index')" class="gp-item" role="menuitem" @click="$emit('close')">
+            <span class="gp-chip gp-teal"><Icons name="chart-pie" class-name="gp-ic" /></span>
+            <span class="min-w-0"><b>{{ $t('System Health') }}</b><small>{{ $t('Signal, speed, space and more') }}</small></span>
+          </Link>
           <a v-if="kbLive" href="/wimshow" target="_blank" rel="noopener" class="gp-item" role="menuitem" @click="$emit('close')">
             <span class="gp-chip gp-teal"><Icons name="doc-text" class-name="gp-ic" /></span>
             <span class="min-w-0"><b>{{ $t('Knowledge Base') }}</b><small>{{ $t('Guides for every function') }}</small></span>

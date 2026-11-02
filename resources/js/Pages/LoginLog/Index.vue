@@ -10,7 +10,7 @@
         <div class="lg-hero-actions">
           <button v-if="canExport" type="button" class="lg-btn lg-btn-soft" @click="exportExcel"><icons name="table" class="w-4 h-4" />{{ $t('Export Excel') }}</button>
           <button v-if="canPrint" type="button" class="lg-btn lg-btn-soft" @click="openPrint"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</button>
-          <button v-if="canPrint" type="button" class="lg-btn lg-btn-primary" @click="downloadPdf"><icons name="download" class="w-4 h-4" />{{ $t('PDF') }}</button>
+          <button v-if="canPrint" type="button" class="lg-btn lg-btn-primary" :disabled="pdfRunning" :class="{ 'opacity-60 cursor-not-allowed': pdfRunning }" @click="downloadPdf"><icons name="download" class="w-4 h-4" />{{ pdfRunning ? $t('Already running') : $t('PDF') }}</button>
         </div>
       </header>
 
@@ -113,6 +113,7 @@
 
 <script>
 import pickBy from 'lodash/pickBy';
+import { startBackgroundTask, isTaskRunning } from '@/Core/backgroundTasks';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
 import Pagination from '@/Shared/Pagination.vue';
@@ -157,6 +158,7 @@ export default {
   },
 
   computed: {
+    pdfRunning() { return isTaskRunning('login-logs-pdf'); },
     statusOptions() {
       return [
         { id: 'success', label: this.$t('Success') },
@@ -217,8 +219,10 @@ export default {
       const query = pickBy(this.form);
       window.open(this.route('login-logs.print', query), '_blank');
     },
-    downloadPdf() {
+    async downloadPdf() {
       const query = pickBy(this.form);
+      // made in the background (the toast shows it and says when it is ready); if that is switched off or cannot start, the old way still works
+      if (await startBackgroundTask(this, 'login-logs-pdf', query)) return;
       window.open(this.route('login-logs.pdf', query), '_blank');
     },
   },

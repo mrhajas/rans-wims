@@ -91,7 +91,8 @@ trait ItemHelpers
      */
     public function scopeSearch($query, $s)
     {
-        $words = preg_split('/\s+/u', trim((string) $s), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        // a search is cut at 100 characters and 8 words: more never helps a person and only makes the question longer
+        $words = array_slice(preg_split('/\s+/u', mb_substr(trim((string) $s), 0, 100), -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 8);
         $whole = self::canonicalCode($s); // "RSI 562" is one code written with a space
         if (! $words) {
             return $query;

@@ -320,6 +320,11 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('/alerts', [Controllers\AjaxController::class, 'alerts'])->name('alerts');
     Route::get('/alerts/{warehouse}', [Controllers\AjaxController::class, 'warehouse'])->name('alerts.list');
 
+    // Background Tasks: long read-only reports prepared by a separate process (feature background_tasks); each answer is limited to the person's own tasks
+    Route::get('background-tasks/active', [Controllers\BackgroundTaskController::class, 'active'])->middleware('throttle:120,1,background-tasks.active')->name('background-tasks.active');
+    Route::post('background-tasks', [Controllers\BackgroundTaskController::class, 'store'])->middleware('throttle:20,1,background-tasks.store')->name('background-tasks.store');
+    Route::post('background-tasks/{id}/dismiss', [Controllers\BackgroundTaskController::class, 'dismiss'])->whereNumber('id')->middleware('throttle:60,1,background-tasks.dismiss')->name('background-tasks.dismiss');
+    Route::get('background-tasks/{id}/download', [Controllers\BackgroundTaskController::class, 'download'])->whereNumber('id')->middleware('throttle:30,1,background-tasks.download')->name('background-tasks.download');
     Route::get('/offline/health', [Controllers\OfflineHealthController::class, 'check'])->name('offline.health');
     Route::get('/offline/sync', [Controllers\OfflineSyncController::class, 'sync'])->name('offline.sync');
 
@@ -387,6 +392,11 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('feature-unavailable', [Controllers\SystemFeatureController::class, 'unavailable'])->name('feature-unavailable');
     // Settings > Performance & Data (Super Admin): retention numbers, the activity archive, slow queries, sending in the background
     // Settings > Optimize: make the data on the server smaller and faster, with an audit history that can be printed (permissions read-optimizer / run-optimizer)
+    // System Health (profile menu): live pictures of how the system and the person's own connection are doing (permission read-system-health, Super Admin by default)
+    Route::get('system-health', [Controllers\SystemHealthController::class, 'index'])->name('system-health.index');
+    Route::get('system-health/data', [Controllers\SystemHealthController::class, 'data'])->middleware('throttle:30,1,system-health.data')->name('system-health.data');
+    Route::get('system-health/cloud', [Controllers\SystemHealthController::class, 'cloud'])->middleware('throttle:12,1,system-health.cloud')->name('system-health.cloud');
+    Route::post('system-health/speed-test', [Controllers\SystemHealthController::class, 'speedTest'])->middleware('throttle:6,1,system-health.speed-test')->name('system-health.speed-test');
     Route::get('settings/optimize', [Controllers\OptimizerController::class, 'index'])->name('optimizer.index');
     Route::get('settings/optimize/scan', [Controllers\OptimizerController::class, 'scan'])->middleware('throttle:12,1,optimizer.scan')->name('optimizer.scan');
     Route::put('settings/optimize', [Controllers\OptimizerController::class, 'updateSettings'])->middleware('throttle:20,1,optimizer.settings')->name('optimizer.settings');

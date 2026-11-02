@@ -123,7 +123,7 @@
                           :id="'gr-item-' + index"
                           :model-value="row.item_id"
                           @update:modelValue="value => selectItem(row, value)"
-                          :suggestions="itemSuggestions"
+                          resolve-qr-codes :suggestions="itemSuggestions"
                           :placeholder="$t('Select item')"
                           :error="$page.props.errors['items.' + index + '.item_name']"
                         />

@@ -24,6 +24,8 @@ class Kernel extends ConsoleKernel
         \App\Support\Performance\QueueMode::apply();
         $schedule->command('queue:beat')->everyMinute();
         $schedule->command('queue:work --max-time=55 --sleep=2 --tries=3 --timeout=50')->everyMinute()->withoutOverlapping(2)->runInBackground();
+        // Background Tasks (long reports): runs any that nobody picked up, fails stuck ones and frees their lock, tidies old files. cPanel cron: * * * * * php artisan schedule:run
+        $schedule->command('background:sweep')->everyMinute()->withoutOverlapping(10);
         $schedule->command('archive:export-run')->everyMinute()->withoutOverlapping(3)->runInBackground();
         $schedule->command('housekeeping:run')->dailyAt('02:10')->withoutOverlapping();
         $schedule->command('stock:alert')->daily();

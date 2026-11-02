@@ -21,6 +21,8 @@ import IdleLogoutModal from '@/Shared/IdleLogoutModal.vue';
 import GlobalDialog from '@/Shared/GlobalDialog.vue';
 import DraftApproveModal from '@/Shared/DraftApproveModal.vue';
 import { draftApprove } from '@/Core/draftApprove';
+import BackgroundTaskToasts from '@/Shared/BackgroundTaskToasts.vue';
+import { initBackgroundTasks } from '@/Core/backgroundTasks';
 import { confirmDialog, alertDialog, promptDialog } from '@/Core/dialogs';
 import { initOfflineStatus } from '@/Core/offlineStatus';
 import { initOfflineSync } from '@/Core/offlineSync';
@@ -97,11 +99,32 @@ const setTheme = theme => {
   }
 };
 
+// The app's translation keys use Laravel-style ":name" placeholders (e.g. 'Approve :ref?'), but vue-i18n only fills "{name}". Fill ":name" too when named
+// params are passed, so those messages never show a literal ":ref". Used by the main app and by every small app mounted beside it (toasts, dialogs).
+const fillColonPlaceholders = app => {
+  const baseT = app.config.globalProperties.$t;
+  const wrappedT = function (key, ...rest) {
+    let out = baseT.apply(this, [key, ...rest]);
+    const params = rest.find(a => a && typeof a === 'object' && !Array.isArray(a));
+    if (params && typeof out === 'string' && out.indexOf(':') !== -1) {
+      out = out.replace(/:([A-Za-z_]\w*)/g, (m, k) => (Object.prototype.hasOwnProperty.call(params, k) ? String(params[k]) : m));
+    }
+    return out;
+  };
+  try {
+    Object.defineProperty(app.config.globalProperties, '$t', { value: wrappedT, configurable: true, writable: true });
+  } catch (e) {
+    app.config.globalProperties.$t = wrappedT;
+  }
+};
+
 const mountIdleLogoutModal = () => {
   const el = document.createElement('div');
   el.id = 'idle-logout-modal-root';
   document.body.appendChild(el);
-  createApp(IdleLogoutModal).use(i18n).mount(el);
+  const app = createApp(IdleLogoutModal).use(i18n);
+  fillColonPlaceholders(app);
+  app.mount(el);
 };
 
 // Same standalone-mount pattern as mountIdleLogoutModal() above — a single
@@ -114,7 +137,9 @@ const mountSaveProgress = () => {
   const el = document.createElement('div');
   el.id = 'save-progress-root';
   document.body.appendChild(el);
-  createApp(SaveProgress).use(i18n).mount(el);
+  const app = createApp(SaveProgress).use(i18n);
+  fillColonPlaceholders(app);
+  app.mount(el);
 };
 
 // the pop-up toasts for new alerts (drawn once, over the page)
@@ -122,21 +147,37 @@ const mountAlertToasts = () => {
   const el = document.createElement('div');
   el.id = 'alert-toasts-root';
   document.body.appendChild(el);
-  createApp(AlertToasts).use(i18n).mount(el);
+  const app = createApp(AlertToasts).use(i18n);
+  fillColonPlaceholders(app);
+  app.mount(el);
+};
+
+// the toast of Background Tasks (long reports prepared by a separate process), over every page
+const mountBackgroundToasts = () => {
+  const el = document.createElement('div');
+  el.id = 'background-task-toasts-root';
+  document.body.appendChild(el);
+  const app = createApp(BackgroundTaskToasts).use(i18n);
+  fillColonPlaceholders(app);
+  app.mount(el);
 };
 
 const mountGlobalDialog = () => {
   const el = document.createElement('div');
   el.id = 'global-dialog-root';
   document.body.appendChild(el);
-  createApp(GlobalDialog).use(i18n).mount(el);
+  const app = createApp(GlobalDialog).use(i18n);
+  fillColonPlaceholders(app);
+  app.mount(el);
 };
 
 const mountDraftApprove = () => {
   const el = document.createElement('div');
   el.id = 'draft-approve-root';
   document.body.appendChild(el);
-  createApp(DraftApproveModal).use(i18n).mount(el);
+  const app = createApp(DraftApproveModal).use(i18n);
+  fillColonPlaceholders(app);
+  app.mount(el);
 };
 
 createInertiaApp({
@@ -189,22 +230,7 @@ createInertiaApp({
       .directive('tooltip', tooltipDirective)
       .directive('labelize', labelizeDirective);
 
-    // The app's translation keys use Laravel-style ":name" placeholders (e.g. 'Approve :ref?'), but vue-i18n only fills
-    // "{name}". Fill ":name" too when named params are passed, so those messages never show a literal ":ref".
-    const baseT = app.config.globalProperties.$t;
-    const wrappedT = function (key, ...rest) {
-      let out = baseT.apply(this, [key, ...rest]);
-      const params = rest.find(a => a && typeof a === 'object' && !Array.isArray(a));
-      if (params && typeof out === 'string' && out.indexOf(':') !== -1) {
-        out = out.replace(/:([A-Za-z_]\w*)/g, (m, k) => (Object.prototype.hasOwnProperty.call(params, k) ? String(params[k]) : m));
-      }
-      return out;
-    };
-    try {
-      Object.defineProperty(app.config.globalProperties, '$t', { value: wrappedT, configurable: true, writable: true });
-    } catch (e) {
-      app.config.globalProperties.$t = wrappedT;
-    }
+    fillColonPlaceholders(app);
 
     app.config.globalProperties.$route = route;
     app.config.globalProperties.$theme = getStoredTheme();
@@ -227,6 +253,8 @@ createInertiaApp({
     mountDraftApprove();
     mountSaveProgress();
     mountAlertToasts();
+    mountBackgroundToasts();
+    initBackgroundTasks(!!props.initialPage.props.auth?.user && props.initialPage.props.enabledFeatures?.background_tasks !== false, props.initialPage.props.auth?.user?.id);
     initSaveProgress(router);
 
     // Global safety net for a failed/non-Inertia navigation — until now,
@@ -252,7 +280,11 @@ createInertiaApp({
     // every data table gets a No column; the numbers of a paginated list continue from page to page (props of each visit tell where a page starts)
     initAutoNumber();
     setPagination(props && props.initialPage ? props.initialPage.props : null);
-    router.on('navigate', event => setPagination(event.detail.page.props));
+    router.on('navigate', event => {
+      setPagination(event.detail.page.props);
+      const pp = event.detail.page.props;
+      initBackgroundTasks(!!(pp.auth && pp.auth.user) && !(pp.enabledFeatures && pp.enabledFeatures.background_tasks === false), pp.auth && pp.auth.user ? pp.auth.user.id : null);
+    });
     router.on('invalid', event => {
       event.preventDefault();
       alertDialog(i18n.global.t('Your session or connection needs a refresh, reloading…')).then(() => {

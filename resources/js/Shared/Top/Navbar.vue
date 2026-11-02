@@ -361,6 +361,10 @@
                   <span class="profile-menu-icon-chip chip-emerald"><icons name="check-double" class="h-4 w-4" /></span>
                   <span class="min-w-0"><span class="pm-title">{{ $t('WIMS Licence') }}</span><span class="pm-sub" :class="'pm-licence-' + ($page.props.licenceStatus?.state || 'active')">{{ $page.props.licenceStatus?.label || $t('Licence status and key') }}</span></span>
                 </Link>
+                <Link v-if="$can('read-system-health') && systemHealthEnabled" :href="route('system-health.index')" class="pm-item">
+                  <span class="profile-menu-icon-chip chip-teal"><icons name="chart-pie" class="h-4 w-4" /></span>
+                  <span class="min-w-0"><span class="pm-title">{{ $t('System Health') }}</span><span class="pm-sub">{{ $t('Signal, speed, space and more') }}</span></span>
+                </Link>
                 <!-- Knowledge base: opens /wimshow in a new tab once it is live (setting knowledge_base_live); until then a "coming soon" box with a countdown -->
                 <a :href="kbLive ? '/wimshow' : '#'" :target="kbLive ? '_blank' : null" rel="noopener" class="pm-item" @click="openKnowledgeBase">
                   <span class="profile-menu-icon-chip chip-teal"><icons name="doc-text" class="h-4 w-4" /></span>
@@ -591,6 +595,9 @@ export default {
     userDisplayName() {
       const name = this.$page.props.auth.user.name || '';
       return name.length > 9 ? name.slice(0, 9) + '…' : name;
+    },
+    systemHealthEnabled() {
+      return this.$page.props.enabledFeatures?.system_health !== false || this.$super;
     },
     taskRemindersEnabled() {
       return this.$page.props.enabledFeatures?.task_reminders !== false || this.$super;

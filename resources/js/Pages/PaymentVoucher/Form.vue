@@ -276,6 +276,7 @@
 </template>
 
 <script>
+import { newRequestKey } from '@/Core/requestKey';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -312,6 +313,7 @@ export default {
     const pv = this.paymentVoucher || {};
     const pf = !this.paymentVoucher && this.prefill ? this.prefill : null;
     return {
+      requestKey: newRequestKey(), // one per opened form: a double click or a retry cannot create a second voucher
       showFundBanner: true,
       selectedFiles: [],
       showContactModal: false,
@@ -415,6 +417,7 @@ export default {
       this.form.items.splice(index, 1);
     },
     submit(confirmDuplicate = false) {
+      if (this.form.processing) return; // a second click while the first is still being saved does nothing
       this.form.transform(data => ({
         payee_type: data.payee_type,
         payee_contact_id: data.payee_type === 'Internal Staff' ? null : data.payee_contact_id,
@@ -437,9 +440,13 @@ export default {
         })),
         attachments: this.selectedFiles,
         confirm_duplicate: confirmDuplicate,
+        ...(this.paymentVoucher ? {} : { request_key: this.requestKey }),
       }));
 
       const options = {
+        onSuccess: () => {
+          this.requestKey = newRequestKey(); // if this page stays open after a save, the next voucher is a new form
+        },
         onError: async errors => {
           if (errors.duplicate && await this.$confirm(errors.duplicate + ' ' + this.$t('Continue anyway?'))) {
             this.submit(true);

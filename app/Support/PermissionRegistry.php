@@ -546,6 +546,13 @@ class PermissionRegistry
                 ],
             ],
 
+            'system_health' => [
+                'label' => __('System Health'),
+                'abilities' => [
+                    'read-system-health' => __('Open System Health from the profile menu: live pictures of the signal, server speed, database and disk space, SMS credit, cloud drive, backups, jobs and people, and where the person looking is. Only the Super Admin has it by default.'),
+                ],
+            ],
+
             'pro_menu' => [
                 'label' => __('Pro menu'),
                 'abilities' => [
