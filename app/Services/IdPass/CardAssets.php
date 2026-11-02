@@ -156,9 +156,9 @@ class CardAssets
         if (($hex === null || $hex === '') && $bg === '') {
             return $base;
         }
-        $out = self::dir('cache') . '/person-v2-' . ($flat ? 'f' : 'g') . '-' . ltrim((string) $hex, '#') . '-' . ltrim($bg, '#') . '.svg';
+        $out = self::dir('cache') . '/person-v3-' . ($flat ? 'f' : 'g') . '-' . ltrim((string) $hex, '#') . '-' . ltrim($bg, '#') . '.svg';
         if (! is_file($out)) {
-            [$hue, $sat] = $hex ? self::hsl(...sscanf($hex, '#%02x%02x%02x')) : [null, 0.0];
+            [$hue, $sat, $tl] = $hex ? self::hsl(...sscanf($hex, '#%02x%02x%02x')) : [null, 0.0, 0.0];
             // how light the background is decides which way the shades of the person move
             $lum = 1.0;
             if ($bg !== '') {
@@ -167,7 +167,7 @@ class CardAssets
                 $lum = 0.2126 * $lin($br) + 0.7152 * $lin($bgr) + 0.0722 * $lin($bb);
             }
             $svg = (string) file_get_contents($base);
-            $svg = preg_replace_callback('/#([0-9a-f]{6})\b/i', function ($m) use ($hue, $sat, $lum) {
+            $svg = preg_replace_callback('/#([0-9a-f]{6})\b/i', function ($m) use ($hue, $sat, $tl, $lum) {
                 if (strtolower($m[1]) === 'ffffff') {
                     return $m[0];
                 }
@@ -177,7 +177,9 @@ class CardAssets
                     $l = $lum >= 0.3 ? $l * 0.6 : $l + (1 - $l) * 0.32; // light background: deeper shades; dark background: lighter shades
                 }
                 // a grey category (silver) keeps a pale tint of its hue; a coloured one keeps the strength of the original shading
-                [$nr, $ng, $nb] = self::rgb($hue ?? $h0, $hue === null ? $s : ($sat < 0.12 ? $sat : min(1.0, $s * 1.05)), $l);
+                // a bright category colour (the RANS orange-yellow) keeps its full strength, or it turns to a dull brown in the dark shades
+                $ns = $hue === null ? $s : ($sat < 0.12 ? $sat : ($tl >= 0.4 ? min(1.0, max($s, $sat * 0.9)) : min(1.0, $s * 1.05)));
+                [$nr, $ng, $nb] = self::rgb($hue ?? $h0, $ns, $tl >= 0.4 && $hue !== null ? min(0.92, $l * 1.12 + 0.04) : $l);
 
                 return sprintf('#%02x%02x%02x', $nr, $ng, $nb);
             }, $svg);
@@ -232,8 +234,6 @@ class CardAssets
         if ($kind === 'staff' || ! $band) {
             return 'blue';
         }
-        // a Gate Pass is orange like the Carpenter, so its person is teal (Visitor keeps its own purple, workers their category colours)
-        $band = ['gate' => '#0d9488'][$kind] ?? $band;
 
         return ltrim(self::hex($band, '#1565c0'), '#') . ($bg && self::hex($bg, '') !== '' ? '-' . ltrim(self::hex($bg, ''), '#') : '');
     }
