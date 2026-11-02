@@ -188,6 +188,11 @@
             <button type="button" class="lg-btn lg-btn-soft self-start" @click="addRow">
               <icons name="plus" class="w-4 h-4" /> {{ $t('Add Item') }}
             </button>
+            <button type="button" @click="$refs.cameraScanner.show()" class="lg-btn lg-btn-soft" :aria-label="$t('Scan barcode or QR code with camera')">
+              <icons name="camera" class="w-4 h-4" />
+              {{ $t('Scan') }}
+            </button>
+            <camera-barcode-scanner ref="cameraScanner" @resolved="scannedItem" />
             <dl class="fx-totals">
               <div class="fx-totals-row">
                 <dt>{{ $t('Subtotal') }}</dt>
@@ -250,6 +255,7 @@
 </template>
 
 <script>
+import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
@@ -259,7 +265,7 @@ import CheckBox from '@/Shared/CheckBox.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 
 export default {
-  components: { AdminLayout, TextInput, DatePicker, TextareaInput, AutoComplete, CheckBox, PageHeader },
+  components: { CameraBarcodeScanner, AdminLayout, TextInput, DatePicker, TextareaInput, AutoComplete, CheckBox, PageHeader },
 
   props: {
     purchaseOrder: Object,
@@ -331,6 +337,23 @@ export default {
   },
 
   methods: {
+    // an item found by the camera (barcode, item code or QR code): the same item again adds one to its quantity, otherwise it takes the first empty line
+    scannedItem(found) {
+      const id = found && found.id;
+      if (!id) return;
+      const same = this.form.items.find(i => i.item_id == id);
+      if (same) {
+        same.quantity = (parseFloat(same.quantity) || 0) + 1;
+        return;
+      }
+      let index = this.form.items.findIndex(i => !i.item_id);
+      if (index === -1) {
+        this.addRow();
+        index = this.form.items.length - 1;
+      }
+      this.form.items[index].quantity = 1;
+      this.selectItem(this.form.items[index], id);
+    },
     emptyRow() {
       return { item_id: null, item_name: '', item_code: '', unit_label: '', quantity: 1, unit_price: 0 };
     },

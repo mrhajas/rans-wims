@@ -245,6 +245,10 @@ class AjaxController extends Controller
         }
 
         $query = Item::with('variations')->search($request->input('search'));
+        // the item whose code is exactly what was typed (the number alone, or with RSI) comes first
+        if ($exact = Item::canonicalCode($request->input('search'))) {
+            $query->orderByRaw('CASE WHEN code = ? THEN 0 ELSE 1 END', [$exact]);
+        }
 
         // the Transfer form lists items as "CODE - name", alphabetically (other pickers keep the plain item as before)
         if ($request->boolean('labelled')) {
@@ -266,7 +270,19 @@ class AjaxController extends Controller
         $compact = preg_replace('/\s+/', '', $withoutPrefix ?: $cleaned);
         $withoutLeadingZeros = ltrim((string) $compact, '0');
 
-        $candidates = collect([$code, $cleaned, $withoutPrefix, $compact, $withoutLeadingZeros])
+        // a WIMS record QR code (the address printed on documents and labels, or its bare code): an Inventory Item QR names the item
+        $qrToken = preg_match('~/q/([A-Za-z0-9]{8,64})(?:[/?#]|$)~', $cleaned, $qm) ? $qm[1] : (preg_match('/^[a-z0-9]{12,40}$/', $compact) ? $compact : null);
+        if ($qrToken && ($qr = \App\Models\QrCode::query()->where('token', $qrToken)->whereNull('revoked_at')->first())) {
+            if ($qr->type === 'item' && (int) $qr->account_id === (int) $request->user()->account_id && ($qrItem = Item::find($qr->record_id))) {
+                return $request->boolean('full')
+                    ? response()->json(['found' => true, 'id' => $qrItem->id, 'item' => Item::with('variations')->find($qrItem->id)])
+                    : response()->json(['found' => true, 'id' => $qrItem->id]);
+            }
+
+            return response()->json(['found' => false, 'qr_kind' => __(optional(\App\Support\Qr\QrRegistry::get($qr->type))['label'] ?? 'record')]);
+        }
+
+        $candidates = collect([$code, $cleaned, $withoutPrefix, $compact, $withoutLeadingZeros, Item::canonicalCode($compact)])
             ->filter(fn ($value) => is_string($value) && $value !== '')
             ->unique()
             ->values();

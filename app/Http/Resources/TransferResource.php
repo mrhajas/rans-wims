@@ -27,6 +27,7 @@ class TransferResource extends JsonResource
             'approved_at'       => $this->approved_at,
             'approved_by'       => $this->approved_by,
             'approval_status'   => $this->approval_status,
+            'approval_remark'   => $this->approval_remark,
             'cancelled_at'      => $this->cancelled_at,
             'cancel_reason'     => $this->cancel_reason,
             'from_is_main'      => $this->relationLoaded('fromWarehouse') && $this->fromWarehouse

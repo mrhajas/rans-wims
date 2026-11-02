@@ -12,6 +12,9 @@ export const draftApproveState = reactive({
   effects: [],
   problems: [], // when set the prompt is a BLOCK: the draft failed its checks, the person is asked to open the record and fix these first
   flow: [],
+  plain: false, // a plain approval (the record is not a draft): no draft steps, just the question, the effects and the remark
+  remarkOptions: null, // an array turns the remark field on; the answer then comes back as { remark }
+  remark: '',
   confirmText: '',
   cancelText: '',
   resolver: null,
@@ -26,6 +29,9 @@ export function draftApprove(opts = {}) {
     draftApproveState.effects = opts.effects || [];
     draftApproveState.problems = opts.problems || [];
     draftApproveState.flow = opts.flow || [];
+    draftApproveState.plain = !!opts.plain;
+    draftApproveState.remarkOptions = opts.remarkOptions || null;
+    draftApproveState.remark = '';
     draftApproveState.confirmText = opts.confirmText || '';
     draftApproveState.cancelText = opts.cancelText || '';
     draftApproveState.resolver = resolve;
@@ -37,5 +43,6 @@ export function resolveDraftApprove(value) {
   draftApproveState.visible = false;
   const resolver = draftApproveState.resolver;
   draftApproveState.resolver = null;
-  if (resolver) resolver(value);
+  // with the remark field on, a "Yes" comes back as { remark } (truthy), a "No" as false
+  if (resolver) resolver(value && draftApproveState.remarkOptions ? { remark: (draftApproveState.remark || '').trim() } : value);
 }

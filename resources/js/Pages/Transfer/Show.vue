@@ -21,6 +21,7 @@
         <span v-if="transfer.approval_status === 'approved' && transfer.approved_by_user" class="lg-chip lg-chip-blue">
           <icons name="tick" class="w-3.5 h-3.5" /> {{ $t('Approved by') }} {{ transfer.approved_by_user.name }}
         </span>
+        <span v-if="transfer.approval_remark" class="lg-chip lg-chip-slate"><icons name="doc-text" class="w-3.5 h-3.5" /> {{ $t('Remark') }}: {{ transfer.approval_remark }}</span>
         <span v-if="transfer.received_at" class="lg-chip lg-chip-green">
           <icons name="tick" class="w-3.5 h-3.5" />
           {{ $t('Received') }} {{ $date(transfer.received_at) }}<template v-if="transfer.received_by_user"> · {{ transfer.received_by_user.name }}</template>
@@ -51,7 +52,7 @@
 
 <script>
 import TransferDetails from './Details.vue';
-import { approveDraftTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
+import { approveTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DeliveryNoteAction from '@/Shared/DeliveryNoteAction.vue';
@@ -78,15 +79,9 @@ export default {
     },
   },
   methods: {
-    async approveThis() {
-      if (this.draftApprovable) {
-        // a plain draft: it is checked first, then the approver chooses whether to remove the draft status and approve in one step
-        approveDraftTransfer(this, this.transfer);
-        return;
-      }
-      this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: this.transfer.reference, from: (this.transfer.from_warehouse || {}).name || '', to: (this.transfer.to_warehouse || {}).name || '' })).then(ok => {
-        if (ok) this.$inertia.post(this.route('transfers.approve', this.transfer.id), {}, { preserveScroll: true });
-      });
+    approveThis() {
+      // a draft is checked first; a transfer waiting for approval gets the plain prompt; both ask for a remark
+      return approveTransfer(this, this.transfer);
     },
     cancelThis() {
       this.$prompt(this.$t('Cancel :ref? You can add a reason (optional).', { ref: this.transfer.reference }), { variant: 'danger', placeholder: this.$t('Reason (optional)') }).then(reason => {

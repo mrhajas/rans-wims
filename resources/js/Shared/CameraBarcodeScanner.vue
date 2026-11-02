@@ -203,14 +203,16 @@ export default {
           const r = await this.lookup(code);
           handled = r === true;
           if (typeof r === 'string') this.problem = r;
-        } else if (/\/q\/[A-Za-z0-9]{8,64}(?:[/?#]|$)/.test(code)) {
-          // a WIMS record QR code (the ones printed on documents), not the code of an item
-          this.problem = this.$t('This is a WIMS record QR code, not an item code. Open it with the QR scanner from the quick menu.');
         } else {
+          // a barcode, an item code (the number alone, or with RSI) or a WIMS QR code: the server tells which item it is
           const res = await axios.post(route('items.scan'), { code });
           if (res.data.found) {
             const itemRes = await axios.post(route('items.search'), { id: res.data.id });
             item = itemRes.data[0] || null;
+          } else if (res.data.qr_kind) {
+            this.problem = this.$t('This is the QR code of a :kind, not an item. Open it with the QR scanner from the quick menu.', { kind: res.data.qr_kind });
+          } else if (/\/q\/[A-Za-z0-9]{8,64}(?:[/?#]|$)/.test(code)) {
+            this.problem = this.$t('This QR code is not known to WIMS, or it was replaced.');
           }
         }
         await new Promise(r => setTimeout(r, Math.max(0, 600 - (Date.now() - started))));

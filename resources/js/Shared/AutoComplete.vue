@@ -140,6 +140,28 @@ import throttle from 'lodash/throttle';
 import TecLabel from '@/Jetstream/Label.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
 import { scanFields } from '@/Core/scanListener';
+
+// Matching of what was typed against a list label. Every word must be found ("cement 50" finds "RSI-0042 - CEMENT 50KG"); an item code can be typed as its
+// number or with RSI, with or without the dash or leading zeros ("562", "0562", "RSI562", "rsi 562" all find "RSI-0562").
+const codeNumber = q => { const m = String(q).trim().toLowerCase().match(/^(?:rsi)?[\s\-_.]*0*(\d{1,6})$/); return m ? m[1] : null; };
+const exactCodeRe = n => new RegExp('(^|[^0-9a-z])rsi-0*' + n + '(?![0-9])', 'i');
+const textMatches = (text, search) => {
+  const t = String(text ?? '').toLowerCase();
+  const q = String(search ?? '').toLowerCase().trim();
+  if (!q || t.includes(q)) return true;
+  const n = codeNumber(q);
+  if (n && exactCodeRe(n).test(t)) return true;
+  const words = q.split(/\s+/);
+  return words.length > 1 && words.every(w => t.includes(w) || (codeNumber(w) !== null && exactCodeRe(codeNumber(w)).test(t)));
+};
+// the item whose code is exactly the number or code typed is listed first
+const exactFirst = (list, labelOf, search) => {
+  const n = codeNumber(search);
+  if (!n || !Array.isArray(list)) return list;
+  const re = exactCodeRe(n);
+  return list.map((r, i) => [r, i]).sort((a, b) => (re.test(String(labelOf(a[0]))) ? 0 : 1) - (re.test(String(labelOf(b[0]))) ? 0 : 1) || a[1] - b[1]).map(x => x[0]);
+};
+const QR_TEXT = /\/q\/[A-Za-z0-9]{8,64}(?:[/?#]|$)/;
 import { isFullWarehouseList, orderWarehouses, groupKeyOf, groupMeta, progressOf } from '@/Core/warehouseGroups';
 
 export default {
@@ -230,10 +252,15 @@ export default {
         this.open = false;
         return;
       }
+      // a WIMS QR code read into the box (a handheld reader types its address): the item it names is picked
+      if (this.searchable && QR_TEXT.test(search || '')) {
+        this.resolveQr(search);
+        return;
+      }
       if (this.searchable) {
         this.open = true;
         if (Array.isArray(this.suggestions)) {
-          this.result = this.ordered(search ? this.suggestions.filter(r => this.cLabel(r, search)) : this.suggestions);
+          this.result = this.ordered(search ? exactFirst(this.suggestions.filter(r => this.cLabel(r, search)), r => this.cLabel(r), search) : this.suggestions);
         } else {
           this.loading = true;
           this.getSuggestions(search);
@@ -244,7 +271,7 @@ export default {
       deep: true,
       handler() {
         if (Array.isArray(this.suggestions)) {
-          this.result = this.ordered(this.search ? this.suggestions.filter(r => this.cLabel(r, this.search)) : this.suggestions);
+          this.result = this.ordered(this.search ? exactFirst(this.suggestions.filter(r => this.cLabel(r, this.search)), r => this.cLabel(r), this.search) : this.suggestions);
         }
       },
     },
@@ -381,7 +408,7 @@ export default {
       if (r === null) {
         return null;
       } else if (typeof r !== 'object') {
-        return search ? String(r).toLowerCase().includes(String(search).toLowerCase()) : r;
+        return search ? textMatches(r, search) : r;
       }
       let key = '';
       if (this.labelKey) {
@@ -392,7 +419,7 @@ export default {
         key = 'name';
       }
       if (search) {
-        return key ? String(r[key] ?? '').toLowerCase().includes(String(search).toLowerCase()) : String(r).toLowerCase().includes(String(search).toLowerCase());
+        return textMatches(key ? r[key] : String(r), search);
       }
       return key ? r[key] : r;
     },
@@ -522,7 +549,7 @@ export default {
       this._chain = (this._chain || Promise.resolve()).then(() => found).then(item => {
         if (item) {
           this.flashScan('ok');
-          this.$emit('update:modelValue', JSON.parse(JSON.stringify(item)));
+          this.$emit('update:modelValue', this.json ? JSON.parse(JSON.stringify(item)) : item.id);
           this.$emit('scanned', item);
         } else {
           this.flashScan('miss');
@@ -530,6 +557,25 @@ export default {
           this.$emit('scan-miss', code);
         }
       });
+    },
+    // the text is a QR code address: ask the server which item it names (an Inventory Item QR), pick it, or say what kind of record it belongs to
+    resolveQr(text) {
+      const code = String(text).trim();
+      this._quiet = true;
+      this.search = '';
+      this.result = [];
+      this.open = false;
+      axios.post(route('items.scan'), { code, full: 1 }).then(res => {
+        const d = res.data || {};
+        if (d.found && d.item) {
+          this.flashScan('ok');
+          this.$emit('update:modelValue', this.json ? JSON.parse(JSON.stringify(d.item)) : d.item.id);
+          this.$emit('scanned', d.item);
+        } else {
+          this.flashScan('miss');
+          if (this.$page && this.$page.props.flash) this.$page.props.flash.error = d.qr_kind ? this.$t('This is the QR code of a :kind, not an item.', { kind: d.qr_kind }) : this.$t('This QR code does not belong to an item.');
+        }
+      }).catch(() => this.flashScan('miss'));
     },
     flashScan(kind) {
       this.scanFlash = kind;

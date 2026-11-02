@@ -515,7 +515,7 @@ import pickBy from 'lodash/pickBy';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
 import Dialog from '@/Shared/Dialog.vue';
-import { approveDraftTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
+import { approveTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
 import Modal from '@/Jetstream/Modal.vue';
 import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
 import TransferDetails from './Details.vue';
@@ -743,16 +743,9 @@ export default {
       return ['tr-main', 'tr-main-' + (transfer.approval_status || 'approved')];
     },
     isDraftApprovable(transfer) { return isApprovableDraftTransfer(transfer); },
-    async approveTransfer(transfer) {
-      if (isApprovableDraftTransfer(transfer)) {
-        // a plain draft: it is checked first, then the approver chooses whether to remove the draft status and approve in one step
-        approveDraftTransfer(this, transfer);
-        return;
-      }
-      if (!(await this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: transfer.reference, from: transfer.from_warehouse.name, to: transfer.to_warehouse.name })))) {
-        return;
-      }
-      this.$inertia.post(this.route('transfers.approve', transfer.id), {}, { preserveScroll: true });
+    approveTransfer(transfer) {
+      // a draft is checked first; a transfer waiting for approval gets the plain prompt; both ask for a remark
+      return approveTransfer(this, transfer);
     },
     async cancelTransfer(transfer) {
       const reason = await this.$prompt(this.$t('Cancel :ref? You can add a reason (optional).', { ref: transfer.reference }), { variant: 'danger', placeholder: this.$t('Reason (optional)') });

@@ -41,6 +41,7 @@
 </template>
 
 <script>
+import { approveMultiRemark } from '@/Core/draftApprovals';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
@@ -52,7 +53,7 @@ export default {
   methods: {
     chip(s) { return { pending: 'lg-chip-amber', partial: 'lg-chip-violet', approved: 'lg-chip-green', received: 'lg-chip-green', cancelled: 'lg-chip-red' }[s] || 'lg-chip-slate'; },
     childLabel(s) { return { pending: 'Waiting for approval', approved: 'Approved', received: 'Received', cancelled: 'Cancelled' }[s] || s; },
-    approveAll() { this.busy = true; this.$inertia.post(route('multi-transfers.approve', this.multi.id), {}, { preserveScroll: true, onFinish: () => { this.busy = false; } }); },
+    async approveAll() { const remark = await approveMultiRemark(this, this.multi); if (remark === null) return; this.busy = true; this.$inertia.post(route('multi-transfers.approve', this.multi.id), { remark }, { preserveScroll: true, onFinish: () => { this.busy = false; } }); },
     cancelAll() { this.busy = true; this.$inertia.post(route('multi-transfers.cancel', this.multi.id), { reason: this.reason }, { preserveScroll: true, onFinish: () => { this.busy = false; this.askCancel = false; } }); },
   },
 };

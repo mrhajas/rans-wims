@@ -200,6 +200,7 @@ class MultiTransferController extends Controller
     {
         abort_unless($request->user()->can('approve-multi-transfers'), 403);
         $multiTransfer = $this->find($multiTransfer);
+        $remark = $request->validate(['remark' => 'nullable|string|max:300'])['remark'] ?? null;
         $done = 0;
         $problems = [];
         foreach ($multiTransfer->transfers()->where('approval_status', Transfer::APPROVAL_PENDING)->get() as $transfer) {
@@ -213,7 +214,7 @@ class MultiTransferController extends Controller
 
                 continue;
             }
-            $error = TransferApproval::approve($transfer, $request->user());
+            $error = TransferApproval::approve($transfer, $request->user(), false, $remark);
             $error ? $problems[] = $transfer->reference . ': ' . $error : $done++;
         }
         log_activity('Multi Transfer Approved', ['reference' => $multiTransfer->reference, 'approved' => $done, 'problems' => $problems], $multiTransfer, 'Multi Transfer');

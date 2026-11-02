@@ -72,12 +72,50 @@ trait ItemHelpers
             ->when($filters['category'] ?? null, fn ($q, $category) => $q->ofCategory($category));
     }
 
+    /**
+     * The item code a person means when they type only its number or leave out the dash: "562", "0562", "RSI562", "rsi 562" and "RSI-0562" all mean RSI-0562.
+     * Null when the text does not look like a code (a name, a sentence, a barcode of another make).
+     */
+    public static function canonicalCode($s): ?string
+    {
+        if (preg_match('/^(?:RSI)?[\s\-_.]*0*(\d{1,6})$/i', trim((string) $s), $m)) {
+            return 'RSI-' . str_pad($m[1], 4, '0', STR_PAD_LEFT);
+        }
+
+        return null;
+    }
+
+    /**
+     * Words are searched one by one (every word must be found somewhere in the code, the name, the SKU or a category), so "cement 50" finds "CEMENT 50KG BAG";
+     * a word that is an item code or just its number also finds that exact code.
+     */
     public function scopeSearch($query, $s)
     {
-        $query->where(
-            fn ($q) => $q->where('code', 'like', "%{$s}%")->orWhere('name', 'like', "%{$s}%")->orWhere('sku', 'like', "%{$s}%")
-                ->orWhereHas('categories', fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"))
-        );
+        $words = preg_split('/\s+/u', trim((string) $s), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $whole = self::canonicalCode($s); // "RSI 562" is one code written with a space
+        if (! $words) {
+            return $query;
+        }
+        $oneWord = function ($q, string $w) {
+            $code = self::canonicalCode($w);
+            $q->where('code', 'like', "%{$w}%")->orWhere('name', 'like', "%{$w}%")->orWhere('sku', 'like', "%{$w}%")
+                ->orWhereHas('categories', fn ($q) => $q->where('name', 'like', "%{$w}%")->orWhere('code', 'like', "%{$w}%"));
+            if ($code) {
+                $q->orWhere('code', $code);
+            }
+        };
+        $query->where(function ($all) use ($words, $whole, $oneWord) {
+            $all->where(function ($each) use ($words, $oneWord) {
+                foreach ($words as $w) {
+                    $each->where(fn ($q) => $oneWord($q, $w));
+                }
+            });
+            if ($whole && count($words) > 1) {
+                $all->orWhere('code', $whole);
+            }
+        });
+
+        return $query;
     }
 
     /**

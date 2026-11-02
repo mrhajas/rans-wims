@@ -1,7 +1,9 @@
 // How good the connection of this device is right now, as a percentage that follows what is measured: the time a tiny request to WIMS takes to come back (and how much that time
 // jumps about), how many requests are lost, and what the browser says about the link (speed class, and, where the browser tells, Wi-Fi / cable / mobile data).
-// Nothing is guessed from the picture of the icon: the number is the measurement. The request is the same cheap health call WIMS already makes every minute; it is sent every
-// 15 seconds while the page is in front, every 2 seconds while the status window is open, and not at all while the tab is hidden.
+// Nothing is guessed from the picture of the icon: the number is the measurement. The request is a two-byte static file the web server answers by itself (no PHP, no
+// session, no database), so the time is the time of the connection and not of the application; if that file is missing the cheap health call is used instead.
+// The first readings come quickly: three requests leave at once when the page opens, then one every 1.5 seconds until there are a few answers, then every 15 seconds
+// while the page is in front, every 2 seconds while the status window is open, and none while the tab is hidden.
 import { reactive } from 'vue';
 
 export const net = reactive({
@@ -23,6 +25,7 @@ const KEEP = 24;
 let timer = null;
 let fast = 0;
 let started = false;
+let useStatic = true; // false once the static file answered with an error: the health route measures instead
 
 const conn = () => (typeof navigator !== 'undefined' ? navigator.connection || navigator.mozConnection || navigator.webkitConnection : null);
 
@@ -84,14 +87,20 @@ function compute() {
   if (pHist.length > 8) pHist.shift();
 }
 
-async function ping() {
+async function ping(limit = 8000) {
   const t0 = performance.now();
   let ms = null;
   try {
     const ctrl = new AbortController();
-    const stop = setTimeout(() => ctrl.abort(), 8000);
-    await fetch('/offline/health?_=' + Date.now(), { cache: 'no-store', credentials: 'same-origin', signal: ctrl.signal, headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } });
+    const stop = setTimeout(() => ctrl.abort(), limit);
+    const url = (useStatic ? '/ping.txt' : '/offline/health') + '?_=' + Date.now() + Math.floor(Math.random() * 1000);
+    const res = await fetch(url, { cache: 'no-store', credentials: useStatic ? 'omit' : 'same-origin', signal: ctrl.signal, headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: useStatic ? 'text/plain' : 'application/json' } });
     clearTimeout(stop);
+    if (useStatic && !res.ok) {
+      // the static file is not on this server: measure with the health route from now on (and measure this one again at once)
+      useStatic = false;
+      return ping(limit);
+    }
     ms = performance.now() - t0; // any answer, even an error page, shows the link works
   } catch (e) {
     ms = null;
@@ -103,10 +112,12 @@ async function ping() {
 
 function schedule() {
   clearTimeout(timer);
+  // while there are only a few answers the next one is quick, so the first number settles within seconds
+  const wait = fast > 0 ? 2000 : net.samples.length < 4 ? 1500 : 15000;
   timer = setTimeout(async () => {
     if (typeof document === 'undefined' || !document.hidden) await ping();
     schedule();
-  }, fast > 0 ? 2000 : 15000);
+  }, wait);
 }
 
 /** Starts measuring (once). */
@@ -119,7 +130,10 @@ export function startNetworkSignal() {
   window.addEventListener('online', () => { ping(); });
   window.addEventListener('offline', () => { net.samples = [...net.samples, null].slice(-KEEP); compute(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
-  ping();
+  // three requests at once: the first answer gives the first number, the others make it steadier a moment later
+  ping(4000);
+  setTimeout(() => ping(4000), 250);
+  setTimeout(() => ping(4000), 600);
   schedule();
 }
 

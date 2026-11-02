@@ -978,6 +978,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('transfers/{transfer}/receive', [Controllers\TransferController::class, 'receive'])->name('transfers.receive');
     Route::patch('transfers/bulk-receive', [Controllers\TransferController::class, 'bulkReceive'])->name('transfers.bulk-receive');
     Route::post('transfers/{transfer}/approve', [Controllers\TransferController::class, 'approve'])->name('transfers.approve');
+    Route::get('transfers/approval-remarks', [Controllers\TransferController::class, 'approvalRemarks'])->middleware('throttle:120,1,transfers.approval-remarks')->name('transfers.approval-remarks');
     Route::get('transfers/{transfer}/draft-check', [Controllers\TransferController::class, 'draftCheck'])->whereNumber('transfer')->middleware('throttle:120,1,transfers.draft-check')->name('transfers.draft-check');
     Route::post('transfers/{transfer}/cancel', [Controllers\TransferController::class, 'cancel'])->name('transfers.cancel');
 

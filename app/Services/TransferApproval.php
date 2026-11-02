@@ -16,10 +16,11 @@ class TransferApproval
      * @param bool $removeDraft the approver agreed to take a plain draft out of draft and approve it in one step (a draft that leaves a MAIN warehouse)
      * @return string|null the reason it could not be approved (nothing changed), or null when it was approved
      */
-    public static function approve(Transfer $transfer, User $user, bool $removeDraft = false): ?string
+    public static function approve(Transfer $transfer, User $user, bool $removeDraft = false, ?string $remark = null): ?string
     {
         $error = null;
-        DB::transaction(function () use ($transfer, $user, $removeDraft, &$error) {
+        $remark = $remark !== null && trim($remark) !== '' ? mb_substr(trim($remark), 0, 300) : null;
+        DB::transaction(function () use ($transfer, $user, $removeDraft, $remark, &$error) {
             $locked = Transfer::whereKey($transfer->id)->lockForUpdate()->first();
             if ($locked && $locked->draft && $locked->approval_status !== Transfer::APPROVAL_PENDING && $locked->approval_status !== Transfer::APPROVAL_CANCELLED) {
                 // a plain draft: it can only be approved once the approver has agreed to remove the draft status, and only when it leaves a main warehouse
@@ -68,7 +69,7 @@ class TransferApproval
                     }
                 }
             }
-            $locked->forceFill(['approval_status' => Transfer::APPROVAL_APPROVED, 'approved_by' => $user->id, 'approved_at' => now(), 'draft' => false])->save();
+            $locked->forceFill(['approval_status' => Transfer::APPROVAL_APPROVED, 'approved_by' => $user->id, 'approved_at' => now(), 'approval_remark' => $remark, 'draft' => false])->save();
             $transfer->setRawAttributes($locked->getAttributes(), true);
         });
         if ($error) {
@@ -77,11 +78,26 @@ class TransferApproval
 
         $transfer->load(['items.item', 'items.unit', 'items.variations']);
         event(new \App\Events\TransferEvent($transfer, 'approved'));
-        log_activity($removeDraft ? 'Transfer Approved (draft status removed)' : 'Transfer Approved', ['reference' => $transfer->reference, 'approved_by' => $user->id], $transfer, 'Transfer');
-        TransferNotifier::fire('approved', $transfer, __('Transfer approved'), $transfer->reference . ' ' . __('was approved by :name.', ['name' => $user->name]), $user->id, ['skip_actor' => true]);
+        log_activity($removeDraft ? 'Transfer Approved (draft status removed)' : 'Transfer Approved', ['reference' => $transfer->reference, 'approved_by' => $user->id, 'remark' => $remark], $transfer, 'Transfer');
+        TransferNotifier::fire('approved', $transfer, __('Transfer approved'), $transfer->reference . ' ' . __('was approved by :name.', ['name' => $user->name]) . ($remark ? ' ' . __('Remark:') . ' ' . $remark : ''), $user->id, ['skip_actor' => true]);
         MultiTransferNotifier::childChanged($transfer, $user);
 
         return null;
+    }
+
+    /** The ready-made remarks an approver can pick (type to search, or write their own). Soft-coded: one remark per line in the setting `transfer_approval_remarks`. */
+    public static function remarkOptions(): array
+    {
+        $lines = preg_split('/\R/u', (string) get_settings('transfer_approval_remarks')) ?: [];
+        $lines = array_values(array_filter(array_map('trim', $lines), fn ($l) => $l !== ''));
+
+        return $lines ?: [
+            __('Go Ahead'),
+            __('Confirm with Management'),
+            __('Urgent, Dispatch Today'),
+            __('Verify Stock Before Loading'),
+            __('Coordinate with the Site Engineer'),
+        ];
     }
 
     /**

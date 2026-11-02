@@ -4,14 +4,14 @@
     <div ref="card" class="dam-card" tabindex="-1">
       <div class="dam-panel">
         <div class="dam-head">
-          <span class="dam-icon" :class="{ 'is-blocked': blocked }"><icons :name="blocked ? 'exclamation' : 'edit'" class="w-5 h-5" /></span>
+          <span class="dam-icon" :class="{ 'is-blocked': blocked }"><icons :name="blocked ? 'exclamation' : state.plain ? 'tick' : 'edit'" class="w-5 h-5" /></span>
           <div class="min-w-0">
-            <h3 id="dam-title" class="dam-title">{{ state.title || (blocked ? $t('This draft cannot be finalised yet') : $t('This record is still a draft')) }}</h3>
+            <h3 id="dam-title" class="dam-title">{{ state.title || (blocked ? $t('This draft cannot be finalised yet') : state.plain ? $t('Approve this record?') : $t('This record is still a draft')) }}</h3>
             <p v-if="state.record" class="dam-record">{{ state.record }}</p>
           </div>
         </div>
 
-        <p class="dam-lead">{{ state.intro || $t('A draft is not finished yet, so it cannot be approved as it is.') }}</p>
+        <p v-if="state.intro || !state.plain" class="dam-lead">{{ state.intro || (state.plain ? '' : $t('A draft is not finished yet, so it cannot be approved as it is.')) }}</p>
 
         <!-- where the record is now and where it will be: the draft step is crossed, then the approval follows -->
         <ul v-if="blocked" class="dam-problems">
@@ -21,7 +21,7 @@
           </li>
         </ul>
 
-        <ol v-if="!blocked" class="dam-flow" aria-hidden="true">
+        <ol v-if="!blocked && !state.plain" class="dam-flow" aria-hidden="true">
           <li v-for="(step, i) in stages" :key="step + i" :class="['dam-node', i === 0 ? 'is-now' : i === stages.length - 1 ? 'is-goal' : 'is-mid']">
             <span class="dam-dot"><icons v-if="i === stages.length - 1" name="tick" class="w-3 h-3" /><template v-else-if="i === 0">&bull;</template><template v-else>{{ i + 1 }}</template></span>
             <span class="dam-label">{{ step }}</span>
@@ -32,7 +32,9 @@
           <li v-for="line in state.effects" :key="line"><icons name="tick" class="w-3.5 h-3.5 flex-none" /><span>{{ line }}</span></li>
         </ul>
 
-        <p class="dam-question">{{ state.question || (blocked ? $t('Open it and correct the items above?') : $t('Remove the draft status and approve it now?')) }}</p>
+        <remark-combobox v-if="!blocked && state.remarkOptions" v-model="state.remark" class="dam-remark" :options="state.remarkOptions" :label="$t('Approval remark')" :placeholder="$t('Search a remark or write your own')" id="dam-remark" />
+
+        <p class="dam-question">{{ state.question || (blocked ? $t('Open it and correct the items above?') : state.plain ? $t('Approve it now?') : $t('Remove the draft status and approve it now?')) }}</p>
 
         <div class="dam-actions">
           <button type="button" class="dam-no" @click="answer(false)">{{ state.cancelText || (blocked ? $t('Not now') : $t('No, keep as draft')) }}</button>
@@ -45,12 +47,13 @@
 
 <script>
 import Icons from '@/Shared/Icons.vue';
+import RemarkCombobox from '@/Shared/RemarkCombobox.vue';
 import { draftApproveState, resolveDraftApprove } from '@/Core/draftApprove';
 
 // The prompt an approver gets when they try to approve a record that is still a draft. Nothing is changed until they answer "Yes": the page then
 // asks the server to take the draft status off and approve in one step (each module decides what that means, so each page passes its own wording).
 export default {
-  components: { Icons },
+  components: { Icons, RemarkCombobox },
   data() { return { state: draftApproveState }; },
   computed: {
     blocked() { return !!(this.state.problems && this.state.problems.length); },
@@ -96,6 +99,7 @@ export default {
 .dam-effects li { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; line-height: 1.4; color: #374151; }
 .dam-effects li svg { margin-top: 2px; color: #16a34a; }
 
+.dam-remark { margin-bottom: 1rem; }
 .dam-question { font-size: 0.95rem; font-weight: 800; color: #111827; margin-bottom: 1.1rem; }
 .dam-actions { display: flex; justify-content: flex-end; gap: 0.7rem; flex-wrap: wrap; }
 .dam-no { padding: 0.6rem 1.15rem; border-radius: 0.65rem; border: 1px solid #d1d5db; background: #fff; color: #374151; font-size: 0.85rem; font-weight: 700; transition: background 0.15s, border-color 0.15s; }

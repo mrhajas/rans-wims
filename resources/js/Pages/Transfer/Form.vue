@@ -84,7 +84,7 @@
         </div>
         <div v-else-if="edit && edit.approval_status === 'approved' && edit.approved_by_user" class="lg-note lg-note-blue mb-4">
           <icons name="tick" class="w-4 h-4" />
-          <div>{{ $t('Approved by') }} <strong>{{ edit.approved_by_user.name }}</strong> &middot; {{ $datetime(edit.approved_at) }}</div>
+          <div>{{ $t('Approved by') }} <strong>{{ edit.approved_by_user.name }}</strong> &middot; {{ $datetime(edit.approved_at) }}<template v-if="edit.approval_remark"> &mdash; {{ $t('Remark') }}: <strong>{{ edit.approval_remark }}</strong></template></div>
         </div>
         <div v-else-if="edit && edit.approval_status === 'cancelled'" class="lg-note lg-note-red mb-4">
           <icons name="cross" class="w-4 h-4" />
@@ -252,17 +252,17 @@
                     </button>
                   </td>
                   <td :data-label="$t('Item')" class="tr-item-td">
-                    <div class="tr-cell">
+                    <div class="tr-cell tr-cell-err">
+                      <div v-if="rowError(ii, 'item_id')" class="tr-err-msg is-left wims-field-error">{{ rowError(ii, 'item_id') }}</div>
                       <div class="tr-item-name">{{ row.name }}</div>
                       <div class="tr-item-code">{{ row.code }}</div>
-                      <div v-if="rowError(ii, 'item_id')" class="text-red-600 text-xs mt-1 wims-field-error">{{ rowError(ii, 'item_id') }}</div>
                     </div>
                   </td>
                   <td :data-label="$t('Quantity')">
-                    <div class="tr-cell">
+                    <div class="tr-cell tr-cell-err">
+                      <div v-if="rowError(ii, 'quantity') || rowError(ii, 'weight')" class="tr-err-msg wims-field-error">{{ rowError(ii, 'quantity') || rowError(ii, 'weight') }}</div>
                       <text-input :id="'tr-qty-' + row._key" type="number" v-model="row.quantity" @update:model-value="editedRow(ii)" />
                       <div v-if="row.mr_remaining != null" class="tr-hint">{{ $t('Still to move') }}: {{ row.mr_remaining }}</div>
-                      <div v-if="rowError(ii, 'quantity') || rowError(ii, 'weight')" class="text-red-600 text-xs mt-1 wims-field-error">{{ rowError(ii, 'quantity') || rowError(ii, 'weight') }}</div>
                     </div>
                   </td>
                   <td :data-label="$t('Unit')">
@@ -490,7 +490,7 @@ import _isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
 import Dialog from '@/Shared/Dialog.vue';
 import DraftSwitch from '@/Shared/DraftSwitch.vue';
-import { approveDraftTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
+import { approveTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -736,8 +736,9 @@ export default {
 
   mounted() {
     // an approver sent here from the Transfers list because the draft failed its checks: show every problem inline, item by item
-    if (this.edit && this.edit.draft == 1 && /[?&]verify=1\b/.test(window.location.search)) {
-      this.$nextTick(() => this.verifyFinal().then(ok => { if (!ok) this.refuseFinal(); }));
+    if (this.edit && this.edit.draft == 1) {
+      if (/[?&]verify=1\b/.test(window.location.search)) this.$nextTick(() => this.verifyFinal().then(ok => { if (!ok) this.refuseFinal(); }));
+      else this.$nextTick(() => this.checkStock()); // a saved draft shows its problems straight away
     }
     if (!this.edit && !this.prefill) {
       this.form.from_warehouse_id = this.defaultWarehouseId();
@@ -754,15 +755,9 @@ export default {
     printThis() {
       printWithAnimation(transferPrintSheet(this, this.edit), () => printUrlInFrame(this.route('transfers.print', this.edit.id)));
     },
-    async approveThis() {
-      if (this.draftApprovable) {
-        // a plain draft: it is checked first, then the approver chooses whether to remove the draft status and approve in one step
-        approveDraftTransfer(this, this.edit);
-        return;
-      }
-      this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: this.edit.reference, from: (this.edit.from_warehouse || {}).name || '', to: (this.edit.to_warehouse || {}).name || '' })).then(ok => {
-        if (ok) this.$inertia.post(this.route('transfers.approve', this.edit.id), {}, { preserveScroll: true });
-      });
+    approveThis() {
+      // a draft is checked first; a transfer waiting for approval gets the plain prompt; both ask for a remark
+      return approveTransfer(this, this.edit);
     },
     cancelThis() {
       this.$prompt(this.$t('Cancel :ref? You can add a reason (optional).', { ref: this.edit.reference }), { variant: 'danger', placeholder: this.$t('Reason (optional)') }).then(reason => {
@@ -1017,8 +1012,10 @@ export default {
     // warehouse change so stock errors surface on selection instead of only on submit.
     checkStock: debounce(function () {
       const warehouse_id = this.form.from_warehouse_id;
+      const local = this.itemFindings();
       if (!warehouse_id || !this.filledCount) {
-        this.applyStockErrors({});
+        this.applyStockErrors(local);
+        this.syncDraftNote();
         return;
       }
       // the server numbers the rows it was sent (the filled ones); the page numbers every row, empty ones included
@@ -1031,8 +1028,8 @@ export default {
             const m = key.match(/^items\.(\d+)\.(.+)$/);
             mapped[m && rowOf[+m[1]] !== undefined ? 'items.' + rowOf[+m[1]] + '.' + m[2] : key] = data.errors[key];
           });
-          this.applyStockErrors(mapped);
-          if (this.draftBlock && !Object.keys(this.$page.props.errors || {}).some(k => /^items\./.test(k))) this.draftBlock = '';
+          this.applyStockErrors({ ...mapped, ...local });
+          this.syncDraftNote();
         })
         .catch(() => {});
     }, 450),
@@ -1179,6 +1176,28 @@ export default {
       }
       return true;
     },
+    // Problems of the item rows themselves (an item twice, a quantity that is not above 0), keyed items.{row}.{field}: found as items are added, not only on save
+    itemFindings() {
+      const found = {};
+      const seen = {};
+      this.form.items.forEach((row, ii) => {
+        if (row.blank) return;
+        if (seen[row.item_id]) found['items.' + ii + '.item_id'] = this.$t(':item is on the list twice. Keep one row and change its quantity.', { item: row.name });
+        seen[row.item_id] = true;
+        const positive = n => n !== '' && n !== null && n !== undefined && !isNaN(n) && parseFloat(n) > 0;
+        if (this.hasVariations(row)) {
+          if (row.selected.variations.some(v => !positive(v.quantity))) found['items.' + ii + '.quantity'] = this.$t('Every variation of :item needs a quantity greater than 0.', { item: row.name });
+        } else if (!positive(row.quantity)) {
+          found['items.' + ii + '.quantity'] = this.$t('Enter a quantity greater than 0 for :item.', { item: row.name });
+        }
+      });
+      return found;
+    },
+    // A draft can always be saved, but while any item is wrong it cannot be switched to Final (or approved): this keeps the note under the switch in step with the rows
+    syncDraftNote() {
+      const bad = Object.keys(this.$page.props.errors || {}).some(k => /^items\./.test(k));
+      this.draftBlock = this.form.draft && bad ? this.$t('A draft can be saved as it is, but it cannot become Final or be approved until every item marked in red is correct.') : '';
+    },
     // The checks that can be made before anything is sent, shown on the same fields (and rows) as the server's own errors.
     // Returns true when the transfer can be sent.
     validateLocal() {
@@ -1195,18 +1214,7 @@ export default {
       else if (f.from_warehouse_id && f.from_warehouse_id == f.to_warehouse_id) found.to_warehouse_id = this.$t('Please select different warehouses.');
 
       if (!this.filledCount) found.items = this.$t('Add at least one item to the list.');
-      const seen = {};
-      f.items.forEach((row, ii) => {
-        if (row.blank) return;
-        if (seen[row.item_id]) found['items.' + ii + '.item_id'] = this.$t(':item is on the list twice. Keep one row and change its quantity.', { item: row.name });
-        seen[row.item_id] = true;
-        const positive = n => n !== '' && n !== null && n !== undefined && !isNaN(n) && parseFloat(n) > 0;
-        if (this.hasVariations(row)) {
-          if (row.selected.variations.some(v => !positive(v.quantity))) found['items.' + ii + '.quantity'] = this.$t('Every variation of :item needs a quantity greater than 0.', { item: row.name });
-        } else {
-          if (!positive(row.quantity)) found['items.' + ii + '.quantity'] = this.$t('Enter a quantity greater than 0 for :item.', { item: row.name });
-        }
-      });
+      Object.assign(found, this.itemFindings());
       if (!Object.keys(found).length) return true;
       Object.assign(errors, found);
       this.scrollToError();
@@ -1419,6 +1427,14 @@ html.dark .tr-status-meta { color: #94a3b8; }
 }
 
 .tr-cell { min-width: 0; text-align: left; }
+/* a problem is written ABOVE its field and never takes room from the row, so every field of a row stays on one straight line */
+.tr-cell-err { position: relative; }
+.tr-err-msg { color: #dc2626; font-size: 0.74rem; font-weight: 600; line-height: 1.25; margin-bottom: 0.3rem; }
+@media (min-width: 768px) {
+  .tr-err-row > td { padding-top: 3rem !important; }
+  .tr-err-msg { position: absolute; right: 0; bottom: calc(100% + 0.2rem); width: max-content; max-width: min(24rem, 52vw); margin: 0; text-align: right; }
+  .tr-err-msg.is-left { right: auto; left: 0; text-align: left; }
+}
 .tr-items-table .wims-field-error { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 .tr-cell :deep(.mb-2) { margin-bottom: 0; }
 .tr-item-name { font-weight: 700; color: var(--lg-ink); overflow-wrap: anywhere; }

@@ -436,11 +436,20 @@ class TransferController extends Controller
         }
 
         // remove_draft: the approver answered "Yes" to the prompt that offers to take a plain draft out of draft and approve it
-        if ($error = \App\Services\TransferApproval::approve($transfer, $request->user(), $request->boolean('remove_draft'))) {
+        $remark = $request->validate(['remark' => 'nullable|string|max:300'])['remark'] ?? null;
+        if ($error = \App\Services\TransferApproval::approve($transfer, $request->user(), $request->boolean('remove_draft'), $remark)) {
             return back()->with('error', $error);
         }
 
         return back()->with('message', __('Transfer :ref approved. Stock has been moved.', ['ref' => $transfer->reference]));
+    }
+
+    /** The remarks offered in the approval prompt (a search list the approver can also type their own into). */
+    public function approvalRemarks(Request $request)
+    {
+        abort_unless($request->user()->can('approve-transfers') || $request->user()->can('approve-multi-transfers'), 403);
+
+        return response()->json(['remarks' => \App\Services\TransferApproval::remarkOptions()]);
     }
 
     /** Before an approver is asked "remove the draft status and approve?": the checks a draft never had, line by line. */
