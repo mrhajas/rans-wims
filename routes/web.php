@@ -396,6 +396,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('system-health', [Controllers\SystemHealthController::class, 'index'])->name('system-health.index');
     Route::get('system-health/data', [Controllers\SystemHealthController::class, 'data'])->middleware('throttle:30,1,system-health.data')->name('system-health.data');
     Route::get('system-health/cloud', [Controllers\SystemHealthController::class, 'cloud'])->middleware('throttle:12,1,system-health.cloud')->name('system-health.cloud');
+    Route::post('system-health/send-report', [Controllers\SystemHealthController::class, 'sendReport'])->middleware('throttle:5,10,system-health.send-report')->name('system-health.send-report');
     Route::post('system-health/speed-test', [Controllers\SystemHealthController::class, 'speedTest'])->middleware('throttle:6,1,system-health.speed-test')->name('system-health.speed-test');
     Route::get('settings/optimize', [Controllers\OptimizerController::class, 'index'])->name('optimizer.index');
     Route::get('settings/optimize/scan', [Controllers\OptimizerController::class, 'scan'])->middleware('throttle:12,1,optimizer.scan')->name('optimizer.scan');

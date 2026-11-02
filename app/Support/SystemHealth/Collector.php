@@ -308,7 +308,7 @@ class Collector
         $since = now()->subDay();
         $q = DB::table('slow_logs')->where('created_at', '>=', $since);
         $kinds = (clone $q)->selectRaw('kind, count(*) c')->groupBy('kind')->pluck('c', 'kind');
-        $worst = (clone $q)->where('kind', 'request')->orderByDesc('ms')->limit(3)->get(['label', 'ms'])->map(fn ($r) => ['label' => substr((string) $r->label, 0, 60), 'ms' => (int) $r->ms])->all();
+        $worst = (clone $q)->where('kind', 'request')->orderByDesc('duration_ms')->limit(3)->get(['label', 'duration_ms'])->map(fn ($r) => ['label' => substr((string) $r->label, 0, 60), 'ms' => (int) $r->duration_ms])->all();
 
         return ['pages_24h' => (int) ($kinds['request'] ?? 0), 'queries_24h' => (int) ($kinds['query'] ?? 0), 'worst' => $worst];
     }

@@ -2,9 +2,12 @@
   <admin-layout :title="$t('System Health')">
     <div class="lg-page px-4 md:px-0 sh">
       <page-header icon="chart-pie" :title="$t('System Health')" :subtitle="$t('How WIMS and your connection are doing right now')">
-        <span class="sh-live" :class="{ 'is-busy': busy }"><i></i>{{ busy ? $t('Reading...') : $t('Updated') + ' ' + ago }}</span>
-        <button type="button" class="sh-btn is-blue" :disabled="busy" @click="load(true)"><span class="sh-btn-ic"><icons name="refresh" class="w-4 h-4" :class="{ 'sh-spin': busy }" /></span>{{ $t('Refresh') }}</button>
-        <button v-if="canOptimize" type="button" class="sh-btn is-amber" @click="openOptimize"><span class="sh-btn-ic"><icons name="sparkles" class="w-4 h-4" /></span>{{ $t('Optimize All') }}</button>
+        <div class="sh-actions">
+          <span class="sh-live" :class="{ 'is-busy': busy }"><i></i>{{ busy ? $t('Reading...') : $t('Updated') + ' ' + ago }}</span>
+          <button type="button" class="sh-btn is-blue" :disabled="busy" @click="load(true)"><span class="sh-btn-ic"><icons name="refresh" class="w-4 h-4" :class="{ 'sh-spin': busy }" /></span>{{ $t('Refresh') }}</button>
+          <button v-if="canOptimize" type="button" class="sh-btn is-amber" @click="openOptimize"><span class="sh-btn-ic"><icons name="sparkles" class="w-4 h-4" /></span>{{ $t('Optimize All') }}</button>
+          <button type="button" class="sh-btn is-violet" @click="openReport"><span class="sh-btn-ic"><icons name="send" class="w-4 h-4" /></span>{{ $t('Send Report') }}</button>
+        </div>
       </page-header>
 
       <!-- the whole picture -->
@@ -251,6 +254,34 @@
         </health-card>
       </section>
 
+      <!-- Send Report -->
+      <div v-if="rep.open" class="sh-modal" role="dialog" aria-modal="true" @keydown.esc="closeReport">
+        <div class="sh-modal-bg" @click="closeReport"></div>
+        <div class="sh-modal-card">
+          <div class="sh-modal-head"><span class="sh-modal-ic is-violet"><icons name="send" class="w-5 h-5" /></span><div><h3>{{ $t('Send Report') }}</h3><p>{{ rep.stage === 'ask' ? $t('A full System Health report goes by e-mail, in the WIMS style.') : rep.sent.length ? $t('The report was sent.') : $t('The report could not be sent.') }}</p></div></div>
+          <template v-if="rep.stage === 'ask'">
+            <label class="sh-pwl">{{ $t('To') }}</label>
+            <div class="sh-to"><span class="sh-to-chip is-fixed"><icons name="lock-closed" class="w-3.5 h-3.5" />{{ reportTo }}<small>{{ $t('always included') }}</small></span></div>
+            <label class="sh-pwl" for="sh-rep-extra">{{ $t('Add another e-mail (optional)') }}</label>
+            <input id="sh-rep-extra" ref="extra" v-model="rep.extra" type="text" inputmode="email" class="sh-pw" :placeholder="$t('name@example.com (up to 3, separated by commas)')" autocomplete="off" @keydown.enter="sendReport" />
+            <ul class="sh-incl">
+              <li><icons name="tick" class="w-3.5 h-3.5" />{{ $t('The rating and figures of every part of the system') }}</li>
+              <li><icons name="tick" class="w-3.5 h-3.5" />{{ $t('The errors and details behind each rating') }}</li>
+              <li><icons name="tick" class="w-3.5 h-3.5" />{{ $t('What can be done about each part') }}</li>
+              <li><icons name="tick" class="w-3.5 h-3.5" />{{ $t('The measurement of your own connection') }}</li>
+            </ul>
+            <p class="sh-note">{{ $t('Passwords, keys, e-mail addresses and query values are removed from the error text before it is sent.') }}</p>
+            <p v-if="rep.error" class="sh-err" role="alert">{{ rep.error }}</p>
+            <div class="sh-modal-actions"><button type="button" class="sh-btn is-plain" @click="closeReport">{{ $t('Cancel') }}</button><button type="button" class="sh-btn is-violet" :disabled="rep.busy" @click="sendReport"><span class="sh-btn-ic"><icons name="send" class="w-4 h-4" :class="{ 'sh-fly': rep.busy }" /></span>{{ rep.busy ? $t('Sending...') : $t('Send report') }}</button></div>
+          </template>
+          <template v-else>
+            <ul class="sh-sent"><li v-for="a in rep.sent" :key="a" class="is-ok"><icons name="tick" class="w-4 h-4" />{{ a }}</li><li v-for="a in rep.failed" :key="a" class="is-bad"><icons name="cross" class="w-4 h-4" />{{ a }} <small>{{ $t('not delivered') }}</small></li></ul>
+            <p v-if="rep.error" class="sh-err">{{ rep.error }}</p>
+            <div class="sh-modal-actions"><button type="button" class="sh-btn is-blue" @click="closeReport"><span class="sh-btn-ic"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Close') }}</button></div>
+          </template>
+        </div>
+      </div>
+
       <!-- Optimize All -->
       <div v-if="opt.open" class="sh-modal" role="dialog" aria-modal="true" @keydown.esc="closeOptimize">
         <div class="sh-modal-bg" @click="closeOptimize"></div>
@@ -292,10 +323,11 @@ const RATE = s => (s === null || s === undefined ? 'unknown' : s >= 92 ? 'excell
 
 export default {
   components: { AdminLayout, PageHeader, HealthCard, HealthIcon, Waves, Link },
-  props: { core: Object },
+  props: { core: Object, reportTo: String },
   data() {
     return {
       d: this.core, cloud: null, busy: false, testing: false, ready: false, shownScore: 0, shownSms: 0, timer: null, now: Date.now(), net, updatedAt: Date.now(), tickTimer: null,
+      rep: { open: false, stage: 'ask', extra: '', busy: false, error: '', sent: [], failed: [] },
       opt: { open: false, stage: 'ask', password: '', error: '', busy: false, steps: [], failed: false, saved: '', rating: '', url: '' },
     };
   },
@@ -476,6 +508,29 @@ export default {
         this.testing = false;
       }
     },
+    // ---- Send Report: always to the default address, plus up to three the person adds; the server checks every address and builds the report from real figures
+    openReport() { this.rep = { open: true, stage: 'ask', extra: '', busy: false, error: '', sent: [], failed: [] }; this.$nextTick(() => this.$refs.extra && this.$refs.extra.focus()); },
+    closeReport() { if (!this.rep.busy) this.rep.open = false; },
+    async sendReport() {
+      if (this.rep.busy) return;
+      this.rep.busy = true;
+      this.rep.error = '';
+      const n = this.net;
+      const connection = n.percent === null ? null : { percent: n.percent, level: n.level, rtt: n.rtt, jitter: n.jitter, loss: n.loss, type: n.type };
+      try {
+        const { data } = await axios.post(this.route('system-health.send-report'), { extra: this.rep.extra, connection }, { headers: { 'X-Quiet': '1' }, timeout: 120000 });
+        this.rep.sent = data.sent || [];
+        this.rep.failed = data.failed || [];
+        this.rep.stage = 'done';
+      } catch (e) {
+        const d = e.response && e.response.data;
+        this.rep.error = (d && (d.message || (d.errors && Object.values(d.errors)[0] && Object.values(d.errors)[0][0]))) || this.$t('The report could not be sent.');
+        if (e.response && e.response.status === 502) { this.rep.failed = (d && d.failed) || []; this.rep.stage = 'done'; }
+        if (e.response && e.response.status === 429) this.rep.error = this.$t('Too many reports were sent. Please wait a few minutes.');
+      } finally {
+        this.rep.busy = false;
+      }
+    },
     // ---- Optimize All: the same steps as Settings > Optimize (its own tasks, password and history), shown here with a progress list
     openOptimize() {
       this.opt = { open: true, stage: 'ask', password: '', error: '', busy: false, failed: false, saved: '', rating: '', url: '', steps: [
@@ -543,6 +598,7 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-na { font-size: 0.82rem; color: var(--mute); }
 .sh-note { font-size: 0.76rem; color: var(--mute); margin-top: 0.5rem; }
 .sh-spin { animation: sh-rot 0.9s linear infinite; } .sh-pulse-ic { animation: sh-beat 0.8s ease-in-out infinite; }
+.sh-actions { display: flex; align-items: center; gap: 0.55rem; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; padding: 0.35rem 0.2rem 0.85rem; scrollbar-width: none; } .sh-actions::-webkit-scrollbar { display: none; } .sh-actions > * { flex: none; }
 .sh-live { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.74rem; font-weight: 700; color: var(--mute); }
 .sh-live i { width: 0.55rem; height: 0.55rem; border-radius: 999px; background: var(--ok); animation: sh-ping 2s infinite; } .sh-live.is-busy i { background: var(--warn); }
 
@@ -554,6 +610,7 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-btn:disabled { opacity: 0.65; cursor: wait; }
 .sh-btn.is-blue { background: linear-gradient(135deg, #3b82f6, #4f46e5); box-shadow: 0 10px 22px -10px rgba(79, 70, 229, 0.8), 0 2px 0 rgba(255, 255, 255, 0.25) inset; }
 .sh-btn.is-teal { background: linear-gradient(135deg, #14b8a6, #059669); box-shadow: 0 10px 22px -10px rgba(5, 150, 105, 0.8), 0 2px 0 rgba(255, 255, 255, 0.25) inset; }
+.sh-btn.is-violet { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 10px 22px -10px rgba(109, 40, 217, 0.85), 0 2px 0 rgba(255, 255, 255, 0.25) inset; }
 .sh-btn.is-amber { background: linear-gradient(135deg, #f59e0b, #ea580c); box-shadow: 0 10px 22px -10px rgba(234, 88, 12, 0.85), 0 2px 0 rgba(255, 255, 255, 0.25) inset; }
 .sh-btn.is-plain { background: var(--card); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 6px 14px -10px rgba(15, 23, 42, 0.5); padding-left: 0.95rem; } .sh-btn.is-plain::after { display: none; }
 .sh-test { margin-top: 0.8rem; }
@@ -668,6 +725,11 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-modal-bg { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px); }
 .sh-modal-card { position: relative; width: 100%; max-width: 30rem; max-height: 100%; overflow: auto; padding: 1.3rem; border-radius: 1.1rem; background: var(--card); color: var(--ink); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); animation: sh-pop 0.25s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
 .sh-modal-head { display: flex; gap: 0.8rem; align-items: center; margin-bottom: 0.9rem; } .sh-modal-head h3 { font-size: 1.05rem; font-weight: 900; } .sh-modal-head p { font-size: 0.78rem; color: var(--mute); }
+.sh-modal-ic.is-violet { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 10px 20px -10px rgba(109, 40, 217, 0.9); }
+.sh-to { margin-bottom: 0.8rem; } .sh-to-chip { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.82rem; font-weight: 800; background: var(--track); } .sh-to-chip small { font-size: 0.66rem; font-weight: 700; color: var(--mute); }
+.sh-incl { list-style: none; margin: 0.8rem 0 0.4rem; padding: 0; display: grid; gap: 0.3rem; font-size: 0.78rem; font-weight: 600; } .sh-incl li { display: flex; align-items: center; gap: 0.5rem; } .sh-incl svg { color: var(--ok); flex: none; }
+.sh-sent { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; } .sh-sent li { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.8rem; border-radius: 0.8rem; font-weight: 700; font-size: 0.85rem; animation: sh-pop 0.35s both; } .sh-sent .is-ok { background: color-mix(in srgb, var(--ok) 13%, transparent); color: var(--ok); } .sh-sent .is-bad { background: color-mix(in srgb, var(--bad) 13%, transparent); color: var(--bad); } .sh-sent small { font-weight: 600; opacity: 0.8; }
+.sh-fly { animation: sh-fly 0.9s ease-in-out infinite; }
 .sh-modal-ic { width: 2.6rem; height: 2.6rem; border-radius: 0.85rem; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: none; background: linear-gradient(135deg, #f59e0b, #ea580c); box-shadow: 0 10px 20px -10px rgba(234, 88, 12, 0.9); }
 .sh-steps { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.5rem; }
 .sh-steps li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.55rem 0.7rem; border-radius: 0.8rem; background: var(--track); } .sh-steps b { display: block; font-size: 0.82rem; } .sh-steps small { font-size: 0.72rem; color: var(--mute); }
@@ -691,8 +753,9 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 @keyframes sh-ecg { 0% { stroke-dashoffset: 520; } 55%, 100% { stroke-dashoffset: 0; } }
 @keyframes sh-blip { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 8px var(--ok); } }
 @keyframes sh-skel { to { background-position: -200% 0; } }
+@keyframes sh-fly { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(4px, -4px); } }
 @keyframes sh-pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
 @media (max-width: 960px) { .sh-over { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .sh-orb { flex-direction: column; text-align: center; } .sh-tally { justify-content: center; } .sh-facts { grid-template-columns: repeat(2, 1fr); } .sh-grid { grid-template-columns: 1fr; } .sh-bar-row { grid-template-columns: 5.5rem 1fr auto; } .sh-ring-wrap { width: 8.4rem; } }
+@media (max-width: 560px) { .sh-actions { gap: 0.4rem; } .sh-actions .sh-btn { padding: 0.32rem 0.6rem 0.32rem 0.32rem; font-size: 0.72rem; gap: 0.35rem; } .sh-actions .sh-btn-ic { width: 1.4rem; height: 1.4rem; } .sh-live { font-size: 0.66rem; } .sh-orb { flex-direction: column; text-align: center; } .sh-tally { justify-content: center; } .sh-facts { grid-template-columns: repeat(2, 1fr); } .sh-grid { grid-template-columns: 1fr; } .sh-bar-row { grid-template-columns: 5.5rem 1fr auto; } .sh-ring-wrap { width: 8.4rem; } }
 @media (prefers-reduced-motion: reduce) { .sh-live i, .sh-spin, .sh-pulse-ic, .sh-skel, .sh-btn::after, .sh-orb::after, .sh-ring-orbit, .sh-orbit-dots, .sh-radiate i, .sh-bar i::after, .sh-batt-stripes, .sh-bolt, .sh-radar-sweep, .sh-blip, .sh-tally i, .sh-modal-card { animation: none !important; } .sh-ring-fg, .sh-arc-fg, .sh-seg, .sh-bar i, .sh-batt-fill, .sh-battery-fill, .sh-btn { transition: none; } .sh-ecg polyline { stroke-dashoffset: 0; } }
 </style>
