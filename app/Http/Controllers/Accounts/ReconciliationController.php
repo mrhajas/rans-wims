@@ -120,7 +120,9 @@ class ReconciliationController extends AcctController
             'unmatchedWims' => $unmatchedWims, 'timeline' => $trail->map(fn ($x) => ['action' => $x->action, 'user' => $names[$x->user_id] ?? null, 'at' => $x->created_at->toDateTimeString()])->values(),
             'history' => $history->map(fn ($e) => ['event' => $e->event, 'user' => $names[$e->user_id] ?? null, 'reason' => $e->reason, 'at' => $e->created_at->toDateTimeString()]),
             'can' => ['edit' => in_array($r->status, ['draft', 'rejected'], true) && $me->can('perform-acct-reconciliations'), 'submit' => in_array($r->status, ['draft', 'rejected'], true) && $me->can('perform-acct-reconciliations'),
-                'approve' => $r->status === 'submitted' && $me->can('approve-acct-reconciliations') && (! $self || ! AcctSettings::get()['maker_checker']), 'reject' => $r->status === 'submitted' && $me->can('approve-acct-reconciliations')],
+                'approve' => $r->status === 'submitted' && $me->can('approve-acct-reconciliations') && (! $self || ! AcctSettings::get()['maker_checker']), 'reject' => $r->status === 'submitted' && $me->can('approve-acct-reconciliations'),
+                // a plain draft can be submitted and approved in one step by someone who may do both (the preparer and the counter still cannot approve their own)
+                'approve_draft' => $r->status === 'draft' && $me->can('perform-acct-reconciliations') && $me->can('approve-acct-reconciliations') && ! in_array((int) $me->id, [(int) $r->prepared_by, (int) $r->counted_by], true)],
         ]);
     }
 
@@ -217,10 +219,18 @@ class ReconciliationController extends AcctController
     {
         $r = $this->orFail($id);
 
-        return $this->run(function () use ($r, $request) {
-            $x = app(AcctReconciler::class)->approve($r, $this->me(), $request->boolean('propose'));
+        // A plain draft is never approved as it is: the approver must have answered "Yes" to the prompt (remove_draft), and then it is submitted and approved in one step.
+        $fromDraft = $r->status === 'draft';
+        if ($fromDraft && ! $request->boolean('remove_draft')) {
+            return back()->with('error', e(__('This reconciliation is still a draft. Remove the draft status first, then approve it.')));
+        }
 
-            return back()->with('message', $x->status === 'approved' ? __('Approved.') : __('Approval recorded. A second approver is needed for a difference this large.'));
+        return $this->run(function () use ($r, $request, $fromDraft) {
+            $svc = app(AcctReconciler::class);
+            $x = $fromDraft ? $svc->approveDraft($r, $this->me(), $request->boolean('propose')) : $svc->approve($r, $this->me(), $request->boolean('propose'));
+            $lead = $fromDraft ? __('Draft status removed.') . ' ' : '';
+
+            return back()->with('message', $lead . ($x->status === 'approved' ? __('Approved.') : __('Approval recorded. A second approver is needed for a difference this large.')));
         });
     }
 

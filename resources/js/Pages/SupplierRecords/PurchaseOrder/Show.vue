@@ -254,6 +254,9 @@
               <button type="button" class="lg-btn lg-btn-primary" :disabled="submitForm.processing" @click="submit">
                 <icons :name="submitForm.processing ? 'refresh' : 'plane'" class="w-4 h-4" :class="{ 'animate-spin': submitForm.processing }" />{{ $t('Submit') }}
               </button>
+              <button v-if="$can('approve-purchase-orders')" type="button" class="lg-btn lg-btn-green ml-2" :disabled="reviewForm.processing" @click="approveDraft">
+                <icons :name="reviewForm.processing ? 'refresh' : 'tick'" class="w-4 h-4" :class="{ 'animate-spin': reviewForm.processing }" />{{ $t('Approve') }}
+              </button>
             </div>
 
             <!-- Review (Approve / Reject) -->
@@ -361,6 +364,7 @@
 </template>
 
 <script>
+import { draftApprovalsProcurement } from '@/Core/draftApprovals.procurement';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
@@ -454,6 +458,11 @@ export default {
     },
     approve() {
       this.reviewForm.patch(route('supplier-records.purchase-orders.approve', this.purchaseOrder.id));
+    },
+    async approveDraft() {
+      // a draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (!(await this.$draftApprove(draftApprovalsProcurement.purchaseOrder(this.$t, this.purchaseOrder)))) return;
+      this.reviewForm.transform(d => ({ ...d, remove_draft: true })).patch(route('supplier-records.purchase-orders.approve', this.purchaseOrder.id));
     },
     async reject() {
       if (!this.reviewForm.approval_remarks || !this.reviewForm.approval_remarks.trim()) {

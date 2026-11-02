@@ -636,6 +636,22 @@ class MaterialReallocationController extends Controller
 
     public function clear(MaterialReallocationClearRequest $request, MaterialReallocation $material_reallocation)
     {
+        // A draft cannot be cleared as it is. Only when the approver answered "Yes" to the prompt (remove_draft) the draft is first submitted, then cleared
+        // in the same request; each step keeps its own permission check, so someone who may not submit it can never clear a draft.
+        $removedDraft = false;
+        if ($material_reallocation->status === MaterialReallocation::STATUS_DRAFT) {
+            if (! $request->boolean('remove_draft')) {
+                return back()->with('error', __('This material reallocation is still a draft. Remove the draft status first, then clear it for approval.'));
+            }
+            $this->authorize('submit', $material_reallocation);
+            abort_unless($request->user()->hasRole(['Super Admin', 'Admin', 'Project Manager', 'Project Managers']), 403);
+            $this->submit($request, $material_reallocation);
+            $material_reallocation->refresh();
+            if ($material_reallocation->status !== MaterialReallocation::STATUS_SUBMITTED) {
+                return back()->with('error', __('The draft status could not be removed, so nothing was cleared.'));
+            }
+            $removedDraft = true;
+        }
         $this->authorize('clear', $material_reallocation);
         if ($response = $this->rejectIfWarehouseBlocked(...$this->reallocationWarehouses($material_reallocation))) {
             return $response;
@@ -676,7 +692,9 @@ class MaterialReallocationController extends Controller
             $request->user()->id
         );
 
-        return back()->with('message', __('Material Reallocation has been cleared.'));
+        return back()->with('message', $removedDraft
+            ? __('The draft status was removed and the material reallocation was cleared for approval. Warehouse Allocation is next.')
+            : __('Material Reallocation has been cleared.'));
     }
 
     public function allocate(MaterialReallocationAllocateRequest $request, MaterialReallocation $material_reallocation)

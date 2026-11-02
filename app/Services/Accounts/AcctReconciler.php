@@ -328,6 +328,27 @@ class AcctReconciler
     }
 
     /**
+     * "Remove the draft status and approve" in one step: submit and approve in one transaction, so a refused approval leaves the reconciliation a draft.
+     * The preparer and the counter can never approve their own (the normal rule), and a difference above the limit still needs a second approver.
+     */
+    public function approveDraft(AcctReconciliation $r, User $by, bool $propose = false): AcctReconciliation
+    {
+        $cur = AcctReconciliation::query()->findOrFail($r->id);
+        if ($cur->status !== 'draft') {
+            throw new AcctException(__('Only a draft can be approved this way.'));
+        }
+        if (! $by->can('approve-acct-reconciliations')) {
+            throw new AcctException(__('You are not allowed to approve reconciliations.'));
+        }
+
+        return $this->db()->transaction(function () use ($r, $by, $propose) {
+            $this->submit(AcctReconciliation::query()->findOrFail($r->id), $by);
+
+            return $this->approve(AcctReconciliation::query()->findOrFail($r->id), $by, $propose);
+        });
+    }
+
+    /**
      * Approve a reconciliation. The preparer and the counter can never approve their own; a difference above the limit needs two different approvers.
      * With $propose, an adjustment transaction for the difference is created (submitted for its own approval and posting): the balance is not touched here.
      */

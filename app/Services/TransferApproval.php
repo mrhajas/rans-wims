@@ -12,12 +12,34 @@ use Illuminate\Support\Facades\DB;
  */
 class TransferApproval
 {
-    /** @return string|null the reason it could not be approved (nothing changed), or null when it was approved */
-    public static function approve(Transfer $transfer, User $user): ?string
+    /**
+     * @param bool $removeDraft the approver agreed to take a plain draft out of draft and approve it in one step (a draft that leaves a MAIN warehouse)
+     * @return string|null the reason it could not be approved (nothing changed), or null when it was approved
+     */
+    public static function approve(Transfer $transfer, User $user, bool $removeDraft = false): ?string
     {
         $error = null;
-        DB::transaction(function () use ($transfer, $user, &$error) {
+        DB::transaction(function () use ($transfer, $user, $removeDraft, &$error) {
             $locked = Transfer::whereKey($transfer->id)->lockForUpdate()->first();
+            if ($locked && $locked->draft && $locked->approval_status !== Transfer::APPROVAL_PENDING && $locked->approval_status !== Transfer::APPROVAL_CANCELLED) {
+                // a plain draft: it can only be approved once the approver has agreed to remove the draft status, and only when it leaves a main warehouse
+                if (! $removeDraft) {
+                    $error = __('This transfer is still a draft. Remove the draft status first, then approve it.');
+
+                    return;
+                }
+                if (! Transfer::warehouseNeedsApproval($locked->from_warehouse_id)) {
+                    $error = __('This draft leaves a warehouse that needs no approval. Open it and save it as final instead.');
+
+                    return;
+                }
+                if ($problems = self::problems($locked)) {
+                    $error = __('This draft cannot leave draft yet. Fix these first:') . ' ' . collect($problems)->map(fn ($p) => ($p['row'] ? __('Item') . ' ' . $p['row'] . ': ' : '') . $p['message'])->implode(' | ');
+
+                    return;
+                }
+                $locked->forceFill(['approval_status' => Transfer::APPROVAL_PENDING])->save();
+            }
             if (! $locked || $locked->approval_status !== Transfer::APPROVAL_PENDING) {
                 $error = __('This transfer is not waiting for approval.');
 
@@ -55,11 +77,60 @@ class TransferApproval
 
         $transfer->load(['items.item', 'items.unit', 'items.variations']);
         event(new \App\Events\TransferEvent($transfer, 'approved'));
-        log_activity('Transfer Approved', ['reference' => $transfer->reference, 'approved_by' => $user->id], $transfer, 'Transfer');
+        log_activity($removeDraft ? 'Transfer Approved (draft status removed)' : 'Transfer Approved', ['reference' => $transfer->reference, 'approved_by' => $user->id], $transfer, 'Transfer');
         TransferNotifier::fire('approved', $transfer, __('Transfer approved'), $transfer->reference . ' ' . __('was approved by :name.', ['name' => $user->name]), $user->id, ['skip_actor' => true]);
         MultiTransferNotifier::childChanged($transfer, $user);
 
         return null;
+    }
+
+    /**
+     * What stops a saved DRAFT transfer from leaving draft, line by line (a draft is stored without any checking). Empty when it can be finalised.
+     * Each problem names the row (1-based, as the form numbers them), the item and what to change. Uses the same stock rules as a final save.
+     *
+     * @return array<int, array{row: int|null, item: string|null, message: string}>
+     */
+    public static function problems(Transfer $transfer): array
+    {
+        $out = [];
+        if (! Transfer::warehouseNeedsApproval($transfer->from_warehouse_id)) {
+            return [['row' => null, 'item' => null, 'message' => __('This draft leaves a warehouse that needs no approval. Open it and save it as final instead.')]];
+        }
+        $transfer->load(['items.item', 'items.unit', 'items.variations']);
+        $lines = $transfer->items->reject(fn ($l) => method_exists($l, 'trashed') && $l->trashed())->values();
+        if ($lines->isEmpty()) {
+            return [['row' => null, 'item' => null, 'message' => __('Add at least one item to the list.')]];
+        }
+        if ((int) $transfer->from_warehouse_id === (int) $transfer->to_warehouse_id) {
+            $out[] = ['row' => null, 'item' => null, 'message' => __('Please select different warehouses.')];
+        }
+        $payload = [];
+        foreach ($lines as $i => $line) {
+            $name = optional($line->item)->name;
+            if (! $line->item) {
+                $out[] = ['row' => $i + 1, 'item' => null, 'message' => __('This item no longer exists. Remove the row or choose another item.')];
+            } elseif ($line->variations->isEmpty() && (float) $line->quantity <= 0) {
+                $out[] = ['row' => $i + 1, 'item' => $name, 'message' => __('Enter a quantity greater than 0 for :item.', ['item' => $name])];
+            } elseif ($line->variations->contains(fn ($v) => (float) $v->pivot->quantity <= 0)) {
+                $out[] = ['row' => $i + 1, 'item' => $name, 'message' => __('Every variation of :item needs a quantity greater than 0.', ['item' => $name])];
+            }
+            if (! $line->item) {
+                continue;
+            }
+            $payload[$i] = [
+                'name' => $name, 'item_id' => $line->item_id, 'quantity' => (float) $line->quantity, 'unit_id' => $line->unit_id,
+                'selected' => ['variations' => $line->variations->map(fn ($v) => ['variation_id' => $v->id, 'quantity' => (float) $v->pivot->quantity, 'unit_id' => $v->pivot->unit_id])->all()],
+            ];
+        }
+        if (! get_settings('over_selling')) {
+            foreach ((new \App\Helpers\CheckOverSelling())->check($payload, $transfer->from_warehouse_id) as $key => $message) {
+                $row = (int) explode('.', $key)[1];
+                $out[] = ['row' => $row + 1, 'item' => $payload[$row]['name'] ?? null, 'message' => $message];
+            }
+        }
+        usort($out, fn ($a, $b) => ($a['row'] ?? 0) <=> ($b['row'] ?? 0));
+
+        return $out;
     }
 
     /** @return string|null the reason it could not be cancelled, or null when it was */

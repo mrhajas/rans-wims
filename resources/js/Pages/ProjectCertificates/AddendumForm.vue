@@ -169,6 +169,9 @@
           >
             {{ s.replace('_', ' ') }}
           </button>
+          <button v-if="addendum.status === 'draft'" type="button" class="lg-btn lg-btn-green pc-sm" :disabled="statusSaving" @click="approveDraft">
+            <icons name="tick" class="w-3.5 h-3.5" /> {{ $t('Approve') }}
+          </button>
           <span v-if="!allowedStatusTargets.length" class="lg-subtext">{{ $t('Locked: no further status changes.') }}</span>
         </div>
       </section>
@@ -220,6 +223,7 @@ import AttachmentPicker from '@/Shared/AttachmentPicker.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 
 export default {
   components: { AdminLayout, Link, AttachmentPicker, AutoComplete, PageHeader, StatTiles },
@@ -363,9 +367,13 @@ export default {
         onFinish: () => { this.saving = false; },
       });
     },
-    setStatus(status) {
+    async approveDraft() {
+      // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (await this.$draftApprove(financeDraftApprovals.contractAddendum(this.$t, this.addendum))) this.setStatus('approved', { remove_draft: true });
+    },
+    setStatus(status, extra = {}) {
       this.statusSaving = true;
-      this.$inertia.post(this.route('project-certificates.contract.addendums.status', [this.warehouse.id, this.addendum.id]), { status }, {
+      this.$inertia.post(this.route('project-certificates.contract.addendums.status', [this.warehouse.id, this.addendum.id]), { status, ...extra }, {
         preserveScroll: true,
         onFinish: () => { this.statusSaving = false; },
       });

@@ -19,6 +19,7 @@
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" @click="doit('submit')"><icons name="send" class="w-4 h-4" />{{ $t('Submit') }}</button>
             <button v-if="can.review" type="button" class="lg-btn lg-btn-soft t-teal" @click="doit('review')"><icons name="eye-flat" class="w-4 h-4" />{{ $t('Take into review') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="approving = !approving"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+            <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" :disabled="busy" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
             <button v-if="can.return" type="button" class="lg-btn lg-btn-soft t-amber" @click="ask('return', $t('What must be corrected? (required)'))"><icons name="refresh" class="w-4 h-4" />{{ $t('Return for correction') }}</button>
             <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="ask('reject', $t('Why is it rejected? (required)'))"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="can.cancel" type="button" class="lg-btn lg-btn-soft t-slate" @click="ask('cancel', $t('Why is it cancelled? (required)'))"><icons name="x-circle" class="w-4 h-4" />{{ $t('Cancel it') }}</button>
@@ -87,6 +88,7 @@ import AcctFileList from '@/Pages/Accounts/AcctFileList.vue';
 import CustomView from '../CustomView.vue';
 import SearchBar from '../SearchBar.vue';
 import { sc, tableFind } from '../sc';
+import { draftApprovalsSubcontracts } from '@/Core/draftApprovals.subcontracts';
 
 export default {
   components: { SearchBar, CustomView, ExportButtons, AdminLayout, PageHeader, Link, DatePicker, AcctDropzone, AcctFileList },
@@ -106,6 +108,12 @@ export default {
     openPay(p) { if (this.canOpen(p)) this.$inertia.visit(route('payment-vouchers.show', p.voucher_id)); },
     doit(action, extra) { this.busy = true; this.$inertia.post(route('subcontracts.requests.transition', [this.r.id, action]), extra || {}, { preserveScroll: true, onFinish: () => (this.busy = false) }); },
     ask(a) { this.asking = a; this.reason = ''; }, send() { const a = this.asking; this.asking = ''; this.doit(a, { reason: this.reason }); },
+    // a draft: the approver chooses whether to remove the draft status (submit) and approve in one step, for the full amount requested
+    async approveDraft() {
+      if (await this.$draftApprove(draftApprovalsSubcontracts.request(this.$t, this.r, { amount: this.money ? this.mc(this.r.requested, this.r.currency) : '' }))) {
+        this.doit('approve', { remove_draft: true, approved_amount: this.r.requested });
+      }
+    },
     approve() { this.doit('approve', { approved_amount: this.ap.approved_amount, reason: this.ap.reason, override_reason: this.ap.override_reason }); },
     remove() { this.$confirm(this.$t('Delete this draft request?')).then(ok => { if (ok) this.$inertia.delete(route('subcontracts.requests.destroy', this.r.id)); }); },
     startVoucher() { this.vf.post(route('subcontracts.requests.voucher', this.r.id), { preserveScroll: true }); },

@@ -17,6 +17,7 @@
           <div class="ac-actions" style="justify-content: flex-end; margin: 0">
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" @click="act('submit')"><icons name="send" class="w-4 h-4" />{{ $t('Submit for approval') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="act('approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+            <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
             <button v-if="can.post" type="button" class="lg-btn lg-btn-green" @click="act('post')"><icons name="tick" class="w-4 h-4" />{{ $t('Post both balances') }}</button>
             <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="ask('reject')"><icons name="x-circle" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="can.reverse" type="button" class="lg-btn t-violet" @click="ask('reverse')"><icons name="refresh" class="w-4 h-4" />{{ $t('Reverse') }}</button>
@@ -66,6 +67,7 @@
 import AcctExport from '../AcctExport.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import { acct } from '../acct';
 
@@ -76,6 +78,10 @@ export default {
   data() { return { asking: '', reason: '' }; },
   methods: {
     trim(r) { return String(r).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, ''); },
+    async approveDraft() {
+      // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (await this.$draftApprove(financeDraftApprovals.acctTransfer(this.$t, this.t))) this.$inertia.post(route('acct.transfers.approve', this.t.id), { remove_draft: true }, { preserveScroll: true });
+    },
     act(a) { this.$inertia.post(route('acct.transfers.' + a, this.t.id), {}, { preserveScroll: true }); },
     ask(a) { this.asking = a; this.reason = ''; },
     send() { this.$inertia.post(route('acct.transfers.' + this.asking, this.t.id), { reason: this.reason }, { preserveScroll: true, onSuccess: () => (this.asking = '') }); },

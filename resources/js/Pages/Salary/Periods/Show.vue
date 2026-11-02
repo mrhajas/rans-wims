@@ -27,7 +27,7 @@
         <button v-if="allowedTargetStatuses.includes('Pending Approval')" type="button" class="lg-btn lg-btn-primary" @click="submit">
           <icons name="send" class="w-4 h-4" /> {{ $t('Submit for Approval') }}
         </button>
-        <button v-if="allowedTargetStatuses.includes('Approved')" type="button" class="lg-btn lg-btn-green" @click="approve">
+        <button v-if="allowedTargetStatuses.includes('Approved') || can.approve_draft" type="button" class="lg-btn lg-btn-green" @click="approve">
           <icons name="tick" class="w-4 h-4" /> {{ $t('Approve') }}
         </button>
         <button v-if="allowedTargetStatuses.includes('Rejected')" type="button" class="lg-btn lg-btn-red" @click="openReasonModal('reject')">
@@ -223,6 +223,7 @@ import SalaryKpiCard from '@/Shared/Salary/SalaryKpiCard.vue';
 import { Link } from '@inertiajs/vue3';
 import SalaryPage from '@/Shared/Salary/SalaryPage.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 
 export default {
   components: { AdminLayout, Modal, TextInput, TextareaInput, SalaryDrawer, SalaryKpiCard, Link, SalaryPage, PageHeader },
@@ -275,7 +276,12 @@ export default {
     submit() {
       this.$inertia.patch(route('salary.periods.submit', this.period.id));
     },
-    approve() {
+    async approve() {
+      if (this.period.status === 'Draft') {
+        // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+        if (await this.$draftApprove(financeDraftApprovals.salaryPeriod(this.$t, this.period))) this.$inertia.patch(route('salary.periods.approve', this.period.id), { remove_draft: true });
+        return;
+      }
       this.$inertia.patch(route('salary.periods.approve', this.period.id));
     },
     openReasonModal(mode) {

@@ -14,6 +14,7 @@ use App\Support\PrintQrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Tecdiary\Laravel\Attachments\Attachment;
@@ -278,6 +279,28 @@ class PurchaseOrderController extends Controller
     public function approve(Request $request, $id)
     {
         $data = $request->validate(['approval_remarks' => 'nullable|string|max:1000']);
+        $this->authorize('approve-purchase-orders');
+        $current = PurchaseOrder::findOrFail($id);
+        if ($current->status === PurchaseOrder::STATUS_DRAFT) {
+            // A draft can only be approved after the approver agreed (remove_draft) to take the draft status off: it is submitted and approved in one step.
+            if (! $request->boolean('remove_draft')) {
+                return back()->with('error', __('This purchase order is still a draft. Remove the draft status first, then approve it.'));
+            }
+            DB::transaction(function () use ($request, $id, $data) {
+                $this->transition($id, PurchaseOrder::STATUS_DRAFT, PurchaseOrder::STATUS_SUBMITTED, [
+                    'submitted_on' => now(), 'submitted_by_user_id' => $request->user()->id,
+                ], __('Purchase Order submitted for approval.'));
+                $this->transition($id, PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_APPROVED, [
+                    'approved_by_user_id' => $request->user()->id,
+                    'approved_on' => now(),
+                    'approval_remarks' => $data['approval_remarks'] ?? null,
+                ], __('Purchase Order approved (draft status removed).'));
+            });
+            $this->announce('purchase_order_submitted', $id, 'submitted for approval');
+            $this->announce('purchase_order_approved', $id, 'approved', (string) ($data['approval_remarks'] ?? ''));
+
+            return back()->with('message', __('Purchase Order approved.'));
+        }
         $this->transition($id, PurchaseOrder::STATUS_SUBMITTED, PurchaseOrder::STATUS_APPROVED, [
             'approved_by_user_id' => $request->user()->id,
             'approved_on' => now(),

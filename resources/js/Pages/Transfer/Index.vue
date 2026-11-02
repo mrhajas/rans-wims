@@ -186,7 +186,7 @@
                     <transport-route-action compact :state="(transportRoutes || {})[transfer.id]" />
                   </template>
                   <button
-                    v-if="transfer.approval_status === 'pending' && $can('approve-transfers')"
+                    v-if="(transfer.approval_status === 'pending' || isDraftApprovable(transfer)) && $can('approve-transfers')"
                     type="button"
                     class="txn-icon-btn lg-tip txn-icon-btn-green"
                     :data-tip="$t('Approve transfer')"
@@ -515,6 +515,7 @@ import pickBy from 'lodash/pickBy';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
 import Dialog from '@/Shared/Dialog.vue';
+import { approveDraftTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
 import Modal from '@/Jetstream/Modal.vue';
 import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
 import TransferDetails from './Details.vue';
@@ -741,7 +742,13 @@ export default {
       if (!transfer.from_is_main) return '';
       return ['tr-main', 'tr-main-' + (transfer.approval_status || 'approved')];
     },
+    isDraftApprovable(transfer) { return isApprovableDraftTransfer(transfer); },
     async approveTransfer(transfer) {
+      if (isApprovableDraftTransfer(transfer)) {
+        // a plain draft: it is checked first, then the approver chooses whether to remove the draft status and approve in one step
+        approveDraftTransfer(this, transfer);
+        return;
+      }
       if (!(await this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: transfer.reference, from: transfer.from_warehouse.name, to: transfer.to_warehouse.name })))) {
         return;
       }

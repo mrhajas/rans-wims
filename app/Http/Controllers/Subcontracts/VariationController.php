@@ -84,7 +84,7 @@ class VariationController extends Controller
             'figures' => $fig, 'attachments' => $this->filesOf($v), 'history' => $this->can('view-audit-subcontracts') ? $this->safeHistory(V::class, $v->id) : [],
             'units' => array_keys(SubcontractSettings::get()['units']), 'categories' => SubcontractSettings::get()['categories'], 'money' => $this->money(), 'pricing' => collect(SubcontractWorkItem::PRICING)->map(fn ($l, $k) => ['value' => $k, 'label' => __($l)])->values(),
             'can' => ['edit' => $v->status === V::DRAFT && $this->can('create-subcontract-variations'), 'submit' => $v->status === V::DRAFT && $this->can('submit-subcontract-variations'), 'review' => $v->status === V::SUBMITTED && $this->can('review-subcontract-variations'),
-                'approve' => in_array($v->status, [V::SUBMITTED, V::REVIEWED], true) && $this->can('approve-subcontract-variations'), 'reject' => in_array($v->status, [V::SUBMITTED, V::REVIEWED], true) && ($this->can('approve-subcontract-variations') || $this->can('review-subcontract-variations')),
+                'approve' => in_array($v->status, [V::SUBMITTED, V::REVIEWED], true) && $this->can('approve-subcontract-variations'), 'approve_draft' => $v->status === V::DRAFT && $this->can('submit-subcontract-variations') && $this->can('approve-subcontract-variations'), 'reject' => in_array($v->status, [V::SUBMITTED, V::REVIEWED], true) && ($this->can('approve-subcontract-variations') || $this->can('review-subcontract-variations')),
                 'delete' => $v->status === V::DRAFT && $this->can('create-subcontract-variations'), 'attach' => $this->can('create-subcontract-variations') && in_array($v->status, [V::DRAFT, V::SUBMITTED], true), 'documents' => $this->can('view-documents-subcontracts')],
         ]);
     }
@@ -138,7 +138,9 @@ class VariationController extends Controller
         $reason = mb_substr(trim((string) $request->input('reason', '')), 0, 1000);
         $err = null;
         $event = null;
-        DB::transaction(function () use ($v, $me, $action, $reason, &$err, &$event) {
+        $partial = null;
+        $drafted = false;
+        DB::transaction(function () use ($v, $me, $action, $reason, $request, &$err, &$event, &$partial, &$drafted) {
             // the agreement is locked first (the same order as a payment request), then the variation
             A::withoutGlobalScopes()->whereKey($v->agreement_id)->lockForUpdate()->first();
             $v = V::query()->whereKey($v->id)->lockForUpdate()->first();
@@ -160,8 +162,23 @@ class VariationController extends Controller
                     break;
                 case 'approve':
                     $this->need('approve-subcontract-variations');
-                    if (! in_array($from, [V::SUBMITTED, V::REVIEWED], true)) { $err = __('Only a submitted variation can be approved.'); return; }
-                    if ($this->selfDecision($v->requested_by_user_id) || $this->selfDecision($v->submitted_by_user_id)) { $err = __('You made or submitted this variation, so someone else must approve it.'); return; }
+                    $cur = $from;
+                    if ($from === V::DRAFT) {
+                        // An approver answered "Yes" to "remove the draft status and approve?": the draft is submitted first (the same checks as Submit), then approved if the rules allow.
+                        if (! $request->boolean('remove_draft')) { $err = __('This variation is still a draft. Remove the draft status first, then approve it.'); return; }
+                        if (! $me->can('submit-subcontract-variations')) { $err = __('You are not allowed to submit variations, so you cannot remove the draft status.'); return; }
+                        if (bccomp((string) $v->amount, '0', 2) <= 0) { $err = __('Enter the amount of the variation (or add its items).'); return; }
+                        $v->forceFill(['status' => V::SUBMITTED, 'decision_remarks' => null, 'submitted_by_user_id' => $me->id, 'submitted_at' => now()])->save();
+                        $cur = V::SUBMITTED;
+                        log_activity('Subcontract variation ' . $v->reference . ' submitted (draft status removed by the approver)', ['from' => 'Draft', 'to' => 'Submitted'], $v, 'Subcontracts');
+                        $drafted = true;
+                        $event = 'variation_review';
+                    }
+                    if (! in_array($cur, [V::SUBMITTED, V::REVIEWED], true)) { $err = __('Only a submitted variation can be approved.'); return; }
+                    if ($this->selfDecision($v->requested_by_user_id) || $this->selfDecision($v->submitted_by_user_id)) {
+                        if ($cur !== $from) { $partial = __('The draft status was removed and the variation is submitted. You made or submitted it, so someone else must approve it.'); break; }
+                        $err = __('You made or submitted this variation, so someone else must approve it.'); return;
+                    }
                     $a = A::withoutGlobalScopes()->find($v->agreement_id);
                     if (! $a || ! $a->isPayable()) { $err = __('The agreement is not in a status that accepts variations.'); return; }
                     if ($v->direction !== 'increase') {
@@ -185,6 +202,11 @@ class VariationController extends Controller
             $fig = SubcontractLedger::forAgreement($v->agreement_id);
             log_activity('Subcontract variation ' . $v->reference . ' ' . $action, ['from' => $from, 'to' => $v->status, 'amount' => (string) $v->amount, 'direction' => $v->direction, 'revised_after' => $fig['revised'] ?? null, 'reason' => $reason ?: null], $v, 'Subcontracts');
         });
+        if ($err && $drafted) {
+            // the draft status was already removed (the variation is submitted) when a later rule refused the approval: say so, and tell the reviewers it is waiting
+            SubcontractNotifier::fire('variation_review', 'variation', $v->refresh(), $me, $v->status, ['amount' => (string) $v->amount]);
+            $err = __('The draft status was removed and the variation is submitted, but it could not be approved: :why', ['why' => $err]);
+        }
         if ($err) {
             return back()->with('error', e($err));
         }
@@ -193,7 +215,7 @@ class VariationController extends Controller
             SubcontractNotifier::fire($event, 'variation', $v, $me, $v->decision_remarks ?: $v->status, ['amount' => (string) $v->amount]);
         }
 
-        return back()->with('message', __(':r is now :s.', ['r' => $v->reference, 's' => strtolower(__($v->status))]));
+        return back()->with('message', $partial ?: __(':r is now :s.', ['r' => $v->reference, 's' => strtolower(__($v->status))]));
     }
 
     public function attach(Request $request, int $variation)

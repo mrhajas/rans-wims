@@ -166,8 +166,17 @@ class ProjectCertificateContractAddendumController extends Controller
             ],
             ProjectCertificateContractAddendum::STATUS_APPROVED => [],
         ];
+        // A plain draft is never approved as it is. When the approver answered "Yes" to the prompt (remove_draft), the draft goes to Pending Approval and is
+        // approved in the same step (the same right moves it through both, as it does on the normal path).
+        $fromDraft = $addendum->status === ProjectCertificateContractAddendum::STATUS_DRAFT && $data['status'] === ProjectCertificateContractAddendum::STATUS_APPROVED;
+        if ($fromDraft && ! $request->boolean('remove_draft')) {
+            return back()->with('error', __('This addendum is still a draft. Remove the draft status first, then approve it.'));
+        }
+        if ($fromDraft) {
+            $addendum->update(['status' => ProjectCertificateContractAddendum::STATUS_PENDING_APPROVAL]);
+        }
         abort_unless(
-            in_array($data['status'], $allowedTransitions[$addendum->status] ?? [], true),
+            $fromDraft || in_array($data['status'], $allowedTransitions[$addendum->status] ?? [], true),
             422,
             "This addendum cannot move from \"{$addendum->status}\" to \"{$data['status']}\"."
         );

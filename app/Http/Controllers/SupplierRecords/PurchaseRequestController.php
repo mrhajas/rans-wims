@@ -210,9 +210,13 @@ class PurchaseRequestController extends Controller
         ]);
 
         $purchaseRequest = PurchaseRequest::findOrFail($id);
-        abort_unless($purchaseRequest->status === PurchaseRequest::STATUS_PENDING_APPROVAL, 422, 'This purchase request is not awaiting approval.');
-
         $approving = $data['status'] === PurchaseRequest::STATUS_APPROVED;
+        // A draft can only be approved after the approver agreed (remove_draft) to take the draft status off: it is submitted and approved in one step.
+        $removeDraft = $approving && $purchaseRequest->status === PurchaseRequest::STATUS_DRAFT;
+        if ($removeDraft && ! $request->boolean('remove_draft')) {
+            return back()->with('error', __('This purchase request is still a draft. Remove the draft status first, then approve it.'));
+        }
+        abort_unless($removeDraft || $purchaseRequest->status === PurchaseRequest::STATUS_PENDING_APPROVAL, 422, 'This purchase request is not awaiting approval.');
         $userId = (int) $request->user()->id;
         // Signatories: when the document setup requires a signature and blocks finalising, refuse the approval without it (nothing changes with the default setup).
         if ($approving && ($blocked = RefusesWithoutSignatures::message('purchase_request', app(PurchaseRequestDocument::class)->asIfApproved($purchaseRequest, $userId), __('approved')))) {
@@ -220,10 +224,19 @@ class PurchaseRequestController extends Controller
         }
 
         $from = $purchaseRequest->status;
-        DB::transaction(function () use ($purchaseRequest, $data, $approving, $userId, $from) {
+        DB::transaction(function () use ($purchaseRequest, $data, $approving, $userId, &$from, $removeDraft) {
+            if ($removeDraft) {
+                // the draft is submitted first (same stamps and history as a normal submit), then approved
+                $purchaseRequest->update(['status' => PurchaseRequest::STATUS_PENDING_APPROVAL] + RequestStamps::submitted($userId));
+                RequestStamps::log($purchaseRequest, 'Purchase Request', 'submitted', PurchaseRequest::STATUS_DRAFT, PurchaseRequest::STATUS_PENDING_APPROVAL, __('Draft status removed by the approver.'));
+                $from = PurchaseRequest::STATUS_PENDING_APPROVAL;
+            }
             $purchaseRequest->update($data + ($approving ? RequestStamps::approved($userId) : RequestStamps::rejected($userId)));
             RequestStamps::log($purchaseRequest, 'Purchase Request', $approving ? 'approved' : 'rejected', $from, $data['status'], $data['approval_remarks'] ?? null);
         });
+        if ($removeDraft) {
+            SupplierRecordsNotifier::purchaseRequest('submitted', $purchaseRequest->fresh(), $request->user());
+        }
         SupplierRecordsNotifier::purchaseRequest($data['status'] === 'Approved' ? 'approved' : 'rejected', $purchaseRequest->fresh(), $request->user());
 
         return back()->with('message', __('Purchase Request :status.', ['status' => strtolower($data['status'])]));

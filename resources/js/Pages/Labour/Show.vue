@@ -15,6 +15,7 @@
           <Link v-if="can.update" :href="route('labour.edit', labourList.id)" class="lg-btn lg-btn-soft">
             <icons name="edit" class="w-4 h-4" /> {{ $t('Edit') }}
           </Link>
+          <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
           <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" @click="submit"><icons name="send" class="w-4 h-4" />{{ $t('Submit for Review') }}</button>
           <button v-if="can.createPaymentVoucher" type="button" class="lg-btn lg-btn-green" @click="createVoucher">
             <icons name="doc-text" class="w-4 h-4" /> {{ $t('Create Payment Voucher') }}
@@ -204,6 +205,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 
 export default {
   components: { AdminLayout, TextareaInput, PageHeader, StatTiles },
@@ -275,6 +277,10 @@ export default {
     },
     submit() {
       this.$inertia.patch(this.route('labour.submit', this.labourList.id));
+    },
+    async approveDraft() {
+      // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (await this.$draftApprove(financeDraftApprovals.labourList(this.$t, this.labourList))) this.$inertia.patch(this.route('labour.approve-draft', this.labourList.id), { remove_draft: true });
     },
     async changeStatus(status) {
       if (status === 'Returned' && (!this.reviewForm.remarks || !this.reviewForm.remarks.trim())) {

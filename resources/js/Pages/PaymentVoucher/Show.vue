@@ -197,6 +197,26 @@
         </loading-button>
       </section>
 
+      <!-- A draft: the approver may take the draft status off and approve in one step (not when the separation of duties would stop them) -->
+      <section v-if="canApproveDraft" class="lg-card">
+        <div class="lg-card-head">
+          <span class="lg-card-ico lg-ico-amber"><icons name="tick" class="w-5 h-5" /></span>
+          <div class="flex-1 min-w-0">
+            <div class="lg-card-title">{{ $t('Approve this draft') }}</div>
+            <div class="lg-card-sub">{{ $t('A draft cannot be approved as it is. You will be asked to remove the draft status first.') }}</div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-3 flex-wrap">
+          <loading-button type="button" :loading="reviewForm.processing" :disabled="reviewForm.processing" @click="approveDraft">
+            <icons name="tick" class="w-4 h-4 mr-1" /> {{ $t('Approve') }}
+          </loading-button>
+        </div>
+      </section>
+      <div v-else-if="draftBlockedBySeparation" class="lg-note lg-note-amber pv-sep">
+        <icons name="lock-closed" class="w-4 h-4" />
+        <span>{{ $t('This voucher is still a draft. Its preparer submits it first, and then someone else approves it (nobody takes two steps of the same voucher).') }}</span>
+      </div>
+
       <div v-if="(ownApprove && $can('approve-payment-vouchers')) || (ownAuthorise && $can('authorise-payment-vouchers')) || (ownPayment && $can('record-payment-payment-vouchers'))" class="lg-note lg-note-amber pv-sep">
         <icons name="lock-closed" class="w-4 h-4" />
         <span v-if="ownApprove">{{ $t('You prepared this voucher, so someone else must approve it (nobody takes two steps of the same voucher).') }}</span>
@@ -327,6 +347,7 @@
 </template>
 
 <script>
+import { draftApprovalsProcurement } from '@/Core/draftApprovals.procurement';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
@@ -394,6 +415,9 @@ export default {
       return this.$can('approve-payment-vouchers') && (v.status !== 'Authorised' || this.$can('authorise-payment-vouchers'));
     },
     me() { return this.$page.props.auth && this.$page.props.auth.user ? Number(this.$page.props.auth.user.id) : 0; },
+    // a draft can be approved in one step by someone who may also submit it, unless the separation of duties would make them both preparer and approver
+    canApproveDraft() { return this.paymentVoucher.status === 'Draft' && this.$can('approve-payment-vouchers') && this.$can('update-payment-vouchers') && (!this.separation || this.$super); },
+    draftBlockedBySeparation() { return this.paymentVoucher.status === 'Draft' && this.$can('approve-payment-vouchers') && this.$can('update-payment-vouchers') && this.separation && !this.$super; },
     // separation of duties: nobody takes two steps of the same voucher
     ownApprove() { return this.separation && !this.$super && this.paymentVoucher.status === 'Submitted' && (this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number).includes(this.me); },
     ownAuthorise() { return this.separation && !this.$super && this.paymentVoucher.status === 'Approved' && [Number(this.paymentVoucher.approved_by_user_id), ...(this.paymentVoucher.prepared_by_ids || [this.paymentVoucher.prepared_by_user_id]).map(Number)].includes(this.me); },
@@ -409,6 +433,11 @@ export default {
     },
     approve() {
       this.reviewForm.patch(route('payment-vouchers.approve', this.paymentVoucher.id));
+    },
+    async approveDraft() {
+      // a draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (!(await this.$draftApprove(draftApprovalsProcurement.paymentVoucher(this.$t, this.paymentVoucher)))) return;
+      this.reviewForm.transform(d => ({ ...d, remove_draft: true })).patch(route('payment-vouchers.approve', this.paymentVoucher.id));
     },
     async rejectApproval() {
       if (!this.reviewForm.approval_remarks || !this.reviewForm.approval_remarks.trim()) {

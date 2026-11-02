@@ -22,6 +22,7 @@
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" @click="doit('submit')"><icons name="send" class="w-4 h-4" />{{ $t('Submit for review') }}</button>
             <button v-if="can.review" type="button" class="lg-btn lg-btn-soft" @click="doit('review')"><icons name="eye-flat" class="w-4 h-4" />{{ $t('Take into review') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="doit('approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+            <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" :disabled="busy" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
             <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="ask('reject', $t('Why is it rejected? (required)'))"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="can.manage && ['Approved', 'Suspended'].includes(a.status)" type="button" class="lg-btn lg-btn-green" @click="doit('activate')"><icons name="play" class="w-4 h-4" />{{ $t('Make active') }}</button>
             <button v-if="can.manage && ['Approved', 'Active'].includes(a.status)" type="button" class="lg-btn t-amber" @click="ask('suspend', $t('Why is it suspended?'))"><icons name="pause" class="w-4 h-4" />{{ $t('Suspend') }}</button>
@@ -270,6 +271,7 @@ import CustomFields from '../CustomFields.vue';
 import CustomView from '../CustomView.vue';
 import SearchBar from '../SearchBar.vue';
 import { sc, fieldCfg, tableFind } from '../sc';
+import { draftApprovalsSubcontracts } from '@/Core/draftApprovals.subcontracts';
 
 export default {
   components: { TecDialogModal, CollapseSection, SearchBar, CustomFields, CustomView, ProgressRing, ScTabs, AdminLayout, PageHeader, Link, AcctSelect, AcctDropzone, AcctFileList, ItemForm },
@@ -329,6 +331,9 @@ export default {
       }, 600);
     },
     sd(v) { if (!v) return '-'; try { return this.$date(v); } catch (e) { return String(v); } },
+    // a draft: the approver chooses whether to remove the draft status (submit) and approve in one step
+    async approveDraft() { if (await this.$draftApprove(draftApprovalsSubcontracts.agreement(this.$t, this.a))) this.post_('approve', { remove_draft: true }); },
+    post_(action, extra) { this.busy = true; this.$inertia.post(route('subcontracts.agreements.transition', [this.a.id, action]), extra, { preserveScroll: true, onFinish: () => (this.busy = false) }); },
     doit(action, reason) { this.busy = true; this.$inertia.post(route('subcontracts.agreements.transition', [this.a.id, action]), { reason: reason || '' }, { preserveScroll: true, onFinish: () => (this.busy = false) }); },
     ask(a, label) { this.asking = a; this.reason = ''; },
     send() { const a = this.asking; this.doit(a, this.reason); this.asking = ''; },

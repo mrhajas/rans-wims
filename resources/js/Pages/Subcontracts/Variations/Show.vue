@@ -14,6 +14,7 @@
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" @click="doit('submit')"><icons name="send" class="w-4 h-4" />{{ $t('Submit') }}</button>
             <button v-if="can.review" type="button" class="lg-btn lg-btn-soft t-teal" @click="doit('review')"><icons name="eye-flat" class="w-4 h-4" />{{ $t('Mark as reviewed') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="doit('approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+            <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
             <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="asking = true"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="can.delete" type="button" class="lg-btn lg-btn-soft t-red" @click="remove"><icons name="trash" class="w-4 h-4" />{{ $t('Delete draft') }}</button>
           </div>
@@ -60,6 +61,7 @@ import CustomFields from '../CustomFields.vue';
 import CustomView from '../CustomView.vue';
 import SearchBar from '../SearchBar.vue';
 import { sc, fieldCfg, tableFind } from '../sc';
+import { draftApprovalsSubcontracts } from '@/Core/draftApprovals.subcontracts';
 
 export default {
   components: { SearchBar, CustomFields, CustomView, ExportButtons, AdminLayout, PageHeader, Link, AcctSelect, AcctDropzone, AcctFileList, ItemForm },
@@ -68,6 +70,12 @@ export default {
   data() { return { asking: false, reason: '', adding: false, up: this.$inertia.form({ attachments: [] }), ef: this.$inertia.form({ custom: { ...(this.custom || {}) }, title: this.v.title, direction: this.v.direction, amount: this.v.amount || '', reason: this.v.reason || '' }) }; },
   computed: { itemRows() { return this.items.filter(i => this.has(i.description, i.unit, i.beneficiary)); } },
   methods: {
+    // a draft: the approver chooses whether to remove the draft status (submit) and approve in one step
+    async approveDraft() {
+      if (await this.$draftApprove(draftApprovalsSubcontracts.variation(this.$t, this.v, { amount: this.money ? this.mc(this.v.amount, this.v.currency) : '' }))) {
+        this.$inertia.post(route('subcontracts.variations.transition', [this.v.id, 'approve']), { remove_draft: true }, { preserveScroll: true });
+      }
+    },
     doit(action, reason) { this.$inertia.post(route('subcontracts.variations.transition', [this.v.id, action]), { reason: reason || '' }, { preserveScroll: true }); },
     remove() { this.$confirm(this.$t('Delete this draft variation?')).then(ok => { if (ok) this.$inertia.delete(route('subcontracts.variations.destroy', this.v.id)); }); },
     saveAmount() { this.ef.put(route('subcontracts.variations.update', this.v.id), { preserveScroll: true }); },

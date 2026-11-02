@@ -65,6 +65,23 @@ class ComplianceRenewalController extends Controller
 
         $renewal = $compliance_record->activeRenewal;
         abort_unless($renewal, 422, 'No renewal is in progress for this record.');
+
+        // A renewal that has not been submitted yet is still a draft. An approver who answered "Yes" to "remove the draft status and approve?" submits it first (the same
+        // step as Submit, with no application details), then approves it. Without remove_draft a draft is never approved.
+        $submittedNow = false;
+        if ($renewal->status === 'Renewal in Progress') {
+            if (! $request->boolean('remove_draft')) {
+                return back()->with('error', __('This renewal is still a draft. Remove the draft status first, then approve it.'));
+            }
+            if (! $request->user()->can('start-compliance-renewal')) {
+                return back()->with('error', __('You are not allowed to submit renewals, so you cannot remove the draft status.'));
+            }
+            $renewal->update(['renewal_submitted_at' => now(), 'status' => 'Submitted']);
+            $compliance_record->update(['status' => 'Submitted']);
+            ComplianceHistory::log($compliance_record, 'Submitted', __('Renewal application submitted (draft status removed by the approver).'));
+            ComplianceNotifier::fire('renewal_submitted', $compliance_record, __('Renewal Submitted'), $compliance_record->title . ' (' . $compliance_record->compliance_number . '): renewal application submitted and waiting for approval.');
+            $submittedNow = true;
+        }
         abort_unless($renewal->status === 'Submitted', 422, 'This renewal must be submitted before it can be approved.');
 
         $renewal->update(['status' => 'Pending Approval', 'approved_by_user_id' => $request->user()->id]);
@@ -72,7 +89,7 @@ class ComplianceRenewalController extends Controller
         ComplianceHistory::log($compliance_record, 'Approved', __('Renewal forwarded for final sign-off.'));
         ComplianceNotifier::fire('renewal_approved', $compliance_record, __('Renewal Approved'), $compliance_record->title . ' (' . $compliance_record->compliance_number . '): renewal approved and waiting for final sign-off.');
 
-        return back()->with('message', __('Renewal approved for completion.'));
+        return back()->with('message', $submittedNow ? __('The draft status was removed and the renewal is approved. It now waits for final sign-off: complete it with the new issue and expiry dates.') : __('Renewal approved for completion.'));
     }
 
     public function complete(Request $request, ComplianceRecord $compliance_record)

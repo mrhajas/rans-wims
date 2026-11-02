@@ -99,7 +99,7 @@
           <div class="fx-actions">
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" :disabled="busyAction" @click="submitSheet"><icons name="send" class="w-4 h-4" />{{ $t('Submit for approval') }}</button>
             <button v-if="can.clear" type="button" class="lg-btn lg-btn-green" :disabled="busyAction" @click="clearSheet"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Close allocation') }}</button>
-            <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="openModal('approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+            <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="approveClick"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
             <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="openModal('reject')"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="can.reassign" type="button" class="lg-btn lg-btn-soft fx-btn-shadow fx-btn-blue" @click="openModal('reassign')"><icons name="refresh" class="w-4 h-4" />{{ ['Completed', 'Cleared'].includes(allocation.status) ? $t('Assign payer again') : $t('Change payer') }}</button>
             <button v-if="can.cancel" type="button" class="lg-btn lg-btn-soft fx-btn-shadow fx-btn-rose" @click="openModal('cancel')"><icons name="x-circle" class="w-4 h-4" />{{ $t('Cancel sheet') }}</button>
@@ -561,6 +561,7 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import { fmt, statusChip, num } from './fundFormat';
+import { draftApprovalsProcurement } from '@/Core/draftApprovals.procurement';
 
 export default {
   components: { AdminLayout, PageHeader, StatTiles, TecDialogModal },
@@ -582,6 +583,7 @@ export default {
       busy: {},
       busyAction: false,
       modal: null,
+      removeDraft: false,
       modalForm: { payers: [], reason: '' },
       payerQuery: '',
       modalBusy: false,
@@ -873,7 +875,18 @@ export default {
     },
 
     // approver modals
+    async approveClick() {
+      // a draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step (the payer is chosen next)
+      if (this.can.approve_draft) {
+        if (!(await this.$draftApprove(draftApprovalsProcurement.fundAllocation(this.$t, this.allocation)))) return;
+        this.openModal('approve');
+        this.removeDraft = true;
+        return;
+      }
+      this.openModal('approve');
+    },
     openModal(kind) {
+      this.removeDraft = false;
       this.modal = kind;
       this.modalError = '';
       this.modalForm = {
@@ -900,6 +913,7 @@ export default {
       const kind = this.modal;
       const id = this.allocation.id;
       const data = kind === 'approve' || kind === 'reassign' ? { payer_ids: this.modalForm.payers } : { reason: this.modalForm.reason.trim() };
+      if (kind === 'approve' && this.removeDraft) data.remove_draft = true;
       this.modalBusy = true;
       this.modalError = '';
       this.$inertia.patch(this.route('fund-allocations.' + kind, id), data, {

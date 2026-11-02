@@ -20,6 +20,10 @@
             <label v-if="Number(r.difference) !== 0" class="ac-check"><input v-model="propose" type="checkbox" />{{ $t('Propose an adjustment entry for the difference') }}</label>
             <button type="button" class="lg-btn lg-btn-green" @click="$inertia.post(route('acct.reconciliations.approve', r.id), { propose }, { preserveScroll: true })"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
           </template>
+          <template v-if="can.approve_draft">
+            <label v-if="Number(r.difference) !== 0" class="ac-check"><input v-model="propose" type="checkbox" />{{ $t('Propose an adjustment entry for the difference') }}</label>
+            <button type="button" class="lg-btn lg-btn-green" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+          </template>
           <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="rejecting = true"><icons name="x-circle" class="w-4 h-4" />{{ $t('Reject') }}</button>
         </div>
         <form v-if="rejecting" class="ac-reason" @submit.prevent="reject"><input v-model="reason" :placeholder="$t('Reason (required)')" required /><button type="submit" class="lg-btn lg-btn-primary"><icons name="tick" class="w-4 h-4" />{{ $t('Confirm') }}</button><button type="button" class="lg-btn t-slate" @click="rejecting = false"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button></form>
@@ -79,6 +83,7 @@ import AcctExport from '../AcctExport.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 import AcctSelect from '../AcctSelect.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 import AcctDropzone from '../AcctDropzone.vue';
@@ -90,6 +95,10 @@ export default {
   props: { cur: Object, r: Object, items: Array, unmatchedWims: Array, timeline: Array, history: Array, can: Object },
   data() { return { propose: false, rejecting: false, reason: '', csv: [], explanation: this.r.explanation || '', line: { entry_date: new Date().toISOString().slice(0, 10), description: '', reference: '', direction: 'in', amount: '' } }; },
   methods: {
+    async approveDraft() {
+      // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (await this.$draftApprove(financeDraftApprovals.acctReconciliation(this.$t, { reference: this.r.reference, account_name: this.r.account }))) this.$inertia.post(route('acct.reconciliations.approve', this.r.id), { propose: this.propose, remove_draft: true }, { preserveScroll: true });
+    },
     candidates(i) { return this.unmatchedWims.filter(u => u.direction === i.direction && Number(u.amount) === Number(i.amount)); },
     pickTxn(i, id) { this.$inertia.post(route('acct.reconciliations.match-item', [this.r.id, i.id]), { action: 'match', txn_id: Number(id) }, { preserveScroll: true }); },
     item(i, action) { this.$inertia.post(route('acct.reconciliations.match-item', [this.r.id, i.id]), { action }, { preserveScroll: true }); },

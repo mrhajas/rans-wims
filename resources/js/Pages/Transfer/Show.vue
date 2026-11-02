@@ -12,6 +12,9 @@
             <icons name="cross" class="w-4 h-4" /> {{ $t('Cancel transfer') }}
           </button>
         </template>
+        <button v-else-if="draftApprovable && $can('approve-transfers')" type="button" class="lg-btn lg-btn-green" @click="approveThis">
+          <icons name="tick" class="w-4 h-4" /> {{ $t('Approve') }}
+        </button>
         <span v-else-if="transfer.approval_status === 'cancelled'" class="lg-chip lg-chip-red">
           <icons name="cross" class="w-3.5 h-3.5" /> {{ $t('Cancelled by') }} {{ transfer.cancelled_by_user ? transfer.cancelled_by_user.name : '—' }}
         </span>
@@ -48,6 +51,7 @@
 
 <script>
 import TransferDetails from './Details.vue';
+import { approveDraftTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DeliveryNoteAction from '@/Shared/DeliveryNoteAction.vue';
@@ -62,6 +66,7 @@ export default {
     return { receiving: false };
   },
   computed: {
+    draftApprovable() { return isApprovableDraftTransfer(this.transfer); },
     // Mirrors TransferController::userMayDeliver() — Super Admin/Admin can
     // mark any transfer received; anyone else holding 'deliver-transfers'
     // (Engineers/"Site Engineer" by default) is limited to their own.
@@ -73,7 +78,12 @@ export default {
     },
   },
   methods: {
-    approveThis() {
+    async approveThis() {
+      if (this.draftApprovable) {
+        // a plain draft: it is checked first, then the approver chooses whether to remove the draft status and approve in one step
+        approveDraftTransfer(this, this.transfer);
+        return;
+      }
       this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: this.transfer.reference, from: (this.transfer.from_warehouse || {}).name || '', to: (this.transfer.to_warehouse || {}).name || '' })).then(ok => {
         if (ok) this.$inertia.post(this.route('transfers.approve', this.transfer.id), {}, { preserveScroll: true });
       });

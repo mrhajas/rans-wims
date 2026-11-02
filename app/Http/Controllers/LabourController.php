@@ -236,6 +236,8 @@ class LabourController extends Controller
                 'clear' => $user->can('changeStatus', [$labour, LabourList::STATUS_CLEARED]),
                 'approve' => $user->can('changeStatus', [$labour, LabourList::STATUS_APPROVED]),
                 'return' => $user->can('changeStatus', [$labour, LabourList::STATUS_RETURNED]),
+                // a plain draft can go through submit, clear and approve in one step for someone who holds all three rights (and may submit this list)
+                'approve_draft' => $labour->status === LabourList::STATUS_DRAFT && $user->can('submit', $labour) && $user->can('clear-labour') && $user->can('approve-labour'),
                 'createPaymentVoucher' => $user->can('createPaymentVoucher', $labour),
                 'print' => $user->can('print', $labour),
             ],
@@ -327,6 +329,59 @@ class LabourController extends Controller
         return back()->with('message', __('Labour List submitted for review.'));
     }
 
+    /**
+     * "Remove the draft status and approve" for a plain draft. The list goes through its own steps, one after the other: submit, clear, approve. Each step
+     * is taken only while the acting user holds that step's right (and the list is in the status that step needs), so nothing is skipped or forced: when a
+     * right is missing the chain stops there and the message says what was done and what is still waiting. A draft without `remove_draft` is refused.
+     */
+    public function approveDraft(Request $request, LabourList $labour)
+    {
+        $user = $request->user();
+        if ($labour->status !== LabourList::STATUS_DRAFT) {
+            return back()->with('error', __('Only a draft can be approved this way.'));
+        }
+        if (! $request->boolean('remove_draft')) {
+            return back()->with('error', __('This labour list is still a draft. Remove the draft status first, then approve it.'));
+        }
+        $this->authorize('submit', $labour);
+        if ($labour->items()->doesntExist()) {
+            return back()->with('error', __('This draft has no labourer lines yet, so there is nothing to approve.'));
+        }
+
+        $done = [__('submitted')];
+        $this->submit($request, $labour);
+        $labour->refresh();
+
+        $remaining = null;
+        if ($user->can('changeStatus', [$labour, LabourList::STATUS_CLEARED])) {
+            $this->moveStatus($labour, LabourList::STATUS_CLEARED, [], $user);
+            $done[] = __('cleared');
+            $labour->refresh();
+        } else {
+            $remaining = __('It now waits for the Project Manager to clear it, then for final approval.');
+        }
+
+        if ($remaining === null) {
+            if ($user->can('changeStatus', [$labour, LabourList::STATUS_APPROVED])) {
+                try {
+                    $this->moveStatus($labour, LabourList::STATUS_APPROVED, [], $user);
+                    $done[] = __('approved');
+                } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                    // a required signature (Signatories) is still missing: the earlier steps stay done
+                    return back()->with('error', __('Labour List :ref was :done, but it could not be approved: :why', ['ref' => $labour->reference, 'done' => implode(', ', $done), 'why' => $e->getMessage()]));
+                }
+            } else {
+                $remaining = __('It now waits for final approval.');
+            }
+        }
+
+        if ($remaining !== null) {
+            return back()->with('message', __('Labour List :ref was :done. :next', ['ref' => $labour->reference, 'done' => implode(', ', $done), 'next' => $remaining]));
+        }
+
+        return back()->with('message', __('Labour List :ref was :done. Draft status removed.', ['ref' => $labour->reference, 'done' => implode(', ', $done)]));
+    }
+
     public function updateStatus(LabourListStatusRequest $request, LabourList $labour)
     {
         $targetStatus = $request->input('status');
@@ -334,7 +389,14 @@ class LabourController extends Controller
         $data = $request->validated();
         $user = $request->user();
 
-        // One transaction, so the Signatories finalisation guard below can undo the amount revisions and the approval together.
+        $this->moveStatus($labour, $targetStatus, $data, $user);
+
+        return back()->with('message', __('Labour List status updated.'));
+    }
+
+    /** One status step (clear / approve / return): one transaction, so the Signatories finalisation guard can undo the amount revisions and the approval together. */
+    protected function moveStatus(LabourList $labour, string $targetStatus, array $data, User $user): void
+    {
         DB::transaction(function () use ($labour, $targetStatus, $data, $user) {
             if ($targetStatus === LabourList::STATUS_APPROVED && ! empty($data['items'])) {
                 $this->applyAmountRevisions($labour, $data['items'], $user);
@@ -363,8 +425,6 @@ class LabourController extends Controller
 
         log_activity(__('Labour List status changed to :status.', ['status' => $targetStatus]), ['reference' => $labour->reference, 'remarks' => $data['remarks'] ?? null], $labour, 'Labour List');
         event(new LabourStatusChanged($labour->fresh(), (string) $user->name));
-
-        return back()->with('message', __('Labour List status updated.'));
     }
 
     /**

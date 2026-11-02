@@ -150,9 +150,9 @@ class AcctPosting
     }
 
     /** Send for approval. Works out how many approvals the rules ask for; none needed means it is approved at once. */
-    public function submit(AcctTransaction $txn, User $by): AcctTransaction
+    public function submit(AcctTransaction $txn, User $by, bool $quiet = false): AcctTransaction
     {
-        return $this->tx(function () use ($txn, $by) {
+        return $this->tx(function () use ($txn, $by, $quiet) {
             $t = AcctTransaction::query()->lockForUpdate()->findOrFail($txn->id);
             if (! in_array($t->status, ['draft', 'rejected'], true)) {
                 return $t; // already on its way: a second click changes nothing
@@ -169,7 +169,7 @@ class AcctPosting
             $t->fill(['status' => 'submitted', 'required_approvals' => $required, 'approvals_count' => 0, 'submitted_by' => $by->id, 'submitted_at' => now(), 'reject_reason' => null])->save();
             $this->trail('transaction', $t->id, 'submitted', $by, null, false);
             AcctAudit::log('transaction.submitted', 'transaction', $t->id, $t->reference, null, ['status' => $t->status, 'required_approvals' => $required], null, $by);
-            $this->afterSubmit($t, $acct);
+            $this->afterSubmit($t, $acct, $quiet);
 
             return $t;
         });
@@ -185,6 +185,58 @@ class AcctPosting
 
             return $t;
         });
+    }
+
+    /**
+     * "Remove the draft status and approve" in one step. Submitting and approving happen in ONE database transaction: if any rule refuses the approval
+     * (separation of duties, the approval ability, a second approver still needed is NOT a refusal), nothing at all changes and the record stays a draft.
+     * Every rule of the normal path still applies, so with the maker-checker rule on, only someone allowed to approve what they themselves submit can use it.
+     */
+    public function approveDraft(AcctTransaction $txn, User $by, ?string $comment = null): AcctTransaction
+    {
+        $this->guardDraftApproval(AcctTransaction::query()->findOrFail($txn->id), $by);
+
+        $t = $this->tx(function () use ($txn, $by, $comment) {
+            $this->submit($txn, $by, true);
+
+            return $this->approve($txn->fresh(), $by, $comment);
+        });
+        if ($t->status === 'submitted') {
+            $this->raiseWaiting($t, AcctAccount::query()->findOrFail($t->account_id)); // more approvals are needed: the others are told, as after a normal submit
+        }
+
+        return $t;
+    }
+
+    public function approveDraftTransfer(AcctTransfer $tr, User $by, ?string $comment = null): AcctTransfer
+    {
+        $this->guardDraftApproval(AcctTransfer::query()->findOrFail($tr->id), $by);
+
+        $t = $this->tx(function () use ($tr, $by, $comment) {
+            $this->submitTransfer($tr, $by, true);
+
+            return $this->approveTransfer($tr->fresh(), $by, $comment);
+        });
+        if ($t->status === 'submitted') {
+            $this->raiseTransferWaiting($t);
+        }
+
+        return $t;
+    }
+
+    /** Checked BEFORE anything is written: only a draft, only by someone who may approve it, and never against the maker-checker rule (a refusal here changes nothing and raises no alert). */
+    private function guardDraftApproval($t, User $by): void
+    {
+        if ($t->status !== 'draft') {
+            throw new AcctException(__('Only a draft can be approved this way.'));
+        }
+        if (! $by->can(AcctPermissions::need('approve', $t))) {
+            throw new AcctException(__('You are not allowed to approve this kind of record.'));
+        }
+        $settings = AcctSettings::get();
+        if ($settings['maker_checker'] && ! ($by->hasRole('Super Admin') && $settings['super_admin_self_approval'])) {
+            throw new AcctException(__('Separation of duties is on, so the person who approves cannot also be the one who submits. Ask the maker to submit this draft, then approve it.'));
+        }
     }
 
     public function reject(AcctTransaction $txn, User $by, string $reason): AcctTransaction
@@ -412,9 +464,14 @@ class AcctPosting
         ];
     }
 
-    public function submitTransfer(AcctTransfer $tr, User $by): AcctTransfer
+    private function raiseTransferWaiting(AcctTransfer $t): void
     {
-        return $this->tx(function () use ($tr, $by) {
+        AcctAlerts::raise('transfer', 'transfer_waiting', 'low', __('Transfer :r is waiting for approval', ['r' => $t->reference]), __('A transfer of :a :c is waiting for approval.', ['a' => Money::format($t->from_amount, AcctRates::precision($t->from_currency)), 'c' => $t->from_currency]), ['account_id' => $t->from_account_id, 'subject_type' => 'transfer', 'subject_id' => $t->id, 'amount' => $t->from_amount, 'currency' => $t->from_currency, 'dedupe' => 'transfer-wait-' . $t->id, 'notify_event' => 'approval_needed', 'approver_permission' => 'approve-acct-transfers']);
+    }
+
+    public function submitTransfer(AcctTransfer $tr, User $by, bool $quiet = false): AcctTransfer
+    {
+        return $this->tx(function () use ($tr, $by, $quiet) {
             $t = AcctTransfer::query()->lockForUpdate()->findOrFail($tr->id);
             if (! in_array($t->status, ['draft', 'rejected'], true)) {
                 return $t;
@@ -424,8 +481,8 @@ class AcctPosting
             $t->fill(['status' => $required === 0 ? 'approved' : 'submitted', 'required_approvals' => $required, 'approvals_count' => 0, 'submitted_by' => $by->id, 'submitted_at' => now(), 'reject_reason' => null])->save();
             $this->trail('transfer', $t->id, 'submitted', $by, null, false);
             AcctAudit::log('transfer.submitted', 'transfer', $t->id, $t->reference, null, ['status' => $t->status, 'required_approvals' => $required], null, $by);
-            if ($t->status === 'submitted') {
-                AcctAlerts::raise('transfer', 'transfer_waiting', 'low', __('Transfer :r is waiting for approval', ['r' => $t->reference]), __('A transfer of :a :c is waiting for approval.', ['a' => Money::format($t->from_amount, AcctRates::precision($t->from_currency)), 'c' => $t->from_currency]), ['account_id' => $t->from_account_id, 'subject_type' => 'transfer', 'subject_id' => $t->id, 'amount' => $t->from_amount, 'currency' => $t->from_currency, 'dedupe' => 'transfer-wait-' . $t->id, 'notify_event' => 'approval_needed', 'approver_permission' => 'approve-acct-transfers']);
+            if ($t->status === 'submitted' && ! $quiet) {
+                $this->raiseTransferWaiting($t);
             }
 
             return $t;
@@ -817,14 +874,20 @@ class AcctPosting
         AcctApproval::query()->create(['subject_type' => $type, 'subject_id' => $id, 'action' => $action, 'user_id' => $by->id, 'role_context' => $by->getRoleNames()->implode(', '), 'comment' => $comment, 'created_at' => now()]);
     }
 
-    private function afterSubmit(AcctTransaction $t, AcctAccount $acct): void
+    /** The "waiting for approval" alert of a submitted transaction (also raised after a draft was submitted and approved in one step, when more approvals are still needed). */
+    private function raiseWaiting(AcctTransaction $t, AcctAccount $acct): void
+    {
+            AcctAlerts::raise('transaction', 'approval_needed', 'low', __('Transaction :r is waiting for approval', ['r' => $t->reference]), __(':a :c on :acc needs :n approval(s).', ['a' => Money::format($t->amount, AcctRates::precision($t->currency)), 'c' => $t->currency, 'acc' => $acct->name, 'n' => $t->required_approvals]), ['account_id' => $acct->id, 'subject_type' => 'transaction', 'subject_id' => $t->id, 'amount' => $t->amount, 'currency' => $t->currency, 'dedupe' => 'approval-' . $t->id, 'notify_event' => 'approval_needed', 'approver_permission' => AcctPermissions::need('approve', $t)]);
+    }
+
+    private function afterSubmit(AcctTransaction $t, AcctAccount $acct, bool $quiet = false): void
     {
         $large = AcctSettings::amountFor('large_txn', $t->currency);
         if ($large !== null && Money::cmp($t->amount, $large) >= 0) {
             AcctAlerts::raise('transaction', 'large_transaction', 'medium', __('Large :d of :a :c', ['d' => $t->direction === 'in' ? __('receipt') : __('payment'), 'a' => Money::format($t->amount, AcctRates::precision($t->currency)), 'c' => $t->currency]), __(':r on :acc is above the large-transaction limit.', ['r' => $t->reference, 'acc' => $acct->name]), ['account_id' => $acct->id, 'subject_type' => 'transaction', 'subject_id' => $t->id, 'amount' => $t->amount, 'currency' => $t->currency, 'dedupe' => 'large-' . $t->id, 'notify_event' => 'large_transaction']);
         }
-        if ($t->status === 'submitted') {
-            AcctAlerts::raise('transaction', 'approval_needed', 'low', __('Transaction :r is waiting for approval', ['r' => $t->reference]), __(':a :c on :acc needs :n approval(s).', ['a' => Money::format($t->amount, AcctRates::precision($t->currency)), 'c' => $t->currency, 'acc' => $acct->name, 'n' => $t->required_approvals]), ['account_id' => $acct->id, 'subject_type' => 'transaction', 'subject_id' => $t->id, 'amount' => $t->amount, 'currency' => $t->currency, 'dedupe' => 'approval-' . $t->id, 'notify_event' => 'approval_needed', 'approver_permission' => AcctPermissions::need('approve', $t)]);
+        if ($t->status === 'submitted' && ! $quiet) {
+            $this->raiseWaiting($t, $acct);
         }
         if ($t->direction === 'out' && $t->kind === 'payment') {
             $dup = AcctTransaction::query()->where('id', '<>', $t->id)->where('account_id', $t->account_id)->where('amount', $t->amount)->where('txn_date', $t->txn_date->toDateString())

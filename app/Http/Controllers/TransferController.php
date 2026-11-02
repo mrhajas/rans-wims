@@ -435,11 +435,21 @@ class TransferController extends Controller
             return $response;
         }
 
-        if ($error = \App\Services\TransferApproval::approve($transfer, $request->user())) {
+        // remove_draft: the approver answered "Yes" to the prompt that offers to take a plain draft out of draft and approve it
+        if ($error = \App\Services\TransferApproval::approve($transfer, $request->user(), $request->boolean('remove_draft'))) {
             return back()->with('error', $error);
         }
 
         return back()->with('message', __('Transfer :ref approved. Stock has been moved.', ['ref' => $transfer->reference]));
+    }
+
+    /** Before an approver is asked "remove the draft status and approve?": the checks a draft never had, line by line. */
+    public function draftCheck(Request $request, Transfer $transfer)
+    {
+        abort_unless($request->user()->can('approve-transfers'), 403);
+        $problems = $transfer->draft && $transfer->approval_status !== Transfer::APPROVAL_PENDING ? \App\Services\TransferApproval::problems($transfer) : [];
+
+        return response()->json(['ok' => ! $problems, 'problems' => $problems]);
     }
 
     /** Stops a transfer that is still waiting for approval. Nothing was ever moved, so nothing needs undoing. */

@@ -447,11 +447,11 @@
               <textarea-input v-model="form.details" :error="$page.props.errors.details" :label="$t('Details')" />
             </div>
             <div class="lg-span-all" v-if="!edit || edit.draft == 1">
-              <check-box
-                id="draft"
+              <draft-switch
                 v-model:checked="form.draft"
                 :error="$page.props.errors.draft"
-                :label="$t('This record is draft')"
+                :draft-hint="$t('Saved as a draft: stock does not move yet. Switch to Final when the check-out is ready.')"
+                :final-hint="$t('Saved as final: the stock leaves the warehouse as soon as you save.')"
               />
             </div>
           </div>
@@ -606,6 +606,7 @@ import _isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
 import Dialog from '@/Shared/Dialog.vue';
+import DraftSwitch from '@/Shared/DraftSwitch.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
@@ -636,6 +637,7 @@ export default {
   },
 
   components: {
+    DraftSwitch,
     Dialog,
     CheckBox,
     TextInput,

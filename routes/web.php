@@ -978,6 +978,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('transfers/{transfer}/receive', [Controllers\TransferController::class, 'receive'])->name('transfers.receive');
     Route::patch('transfers/bulk-receive', [Controllers\TransferController::class, 'bulkReceive'])->name('transfers.bulk-receive');
     Route::post('transfers/{transfer}/approve', [Controllers\TransferController::class, 'approve'])->name('transfers.approve');
+    Route::get('transfers/{transfer}/draft-check', [Controllers\TransferController::class, 'draftCheck'])->whereNumber('transfer')->middleware('throttle:120,1,transfers.draft-check')->name('transfers.draft-check');
     Route::post('transfers/{transfer}/cancel', [Controllers\TransferController::class, 'cancel'])->name('transfers.cancel');
 
     Route::post('current-warehouse', [Controllers\AjaxController::class, 'setWarehouse'])->name('current.warehouse');
@@ -1429,6 +1430,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
 
     Route::resource('labour', Controllers\LabourController::class);
     Route::patch('labour/{labour}/submit', [Controllers\LabourController::class, 'submit'])->name('labour.submit');
+    Route::patch('labour/{labour}/approve-draft', [Controllers\LabourController::class, 'approveDraft'])->name('labour.approve-draft');
     Route::patch('labour/{labour}/status', [Controllers\LabourController::class, 'updateStatus'])->name('labour.status');
     Route::post('labour/{labour}/create-payment-voucher', [Controllers\LabourController::class, 'createPaymentVoucher'])->name('labour.create-payment-voucher');
     Route::get('labour/{labour}/print', [Controllers\LabourController::class, 'print'])->name('labour.print');

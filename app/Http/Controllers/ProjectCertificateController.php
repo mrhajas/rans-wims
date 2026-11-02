@@ -929,6 +929,8 @@ class ProjectCertificateController extends Controller
                 'update' => $request->user()->can('update', $certificate),
                 'submit' => $request->user()->can('submit', $certificate),
                 'approve' => $request->user()->can('approve', $certificate),
+                // a plain draft can be submitted and approved in one step by someone who holds both rights
+                'approve_draft' => $certificate->status === ProjectCertificate::STATUS_DRAFT && $request->user()->can('submit-project-certificates') && $request->user()->can('approve-project-certificates'),
                 'issue' => $request->user()->can('issue', $certificate),
                 'revise' => $request->user()->can('revise', $certificate),
                 'recordPayment' => $request->user()->can('recordPayment', $certificate),
@@ -1146,6 +1148,29 @@ class ProjectCertificateController extends Controller
 
     public function approve(Request $request, ProjectCertificate $certificate)
     {
+        // A plain draft is never approved as it is. When the approver answered "Yes" to the prompt (remove_draft), it is submitted and approved in one step:
+        // both rights are needed, and the submit and approve entries and alerts are both recorded.
+        if ($certificate->status === ProjectCertificate::STATUS_DRAFT) {
+            if (! $request->boolean('remove_draft')) {
+                return back()->with('error', __('This certificate is still a draft. Remove the draft status first, then approve it.'));
+            }
+            abort_unless($request->user()->can('submit-project-certificates') && $request->user()->can('approve-project-certificates'), 403);
+
+            \Illuminate\Support\Facades\DB::transaction(function () use ($certificate, $request) {
+                $locked = ProjectCertificate::whereKey($certificate->id)->lockForUpdate()->firstOrFail();
+                abort_unless($locked->status === ProjectCertificate::STATUS_DRAFT, 422, 'This certificate must be a draft for this action.');
+                $now = now();
+                $locked->update(['status' => ProjectCertificate::STATUS_APPROVED, 'submitted_by' => $request->user()->id, 'submitted_at' => $now, 'approved_by' => $request->user()->id, 'approved_at' => $now]);
+                log_activity('Project Certificate Submitted', ['certificate_number' => $locked->certificate_number], $locked, 'Project Certificate');
+                log_activity('Project Certificate Approved', ['certificate_number' => $locked->certificate_number, 'draft_status_removed' => true], $locked, 'Project Certificate');
+                $certificate->setRawAttributes($locked->getAttributes(), true);
+            });
+            $this->alert('submitted', $certificate, $request, __('Certificate Submitted'));
+            $this->alert('approved', $certificate, $request, __('Certificate Approved'));
+
+            return back()->with('message', __('Draft status removed. Certificate approved.'));
+        }
+
         if ($response = $this->guardWorkflowStatus($certificate, ProjectCertificate::STATUS_SUBMITTED, __('This certificate must be submitted for review before it can be approved.'))) {
             return $response;
         }

@@ -362,10 +362,23 @@ class FundAllocationController extends Controller
         $a = $this->resolve($fund_allocation);
         abort_unless($user->can('approve-fund-allocations') && $this->canSee($user, $a), 403);
 
+        // A draft can only be approved after the approver agreed (remove_draft) to take the draft status off: it is submitted and approved in one step,
+        // by someone who may submit it, and the payer is still chosen below.
+        $fromDraft = $a->status === FundAllocation::STATUS_DRAFT;
+        if ($fromDraft) {
+            if (! $request->boolean('remove_draft')) {
+                $this->fail(__('This allocation sheet is still a draft. Remove the draft status first, then approve it.'));
+            }
+            abort_unless($this->maySubmit($user, $a), 403);
+        }
+
         $payers = $this->requestedPayers($request);
         $names = $payers->pluck('name')->implode(', ');
 
-        DB::transaction(function () use ($a, $user, $payers, $names) {
+        DB::transaction(function () use ($a, $user, $payers, $names, $fromDraft) {
+            if ($fromDraft) {
+                $this->submitLocked($a);
+            }
             $locked = $this->lock($a->id);
             if ($locked->status !== FundAllocation::STATUS_PENDING) {
                 $this->fail(__('Only a sheet that is pending approval can be approved.'));
@@ -378,7 +391,7 @@ class FundAllocationController extends Controller
                 'rejection_reason' => null,
             ]);
             $locked->payers()->sync($payers->pluck('id')->all());
-            log_activity(__('Allocation sheet approved. Payer: :name.', ['name' => $names]), ['reference' => $locked->reference, 'payer' => $names, 'payer_ids' => $payers->pluck('id')->all()], $locked, self::LOG);
+            log_activity(($fromDraft ? __('Draft status removed.') . ' ' : '') . __('Allocation sheet approved. Payer: :name.', ['name' => $names]), ['reference' => $locked->reference, 'payer' => $names, 'payer_ids' => $payers->pluck('id')->all()], $locked, self::LOG);
         });
 
         $a->refresh();
@@ -1031,7 +1044,8 @@ class FundAllocationController extends Controller
             'update' => $this->canEditNow($u, $a) && $this->mayEdit($u, $a),
             'delete' => $u->can('delete-fund-allocations') && in_array($status, [FundAllocation::STATUS_DRAFT, FundAllocation::STATUS_REJECTED, FundAllocation::STATUS_CANCELLED], true),
             'submit' => $a->isEditable() && $this->maySubmit($u, $a),
-            'approve' => $approve && $status === FundAllocation::STATUS_PENDING,
+            'approve' => $approve && ($status === FundAllocation::STATUS_PENDING || ($status === FundAllocation::STATUS_DRAFT && $this->maySubmit($u, $a))),
+            'approve_draft' => $approve && $status === FundAllocation::STATUS_DRAFT && $this->maySubmit($u, $a),
             'reject' => $approve && $status === FundAllocation::STATUS_PENDING,
             'reassign' => ($approve && $a->isPayable()) || ($u->hasRole('Super Admin') && in_array($status, [FundAllocation::STATUS_COMPLETED, FundAllocation::STATUS_CLEARED], true)),
             'clear' => $this->mayClear($u, $a),
@@ -1434,21 +1448,27 @@ class FundAllocationController extends Controller
 
     private function performSubmit(FundAllocation $a, User $user): void
     {
-        DB::transaction(function () use ($a) {
-            $locked = $this->lock($a->id);
-            if (! $locked->isEditable()) {
-                $this->fail(__('Only a Draft or Rejected sheet can be submitted.'), 'submit');
-            }
-            $problems = $this->submissionProblems($locked);
-            if ($problems) {
-                throw ValidationException::withMessages(['submit' => [implode("\n", array_slice($problems, 0, 6))]]);
-            }
-            $locked->update(['status' => FundAllocation::STATUS_PENDING, 'submitted_at' => now(), 'rejection_reason' => null]);
-            log_activity(__('Allocation sheet submitted for approval.'), ['reference' => $locked->reference], $locked, self::LOG);
-        });
+        DB::transaction(fn () => $this->submitLocked($a));
 
         $a->refresh();
         $this->fire('approval_needed', $user, __('Allocation awaiting approval'), $a->reference.': '.($a->title ?: optional($a->allocation_date)->toDateString()), $a);
+    }
+
+    /** The submit step itself (under a lock, inside the caller's transaction): used by performSubmit() and by the approver's "remove the draft status and approve" shortcut. */
+    private function submitLocked(FundAllocation $a): FundAllocation
+    {
+        $locked = $this->lock($a->id);
+        if (! $locked->isEditable()) {
+            $this->fail(__('Only a Draft or Rejected sheet can be submitted.'), 'submit');
+        }
+        $problems = $this->submissionProblems($locked);
+        if ($problems) {
+            throw ValidationException::withMessages(['submit' => [implode("\n", array_slice($problems, 0, 6))]]);
+        }
+        $locked->update(['status' => FundAllocation::STATUS_PENDING, 'submitted_at' => now(), 'rejection_reason' => null]);
+        log_activity(__('Allocation sheet submitted for approval.'), ['reference' => $locked->reference], $locked, self::LOG);
+
+        return $locked;
     }
 
     private function submissionProblems(FundAllocation $a): array

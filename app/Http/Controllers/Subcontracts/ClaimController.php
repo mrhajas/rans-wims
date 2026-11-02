@@ -261,7 +261,7 @@ class ClaimController extends Controller
             'lines' => $lineRows, 'vouchers' => $voucherRows, 'open_payment' => $open->isEmpty() ? null : ['count' => $open->count(), 'total_tzs' => $money ? $open->reduce(fn ($t, $p) => bcadd($t, (string) $p->amount_tzs, 2), '0.00') : null, 'voucher_url' => route('payment-vouchers.create', ['subcontract_claim' => $c->id])],
             'attachments' => $this->filesOf($c), 'history' => $this->can('view-audit-subcontracts') ? $this->safeHistory(C::class, $c->id) : [], 'money' => $money, 'claimSettings' => ['override_allowed' => (bool) SubcontractSettings::get()['override_allowed'], 'allow_partial' => SubcontractClaims::allowsPartial()],
             'currency_is_tzs' => $c->currency === 'TZS', 'today' => now()->toDateString(), 'actions' => SubcontractClaims::LINE_ACTIONS,
-            'can' => ['edit' => $c->status === C::DRAFT && $own && $this->can('create-subcontract-claims'), 'delete' => $c->status === C::DRAFT && $own && $this->can('create-subcontract-claims'), 'submit' => $c->status === C::DRAFT && $own && $this->can('submit-subcontract-claims'),
+            'can' => ['edit' => $c->status === C::DRAFT && $own && $this->can('create-subcontract-claims'), 'delete' => $c->status === C::DRAFT && $own && $this->can('create-subcontract-claims'), 'submit' => $c->status === C::DRAFT && $own && $this->can('submit-subcontract-claims'), 'approve_draft' => $c->status === C::DRAFT && $own && $this->can('submit-subcontract-claims') && $this->can('decide-subcontract-claims'),
                 'cancel' => $lines->contains(fn ($l) => in_array($l->status, [L::DRAFT, L::PENDING, L::RETURNED, L::DEFERRED], true)) && ($own || $canDecide) && ($this->can('create-subcontract-claims') || $canDecide), 'review' => in_array($c->status, [C::SUBMITTED, C::REVIEW, C::PARTIAL], true) && $canReview && ! $blocked,
                 'decide' => $canDecide && ! $blocked, 'override' => $overrideOk, 'voucher' => $payable && $lineRows->contains(fn ($l) => $l['can']['pay']), 'cancel_payment' => $this->can('initiate-subcontract-vouchers') && $open->isNotEmpty(), 'attach' => $this->can('create-subcontract-claims') && $c->status === C::DRAFT,
                 'documents' => $this->can('view-documents-subcontracts'), 'print' => $this->can('print-subcontract-reports'), 'vouchers' => $this->can('read-payment-vouchers')],
@@ -270,12 +270,19 @@ class ClaimController extends Controller
 
     // ---- workflow ------------------------------------------------------------------------------------------------------------------------
 
-    public function submit(int $claim)
+    /**
+     * Submit. When an approver answers "Yes" to "remove the draft status and approve?" (remove_draft) the claim is submitted and then waits for its lines to be decided on its page:
+     * every line is approved or refused with an amount, a reason and the contract headroom in front of the decider, so a claim is never approved line by line without looking.
+     */
+    public function submit(Request $request, int $claim)
     {
         $this->need('submit-subcontract-claims');
         $c = $this->find($claim);
         abort_unless($this->owner($c), 403);
-        $c = SubcontractClaims::submit($c->id, auth()->user());
+        $c = SubcontractClaims::submit($c->id, $request->user());
+        if ($request->boolean('remove_draft')) {
+            return back()->with('message', __(':r is no longer a draft and is now :s. Decide its lines below: approve each with the amount to pay, or refuse it with a reason.', ['r' => $c->reference, 's' => strtolower(__($c->status))]));
+        }
 
         return back()->with('message', __(':r is now :s.', ['r' => $c->reference, 's' => strtolower(__($c->status))]));
     }

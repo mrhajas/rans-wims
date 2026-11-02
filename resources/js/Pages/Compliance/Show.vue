@@ -28,6 +28,7 @@
           <template v-if="hasActiveRenewal">
             <button v-if="$can('start-compliance-renewal') && activeRenewal.status === 'Renewal in Progress'" type="button" class="lg-btn lg-btn-green" @click="openModal('submit')">{{ $t('Submit') }}</button>
             <button v-if="$can('approve-compliance-renewal') && activeRenewal.status === 'Submitted'" type="button" class="lg-btn lg-btn-green" @click="approveRenewal">{{ $t('Approve') }}</button>
+            <button v-if="$can('approve-compliance-renewal') && $can('start-compliance-renewal') && activeRenewal.status === 'Renewal in Progress'" type="button" class="lg-btn lg-btn-green" @click="approveDraftRenewal">{{ $t('Approve') }}</button>
             <button v-if="$can('complete-compliance-renewal') && activeRenewal.status === 'Pending Approval'" type="button" class="lg-btn lg-btn-primary" @click="openModal('complete')">{{ $t('Complete Renewal') }}</button>
             <button v-if="$can('approve-compliance-renewal')" type="button" class="lg-btn lg-btn-red" @click="rejectRenewal">{{ $t('Reject') }}</button>
             <button v-if="$can('start-compliance-renewal')" type="button" class="lg-btn lg-btn-red" @click="cancelRenewal">{{ $t('Cancel Renewal') }}</button>
@@ -269,6 +270,7 @@ import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextInput from '@/Shared/TextInput.vue';
 import Modal from '@/Jetstream/Modal.vue';
+import { draftApprovalsSubcontracts } from '@/Core/draftApprovals.subcontracts';
 
 export default {
   components: { AdminLayout, Link, TextInput, Modal },
@@ -335,6 +337,12 @@ export default {
     },
     submitRenewal() {
       this.$inertia.patch(this.route('compliance-records.renewal.submit', this.record.id), this.submitForm, { onSuccess: () => (this.modal = null) });
+    },
+    // a renewal that was started but not submitted is a draft: the approver chooses whether to submit it and approve in one step
+    async approveDraftRenewal() {
+      if (await this.$draftApprove(draftApprovalsSubcontracts.complianceRenewal(this.$t, this.record))) {
+        this.$inertia.patch(this.route('compliance-records.renewal.approve', this.record.id), { remove_draft: true });
+      }
     },
     approveRenewal() {
       this.$inertia.patch(this.route('compliance-records.renewal.approve', this.record.id));

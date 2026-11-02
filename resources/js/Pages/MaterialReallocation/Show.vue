@@ -163,9 +163,15 @@
             <span class="lg-card-ico lg-ico-navy"><icons name="plane" class="w-5 h-5" /></span>
             <div class="min-w-0"><h3 class="lg-card-title">{{ $t('Submit for Review') }}</h3></div>
           </header>
-          <loading-button type="button" :loading="submitForm.processing" :disabled="submitForm.processing" @click="submit">
-            <icons name="plane" class="w-4 h-4 mr-1" /> {{ $t('Submit') }}
-          </loading-button>
+          <div class="ms-btnrow">
+            <loading-button type="button" :loading="submitForm.processing" :disabled="submitForm.processing" @click="submit">
+              <icons name="plane" class="w-4 h-4 mr-1" /> {{ $t('Submit') }}
+            </loading-button>
+            <!-- a draft the user may also clear: the approver is told it is a draft and chooses to remove the draft status and clear it in one step -->
+            <button v-if="materialReallocation.can_clear_draft" type="button" class="lg-btn lg-btn-green" :disabled="clearForm.processing" @click="approveDraft">
+              <icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}
+            </button>
+          </div>
         </section>
 
         <!-- Project Manager Clearance -->
@@ -485,6 +491,7 @@ import TextareaInput from '@/Shared/TextareaInput.vue';
 import SelectInput from '@/Shared/SelectInput.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
+import { draftApprovalsStock } from '@/Core/draftApprovals.stock';
 import AttachmentList from '@/Shared/MaterialReallocation/AttachmentList.vue';
 
 export default {
@@ -634,6 +641,10 @@ export default {
     },
     clear() {
       this.clearForm.patch(route('material-reallocations.clear', this.materialReallocation.id));
+    },
+    async approveDraft() {
+      if (!(await this.$draftApprove(draftApprovalsStock.materialReallocation(this.$t, this.materialReallocation)))) return;
+      this.clearForm.transform(data => ({ ...data, remove_draft: true })).patch(route('material-reallocations.clear', this.materialReallocation.id), { onFinish: () => this.clearForm.transform(data => data) });
     },
     async requestChanges() {
       if (!this.clearForm.remarks || !this.clearForm.remarks.trim()) {

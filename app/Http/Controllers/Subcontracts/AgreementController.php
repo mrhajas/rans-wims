@@ -219,7 +219,8 @@ class AgreementController extends Controller
         $err = null;
         $event = null;
         $logMore = [];
-        DB::transaction(function () use ($a, $me, $action, $reason, $request, &$err, &$event, &$logMore) {
+        $partial = null;
+        DB::transaction(function () use ($a, $me, $action, $reason, $request, &$err, &$event, &$logMore, &$partial) {
             $a = A::withoutGlobalScopes()->whereKey($a->id)->lockForUpdate()->first();
             $from = $a->status;
             switch ($action) {
@@ -239,8 +240,23 @@ class AgreementController extends Controller
                     break;
                 case 'approve':
                     $this->need('approve-subcontract-agreements');
-                    if (! in_array($from, [A::SUBMITTED, A::REVIEW], true)) { $err = __('Only a submitted agreement can be approved.'); return; }
-                    if ($this->selfDecision($a->submitted_by_user_id) || $this->selfDecision($a->user_id)) { $err = __('You created or submitted this agreement, so someone else must approve it.'); return; }
+                    $cur = $from;
+                    if ($from === A::DRAFT) {
+                        // An approver answered "Yes" to "remove the draft status and approve?": the draft is submitted first (the same checks as Submit), then approved if the rules allow.
+                        if (! $request->boolean('remove_draft')) { $err = __('This agreement is still a draft. Remove the draft status first, then approve it.'); return; }
+                        if (! $me->can('submit-subcontract-agreements')) { $err = __('You are not allowed to submit agreements, so you cannot remove the draft status.'); return; }
+                        if (! $a->contact_id || trim((string) $a->title) === '') { $err = __('The subcontractor and the title are needed.'); return; }
+                        if (bccomp((string) $a->original_amount, '0', 2) <= 0) { $err = __('Enter the original agreement amount first.'); return; }
+                        $a->forceFill(['status' => A::SUBMITTED, 'submitted_by_user_id' => $me->id, 'submitted_at' => now(), 'decision_remarks' => null])->save();
+                        $cur = A::SUBMITTED;
+                        log_activity('Subcontract agreement ' . $a->reference . ' submitted (draft status removed by the approver)', ['from' => 'Draft', 'to' => 'Submitted'], $a, 'Subcontracts');
+                        $event = 'agreement_review';
+                    }
+                    if (! in_array($cur, [A::SUBMITTED, A::REVIEW], true)) { $err = __('Only a submitted agreement can be approved.'); return; }
+                    if ($this->selfDecision($a->submitted_by_user_id) || $this->selfDecision($a->user_id)) {
+                        if ($cur !== $from) { $partial = __('The draft status was removed and the agreement is submitted. You created or submitted it, so someone else must approve it.'); break; }
+                        $err = __('You created or submitted this agreement, so someone else must approve it.'); return;
+                    }
                     $a->forceFill(['status' => A::APPROVED, 'approved_by_user_id' => $me->id, 'approved_at' => now(), 'decision_remarks' => $reason ?: null])->save();
                     $event = 'agreement_decided';
                     break;
@@ -326,7 +342,7 @@ class AgreementController extends Controller
             SubcontractNotifier::fire($event, 'agreement', $a, $me, $a->decision_remarks ?: $a->status);
         }
 
-        return back()->with('message', __(':r is now :s.', ['r' => $a->reference, 's' => strtolower(__($a->status))]));
+        return back()->with('message', $partial ?: __(':r is now :s.', ['r' => $a->reference, 's' => strtolower(__($a->status))]));
     }
 
     public function attach(Request $request, int $agreement)
@@ -376,7 +392,7 @@ class AgreementController extends Controller
         return [
             'edit' => $a->status !== A::ARCHIVED && ($this->can('update-subcontract-agreements') && $draft || $this->can('manage-subcontract-agreements')), 'edit_schedule' => $draft && ($this->can('create-subcontract-agreements') || $this->can('update-subcontract-agreements')),
             'submit' => $draft && $this->can('submit-subcontract-agreements'), 'review' => $a->status === A::SUBMITTED && $this->can('review-subcontract-agreements'),
-            'approve' => in_array($a->status, [A::SUBMITTED, A::REVIEW], true) && $this->can('approve-subcontract-agreements'), 'reject' => in_array($a->status, [A::SUBMITTED, A::REVIEW], true) && ($this->can('approve-subcontract-agreements') || $this->can('review-subcontract-agreements')),
+            'approve' => in_array($a->status, [A::SUBMITTED, A::REVIEW], true) && $this->can('approve-subcontract-agreements'), 'approve_draft' => $a->status === A::DRAFT && $this->can('submit-subcontract-agreements') && $this->can('approve-subcontract-agreements'), 'reject' => in_array($a->status, [A::SUBMITTED, A::REVIEW], true) && ($this->can('approve-subcontract-agreements') || $this->can('review-subcontract-agreements')),
             'manage' => $a->status !== A::ARCHIVED && $this->can('manage-subcontract-agreements'), 'archive' => in_array($a->status, [A::APPROVED, A::ACTIVE, A::SUSPENDED, A::COMPLETED, A::TERMINATED], true) && $this->can('manage-subcontract-agreements'),
             'restore' => $a->status === A::ARCHIVED && $this->can('manage-subcontract-agreements'), 'delete' => $draft && $this->can('delete-subcontract-agreements'),
             'attach' => $this->can('update-subcontract-agreements') || $this->can('manage-subcontract-agreements') || $this->can('create-subcontract-agreements'),

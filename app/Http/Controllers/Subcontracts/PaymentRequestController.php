@@ -159,7 +159,7 @@ class PaymentRequestController extends Controller
             'can' => [
                 'edit' => in_array($r->status, [R::DRAFT, R::RETURNED], true) && ($this->can('create-subcontract-requests') && ($own || $this->can('approve-subcontract-requests'))), 'submit' => in_array($r->status, [R::DRAFT, R::RETURNED], true) && $this->can('submit-subcontract-requests'),
                 'review' => $r->status === R::SUBMITTED && $this->can('review-subcontract-requests'), 'return' => in_array($r->status, [R::SUBMITTED, R::REVIEW], true) && ($this->can('review-subcontract-requests') || $this->can('approve-subcontract-requests')),
-                'approve' => in_array($r->status, [R::SUBMITTED, R::REVIEW], true) && $this->can('approve-subcontract-requests'), 'reject' => in_array($r->status, [R::SUBMITTED, R::REVIEW], true) && $this->can('approve-subcontract-requests'),
+                'approve' => in_array($r->status, [R::SUBMITTED, R::REVIEW], true) && $this->can('approve-subcontract-requests'), 'approve_draft' => $r->status === R::DRAFT && $this->can('submit-subcontract-requests') && $this->can('approve-subcontract-requests'), 'reject' => in_array($r->status, [R::SUBMITTED, R::REVIEW], true) && $this->can('approve-subcontract-requests'),
                 'override' => $this->can('override-subcontract-limits') && SubcontractSettings::get()['override_allowed'],
                 'cancel' => (in_array($r->status, [R::DRAFT, R::SUBMITTED, R::RETURNED, R::REVIEW], true) && ($own || $this->can('approve-subcontract-requests'))) || ($r->status === R::APPROVED && $this->can('approve-subcontract-requests') && ! $r->payments()->where('status', '<>', 'cancelled')->exists()),
                 'voucher' => $r->status === R::APPROVED && $this->can('initiate-subcontract-vouchers') && $a->isPayable() && bccomp($left, '0', 2) > 0 && ! $payments->contains(fn ($p) => $p['open']), 'delete' => $r->status === R::DRAFT && $own,
@@ -222,7 +222,9 @@ class PaymentRequestController extends Controller
         $err = null;
         $event = null;
         $overrideNote = null;
-        DB::transaction(function () use ($r, $me, $action, $reason, $request, &$err, &$event, &$overrideNote) {
+        $partial = null;
+        $drafted = false;
+        DB::transaction(function () use ($r, $me, $action, $reason, $request, &$err, &$event, &$overrideNote, &$partial, &$drafted) {
             // the agreement is locked first, so two approvals of the same agreement cannot both use the last of its remaining entitlement
             $a = A::withoutGlobalScopes()->whereKey($r->agreement_id)->lockForUpdate()->first();
             $r = R::query()->whereKey($r->id)->lockForUpdate()->first();
@@ -258,8 +260,24 @@ class PaymentRequestController extends Controller
                     break;
                 case 'approve':
                     $this->need('approve-subcontract-requests');
-                    if (! in_array($from, [R::SUBMITTED, R::REVIEW], true)) { $err = __('Only a submitted request can be approved.'); return; }
-                    if ($this->selfDecision($r->requested_by_user_id) || $this->selfDecision($r->submitted_by_user_id)) { $err = __('You made or submitted this request, so someone else must approve it.'); return; }
+                    $cur = $from;
+                    if ($from === R::DRAFT) {
+                        // An approver answered "Yes" to "remove the draft status and approve?": the draft is submitted first (the same checks as Submit), then approved if the rules allow.
+                        if (! $request->boolean('remove_draft')) { $err = __('This request is still a draft. Remove the draft status first, then approve it.'); return; }
+                        if (! $me->can('submit-subcontract-requests')) { $err = __('You are not allowed to submit requests, so you cannot remove the draft status.'); return; }
+                        if (! $a->isPayable()) { $err = __('The agreement is :s: payments cannot be requested.', ['s' => strtolower(__($a->status))]); return; }
+                        if (bccomp((string) $r->requested_amount, '0', 2) <= 0) { $err = __('Enter the amount requested.'); return; }
+                        $r->forceFill(['status' => R::SUBMITTED, 'decision_remarks' => null, 'submitted_by_user_id' => $me->id, 'submitted_at' => now()])->save();
+                        $cur = R::SUBMITTED;
+                        log_activity('Subcontract payment request ' . $r->reference . ' submitted (draft status removed by the approver)', ['from' => 'Draft', 'to' => 'Submitted'], $r, 'Subcontracts');
+                        $drafted = true;
+                        $event = 'request_review';
+                    }
+                    if (! in_array($cur, [R::SUBMITTED, R::REVIEW], true)) { $err = __('Only a submitted request can be approved.'); return; }
+                    if ($this->selfDecision($r->requested_by_user_id) || $this->selfDecision($r->submitted_by_user_id)) {
+                        if ($cur !== $from) { $partial = __('The draft status was removed and the request is submitted. You made or submitted it, so someone else must approve it.'); break; }
+                        $err = __('You made or submitted this request, so someone else must approve it.'); return;
+                    }
                     if (! $a->isPayable()) { $err = __('The agreement is :s: payments cannot be approved.', ['s' => strtolower(__($a->status))]); return; }
                     if ($request->filled('approved_amount') && ! preg_match('/^\d{1,14}(\.\d{1,4})?$/', (string) $request->input('approved_amount'))) { $err = __('The approved amount must be a number.'); return; }
                     $amount = SubcontractAmounts::money($request->filled('approved_amount') ? (string) $request->input('approved_amount') : (string) $r->requested_amount);
@@ -306,6 +324,12 @@ class PaymentRequestController extends Controller
                 SubcontractAlerts::raise('control', 'overpayment_refused', 'medium', __('Approval of :r was refused', ['r' => $r->reference]), __(':o above the remaining contract value; tried by :u.', ['o' => $overrideNote['over'], 'u' => $me->name]), ['agreement_id' => $r->agreement_id, 'contact_id' => $r->contact_id, 'subject_type' => 'request', 'subject_id' => $r->id, 'currency' => $r->currency, 'trigger' => 'event', 'dedupe' => 'refused-' . $r->id]);
             }
 
+            if ($drafted) {
+                // the draft status was already removed (the request is submitted) when a later rule refused the approval: say so, and tell the reviewers it is waiting
+                SubcontractNotifier::fire('request_review', 'request', $r->refresh(), $me, $r->status, ['amount' => (string) $r->requested_amount]);
+                $err = __('The draft status was removed and the request is submitted, but it could not be approved: :why', ['why' => $err]);
+            }
+
             return back()->with('error', e($err));
         }
         $r->refresh();
@@ -319,7 +343,7 @@ class PaymentRequestController extends Controller
 
         $note = $action === 'submit' ? $this->balanceNote(A::withoutGlobalScopes()->find($r->agreement_id), (string) $r->requested_amount) : null;
 
-        return back()->with('message', __(':r is now :s.', ['r' => $r->reference, 's' => strtolower(__($r->status))]) . ($note ? ' ' . $note : ''));
+        return back()->with('message', ($partial ?: __(':r is now :s.', ['r' => $r->reference, 's' => strtolower(__($r->status))])) . ($note ? ' ' . $note : ''));
     }
 
     /**

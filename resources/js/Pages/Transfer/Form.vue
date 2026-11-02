@@ -94,9 +94,12 @@
             <span v-if="edit.cancel_reason"> &mdash; {{ edit.cancel_reason }}</span>
           </div>
         </div>
-        <div v-else-if="fromIsMain && !(edit && edit.approval_status === 'approved')" class="lg-note lg-note-amber mb-4">
+        <div v-else-if="fromIsMain && !(edit && edit.approval_status === 'approved')" class="lg-note lg-note-amber mb-4 items-center flex-wrap">
           <icons name="info" class="w-4 h-4" />
-          <div>{{ $t('This transfer leaves a main warehouse. Once saved as final it waits for approval, and stock only moves after it is approved.') }}</div>
+          <div class="flex-1 min-w-0">{{ $t('This transfer leaves a main warehouse. Once saved as final it waits for approval, and stock only moves after it is approved.') }}</div>
+          <div v-if="draftApprovable && $can('approve-transfers')" class="flex items-center gap-2">
+            <button type="button" class="lg-btn lg-btn-green" @click="approveThis"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+          </div>
         </div>
 
         <!-- Details -->
@@ -361,12 +364,15 @@
             </div>
             <div class="lg-span-2 flex flex-col gap-4">
               <textarea-input v-model="form.details" :error="$page.props.errors.details" :label="$t('Details')" />
-              <check-box
-                id="draft"
-                v-model:checked="form.draft"
+              <draft-switch
                 v-if="!edit || edit.draft == 1"
-                :error="$page.props.errors.draft"
-                :label="$t('This record is draft')"
+                :checked="!!form.draft"
+                :shake="draftShake"
+                :invalid="!!draftBlock"
+                :error="draftBlock || $page.props.errors.draft"
+                :draft-hint="$t('Saved as a draft: it is not checked and no stock moves. Switching to Final checks every item first.')"
+                :final-hint="fromIsMain ? $t('Saved as final: it leaves a main warehouse, so it waits for an approver before stock moves.') : $t('Saved as final: the stock moves as soon as you save.')"
+                @update:checked="onDraftRequest"
               />
             </div>
           </div>
@@ -483,6 +489,8 @@ import { printWithAnimation, printUrlInFrame, transferPrintSheet } from '@/Core/
 import _isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
 import Dialog from '@/Shared/Dialog.vue';
+import DraftSwitch from '@/Shared/DraftSwitch.vue';
+import { approveDraftTransfer, isApprovableDraftTransfer } from '@/Core/draftApprovals';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
 import TextInput from '@/Shared/TextInput.vue';
@@ -522,6 +530,7 @@ export default {
   },
 
   components: {
+    DraftSwitch,
     Link,
     Dialog,
     PageHeader,
@@ -559,6 +568,8 @@ export default {
       variantRowKey: null,
       scanKeys: {}, // the empty rows a handheld scan is being looked up for
       stockSet: {}, // the errors the live stock check has put on the page, by key
+      draftShake: 0, // bumped when the switch to Final is refused (the pill shakes)
+      draftBlock: '', // why the draft cannot be switched to Final yet
       scanTooltip: { show: false, x: 0, y: 0 },
       receiving: false,
       form: this.$inertia.form({
@@ -578,6 +589,7 @@ export default {
   },
 
   computed: {
+    draftApprovable() { return !!this.edit && isApprovableDraftTransfer(this.edit); },
     // the Material Request this transfer is for (when it was made from one)
     mrLink() {
       if (this.edit && this.edit.material_request) return this.edit.material_request;
@@ -697,7 +709,8 @@ export default {
           unit_id: i.unit_id,
           weight: parseFloat(i.weight),
           quantity: parseFloat(i.quantity),
-          old_quantity: parseFloat(i.quantity),
+          // a draft has not moved any stock yet, so there is no earlier quantity to deduct from the stock check
+          old_quantity: this.edit.draft == 1 ? 0 : parseFloat(i.quantity),
           selected: {
             serials: [],
             variations: i.variations.map(v => {
@@ -706,7 +719,7 @@ export default {
                 weight: parseFloat(v.pivot.weight),
                 unit_id: v.pivot.unit_id || i.unit_id,
                 quantity: parseFloat(v.pivot.quantity),
-                old_quantity: parseFloat(v.pivot.quantity),
+                old_quantity: this.edit.draft == 1 ? 0 : parseFloat(v.pivot.quantity),
               };
               return variations;
             }),
@@ -722,6 +735,10 @@ export default {
   },
 
   mounted() {
+    // an approver sent here from the Transfers list because the draft failed its checks: show every problem inline, item by item
+    if (this.edit && this.edit.draft == 1 && /[?&]verify=1\b/.test(window.location.search)) {
+      this.$nextTick(() => this.verifyFinal().then(ok => { if (!ok) this.refuseFinal(); }));
+    }
     if (!this.edit && !this.prefill) {
       this.form.from_warehouse_id = this.defaultWarehouseId();
     }
@@ -737,7 +754,12 @@ export default {
     printThis() {
       printWithAnimation(transferPrintSheet(this, this.edit), () => printUrlInFrame(this.route('transfers.print', this.edit.id)));
     },
-    approveThis() {
+    async approveThis() {
+      if (this.draftApprovable) {
+        // a plain draft: it is checked first, then the approver chooses whether to remove the draft status and approve in one step
+        approveDraftTransfer(this, this.edit);
+        return;
+      }
       this.$confirm(this.$t('Approve :ref? Stock will move from :from to :to.', { ref: this.edit.reference, from: (this.edit.from_warehouse || {}).name || '', to: (this.edit.to_warehouse || {}).name || '' })).then(ok => {
         if (ok) this.$inertia.post(this.route('transfers.approve', this.edit.id), {}, { preserveScroll: true });
       });
@@ -1010,6 +1032,7 @@ export default {
             mapped[m && rowOf[+m[1]] !== undefined ? 'items.' + rowOf[+m[1]] + '.' + m[2] : key] = data.errors[key];
           });
           this.applyStockErrors(mapped);
+          if (this.draftBlock && !Object.keys(this.$page.props.errors || {}).some(k => /^items\./.test(k))) this.draftBlock = '';
         })
         .catch(() => {});
     }, 450),
@@ -1113,6 +1136,48 @@ export default {
           this.submit();
         }
       }, 100);
+    },
+    // The Draft / Final switch only asks; the draft status is removed here, and only when every item passes the checks a final save makes
+    async onDraftRequest(draft) {
+      if (draft) {
+        this.form.draft = true;
+        this.draftBlock = '';
+        return;
+      }
+      if (await this.verifyFinal()) {
+        this.form.draft = false;
+        this.draftBlock = '';
+      } else {
+        this.refuseFinal();
+      }
+    },
+    refuseFinal() {
+      this.draftShake++;
+      this.draftBlock = this.$t('Fix the items marked in red first. The draft status can only be removed when every item passes.');
+    },
+    // The checks of a final save, run now and shown inline under each item: the form's own checks, then the live stock of the source warehouse.
+    // Returns true when nothing is wrong.
+    async verifyFinal() {
+      if (this.filledCount && this.form.items.some(i => i.blank)) this.form.items = this.filledRows();
+      if (!this.validateLocal()) return false;
+      const warehouse_id = this.form.from_warehouse_id;
+      const rowOf = this.form.items.map((r, i) => (r.blank ? -1 : i)).filter(i => i >= 0);
+      try {
+        const { data } = await axios.post(route('stock.check'), { warehouse_id, items: this.itemsPayload() });
+        const mapped = {};
+        Object.keys(data.errors || {}).forEach(key => {
+          const m = key.match(/^items\.(\d+)\.(.+)$/);
+          mapped[m && rowOf[+m[1]] !== undefined ? 'items.' + rowOf[+m[1]] + '.' + m[2] : key] = data.errors[key];
+        });
+        this.applyStockErrors(mapped);
+        if (Object.keys(mapped).length) {
+          this.scrollToError();
+          return false;
+        }
+      } catch (e) {
+        // the server repeats every check when the transfer is saved
+      }
+      return true;
     },
     // The checks that can be made before anything is sent, shown on the same fields (and rows) as the server's own errors.
     // Returns true when the transfer can be sent.

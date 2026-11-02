@@ -20,6 +20,7 @@
           </div>
           <div class="ac-actions" style="justify-content: flex-end; margin: 0">
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" :disabled="busy" @click="post('submit')"><icons name="send" class="w-4 h-4" />{{ $t('Submit for decision') }}</button>
+            <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" :disabled="busy" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Submit and decide') }}</button>
             <button v-if="can.review && claim.status === 'Submitted'" type="button" class="lg-btn lg-btn-soft t-teal" :disabled="busy" @click="post('review')"><icons name="eye-flat" class="w-4 h-4" />{{ $t('Take into review') }}</button>
             <button v-if="canReviewMode" type="button" class="lg-btn lg-btn-green" @click="startReview"><icons name="check-double" class="w-4 h-4" />{{ reviewing ? $t('Review mode is on') : $t('Review and decide') }}</button>
             <button v-if="can.voucher" type="button" class="lg-btn lg-btn-primary" @click="openVoucher"><icons name="plus" class="w-4 h-4" />{{ $t('Start Payment Voucher') }}</button>
@@ -201,6 +202,7 @@ import AcctFileList from '@/Pages/Accounts/AcctFileList.vue';
 import CollapseSection from '../CollapseSection.vue';
 import { sc } from '../sc';
 import { toCents, fromCents, ZERO } from './money';
+import { draftApprovalsSubcontracts } from '@/Core/draftApprovals.subcontracts';
 
 export default {
   components: { CollapseSection, AdminLayout, PageHeader, Link, DatePicker, AcctDropzone, AcctFileList },
@@ -291,6 +293,8 @@ export default {
     },
     lineCall(name, params, data, l) { this.busy = true; this.$inertia.post(route(name, params), data, { preserveScroll: true, onSuccess: () => { this.ui[l.id].mode = ''; }, onFinish: () => (this.busy = false) }); },
     // ---- the request ----
+    // a draft: the approver chooses whether to remove the draft status; the claim is then submitted and its lines wait to be decided here
+    async approveDraft() { if (await this.$draftApprove(draftApprovalsSubcontracts.claim(this.$t, this.claim))) this.post('submit', { remove_draft: true }); },
     post(action, extra) { this.busy = true; this.$inertia.post(route('subcontracts.claims.' + action, this.claim.id), extra || {}, { preserveScroll: true, onFinish: () => (this.busy = false) }); },
     cancelClaim() { this.asking = ''; this.post('cancel', { reason: this.reason }); },
     remove() { this.$confirm(this.$t('Delete this draft request?')).then(ok => { if (ok) this.$inertia.delete(route('subcontracts.claims.destroy', this.claim.id)); }); },

@@ -55,6 +55,9 @@
         <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="act('approve')">
           <icons name="tick" class="w-4 h-4" /> {{ $t('Approve') }}
         </button>
+        <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" @click="approveDraft">
+          <icons name="tick" class="w-4 h-4" /> {{ $t('Approve') }}
+        </button>
         <button v-if="can.issue" type="button" class="lg-btn lg-btn-primary" @click="act('issue')">
           <icons name="tick" class="w-4 h-4" /> {{ $t('Issue Certificate') }}
         </button>
@@ -625,6 +628,7 @@ import AttachmentPicker from '@/Shared/AttachmentPicker.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 
 export default {
   components: { AdminLayout, Link, AutoComplete, SprConfirmPassword, AttachmentPicker, DatePicker, PageHeader, StatTiles },
@@ -701,7 +705,7 @@ export default {
     hasActions() {
       const c = this.can;
 
-      return !!((c.update && this.certificate.status === 'draft') || c.submit || c.approve || c.issue || c.viewFinancials
+      return !!((c.update && this.certificate.status === 'draft') || c.submit || c.approve || c.approve_draft || c.issue || c.viewFinancials
         || (c.recordPayment && this.certificate.status === 'issued') || c.revise || c.cancel);
     },
     // "TZS Tanzanian Shilling" — code and name, no dash — matches
@@ -905,6 +909,10 @@ export default {
     },
     paymentLabel(status) {
       return { unpaid: 'Unpaid', partially_paid: 'Partially Paid', paid_in_full: 'Paid in Full', overdue: 'Overdue', disputed: 'Disputed', on_hold: 'On Hold', cancelled: 'Cancelled' }[status] || status;
+    },
+    async approveDraft() {
+      // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (await this.$draftApprove(financeDraftApprovals.projectCertificate(this.$t, this.certificate))) this.$inertia.post(this.route('project-certificates.approve', this.certificate.id), { remove_draft: true }, { preserveScroll: true });
     },
     act(action) {
       this.$inertia.post(this.route('project-certificates.' + action, this.certificate.id), {}, { preserveScroll: true });

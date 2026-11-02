@@ -19,6 +19,8 @@ import { LANGUAGES, SUPPORT_LOCALES, loadLocale } from '@/Core/i18n';
 import { initIdleLogout } from '@/Core/idleLogout';
 import IdleLogoutModal from '@/Shared/IdleLogoutModal.vue';
 import GlobalDialog from '@/Shared/GlobalDialog.vue';
+import DraftApproveModal from '@/Shared/DraftApproveModal.vue';
+import { draftApprove } from '@/Core/draftApprove';
 import { confirmDialog, alertDialog, promptDialog } from '@/Core/dialogs';
 import { initOfflineStatus } from '@/Core/offlineStatus';
 import { initOfflineSync } from '@/Core/offlineSync';
@@ -130,6 +132,13 @@ const mountGlobalDialog = () => {
   createApp(GlobalDialog).use(i18n).mount(el);
 };
 
+const mountDraftApprove = () => {
+  const el = document.createElement('div');
+  el.id = 'draft-approve-root';
+  document.body.appendChild(el);
+  createApp(DraftApproveModal).use(i18n).mount(el);
+};
+
 createInertiaApp({
   title: title => `${title} - ${appName}`,
   resolve: name => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
@@ -209,10 +218,13 @@ createInertiaApp({
     app.config.globalProperties.$confirm = confirmDialog;
     app.config.globalProperties.$alert = alertDialog;
     app.config.globalProperties.$prompt = promptDialog;
+    // the "remove the draft status and approve?" prompt an approver gets on a record that is still a draft
+    app.config.globalProperties.$draftApprove = draftApprove;
 
     applyTheme(props.initialPage);
     mountIdleLogoutModal();
     mountGlobalDialog();
+    mountDraftApprove();
     mountSaveProgress();
     mountAlertToasts();
     initSaveProgress(router);

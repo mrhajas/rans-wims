@@ -15,6 +15,7 @@
           <div class="ac-actions" style="justify-content: flex-end; margin: 0">
             <button v-if="can.submit" type="button" class="lg-btn lg-btn-primary" @click="post('submit')"><icons name="send" class="w-4 h-4" />{{ $t('Submit for approval') }}</button>
             <button v-if="can.approve" type="button" class="lg-btn lg-btn-green" @click="post('approve')"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
+            <button v-if="can.approve_draft" type="button" class="lg-btn lg-btn-green" @click="approveDraft"><icons name="tick" class="w-4 h-4" />{{ $t('Approve') }}</button>
             <button v-if="can.post" type="button" class="lg-btn lg-btn-green" @click="post('post')"><icons name="tick" class="w-4 h-4" />{{ $t('Post to balance') }}</button>
             <button v-if="can.reject" type="button" class="lg-btn lg-btn-red" @click="ask('reject')"><icons name="cross" class="w-4 h-4" />{{ $t('Reject') }}</button>
             <button v-if="can.reverse" type="button" class="lg-btn lg-btn-soft" @click="ask('reverse')"><icons name="refresh" class="w-4 h-4" />{{ $t('Reverse') }}</button>
@@ -85,6 +86,7 @@
 import AcctExport from '../AcctExport.vue';
 import { Link } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { financeDraftApprovals } from '@/Core/draftApprovals.finance';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import AcctSelect from '../AcctSelect.vue';
 import AcctDropzone from '../AcctDropzone.vue';
@@ -98,6 +100,12 @@ export default {
   data() { return { asking: '', reason: '', busy: false, up: this.$inertia.form({ files: [], doc_type: 'receipt' }) }; },
   computed: { reasonLabel() { return { reject: this.$t('Why is it rejected? (required)'), reverse: this.$t('Why is it reversed? (required)'), cancel: this.$t('Why is it cancelled? (required)') }[this.asking]; } },
   methods: {
+    async approveDraft() {
+      // a plain draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (!(await this.$draftApprove(financeDraftApprovals.acctTransaction(this.$t, this.t)))) return;
+      this.busy = true;
+      this.$inertia.post(route('acct.transactions.approve', this.t.id), { remove_draft: true }, { preserveScroll: true, onFinish: () => (this.busy = false) });
+    },
     post(action) { this.busy = true; this.$inertia.post(route('acct.transactions.' + action, this.t.id), {}, { preserveScroll: true, onFinish: () => (this.busy = false) }); },
     ask(a) { this.asking = a; this.reason = ''; },
     send() { this.busy = true; this.$inertia.post(route('acct.transactions.' + this.asking, this.t.id), { reason: this.reason }, { preserveScroll: true, onFinish: () => (this.busy = false), onSuccess: () => (this.asking = '') }); },

@@ -51,6 +51,8 @@ class MaterialReallocationResource extends JsonResource
             'can_delete' => $user ? $user->can('delete', $this->resource) : false,
             'can_submit' => $user ? $user->can('submit', $this->resource) : false,
             'can_clear' => $user ? $user->can('clear', $this->resource) : false,
+            // a draft the user may submit AND clear: the prompt "remove the draft status and clear it for approval?" is offered instead of a silent refusal
+            'can_clear_draft' => $user ? ($this->status === \App\Models\MaterialReallocation::STATUS_DRAFT && $user->can('submit', $this->resource) && $user->hasRole(['Super Admin', 'Admin', 'Project Manager', 'Project Managers'])) : false,
             'can_allocate' => $user ? $user->can('allocate', $this->resource) : false,
             'can_dispatch' => $user ? $user->can('dispatch', $this->resource) : false,
             'can_receive' => $user ? $user->can('receive', $this->resource) : false,

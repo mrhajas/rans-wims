@@ -85,6 +85,8 @@ class TransferController extends AcctController
                 'edit' => in_array($t->status, ['draft', 'rejected'], true) && ((int) $t->created_by === (int) $me->id || $me->hasRole('Super Admin')),
                 'submit' => in_array($t->status, ['draft', 'rejected'], true) && $me->can('create-acct-transfers'),
                 'approve' => $t->status === 'submitted' && $me->can('approve-acct-transfers') && (! $self || ! AcctSettings::get()['maker_checker']) && ! $trail->where('action', 'approved')->where('user_id', $me->id)->count(),
+                // a plain draft can be submitted and approved in one step by someone who may do both (the maker-checker rule still applies)
+                'approve_draft' => $t->status === 'draft' && $me->can('approve-acct-transfers') && $me->can('create-acct-transfers') && (! \App\Services\Accounts\AcctSettings::get()['maker_checker'] || ($me->hasRole('Super Admin') && \App\Services\Accounts\AcctSettings::get()['super_admin_self_approval'])),
                 'reject' => in_array($t->status, ['submitted', 'approved'], true) && $me->can('approve-acct-transfers'),
                 'post' => $t->status === 'approved' && $me->can('post-acct-transfers'),
                 'cancel' => in_array($t->status, ['draft', 'submitted', 'approved', 'rejected'], true) && ((int) $t->created_by === (int) $me->id || $me->can('approve-acct-transfers')),
@@ -135,10 +137,18 @@ class TransferController extends AcctController
         $t = $this->orFail($id);
         $c = $request->validate(['comment' => 'nullable|string|max:500'])['comment'] ?? null;
 
-        return $this->run(function () use ($t, $c) {
-            $r = app(AcctPosting::class)->approveTransfer($t, $this->me(), $c);
+        // A plain draft is never approved as it is: the approver must have answered "Yes" to the prompt (remove_draft), and then it is submitted and approved in one step.
+        $fromDraft = $t->status === 'draft';
+        if ($fromDraft && ! $request->boolean('remove_draft')) {
+            return back()->with('error', e(__('This transfer is still a draft. Remove the draft status first, then approve it.')));
+        }
 
-            return back()->with('message', $r->status === 'approved' ? __('Approved. It can now be posted.') : __('Approval recorded (:a of :n).', ['a' => $r->approvals_count, 'n' => $r->required_approvals]));
+        return $this->run(function () use ($t, $c, $fromDraft) {
+            $svc = app(AcctPosting::class);
+            $r = $fromDraft ? $svc->approveDraftTransfer($t, $this->me(), $c) : $svc->approveTransfer($t, $this->me(), $c);
+            $lead = $fromDraft ? __('Draft status removed.') . ' ' : '';
+
+            return back()->with('message', $lead . ($r->status === 'approved' ? __('Approved. It can now be posted.') : __('Approval recorded (:a of :n).', ['a' => $r->approvals_count, 'n' => $r->required_approvals])));
         });
     }
 

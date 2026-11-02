@@ -939,27 +939,31 @@ class PaymentVoucherController extends Controller
     {
         $this->authorize('update-payment-vouchers');
 
-        DB::transaction(function () use ($id, $request) {
-            $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
-            abort_unless(in_array($voucher->status, [PaymentVoucher::STATUS_DRAFT, PaymentVoucher::STATUS_REJECTED], true), 422, 'This payment voucher must be Draft or Rejected to submit.');
-            $this->guardSubcontractVoucher($voucher);
-
-            // A voucher of the Administration or Travels module that was rejected holds its lines again here, or it is refused.
-            \App\Services\Administration\AdminPaymentService::resubmit($voucher);
-            \App\Services\Travels\TravelVoucherService::resubmit($voucher);
-
-            // A rejected voucher let its trips go; they are taken again here, or the voucher is not sent if another voucher has them.
-            $this->relinkTrips($voucher);
-
-            // A voucher that goes round again carries none of the stamps of the earlier round.
-            $voucher->update(['status' => PaymentVoucher::STATUS_SUBMITTED] + $this->clearedApprovalStamps());
-            // whoever submits a voucher counts as having prepared it (separation of duties)
-            VoucherSeparation::noteHandler($voucher, $request->user());
-            log_activity(__('Payment Voucher submitted for approval.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
-            event(new PaymentVoucherStatusChanged($voucher->fresh()));
-        });
+        DB::transaction(fn () => $this->submitLocked($id, $request));
 
         return back()->with('message', __('Payment Voucher submitted for approval.'));
+    }
+
+    /** The submit step itself (under a lock): used by submit() and by the approver's "remove the draft status and approve" shortcut. */
+    private function submitLocked($id, Request $request): void
+    {
+        $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
+        abort_unless(in_array($voucher->status, [PaymentVoucher::STATUS_DRAFT, PaymentVoucher::STATUS_REJECTED], true), 422, 'This payment voucher must be Draft or Rejected to submit.');
+        $this->guardSubcontractVoucher($voucher);
+
+        // A voucher of the Administration or Travels module that was rejected holds its lines again here, or it is refused.
+        \App\Services\Administration\AdminPaymentService::resubmit($voucher);
+        \App\Services\Travels\TravelVoucherService::resubmit($voucher);
+
+        // A rejected voucher let its trips go; they are taken again here, or the voucher is not sent if another voucher has them.
+        $this->relinkTrips($voucher);
+
+        // A voucher that goes round again carries none of the stamps of the earlier round.
+        $voucher->update(['status' => PaymentVoucher::STATUS_SUBMITTED] + $this->clearedApprovalStamps());
+        // whoever submits a voucher counts as having prepared it (separation of duties)
+        VoucherSeparation::noteHandler($voucher, $request->user());
+        log_activity(__('Payment Voucher submitted for approval.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
+        event(new PaymentVoucherStatusChanged($voucher->fresh()));
     }
 
     /**
@@ -1009,11 +1013,26 @@ class PaymentVoucherController extends Controller
     public function approve(Request $request, $id)
     {
         $this->authorize('approve-payment-vouchers');
-        if ($why = VoucherSeparation::approveRefusal(PaymentVoucher::findOrFail($id), $request->user())) {
+        $current = PaymentVoucher::findOrFail($id);
+        $fromDraft = $current->status === PaymentVoucher::STATUS_DRAFT;
+        if ($fromDraft) {
+            // A draft can only be approved after the approver agreed (remove_draft) to take the draft status off: it is submitted and approved in one step.
+            if (! $request->boolean('remove_draft')) {
+                return back()->with('error', __('This payment voucher is still a draft. Remove the draft status first, then approve it.'));
+            }
+            $this->authorize('update-payment-vouchers');
+            // Submitting makes the approver one of the people who prepared the voucher, and nobody takes two steps of the same voucher.
+            if (VoucherSeparation::enabled() && ! VoucherSeparation::exempt($request->user())) {
+                return back()->with('error', __('Removing the draft status would make you the one who prepared :pv, and the person who prepares a voucher cannot approve it. Ask its preparer to submit it, then approve it.', ['pv' => $current->pv_number]));
+            }
+        } elseif ($why = VoucherSeparation::approveRefusal($current, $request->user())) {
             return back()->with('error', $why);
         }
 
-        DB::transaction(function () use ($id, $request) {
+        DB::transaction(function () use ($id, $request, $fromDraft) {
+            if ($fromDraft) {
+                $this->submitLocked($id, $request);
+            }
             $voucher = PaymentVoucher::whereKey($id)->lockForUpdate()->firstOrFail();
             abort_unless($voucher->status === PaymentVoucher::STATUS_SUBMITTED, 422, 'This payment voucher must be Submitted for this action.');
 
@@ -1022,7 +1041,7 @@ class PaymentVoucherController extends Controller
                 'approved_by_user_id' => $request->user()->id,
                 'approved_at' => now(),
             ]);
-            log_activity(__('Payment Voucher approved.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
+            log_activity($fromDraft ? __('Payment Voucher approved (draft status removed).') : __('Payment Voucher approved.'), ['pv_number' => $voucher->pv_number], $voucher, 'Payment Voucher');
             event(new PaymentVoucherStatusChanged($voucher->fresh()));
         });
 

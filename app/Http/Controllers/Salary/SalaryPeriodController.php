@@ -108,6 +108,8 @@ class SalaryPeriodController extends Controller
                 'prepare' => $request->user()->can('create-salary-periods') || $request->user()->can('prepare-bulk-salary-periods'),
                 'approve' => $request->user()->can('approve-salary-periods'),
                 'pay' => $request->user()->can('pay-salary-periods'),
+                // a plain draft can be approved in one step (submit + approve) by someone who holds both rights
+                'approve_draft' => $period->status === SalaryPeriod::STATUS_DRAFT && $request->user()->can('submit-salary-periods') && $request->user()->can('approve-salary-periods'),
             ],
             'allowedTargetStatuses' => (new \App\Policies\SalaryPeriodPolicy())->allowedTargetStatuses($request->user(), $period),
         ]);
@@ -155,13 +157,32 @@ class SalaryPeriodController extends Controller
     public function approve(Request $request, $id)
     {
         $period = SalaryPeriod::findOrFail($id);
-        $this->authorize('changeStatus', [$period, SalaryPeriod::STATUS_APPROVED]);
 
-        DB::transaction(function () use ($id) {
+        // A plain draft cannot be approved as it is. When the approver answered "Yes" to the prompt (remove_draft), the period is submitted and approved in one step:
+        // both rights are needed, the period must hold salary records, and the submit and approve notifications are both sent.
+        $fromDraft = $period->status === SalaryPeriod::STATUS_DRAFT;
+        if ($fromDraft) {
+            if (! $request->boolean('remove_draft')) {
+                return back()->with('error', __('This salary period is still a draft. Remove the draft status first, then approve it.'));
+            }
+            abort_unless($request->user()->can('submit-salary-periods') && $request->user()->can('approve-salary-periods'), 403);
+            if ($period->records()->doesntExist()) {
+                return back()->with('error', __('This draft has no salary records yet. Prepare at least one record before approving it.'));
+            }
+        } else {
+            $this->authorize('changeStatus', [$period, SalaryPeriod::STATUS_APPROVED]);
+        }
+
+        DB::transaction(function () use ($id, $fromDraft) {
             $period = SalaryPeriod::whereKey($id)->lockForUpdate()->firstOrFail();
-            abort_unless($period->status === SalaryPeriod::STATUS_PENDING_APPROVAL, 422, 'This period must be Pending Approval for this action.');
+            abort_unless($period->status === ($fromDraft ? SalaryPeriod::STATUS_DRAFT : SalaryPeriod::STATUS_PENDING_APPROVAL), 422, $fromDraft ? 'This period must be a Draft for this action.' : 'This period must be Pending Approval for this action.');
 
-            $period->update([
+            $stamps = $fromDraft ? ['prepared_by_user_id' => auth()->id(), 'prepared_at' => now()] : [];
+            if ($fromDraft) {
+                abort_if($period->records()->doesntExist(), 422, 'Prepare at least one salary record before approving this period.');
+                log_activity(__('Salary period submitted for approval (draft status removed by the approver).'), ['batch_reference' => $period->batch_reference], $period, 'Salary');
+            }
+            $period->update($stamps + [
                 'status' => SalaryPeriod::STATUS_APPROVED,
                 'approved_by_user_id' => auth()->id(),
                 'approved_at' => now(),
@@ -170,6 +191,9 @@ class SalaryPeriodController extends Controller
             log_activity(__('Salary period approved.'), ['batch_reference' => $period->batch_reference], $period, 'Salary');
         });
 
+        if ($fromDraft) {
+            $this->notify(SalaryNotificationRule::EVENT_SUBMITTED, SalaryPeriod::findOrFail($id), $request->user()->id);
+        }
         $this->notify(SalaryNotificationRule::EVENT_APPROVED, SalaryPeriod::findOrFail($id), $request->user()->id);
 
         return back()->with('message', __('Salary period approved.'));

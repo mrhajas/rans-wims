@@ -152,6 +152,18 @@
                 </button>
               </div>
             </template>
+            <template v-else-if="purchaseRequest.status === 'Draft' && $can('approve-purchase-requests')">
+              <p class="lg-note lg-note-amber">
+                <icons name="info" class="w-4 h-4" />
+                <span>{{ $t('This request is still a draft. Approving it removes the draft status first.') }}</span>
+              </p>
+              <textarea-input v-model="statusForm.approval_remarks" :label="$t('Remarks')" :error="$page.props.errors.approval_remarks" />
+              <div class="sd-actions mt-3">
+                <button type="button" class="lg-btn lg-btn-green" :disabled="statusForm.processing" @click="approveDraft">
+                  <icons :name="statusForm.processing ? 'refresh' : 'tick'" class="w-4 h-4" :class="{ 'animate-spin': statusForm.processing }" />{{ $t('Approve') }}
+                </button>
+              </div>
+            </template>
             <template v-else>
               <p class="lg-note" :class="purchaseRequest.status === 'Rejected' ? 'lg-note-red' : 'lg-note-blue'">
                 <icons name="info" class="w-4 h-4" />
@@ -186,6 +198,7 @@
 </template>
 
 <script>
+import { draftApprovalsProcurement } from '@/Core/draftApprovals.procurement';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
@@ -236,6 +249,13 @@ export default {
     approve() {
       this.statusForm
         .transform(() => ({ status: 'Approved', approval_remarks: this.statusForm.approval_remarks }))
+        .patch(route('supplier-records.purchase-requests.status', this.purchaseRequest.id));
+    },
+    async approveDraft() {
+      // a draft: the approver is told it is a draft and chooses whether to remove the draft status and approve in one step
+      if (!(await this.$draftApprove(draftApprovalsProcurement.purchaseRequest(this.$t, this.purchaseRequest)))) return;
+      this.statusForm
+        .transform(() => ({ status: 'Approved', approval_remarks: this.statusForm.approval_remarks, remove_draft: true }))
         .patch(route('supplier-records.purchase-requests.status', this.purchaseRequest.id));
     },
     async reject() {
