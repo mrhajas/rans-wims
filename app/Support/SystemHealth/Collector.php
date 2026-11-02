@@ -398,18 +398,13 @@ class Collector
 
             return ['supported' => true, 'provider' => 'Beem Africa'] + $r;
         }
-        // the percentage is the credit left compared with the most credit seen on this account (or a full level set in `system_health_sms_full_credit`)
+        // the battery is the credit left against the SMS bought: 10,000 unless the setting `system_health_sms_full_credit` says otherwise (a larger balance after a new purchase raises it)
+        $set = (float) (get_settings('system_health_sms_full_credit') ?: 10000);
         $balance = (float) ($r['balance'] ?? 0);
-        $set = (float) (get_settings('system_health_sms_full_credit') ?: 0);
-        // the highest credit seen is kept in the settings table (not the cache, which is emptied now and then), and only ever raised
-        $saved = (float) get_settings('system_health_sms_peak');
-        $peak = max($set, $saved, $balance);
-        if ($set <= 0 && $balance > $saved) {
-            \App\Models\Setting::query()->updateOrCreate(['tec_key' => 'system_health_sms_peak', 'account_id' => (int) auth()->user()->account_id], ['tec_value' => (string) round($balance)]);
-        }
+        $peak = max($set, $balance);
         $perDay = ($u = self::smsUsage()) && ! empty($u['sent_30d']) ? $u['sent_30d'] / 30 : 0;
 
-        return ['supported' => true, 'provider' => 'Beem Africa', 'percent' => $peak > 0 ? (int) round(min(100, $balance / $peak * 100)) : 0, 'full_credit' => (int) round($peak), 'full_credit_set' => $set > 0, 'per_day' => round($perDay, 1), 'days_left' => $perDay > 0 ? (int) floor($balance / $perDay) : null] + $r;
+        return ['supported' => true, 'provider' => 'Beem Africa', 'percent' => $peak > 0 ? (int) round(min(100, $balance / $peak * 100)) : 0, 'full_credit' => (int) round($peak), 'full_credit_set' => true, 'per_day' => round($perDay, 1), 'days_left' => $perDay > 0 ? (int) floor($balance / $perDay) : null] + $r;
     }
 
     private static function drive(): array
@@ -569,13 +564,12 @@ class Collector
         if (! is_array($sms) || ! empty($sms['error']) || empty($sms['supported']) || empty($sms['ok'])) {
             return self::sec(null, [], __('The credit could not be read.'));
         }
-        // the rating follows how long the credit lasts at the recent rate of sending; with no sending to measure it follows the share of the usual full level
+        // the rating follows the share of the bought credit that is left (85% left reads Very Good), and is held back when, at the recent rate of sending, the credit would run out soon
+        $score = (int) ($sms['percent'] ?? 0);
+        $note = __(':n of :full SMS bought are left.', ['n' => number_format((float) ($sms['balance'] ?? 0)), 'full' => number_format((float) ($sms['full_credit'] ?? 0))]);
         if (isset($sms['days_left'])) {
-            $score = self::band($sms['days_left'], [7, 14, 30, 60], [20, 45, 68, 85, 98]);
-            $note = __('About :d day(s) of credit left at :n SMS a day (last 30 days).', ['d' => $sms['days_left'], 'n' => $sms['per_day']]);
-        } else {
-            $score = self::band((int) ($sms['percent'] ?? 0), [8, 20, 40, 65], [20, 45, 68, 85, 98]);
-            $note = ! empty($sms['full_credit_set']) ? __('Compared with the full level set for this system.') : __('Compared with the most credit this system has seen.');
+            $score = min($score, self::band($sms['days_left'], [7, 14, 30, 60], [20, 45, 68, 85, 100]));
+            $note .= ' ' . __('About :d day(s) at :n SMS a day (last 30 days).', ['d' => $sms['days_left'], 'n' => $sms['per_day']]);
         }
         $act = $score < 80 ? [['text' => __('Top up SMS credit with Beem Africa before alerts stop going out.')]] : [];
 
