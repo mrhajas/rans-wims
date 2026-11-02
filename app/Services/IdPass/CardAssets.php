@@ -232,6 +232,8 @@ class CardAssets
         if ($kind === 'staff' || ! $band) {
             return 'blue';
         }
+        // a Gate Pass is orange like the Carpenter, so its person is teal (Visitor keeps its own purple, workers their category colours)
+        $band = ['gate' => '#0d9488'][$kind] ?? $band;
 
         return ltrim(self::hex($band, '#1565c0'), '#') . ($bg && self::hex($bg, '') !== '' ? '-' . ltrim(self::hex($bg, ''), '#') : '');
     }
