@@ -85,6 +85,7 @@ Route::middleware(['throttle:20,1,wims.ctx'])->prefix('auth')->group(function ()
 
 // RANS ID & Pass: the page a scanned QR code opens (public and rate limited; what it shows depends on who is looking and on the ID settings)
 Route::get('id-verify/{token}', [Controllers\IdPasses\VerifyController::class, 'show'])->where('token', '[A-Za-z0-9]{20,64}')->middleware(['web', 'throttle:60,1,id-passes.verify'])->name('id-passes.verify.show');
+Route::get('id-passes/avatar/{key}.svg', [Controllers\IdPasses\VerifyController::class, 'avatar'])->where('key', 'blue|[0-9a-fA-F]{6}')->middleware(['web', 'throttle:240,1,id-passes.avatar'])->name('id-passes.avatar');
 
 Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.download.print', 'reject.offline.mutations'])->group(function () {
     Route::redirect('/dashboard', '/');

@@ -66,7 +66,7 @@ class CardRenderer
             return $path;
         }
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (str_starts_with(basename($path), 'person')) {
+        if (str_starts_with(basename($path), 'person')) { // person.svg, person-flat.svg and the category colours of them
             // the drawn person (a few hundred bytes of vector code) travels inside the card, so showing it needs no extra request
             return 'data:image/svg+xml;base64,' . base64_encode((string) file_get_contents($path));
         }
@@ -161,7 +161,7 @@ class CardRenderer
         } else {
             // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows the drawn blue person, cropped to fill it
             $photo = self::src($d['photo'], $mode);
-            $frame = self::img($photo !== '' ? $photo : self::src(CardAssets::art($mode === 'pdf' ? 'person-flat.svg' : 'person.svg'), $mode), 0, 0, 31.0, 38.75);
+            $frame = self::img($photo !== '' ? $photo : self::src(CardAssets::person($d['template'] === 'staff' ? null : $band, $mode === 'pdf'), $mode), 0, 0, 31.0, 38.75);
             // a card that is suspended, expired or revoked carries a stamp over the photograph (in the colour of its status)
             $stamp = CardAssets::stamp($d['status'] ?? null);
             if ($stamp) {

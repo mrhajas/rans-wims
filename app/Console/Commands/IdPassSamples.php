@@ -129,7 +129,7 @@ class IdPassSamples extends Command
     /** Issues one sample card with a drawn photograph on the colour of its category. */
     private function issue(IdPassCategory $cat, array $in, int $seed, User $admin): IdPassCard
     {
-        $card = CardService::issue($cat, $in, $cat->kind === 'staff' ? null : $this->photo($cat, $seed), $admin); // a Staff ID sample has no photo, so the drawn default person shows
+        $card = CardService::issue($cat, $in, in_array($cat->kind, ['staff', 'compound'], true) ? null : $this->photo($cat, $seed), $admin); // a Staff ID or worker sample has no photo, so the drawn default person shows
         $card->forceFill(['notes' => self::MARK])->save();
 
         return $card;

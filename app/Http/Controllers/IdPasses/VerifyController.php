@@ -29,6 +29,14 @@ class VerifyController extends Controller
         $this->setAbilities([]); // public page: the checks are made inside
     }
 
+    /** The drawn person shown where a card has no photograph, in the colour of its category (a picture only: no data of any card). */
+    public function avatar(string $key)
+    {
+        $path = CardAssets::person($key === 'blue' ? null : '#' . $key);
+
+        return response(file_get_contents($path), 200, ['Content-Type' => 'image/svg+xml', 'Cache-Control' => 'public, max-age=2592000']);
+    }
+
     public function show(Request $request, string $token)
     {
         $notFound = fn () => response()->view('idpass.verify', ['state' => 'notfound'] + $this->shell(), 404);
@@ -86,7 +94,7 @@ class VerifyController extends Controller
             'daysLeft' => $daysLeft, 'pct' => $pct, 'hasEnd' => (bool) $card->expires_at, 'initials' => mb_strtoupper(mb_substr($parts[0] ?? '?', 0, 1) . (count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')),
             'state' => 'card', 'word' => $word, 'color' => $color, 'note' => __($note), 'kind' => __(\App\Models\IdPassCategory::KINDS[$card->kind] ?? ''), 'category' => optional($cat)->name, 'number' => $card->number,
             'holder' => ! empty($with) ? $with : (optional($cat)->pooled ? __('Visitor Pass (not in use)') : ($full ? $name : $short)), 'title' => $full ? $card->title : null, 'issued' => $card->issued_at->format('j F Y'), 'expires' => $card->expires_at ? $card->expires_at->format('j F Y') : IdPassSettings::get('idpass_no_expiry_text'),
-            'photo' => $photo, 'vehicle' => $full ? $card->vehicle_registration : null, 'host' => $full ? ($host ?? $card->host_name) : null, 'restrictions' => $full ? $card->restrictions : null, 'full' => $full,
+            'photo' => $photo, 'person' => CardAssets::personKey($card->kind, optional($cat)->band_color), 'vehicle' => $full ? $card->vehicle_registration : null, 'host' => $full ? ($host ?? $card->host_name) : null, 'restrictions' => $full ? $card->restrictions : null, 'full' => $full,
             'replacedBy' => $card->replaced_by_id ? IdPassCard::query()->withoutGlobalScope('account')->whereKey($card->replaced_by_id)->value('number') : null, 'signedIn' => (bool) $user,
         ])->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex, nofollow');
     }

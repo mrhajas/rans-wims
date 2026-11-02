@@ -142,6 +142,80 @@ class CardAssets
         return is_file($p) ? $p : null;
     }
 
+    /**
+     * The drawn person shown when a card has no photograph, in the colour of its category: the supplied blue icon (null = blue as supplied), or the same drawing with every
+     * colour turned to the hue of the category colour (shades and highlights stay). $flat is the gradient-free copy for the PDF engine. Returns the file path (kept in the cache).
+     */
+    public static function person(?string $hex = null, bool $flat = false): string
+    {
+        $base = self::art($flat ? 'person-flat.svg' : 'person.svg');
+        $hex = $hex === null || $hex === 'blue' ? null : self::hex($hex, '');
+        if ($hex === null || $hex === '') {
+            return $base;
+        }
+        $out = self::dir('cache') . '/person-v1-' . ($flat ? 'f' : 'g') . '-' . ltrim($hex, '#') . '.svg';
+        if (! is_file($out)) {
+            [$r, $g, $b] = sscanf($hex, '#%02x%02x%02x');
+            [$hue, $sat] = self::hsl($r, $g, $b);
+            $svg = preg_replace_callback('/#([0-9a-f]{6})\b/i', function ($m) use ($hue, $sat) {
+                if (strtolower($m[1]) === 'ffffff') {
+                    return $m[0];
+                }
+                [$cr, $cg, $cb] = sscanf($m[0], '#%02x%02x%02x');
+                [, $s, $l] = self::hsl($cr, $cg, $cb);
+                // a grey category (silver) keeps a pale tint of its hue; a coloured one keeps the strength of the original shading
+                [$nr, $ng, $nb] = self::rgb($hue, $sat < 0.12 ? $sat : min(1.0, $s * 1.05), $l);
+
+                return sprintf('#%02x%02x%02x', $nr, $ng, $nb);
+            }, (string) file_get_contents($base));
+            file_put_contents($out, $svg);
+        }
+
+        return $out;
+    }
+
+    /** @return array{0: float, 1: float, 2: float} hue (0-360), saturation and lightness (0-1) */
+    private static function hsl(int $r, int $g, int $b): array
+    {
+        $r /= 255;
+        $g /= 255;
+        $b /= 255;
+        $max = max($r, $g, $b);
+        $min = min($r, $g, $b);
+        $l = ($max + $min) / 2;
+        $d = $max - $min;
+        if ($d == 0) {
+            return [0.0, 0.0, $l];
+        }
+        $s = $d / (1 - abs(2 * $l - 1));
+        $h = match (true) {
+            $max === $r => 60 * fmod((($g - $b) / $d), 6),
+            $max === $g => 60 * ((($b - $r) / $d) + 2),
+            default => 60 * ((($r - $g) / $d) + 4),
+        };
+
+        return [fmod($h + 360, 360), $s, $l];
+    }
+
+    /** @return array{0: int, 1: int, 2: int} */
+    private static function rgb(float $h, float $s, float $l): array
+    {
+        $c = (1 - abs(2 * $l - 1)) * $s;
+        $x = $c * (1 - abs(fmod($h / 60, 2) - 1));
+        $m = $l - $c / 2;
+        [$r, $g, $b] = match (true) {
+            $h < 60 => [$c, $x, 0], $h < 120 => [$x, $c, 0], $h < 180 => [0, $c, $x], $h < 240 => [0, $x, $c], $h < 300 => [$x, 0, $c], default => [$c, 0, $x],
+        };
+
+        return [(int) round(($r + $m) * 255), (int) round(($g + $m) * 255), (int) round(($b + $m) * 255)];
+    }
+
+    /** The key of the drawn person of a category in a URL: 'blue' for a Staff ID, else the band colour (six hex digits). */
+    public static function personKey(?string $kind, ?string $band): string
+    {
+        return $kind === 'staff' || ! $band ? 'blue' : ltrim(self::hex($band, '#1565c0'), '#');
+    }
+
     /** The stamp laid over the photo of a card that is not valid: label and colour per status. */
     public const STAMPS = ['Suspended' => ['SUSPENDED', '#d92d20'], 'Expired' => ['EXPIRED', '#e8710a'], 'Revoked' => ['REVOKED', '#7c2d92']];
 

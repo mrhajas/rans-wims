@@ -215,7 +215,7 @@
                 <div class="live"><i></i>{{ __('Live check') }} &middot; <time id="clock">--:--:--</time></div>
                 <div class="body">
                     <div class="who">
-                        <div class="avatar">@if($photo)<img src="{{ $photo }}" alt="">@else<div class="mono ghost" aria-hidden="true"><img src="{{ asset('images/avatars/person-blue.svg') }}" alt=""></div>@endif</div>
+                        <div class="avatar">@if($photo)<img src="{{ $photo }}" alt="">@else<div class="mono ghost" aria-hidden="true"><img src="{{ url('/id-passes/avatar/' . ($person ?? 'blue') . '.svg') }}" alt=""></div>@endif</div>
                         <div>
                             <h1>{{ $holder }}</h1>
                             @if($title)<p>{{ $title }}</p>@endif

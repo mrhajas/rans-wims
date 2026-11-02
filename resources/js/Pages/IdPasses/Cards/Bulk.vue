@@ -48,7 +48,7 @@
           <div v-for="(r, i) in rows" :key="r.key" class="bk-item" :class="{ 'is-bad': !r.ok || r.state === 'bad', 'is-done': r.state === 'ok' }">
             <span class="bk-no">{{ i + 1 }}</span>
             <div class="bk-photo" @click="r.state !== 'ok' && openPhoto(r)" :class="{ 'is-add': !r.thumb && !r.hasPhoto && !r.avatar }">
-              <img v-if="r.thumb" :src="r.thumb" alt="" /><img v-else-if="info.kind === 'staff' && r.hasPhoto" :src="route('id-passes.lookup.staff-photo', r.id)" alt="" loading="lazy" /><span v-else-if="r.avatar" class="bk-avimg" :style="{ background: avatarBg }"><img :src="'/images/avatars/' + r.avatar + '.png'" alt="" /></span><img v-else src="/images/avatars/person-blue.svg" class="bk-none" alt="" />
+              <img v-if="r.thumb" :src="r.thumb" alt="" /><img v-else-if="info.kind === 'staff' && r.hasPhoto" :src="route('id-passes.lookup.staff-photo', r.id)" alt="" loading="lazy" /><span v-else-if="r.avatar" class="bk-avimg" :style="{ background: avatarBg }"><img :src="'/images/avatars/' + r.avatar + '.png'" alt="" /></span><img v-else :src="personUrl"  class="bk-none" alt="" />
             </div>
             <div class="bk-who"><b>{{ r.name }}</b><small>{{ r.sub }}</small>
               <div class="bk-flags"><span v-for="m in r.missing" :key="m" class="lg-chip lg-chip-red">{{ $t('Missing :x', { x: m }) }}</span><span v-if="!r.missing.length && r.state !== 'ok' && r.state !== 'bad'" class="lg-chip lg-chip-green">{{ $t('Ready') }}</span><span v-if="dup[i]" class="lg-chip lg-chip-red">{{ $t('Number used twice') }}</span></div>
@@ -138,6 +138,7 @@ export default {
     planned() { const c = this.cat; return this.plan.map(s => (s === null ? '' : c ? c.prefix + String(s).padStart(c.digits, '0') : s)); },
     sendSeq() { return !!this.startAt || this.rows.some(r => r.seq && r.state !== 'ok'); },
     dup() { const seen = {}; return this.plan.map((s, i) => { if (s === null || this.rows[i].state === 'ok') return false; const d = seen[s] !== undefined; seen[s] = i; return d; }); },
+    personUrl() { return '/id-passes/avatar/' + (this.info.kind === 'staff' || !this.cat || !/^#[0-9a-f]{6}$/i.test(this.cat.band || '') ? 'blue' : this.cat.band.slice(1)) + '.svg'; },
     avatarBg() { return (this.cat && this.cat.photo_bg) || '#e6edf6'; },
     noPhotoCount() { return this.rows.filter(r => r.state !== 'ok' && !r.thumb && !r.hasPhoto && !r.avatar).length; },
     readyCount() { return this.rows.filter((r, i) => r.ok && r.state !== 'ok' && !this.dup[i]).length; },

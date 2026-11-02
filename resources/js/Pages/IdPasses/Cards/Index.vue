@@ -36,7 +36,7 @@
             <th class="idl-sort" @click="sortBy('printed')">{{ $t('Printed') }}<i>{{ arrow('printed') }}</i></th><th></th></tr></thead>
           <tbody>
             <tr v-for="r in rows.data" :key="r.id" class="is-click idl-row" :style="{ '--c': r.color }" @click="open(r)">
-              <td class="idl-ph"><img v-if="r.has_photo" loading="lazy" decoding="async" :src="route('id-passes.' + info.route + '.photo-file', [r.id]) + '?w=96&v=' + r.photo_v" alt="" /><span v-else class="idl-none"><img src="/images/avatars/person-blue.svg" alt="" loading="lazy" /></span></td>
+              <td class="idl-ph"><img v-if="r.has_photo" loading="lazy" decoding="async" :src="route('id-passes.' + info.route + '.photo-file', [r.id]) + '?w=96&v=' + r.photo_v" alt="" /><span v-else class="idl-none"><img :src="'/id-passes/avatar/' + r.person + '.svg'" alt="" loading="lazy" /></span></td>
               <td :data-label="$t('ID number')"><span class="lg-main idl-no lg-tip tip-left" :data-tip="$t('Open :n', { n: r.number })">{{ r.number }}</span><div v-if="r.staff_number" class="lg-subtext">{{ r.staff_number }}</div></td>
               <td :data-label="$t('Name')"><template v-if="r.pooled"><span v-if="r.holder" class="lg-chip lg-chip-amber idl-hold">{{ $t('With') }} {{ r.holder }}</span><span v-else class="lg-chip lg-chip-green idl-hold">{{ $t('Free') }}</span></template><template v-else>{{ r.name }} <span v-if="r.unassigned" class="lg-chip lg-chip-amber idl-hold">{{ $t('Not yet given to a person') }}</span><div v-if="r.phone" class="lg-subtext">{{ r.phone }}</div></template></td>
               <td :data-label="$t('Category')"><category-chip :name="r.category" :color="r.color" :ink="r.ink" :icon="r.icon" /></td>
