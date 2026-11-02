@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  *  - DRAFT-SMP-TX-1  draft from a main warehouse, every item in stock: the prompt offers to remove the draft and approve it
  *  - DRAFT-SMP-TX-2  draft from a main warehouse, one item asks for far more than the warehouse holds: the approval is blocked and the item is shown to fix
  *  - DRAFT-SMP-TX-3  draft from a project warehouse (no approval needed): the Draft / Final switch only
- *  - DRAFT-SMP-TX-4  final from a main warehouse, waiting for approval (the normal approve button)
+ *  - AWAIT-SMP-TX-4  NOT a draft: saved as final from a main warehouse and waiting for approval (the normal approve button; WIMS keeps it without stock effect until approved)
  * Nothing is stocked or moved, nobody is told. Everything is marked SAMPLE so --fresh removes exactly these.
  */
 class DraftSamplesTransfers extends Command
@@ -78,7 +78,7 @@ class DraftSamplesTransfers extends Command
         $make('DRAFT-SMP-TX-1', $from, $projects[0], true, Transfer::APPROVAL_NOT_REQUIRED, [[$stock[0]->item, 2], [$stock[1]->item, 5], [$stock[2]->item, 3]], 'draft from a main warehouse, ready to approve');
         $make('DRAFT-SMP-TX-2', $from, $projects[1], true, Transfer::APPROVAL_NOT_REQUIRED, [[$stock[0]->item, 2], [$stock[1]->item, 9999999], [$stock[2]->item, 4]], 'draft from a main warehouse, one item asks for more than the warehouse holds');
         $make('DRAFT-SMP-TX-3', $projects[0], $projects[1], true, Transfer::APPROVAL_NOT_REQUIRED, [[$stock[3]->item, 1]], 'draft from a project warehouse');
-        $make('DRAFT-SMP-TX-4', $from, $projects[0], true, Transfer::APPROVAL_PENDING, [[$stock[1]->item, 2], [$stock[3]->item, 2]], 'final from a main warehouse, waiting for approval');
+        $make('AWAIT-SMP-TX-4', $from, $projects[0], true, Transfer::APPROVAL_PENDING, [[$stock[1]->item, 2], [$stock[3]->item, 2]], 'final from a main warehouse, waiting for approval');
 
         // a Check-out and a Check-in saved as drafts
         if (! Checkout::withoutGlobalScopes()->withTrashed()->where('reference', 'DRAFT-SMP-CO-1')->exists()) {
@@ -100,7 +100,7 @@ class DraftSamplesTransfers extends Command
     private function remove(): void
     {
         DB::transaction(function () {
-            foreach (Transfer::withoutGlobalScopes()->withTrashed()->where('reference', 'like', 'DRAFT-SMP-TX-%')->get() as $t) {
+            foreach (Transfer::withoutGlobalScopes()->withTrashed()->where(fn ($q) => $q->where('reference', 'like', 'DRAFT-SMP-TX-%')->orWhere('reference', 'like', 'AWAIT-SMP-TX-%')->orWhere('reference', 'like', 'APPROVED-SMP-TX-%'))->get() as $t) {
                 TransferItem::withoutGlobalScopes()->withTrashed()->where('transfer_id', $t->id)->forceDelete();
                 $t->forceDelete();
             }
