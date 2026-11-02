@@ -28,6 +28,31 @@ class LookupController extends Controller
         $this->setAbilities([]);
     }
 
+    /** Is this number taken in the category, and by which card? (what the issue form shows while a number is typed by hand) */
+    public function number(Request $request)
+    {
+        $this->module();
+        $d = $request->validate(['category_id' => 'required|integer', 'number' => 'required|integer|min:1|max:99999999']);
+        $u = $request->user();
+        abort_unless($u->can('manage-id-numbering'), 403);
+        $cat = IdPassCategory::query()->findOrFail((int) $d['category_id']);
+        $seq = (int) $d['number'];
+        $label = $cat->format($seq);
+        $row = \DB::table('idpass_numbers')->where('category_id', $cat->id)->where('seq_no', $seq)->first();
+        $card = $row ? IdPassCard::withTrashed()->find($row->card_id) : IdPassCard::query()->where('category_id', $cat->id)->where('number', $label)->first();
+        if (! $row && ! $card) {
+            return response()->json(['used' => false, 'number' => $label]);
+        }
+        $info = null;
+        if ($card) {
+            $open = ! $card->trashed() && \App\Services\IdPass\IdPassKinds::canRead($card->kind, $u);
+            $info = ['name' => NameFitter::display((string) $card->full_name), 'status' => $card->trashed() ? null : $card->effective_status, 'deleted' => $card->trashed(), 'kind' => __(IdPassCategory::KINDS[$card->kind] ?? 'ID'),
+                'url' => $open ? route('id-passes.' . \App\Services\IdPass\IdPassKinds::get($card->kind)['route'] . '.show', ['card' => $card->id]) : null];
+        }
+
+        return response()->json(['used' => true, 'number' => $label, 'card' => $info]);
+    }
+
     public function people(Request $request)
     {
         $this->module();

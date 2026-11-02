@@ -17,6 +17,12 @@
 <div class="idi-num"><b>{{ manual ? manualPreview : (cat ? cat.next : '-') }}</b><small v-if="cat && cat.requires_approval" class="lg-subtext">{{ $t('This category needs approval before the card can be printed.') }}</small></div>
                   <label v-if="canNumber" class="ac-check idi-hand" :class="{ on: manual }"><input v-model="manual" type="checkbox" /><i class="idi-tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" /></svg></i><span>{{ $t('Type the number by hand') }}</span></label>
                   <transition name="idi-slide"><input v-if="manual && canNumber" v-model="form.manual_number" class="idi-numin" inputmode="numeric" autocomplete="off" :placeholder="$t('Number, for example 17')" /></transition>
+                  <div v-if="manual && canNumber && taken && taken.used" class="idi-taken" role="alert">
+                    <icons name="info" class="w-4 h-4" />
+                    <span v-if="taken.card"><b>{{ taken.number }}</b> {{ $t('is already on the :k of', { k: taken.card.kind }) }} <b>{{ taken.card.name }}</b><template v-if="taken.card.deleted"> ({{ $t('deleted') }})</template><template v-else-if="taken.card.status"> ({{ $t(taken.card.status) }})</template>.
+                      <a v-if="taken.card.url" :href="taken.card.url" target="_blank" rel="noopener noreferrer" class="idi-taken-link">{{ $t('Open that ID') }} <icons name="link" class="w-3.5 h-3.5" /></a></span>
+                    <span v-else><b>{{ taken.number }}</b> {{ $t('has been used before and cannot be given again.') }}</span>
+                  </div>
                 </div><span class="ac-err">{{ err('number') || err('manual_number') }}</span>
               </div>
             </div>
@@ -117,7 +123,7 @@ export default {
     return {
       form: this.$inertia.form({ category_id: first ? first.id : null, staff_id: null, contact_id: null, visitor_id: null, full_name: '', title: '', phone: '', company: '', issued_at: this.today, expires_at: null, host_name: '', purpose: '', authorisation_type: null,
         vehicle_registration: '', vehicle_description: '', restrictions: '', notes: '', manual_number: '', quantity: 10, avatar: null }),
-      person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, photoBusy: false, running: false, manual: false, stock: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
+      person: null, source: this.info.kind === 'staff' ? 'staff' : (this.info.kind === 'compound' || this.info.kind === 'gate') ? 'contact' : 'visitor', photo: null, photoBusy: false, running: false, manual: false, taken: null, numTimer: null, stock: false, expTouched: false, pv: null, loading: false, timer: null, css: '', seq: 0, photoMissing: '',
     };
   },
   computed: {
@@ -147,10 +153,11 @@ export default {
     },
   },
   watch: {
-    'form.category_id'() { this.applyExpiry(); if (this.info.kind === 'compound' || this.info.kind === 'gate') this.setPerson(null); this.queue(); },
+    'form.category_id'() { this.checkNumber(); this.applyExpiry(); if (this.info.kind === 'compound' || this.info.kind === 'gate') this.setPerson(null); this.queue(); },
     'form.issued_at'() { this.applyExpiry(); this.queue(); },
     photo(v) { if (v) this.form.avatar = null; this.queue(); },
     'form.avatar'() { this.queue(0); },
+    'form.manual_number'() { this.checkNumber(); }, manual() { this.checkNumber(); },
     person() { this.queue(); },
     'form.full_name'() { this.queue(); }, 'form.title'() { this.queue(); }, 'form.expires_at'() { this.queue(); }, 'form.host_name'() { this.queue(); }, 'form.vehicle_registration'() { this.queue(); }, 'form.authorisation_type'() { this.queue(); },
   },
@@ -185,6 +192,15 @@ export default {
     err(k) { return (this.$page.props.errors || {})[k]; },
     async loadPreset(source, id) {
       try { const { data } = await window.axios.get(route('id-passes.lookup.people'), { params: { source, q: '' } }); const hit = data.find(r => r.id === id); if (hit && !hit.card) this.setPerson(hit); } catch (e) { /* the person is chosen by hand */ }
+    },
+    // while a number is typed by hand: is it taken, and by whom (shown with a link that opens that ID in a new tab)
+    checkNumber() {
+      clearTimeout(this.numTimer);
+      const n = parseInt(this.form.manual_number, 10);
+      if (!this.manual || !this.canNumber || !this.form.category_id || !n) { this.taken = null; return; }
+      this.numTimer = setTimeout(async () => {
+        try { const { data } = await window.axios.get(route('id-passes.lookup.number'), { params: { category_id: this.form.category_id, number: n } }); if (n === parseInt(this.form.manual_number, 10)) this.taken = data; } catch (e) { this.taken = null; }
+      }, 350);
     },
     setSource(k) { this.source = k; this.person = null; this.form.staff_id = this.form.contact_id = this.form.visitor_id = null; },
     setPerson(p) {
@@ -271,6 +287,9 @@ export default {
 .idi-hand.on .idi-tick svg { stroke-dashoffset: 0; }
 .idi-hand input:focus-visible + .idi-tick { outline: 2px solid #2f8fe6; outline-offset: 2px; }
 @keyframes idi-pop { 40% { transform: scale(1.18); } }
+.idi-taken { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 14px; font-size: 0.8rem; line-height: 1.45; color: #92400e; background: #fffbeb; box-shadow: inset 0 0 0 1px #fcd34d; animation: idi-in 0.25s ease; } .idi-taken > svg { flex: none; margin-top: 2px; }
+.idi-taken-link { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; font-weight: 800; color: #1d4ed8; text-decoration: underline; text-underline-offset: 2px; } .idi-taken-link:hover { color: #1e3a8a; }
+@keyframes idi-in { from { opacity: 0; transform: translateY(-4px); } }
 .idi-slide-enter-active, .idi-slide-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; } .idi-slide-enter-from, .idi-slide-leave-to { opacity: 0; transform: translateY(-6px); }
 @media (prefers-reduced-motion: reduce) { .idi-tick, .idi-tick svg, .idi-hand.on .idi-tick { transition: none; animation: none; } }
 </style>

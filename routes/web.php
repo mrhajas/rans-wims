@@ -627,6 +627,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
         Route::get('/', [$dash, 'index'])->name('dashboard');
         Route::get('my-id', [Controllers\IdPasses\MyIdController::class, 'show'])->middleware('throttle:120,1,id-passes.my-id')->name('my-id');
         Route::get('lookup/people', [$look, 'people'])->middleware('throttle:240,1,id-passes.lookup')->name('lookup.people');
+        Route::get('lookup/number', [$look, 'number'])->middleware('throttle:240,1,id-passes.lookup.number')->name('lookup.number');
         Route::get('lookup/staff/{staff}/photo', [$look, 'staffPhoto'])->whereNumber('staff')->middleware('throttle:240,1,id-passes.lookup.photo')->name('lookup.staff-photo');
         Route::post('lookup/preview', [$look, 'preview'])->middleware('throttle:90,1,id-passes.preview')->name('lookup.preview');
         Route::get('card.css', [$look, 'css'])->name('lookup.css');
