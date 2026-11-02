@@ -79,6 +79,7 @@ export default {
     const triggerEl = ref(null);
     const panelEl = ref(null);
     const mobileTop = ref(null);
+    const mobileMaxH = ref(null);
 
     // Every dropdown, not only the opt-in ones, must stay inside the screen: a panel anchored to a trigger near the left
     // or right edge of a phone used to hang off the viewport. The panel is nudged sideways with the CSS `translate`
@@ -107,6 +108,9 @@ export default {
       }
       const rect = triggerEl.value.getBoundingClientRect();
       mobileTop.value = Math.round(rect.bottom + 8);
+      // the height really visible right now (iOS Safari's 100vh includes the part under its toolbars, so CSS units alone cut the bottom off)
+      const visible = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      mobileMaxH.value = Math.max(160, Math.round(visible - mobileTop.value - 14));
     };
 
     const closeOnEscape = e => {
@@ -141,6 +145,7 @@ export default {
       triggerEl,
       panelEl,
       mobileTop,
+      mobileMaxH,
     };
   },
 
@@ -210,7 +215,7 @@ export default {
         return {};
       }
 
-      return { '--dd-mobile-top': `${this.mobileTop}px` };
+      return { '--dd-mobile-top': `${this.mobileTop}px`, '--dd-mobile-maxh': this.mobileMaxH ? `${this.mobileMaxH}px` : undefined };
     },
   },
 
@@ -232,7 +237,7 @@ export default {
     top: var(--dd-mobile-top, 96px);
     /* the panel starts below its trigger, so its height is what is left of the screen under it (the old fixed 80vh ran off the bottom) */
     max-height: calc(100vh - var(--dd-mobile-top, 96px) - 12px);
-    max-height: calc(100dvh - var(--dd-mobile-top, 96px) - 12px);
+    max-height: var(--dd-mobile-maxh, calc(100vh - var(--dd-mobile-top, 96px) - 12px));
   }
   /* a tall panel (WIMS Online, the profile card...) scrolls inside itself, so every part of it can be reached with a finger */
   .dd-mobile-anchored > .tdd-body {

@@ -491,7 +491,7 @@ export default {
     },
     driveStateText() {
       const d = (this.cloud && this.cloud.drive) || {};
-      if (d.state === 'rejected') return this.$t('Site Diary photos and videos cannot be saved to Google Drive until the connection is renewed.') + (d.message ? ' (' + d.message + ')' : '');
+      if (d.state === 'rejected') return this.$t('Site Diary photos and videos cannot be saved to Google Drive until the connection is renewed. Use Connect Google account in Site Diary settings. If this comes back every week, set the Google consent screen to In production.');
       if (d.state === 'unreachable') return this.$t('This server could not reach Google just now. Check its internet connection; the page tries again in a minute.');
       if (d.state === 'unconfigured') return this.$t('Finish the sign-in and choose the storage folder in Site Diary settings.');
       return this.$t('Turn it on in Site Diary settings to keep photos and videos in Google Drive.');
