@@ -114,12 +114,26 @@ export default {
     };
 
     const closeOnEscape = e => {
-      if (open.value && e.keyCode === 27) {
+      if (open.value && (e.key === 'Escape' || e.keyCode === 27)) {
         open.value = false;
       }
     };
 
+    // A press anywhere outside the panel and its trigger closes it. The full-screen overlay below does this too, but a page layer above the
+    // overlay (the content area, floating buttons) can swallow the press first, so the check also lives on the document.
+    const closeOnOutsidePress = e => {
+      if (!open.value) return;
+      const t = e.target;
+      if ((panelEl.value && panelEl.value.contains(t)) || (triggerEl.value && triggerEl.value.contains(t))) return;
+      open.value = false;
+    };
+
     watch(open, val => {
+      if (val) {
+        document.addEventListener('pointerdown', closeOnOutsidePress, true);
+      } else {
+        document.removeEventListener('pointerdown', closeOnOutsidePress, true);
+      }
       if (val) {
         nextTick(() => {
           measureMobileTop();
@@ -137,6 +151,7 @@ export default {
     });
     onUnmounted(() => {
       document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnOutsidePress, true);
       window.removeEventListener('resize', measureMobileTop);
     });
 

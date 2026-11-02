@@ -25,7 +25,7 @@
     </div>
 
     <div class="np-tiles">
-      <div v-for="(t, i) in tiles" :key="t.key" class="tile" :style="{ '--k': i, '--tc': t.color }">
+      <div v-for="(t, i) in tiles" :key="t.key" class="tile" :class="{ 'tile-detail': ['rtt', 'jit', 'loss', 'spd'].includes(t.key) }" :style="{ '--k': i, '--tc': t.color }">
         <span class="ti"><icons :name="t.icon" class="w-3.5 h-3.5" /></span>
         <span class="tx"><small>{{ t.label }}</small><b>{{ t.value }}</b></span>
       </div>
@@ -174,5 +174,7 @@ export default {
 html.dark .tile b { color: #e2e8f0; }
 @keyframes np-tile { from { opacity: 0; transform: translateY(8px) scale(0.96); } }
 .np-tip { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0; font-size: 0.72rem; line-height: 1.4; color: #64748b; } .np-tip svg { flex: none; margin-top: 1px; color: var(--sig); }
+/* on a phone the four measurements (answer time, steadiness, lost requests, speed class) are left out so the whole window fits; the score and the connection tile still tell the story */
+@media (max-width: 639.98px) { .tile-detail { display: none; } }
 @media (prefers-reduced-motion: reduce) { .np *, .np { animation: none !important; } }
 </style>
