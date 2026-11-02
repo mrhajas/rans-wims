@@ -2244,12 +2244,26 @@ html:not(.dark) .app-shell.wims-float-dash .dashboard-liquid .hero-clock {
     margin-bottom: 0;
     padding: 0;
     box-shadow: 0 8px 12px -6px rgba(13, 22, 53, 0.6), 0 3px 6px -3px rgba(13, 22, 53, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: width 0.25s ease, height 0.25s ease;
   }
   .rail-collapsed .rail-brand { width: auto; }
   .rail-collapsed .rail-brand-logo { display: none; }
   .rail-collapsed .rail-brand-mark { display: block; }
+
+  /* Collapsing / expanding the Classic menu: the logo card glides between its two shapes in step with the menu column, and the emblem or the
+     full logo fades in as it lands. (The same easing and length as the column in AdminLayout.) */
+  .liquid-side-rail.rail-full {
+    overflow: hidden;
+    transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1), min-width 0.42s cubic-bezier(0.22, 1, 0.36, 1), height 0.42s cubic-bezier(0.22, 1, 0.36, 1), margin-bottom 0.42s cubic-bezier(0.22, 1, 0.36, 1), padding 0.42s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.42s ease;
+  }
+  .liquid-side-rail.rail-full .rail-brand-logo,
+  .liquid-side-rail.rail-full.rail-collapsed .rail-brand-mark { animation: rail-brand-in 0.45s ease both; }
 }
+@keyframes rail-brand-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .liquid-side-rail.rail-full, .liquid-side-rail.rail-full .rail-brand-logo, .liquid-side-rail.rail-full .rail-brand-mark { transition: none; animation: none; } }
+
+/* The column that holds the Classic menu: it only clips while it glides to its new width (so the shadow of the floating menu is not cut off the rest of the time). */
+.cmenu-host { flex: none; min-width: 0; }
+.cmenu-host.is-animating { clip-path: inset(-80px 0 -80px -80px); }
 
 /*
  * Compact desktop scale. On screens 1024px and wider the whole interface renders at 85.05% (the 81% look, enlarged by 5%) - exactly the look of
@@ -2645,10 +2659,29 @@ html.dark .lg-scan input { background-color: #0f172a; color: #e2e8f0; }
   animation: dash-soft-glow 8s ease-in-out infinite;
 }
 @keyframes dash-soft-glow {
-  0%, 100% { box-shadow: 0 0 32px 6px rgba(96, 165, 250, 0.7), 0 0 80px 22px rgba(96, 165, 250, 0.38), 0 18px 40px -18px rgba(37, 99, 235, 0.45); }
-  25% { box-shadow: 0 0 36px 8px rgba(34, 211, 238, 0.7), 0 0 86px 24px rgba(34, 211, 238, 0.36), 0 18px 40px -18px rgba(8, 145, 178, 0.4); }
-  50% { box-shadow: 0 0 32px 6px rgba(167, 139, 250, 0.7), 0 0 80px 22px rgba(167, 139, 250, 0.38), 0 18px 40px -18px rgba(109, 40, 217, 0.4); }
-  75% { box-shadow: 0 0 36px 8px rgba(52, 211, 153, 0.65), 0 0 86px 24px rgba(52, 211, 153, 0.34), 0 18px 40px -18px rgba(4, 120, 87, 0.4); }
+  0%, 100% { box-shadow: 0 0 26px 2px rgba(96, 165, 250, 0.3), 0 0 64px 14px rgba(96, 165, 250, 0.15), 0 14px 32px -18px rgba(37, 99, 235, 0.3); }
+  25% { box-shadow: 0 0 28px 3px rgba(34, 211, 238, 0.3), 0 0 68px 15px rgba(34, 211, 238, 0.14), 0 14px 32px -18px rgba(8, 145, 178, 0.28); }
+  50% { box-shadow: 0 0 26px 2px rgba(167, 139, 250, 0.3), 0 0 64px 14px rgba(167, 139, 250, 0.15), 0 14px 32px -18px rgba(109, 40, 217, 0.28); }
+  75% { box-shadow: 0 0 28px 3px rgba(52, 211, 153, 0.28), 0 0 68px 15px rgba(52, 211, 153, 0.13), 0 14px 32px -18px rgba(4, 120, 87, 0.28); }
+}
+/* a thin bright line that travels around the edge of the greeting card (the glow above is the soft part, this is the sharp part) */
+@property --hero-edge { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes hero-edge-spin { to { --hero-edge: 360deg; } }
+.dashboard-liquid .hero-card.sky-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  background: conic-gradient(from var(--hero-edge), transparent 0deg, transparent 250deg, rgba(255, 255, 255, 0.35) 300deg, rgba(255, 255, 255, 0.95) 340deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: hero-edge-spin 6.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-liquid .hero-card.sky-card::after { animation: none; opacity: 0.5; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dashboard-liquid .hero-card { animation: none; }

@@ -488,7 +488,6 @@ html.dark .app-shell.wims-float:not(.wims-pro) { background: linear-gradient(158
     margin-bottom: 0;
     padding: 0;
     box-shadow: 0 8px 12px -6px rgba(0, 0, 0, 0.8), 0 3px 6px -3px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: width 0.25s ease, height 0.25s ease;
   }
   /* no hard lines between the icons of the collapsed menu (light mode shows none either) */
   html.dark .app-shell.wims-float:not(.wims-pro) .liquid-mini-sidebar .liquid-icon-item { border-bottom-color: transparent; }

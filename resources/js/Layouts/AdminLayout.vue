@@ -65,8 +65,11 @@
           </div>
         </div>
         <div v-else class="md:flex md:grow md:items-stretch" :class="$page.props.settings.sidebar != 'mini' ? 'overflow-hidden' : 'pt'">
-          <mini-main-menu v-if="sidebarHidden || $page.props.settings.sidebar == 'mini'" class="hidden nav:grid print:hidden ondark" />
-          <full-main-menu v-else class="hidden nav:grid print:hidden ondark" />
+          <!-- the host animates its own width when the menu collapses or expands, so the page glides instead of jumping -->
+          <div ref="menuHost" class="cmenu-host hidden nav:flex print:hidden">
+            <mini-main-menu v-if="sidebarHidden || $page.props.settings.sidebar == 'mini'" key="mini" class="hidden nav:grid print:hidden ondark" />
+            <full-main-menu v-else key="full" class="hidden nav:grid print:hidden ondark" />
+          </div>
 
           <!-- Off-canvas mobile/tablet drawer (below the `nav` breakpoint) -->
           <!-- a faint handle on the left edge: swipe from it to the right to open the menu (phones and tablets) -->
@@ -343,9 +346,27 @@ export default {
       proDockCollapse(this.sidebarHidden);
     },
     toggleSidebar() {
+      // Classic menu: remember how wide the menu column is now, swap, then glide the column to its new width (the logo card and the top bar
+      // glide in step through their own CSS transitions, the page beside it follows because it is a flex neighbour)
+      const host = !this.proMenu && !this.glass ? this.$refs.menuHost : null;
+      const from = host ? host.getBoundingClientRect().width : 0;
       this.sidebarHidden = !this.sidebarHidden;
       try { window.localStorage.setItem(this.sidebarKey(), this.sidebarHidden ? '1' : '0'); } catch (e) { /* no storage */ }
       proDockCollapse(this.sidebarHidden);
+      if (!host || !from || !host.animate) return;
+      let reduced = false;
+      try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* no matchMedia */ }
+      if (reduced) return;
+      this.$nextTick(() => {
+        const to = host.getBoundingClientRect().width;
+        if (!to || Math.abs(to - from) < 2) return;
+        host.classList.add('is-animating');
+        const a = host.animate([{ width: from + 'px' }, { width: to + 'px' }], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+        const done = () => host.classList.remove('is-animating');
+        a.onfinish = done;
+        a.oncancel = done;
+        setTimeout(done, 600); // in case the browser never reports the end (a hidden tab)
+      });
     },
     toggleRauncher() {
       this.rauncherOpen = !this.rauncherOpen;

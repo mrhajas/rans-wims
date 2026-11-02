@@ -435,6 +435,9 @@ html.dark .app-shell.wims-glass :is(input:not([type='checkbox']):not([type='radi
 /* the top bar: its pills, buttons and the profile menu */
 html:not(.dark) .app-shell.wims-glass .liquid-side-rail + div :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) { background-color: rgba(255, 255, 255, 0.42) !important; border-color: rgba(255, 255, 255, 0.85); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7); }
 html.dark .app-shell.wims-glass .liquid-side-rail + div :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) { background-color: rgba(255, 255, 255, 0.08) !important; border-color: rgba(255, 255, 255, 0.14); }
+/* WIMS Online (the signal window in the top bar) stays 90% solid on the Glass screen, so the page behind it cannot show through its writing */
+html:not(.dark) .app-shell.wims-glass .liquid-side-rail + div .wo-shell { background-color: rgba(255, 255, 255, 0.9) !important; }
+html.dark .app-shell.wims-glass .liquid-side-rail + div .wo-shell { background-color: rgba(15, 23, 42, 0.9) !important; }
 html:not(.dark) .app-shell.wims-glass .liquid-side-rail + div .pm { background: rgba(255, 255, 255, 0.72); }
 html.dark .app-shell.wims-glass .liquid-side-rail + div .pm { background: rgba(15, 23, 42, 0.72); }
 .app-shell.wims-glass .liquid-side-rail + div .pm { -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-radius: 22px; }
