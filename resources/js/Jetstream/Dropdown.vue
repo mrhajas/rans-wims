@@ -7,14 +7,7 @@
     <!-- Full Screen Dropdown Overlay -->
     <div v-show="open" class="fixed inset-0 z-[90]" @click="open = false"></div>
 
-    <transition
-      enter-active-class="transition ease-out duration-200"
-      enter-from-class="transform opacity-0 scale-95"
-      enter-to-class="transform opacity-100 scale-100"
-      leave-active-class="transition ease-in duration-75"
-      leave-from-class="transform opacity-100 scale-100"
-      leave-to-class="transform opacity-0 scale-95"
-    >
+    <transition name="tdd">
       <div
         v-show="open"
         ref="panelEl"
@@ -23,7 +16,7 @@
         :class="[effectiveWidthClass, positionClasses]"
         class="z-[100] rounded-xl shadow-xl"
       >
-        <div class="rounded-xl border border-slate-100 overflow-hidden flex flex-col max-h-full" :class="contentClasses">
+        <div class="tdd-body rounded-xl border border-slate-100 overflow-hidden flex flex-col max-h-full" :class="contentClasses">
           <slot name="content"></slot>
         </div>
       </div>

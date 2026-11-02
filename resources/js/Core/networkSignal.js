@@ -1,7 +1,7 @@
 // How good the connection of this device is right now, as a percentage that follows what is measured: the time a tiny request to WIMS takes to come back (and how much that time
 // jumps about), how many requests are lost, and what the browser says about the link (speed class, and, where the browser tells, Wi-Fi / cable / mobile data).
 // Nothing is guessed from the picture of the icon: the number is the measurement. The request is the same cheap health call WIMS already makes every minute; it is sent every
-// 15 seconds while the page is in front, every 3 seconds while the status window is open, and not at all while the tab is hidden.
+// 15 seconds while the page is in front, every 2 seconds while the status window is open, and not at all while the tab is hidden.
 import { reactive } from 'vue';
 
 export const net = reactive({
@@ -14,7 +14,10 @@ export const net = reactive({
   type: 'unknown', // 'wifi' | 'ethernet' | 'cellular' | 'other' | 'unknown'
   samples: [], // last answer times (null = lost)
   level: 'unknown', // excellent | good | fair | weak | poor | offline | unknown
+  trend: 'flat', // 'up' (getting stronger) | 'down' (getting weaker) | 'flat'
+  changedAt: 0, // when the level last changed (the window flashes)
 });
+const pHist = [];
 
 const KEEP = 24;
 let timer = null;
@@ -42,9 +45,11 @@ function readLink() {
 }
 
 function compute() {
-  const ok = net.samples.filter(v => typeof v === 'number');
-  const lost = net.samples.length - ok.length;
-  net.loss = net.samples.length ? Math.round((lost / net.samples.length) * 100) : 0;
+  // while the status window is open only the last few answers count, so the reading follows the person as they walk closer to or away from the router
+  const win = fast > 0 ? net.samples.slice(-6) : net.samples;
+  const ok = win.filter(v => typeof v === 'number');
+  const lost = win.length - ok.length;
+  net.loss = win.length ? Math.round((lost / win.length) * 100) : 0;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     net.percent = 0;
     net.level = 'offline';
@@ -67,7 +72,16 @@ function compute() {
   p -= net.loss * 0.7;
   if (net.downlink !== null && net.downlink < 1) p -= (1 - net.downlink) * 12;
   net.percent = Math.max(0, Math.min(100, Math.round(p)));
+  const before = net.level;
   net.level = net.percent >= 85 ? 'excellent' : net.percent >= 65 ? 'good' : net.percent >= 45 ? 'fair' : net.percent >= 25 ? 'weak' : 'poor';
+  if (before !== net.level && before !== 'unknown') net.changedAt = Date.now();
+  // getting stronger or weaker: the latest reading against the average of the three before it
+  if (pHist.length >= 3) {
+    const prev = pHist.slice(-3).reduce((a, b) => a + b, 0) / 3;
+    net.trend = net.percent - prev > 4 ? 'up' : net.percent - prev < -4 ? 'down' : 'flat';
+  }
+  pHist.push(net.percent);
+  if (pHist.length > 8) pHist.shift();
 }
 
 async function ping() {
@@ -92,7 +106,7 @@ function schedule() {
   timer = setTimeout(async () => {
     if (typeof document === 'undefined' || !document.hidden) await ping();
     schedule();
-  }, fast > 0 ? 3000 : 15000);
+  }, fast > 0 ? 2000 : 15000);
 }
 
 /** Starts measuring (once). */
