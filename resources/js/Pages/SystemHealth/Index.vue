@@ -4,9 +4,11 @@
       <page-header icon="chart-pie" :title="$t('System Health')" :subtitle="$t('How WIMS and your connection are doing right now')">
         <div class="sh-actions">
           <span class="sh-live" :class="{ 'is-busy': busy }"><i></i>{{ busy ? $t('Reading...') : $t('Updated') + ' ' + ago }}</span>
-          <button type="button" class="sh-btn is-blue" :disabled="busy" @click="load(true)"><span class="sh-btn-ic"><icons name="refresh" class="w-4 h-4" :class="{ 'sh-spin': busy }" /></span>{{ $t('Refresh') }}</button>
-          <button v-if="canOptimize" type="button" class="sh-btn is-amber" @click="openOptimize"><span class="sh-btn-ic"><icons name="sparkles" class="w-4 h-4" /></span>{{ $t('Optimize All') }}</button>
-          <button type="button" class="sh-btn is-violet" @click="openReport"><span class="sh-btn-ic"><icons name="send" class="w-4 h-4" /></span>{{ $t('Send Report') }}</button>
+          <div class="sh-btns">
+            <button type="button" class="sh-btn is-blue" :disabled="busy" :aria-label="$t('Refresh')" @click="load(true)"><span class="sh-btn-ic"><icons name="refresh" class="w-4 h-4" :class="{ 'sh-spin': busy }" /></span><span class="sh-lbl is-hide-sm">{{ $t('Refresh') }}</span></button>
+            <button v-if="canOptimize" type="button" class="sh-btn is-amber" @click="openOptimize"><span class="sh-btn-ic"><icons name="sparkles" class="w-4 h-4" /></span><span class="sh-lbl">{{ $t('Optimize All') }}</span></button>
+            <button type="button" class="sh-btn is-violet" @click="openReport"><span class="sh-btn-ic"><icons name="send" class="w-4 h-4" /></span><span class="sh-lbl">{{ $t('Send Report') }}</span></button>
+          </div>
         </div>
       </page-header>
 
@@ -598,7 +600,7 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-na { font-size: 0.82rem; color: var(--mute); }
 .sh-note { font-size: 0.76rem; color: var(--mute); margin-top: 0.5rem; }
 .sh-spin { animation: sh-rot 0.9s linear infinite; } .sh-pulse-ic { animation: sh-beat 0.8s ease-in-out infinite; }
-.sh-actions { display: flex; align-items: center; gap: 0.55rem; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; padding: 0.35rem 0.2rem 0.85rem; scrollbar-width: none; } .sh-actions::-webkit-scrollbar { display: none; } .sh-actions > * { flex: none; }
+.sh-actions { display: flex; align-items: center; gap: 0.55rem; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; padding: 0.35rem 0.2rem 0.85rem; scrollbar-width: none; } .sh-actions::-webkit-scrollbar { display: none; } .sh-actions > * { flex: none; } .sh-btns { display: flex; align-items: center; gap: 0.55rem; }
 .sh-live { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.74rem; font-weight: 700; color: var(--mute); }
 .sh-live i { width: 0.55rem; height: 0.55rem; border-radius: 999px; background: var(--ok); animation: sh-ping 2s infinite; } .sh-live.is-busy i { background: var(--warn); }
 
@@ -756,6 +758,6 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 @keyframes sh-fly { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(4px, -4px); } }
 @keyframes sh-pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
 @media (max-width: 960px) { .sh-over { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .sh-actions { gap: 0.4rem; } .sh-actions .sh-btn { padding: 0.32rem 0.6rem 0.32rem 0.32rem; font-size: 0.72rem; gap: 0.35rem; } .sh-actions .sh-btn-ic { width: 1.4rem; height: 1.4rem; } .sh-live { font-size: 0.66rem; } .sh-orb { flex-direction: column; text-align: center; } .sh-tally { justify-content: center; } .sh-facts { grid-template-columns: repeat(2, 1fr); } .sh-grid { grid-template-columns: 1fr; } .sh-bar-row { grid-template-columns: 5.5rem 1fr auto; } .sh-ring-wrap { width: 8.4rem; } }
+@media (max-width: 560px) { .sh-actions { flex-wrap: wrap; overflow: visible; width: 100%; gap: 0.35rem; padding: 0.2rem 0 0.7rem; } .sh-live { flex: 1 1 100%; font-size: 0.68rem; } .sh-btns { flex: 1 1 100%; gap: 0.4rem; width: 100%; } .sh-btns .sh-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding: 0.32rem 0.4rem 0.32rem 0.32rem; font-size: 0.72rem; gap: 0.3rem; white-space: nowrap; } .sh-btns .sh-btn:first-child { flex: 0 0 auto; padding-right: 0.32rem; } .sh-btns .sh-btn-ic { width: 1.4rem; height: 1.4rem; flex: none; } .is-hide-sm { display: none; } .sh-lbl { overflow: hidden; text-overflow: ellipsis; } .sh-orb { flex-direction: column; text-align: center; } .sh-tally { justify-content: center; } .sh-facts { grid-template-columns: repeat(2, 1fr); } .sh-grid { grid-template-columns: 1fr; } .sh-bar-row { grid-template-columns: 5.5rem 1fr auto; } .sh-ring-wrap { width: 8.4rem; } }
 @media (prefers-reduced-motion: reduce) { .sh-live i, .sh-spin, .sh-pulse-ic, .sh-skel, .sh-btn::after, .sh-orb::after, .sh-ring-orbit, .sh-orbit-dots, .sh-radiate i, .sh-bar i::after, .sh-batt-stripes, .sh-bolt, .sh-radar-sweep, .sh-blip, .sh-tally i, .sh-modal-card { animation: none !important; } .sh-ring-fg, .sh-arc-fg, .sh-seg, .sh-bar i, .sh-batt-fill, .sh-battery-fill, .sh-btn { transition: none; } .sh-ecg polyline { stroke-dashoffset: 0; } }
 </style>
