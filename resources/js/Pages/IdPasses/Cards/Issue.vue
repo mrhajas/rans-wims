@@ -13,9 +13,11 @@
             <div class="lg-fields">
               <div class="ac-f"><label>{{ $t('Category') }} <b class="wims-req">*</b></label><acct-select v-model="form.category_id" :options="catOptions" :placeholder="$t('Choose...')" /><span class="ac-err">{{ err('category_id') }}</span></div>
               <div class="ac-f"><label>{{ $t('ID number') }}</label>
-                <div class="idi-num"><b>{{ manual ? manualPreview : (cat ? cat.next : '-') }}</b><small v-if="cat && cat.requires_approval" class="lg-subtext">{{ $t('This category needs approval before the card can be printed.') }}</small></div>
-                <label v-if="canNumber" class="ac-check"><input v-model="manual" type="checkbox" />{{ $t('Type the number by hand') }}</label>
-                <input v-if="manual && canNumber" v-model="form.manual_number" inputmode="numeric" :placeholder="$t('Number, for example 17')" /><span class="ac-err">{{ err('number') || err('manual_number') }}</span>
+                <div class="idi-numbox">
+<div class="idi-num"><b>{{ manual ? manualPreview : (cat ? cat.next : '-') }}</b><small v-if="cat && cat.requires_approval" class="lg-subtext">{{ $t('This category needs approval before the card can be printed.') }}</small></div>
+                  <label v-if="canNumber" class="ac-check idi-hand" :class="{ on: manual }"><input v-model="manual" type="checkbox" /><i class="idi-tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" /></svg></i><span>{{ $t('Type the number by hand') }}</span></label>
+                  <transition name="idi-slide"><input v-if="manual && canNumber" v-model="form.manual_number" class="idi-numin" inputmode="numeric" autocomplete="off" :placeholder="$t('Number, for example 17')" /></transition>
+                </div><span class="ac-err">{{ err('number') || err('manual_number') }}</span>
               </div>
             </div>
             <label v-if="info.kind === 'gate' && cat && !cat.pooled" class="idi-stock" :class="{ 'is-on': stock }"><input v-model="stock" type="checkbox" /><span><b>{{ $t('Make several now, not yet for a person') }}</b><small>{{ $t('All are made in the name of :h. Give each one to a person when it is needed.', { h: stockHolder }) }}</small></span></label>
@@ -259,4 +261,16 @@ export default {
 .idi-av-pic { display: block; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; background: var(--bg); position: relative; } .idi-av-pic img { position: absolute; left: 3%; bottom: 0; width: 94%; display: block; }
 .idi-av-name { display: grid; gap: 1px; text-align: center; font-weight: 800; font-size: 0.82rem; } .idi-av-name em { font-style: normal; font-size: 0.68rem; color: #0f766e; font-weight: 700; }
 .idi-stock { display: flex; gap: 12px; align-items: flex-start; margin-top: 14px; padding: 12px 14px; border-radius: 16px; cursor: pointer; background: var(--lg-soft, #f1f5f9); box-shadow: 0 0 0 1px var(--lg-line, #e2e8f0); transition: box-shadow 0.2s, background 0.2s; } .idi-stock.is-on { box-shadow: 0 0 0 2px #d97706; background: rgba(217, 119, 6, 0.07); } .idi-stock span { display: grid; gap: 2px; } .idi-stock small { color: var(--lg-mute, #64748b); }
+.idi-numbox { display: grid; gap: 8px; align-content: start; }
+.ac .ac-f .idi-hand { display: inline-flex; align-items: center; gap: 10px; width: fit-content; min-height: 0; padding: 4px 12px 4px 4px; border-radius: 9999px; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 0.84rem; font-weight: 700; color: var(--lg-ink); transition: background 0.2s; }
+.ac .ac-f .idi-hand:hover { background: rgba(37, 99, 235, 0.08); }
+.ac .ac-f .idi-hand input { position: absolute; opacity: 0; pointer-events: none; width: 1px !important; height: 1px !important; }
+.idi-tick { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 8px; border: 2px solid #94a3b8; background: #fff; box-shadow: inset 0 1px 2px rgba(15, 37, 64, 0.12); transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+.idi-tick svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 18; stroke-dashoffset: 18; transition: stroke-dashoffset 0.28s ease 0.05s; }
+.idi-hand.on .idi-tick { background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-color: #1d4ed8; box-shadow: 0 4px 10px -4px rgba(29, 78, 216, 0.7); animation: idi-pop 0.3s ease; }
+.idi-hand.on .idi-tick svg { stroke-dashoffset: 0; }
+.idi-hand input:focus-visible + .idi-tick { outline: 2px solid #2f8fe6; outline-offset: 2px; }
+@keyframes idi-pop { 40% { transform: scale(1.18); } }
+.idi-slide-enter-active, .idi-slide-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; } .idi-slide-enter-from, .idi-slide-leave-to { opacity: 0; transform: translateY(-6px); }
+@media (prefers-reduced-motion: reduce) { .idi-tick, .idi-tick svg, .idi-hand.on .idi-tick { transition: none; animation: none; } }
 </style>
