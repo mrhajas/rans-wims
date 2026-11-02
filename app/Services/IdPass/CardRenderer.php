@@ -66,6 +66,10 @@ class CardRenderer
             return $path;
         }
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (str_starts_with(basename($path), 'person')) {
+            // the drawn person (a few hundred bytes of vector code) travels inside the card, so showing it needs no extra request
+            return 'data:image/svg+xml;base64,' . base64_encode((string) file_get_contents($path));
+        }
         if ($ext === 'svg' || basename($path) === 'wave.jpg') {
             // the vector logos and the paper texture are files the browser keeps (no copy inside every card)
             return url('/images/idpass/' . basename($path));
@@ -155,9 +159,9 @@ class CardRenderer
                 $h .= self::text($b['text'], 3.0, 26.4, 49.0, 10.0, 'gb', $b['pt'], '#111111', 'center');
             }
         } else {
-            // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows a silhouette
+            // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows the drawn blue person, cropped to fill it
             $photo = self::src($d['photo'], $mode);
-            $frame = $photo !== '' ? self::img($photo, 0, 0, 31.0, 38.75) : self::img(self::src(CardAssets::tinted('icons/user.png', '#ffffff', 540), $mode), 7.0, 7.5, 17.0, 17.0, ['opacity' => 0.9]);
+            $frame = self::img($photo !== '' ? $photo : self::src(CardAssets::art($mode === 'pdf' ? 'person-flat.svg' : 'person.svg'), $mode), 0, 0, 31.0, 38.75);
             $h .= self::box(19.4, 6.1, 31.0, 38.75, ['background' => '#afb3b6', 'border-radius' => 2.9, 'overflow' => 'hidden'], $frame);
             if ($d['template'] === 'staff') {
                 $h .= self::img(self::src(CardAssets::logoUp(), $mode), 5.7, 7.0, 10.4, 27.9);

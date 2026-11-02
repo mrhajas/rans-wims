@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 387.5" width="310" height="387.5">
+  <defs>
+    <linearGradient id="bd" gradientUnits="userSpaceOnUse" x1="237" y1="0" x2="1046" y2="0">
+      <stop offset="0" stop-color="#4b72bd"/><stop offset="0.28" stop-color="#2a3f78"/><stop offset="0.5" stop-color="#213566"/><stop offset="0.72" stop-color="#2a3f78"/><stop offset="1" stop-color="#4b72bd"/>
+    </linearGradient>
+    <linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="245" y1="0" x2="1035" y2="0">
+      <stop offset="0" stop-color="#4a82c8"/><stop offset="0.5" stop-color="#b3d5ee"/><stop offset="1" stop-color="#4a82c8"/>
+    </linearGradient>
+    <radialGradient id="fc" gradientUnits="userSpaceOnUse" cx="730" cy="370" r="320">
+      <stop offset="0" stop-color="#acd0e8"/><stop offset="0.55" stop-color="#7aa7d6"/><stop offset="1" stop-color="#4a74b8"/>
+    </radialGradient>
+    <linearGradient id="hr" gradientUnits="userSpaceOnUse" x1="452" y1="80" x2="825" y2="260">
+      <stop offset="0" stop-color="#1f2f66"/><stop offset="0.55" stop-color="#34559c"/><stop offset="1" stop-color="#4a72bd"/>
+    </linearGradient>
+    <radialGradient id="nk" gradientUnits="userSpaceOnUse" cx="640" cy="598" r="62">
+      <stop offset="0" stop-color="#101a3c"/><stop offset="1" stop-color="#213566"/>
+    </radialGradient>
+  </defs>
+  <rect width="310" height="387.5" fill="#ffffff"/>
+  <!-- drawn on the 1280 x 1024 grid of the supplied icon, then scaled and cropped to the 31 x 38.75 mm photo frame -->
+  <g transform="translate(155 6) scale(0.45) translate(-640 -70)">
+    <path d="M245 845 Q640 990 1035 848 Q640 940 245 845 Z" fill="url(#rim)"/>
+    <path d="M237 770 C237 650 330 612 470 586 C522 574 538 562 538 540 L538 500 L744 500 L744 560 C750 580 792 592 860 610 C990 642 1046 695 1046 775 L1040 842 Q640 945 245 846 Z" fill="url(#bd)"/>
+    <ellipse cx="640" cy="598" rx="62" ry="34" fill="url(#nk)" opacity="0.9"/>
+    <path d="M745 565 C760 585 800 595 860 612 C975 640 1030 690 1040 760 C1028 690 970 650 880 628 C810 610 765 596 745 565 Z" fill="#6b9be0" opacity="0.8"/>
+    <path d="M437 305 Q440 292 456 300 L470 362 Q440 348 437 305 Z" fill="#35559c"/>
+    <path d="M835 305 Q834 292 820 300 L805 362 Q836 348 835 305 Z" fill="#a9cdea"/>
+    <path d="M480 360 C472 250 560 232 640 242 C722 236 800 250 805 356 C792 455 742 570 640 578 C540 570 494 455 480 360 Z" fill="url(#fc)"/>
+    <path d="M538 535 C570 565 610 578 640 578 C690 578 740 548 745 530 C730 558 690 572 640 572 C595 572 560 556 538 535 Z" fill="#b3d5ee"/>
+    <path d="M478 358 C470 285 500 250 522 232 C580 252 640 254 668 246 L680 228 L708 242 L722 256 L746 242 L722 208 C782 236 800 285 805 352 C818 322 826 292 825 255 C830 150 742 78 635 78 C530 78 450 150 452 250 C452 292 462 330 478 358 Z" fill="url(#hr)" stroke="#1e2d62" stroke-width="9" stroke-linejoin="round"/>
+  </g>
+</svg>
