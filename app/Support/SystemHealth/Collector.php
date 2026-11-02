@@ -343,16 +343,38 @@ class Collector
     private static function smsUsage(): array
     {
         if (! Schema::hasTable('wims_connect_logs')) {
-            return ['sent_month' => null, 'failed_month' => null, 'last_at' => null];
+            return ['sent_month' => null, 'failed_month' => null, 'sent_today' => null, 'failed_today' => null, 'last_at' => null];
         }
         $from = now()->startOfMonth();
         $base = DB::table('wims_connect_logs')->where('channel', 'sms')->where('created_at', '>=', $from);
         $sent = (clone $base)->whereIn('status', ['sent', 'delivered'])->count();
         $failed = (clone $base)->whereIn('status', ['failed', 'error'])->count();
+        $today = (clone $base)->where('created_at', '>=', now()->startOfDay());
+        $sentToday = (clone $today)->whereIn('status', ['sent', 'delivered'])->count();
+        $failedToday = (clone $today)->whereIn('status', ['failed', 'error'])->count();
         $last = DB::table('wims_connect_logs')->where('channel', 'sms')->whereIn('status', ['sent', 'delivered'])->max('sent_at');
         $thirty = DB::table('wims_connect_logs')->where('channel', 'sms')->whereIn('status', ['sent', 'delivered'])->where('created_at', '>=', now()->subDays(30))->count();
 
-        return ['sent_month' => $sent, 'failed_month' => $failed, 'sent_30d' => $thirty, 'last_at' => $last ? \Carbon\Carbon::parse($last)->toIso8601String() : null];
+        // the last seven days, one column each (sent and delivered together, failed on its own), for the little chart
+        $week = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = now()->subDays($i);
+            $week[$day->toDateString()] = ['day' => $day->isoFormat('dd'), 'date' => $day->format('d M'), 'sent' => 0, 'failed' => 0];
+        }
+        foreach (DB::table('wims_connect_logs')->where('channel', 'sms')->where('created_at', '>=', now()->subDays(6)->startOfDay())->selectRaw('DATE(created_at) as d, status, COUNT(*) as n')->groupBy('d', 'status')->get() as $r) {
+            $key = (string) $r->d;
+            if (! isset($week[$key])) {
+                continue;
+            }
+            $st = strtolower((string) $r->status);
+            if (in_array($st, ['sent', 'delivered'], true)) {
+                $week[$key]['sent'] += (int) $r->n;
+            } elseif (in_array($st, ['failed', 'error'], true)) {
+                $week[$key]['failed'] += (int) $r->n;
+            }
+        }
+
+        return ['week' => array_values($week), 'sent_month' => $sent, 'failed_month' => $failed, 'sent_today' => $sentToday, 'failed_today' => $failedToday, 'sent_30d' => $thirty, 'last_at' => $last ? \Carbon\Carbon::parse($last)->toIso8601String() : null];
     }
 
     // ---------------------------------------------------------------------------------------------------------------- the person looking, and where they are
@@ -410,12 +432,35 @@ class Collector
     private static function drive(): array
     {
         $client = app(\App\Services\SiteDiary\GoogleDriveClient::class);
-        if (! $client->ready()) {
-            return ['connected' => false, 'provider' => 'Google Drive'];
+        // four honest states: switched off, switched on but not set up, set up but Google refuses it, and working
+        $base = ['provider' => 'Google Drive', 'connected' => false];
+        if (! $client->enabled()) {
+            return $base + ['state' => 'off'];
         }
-        $q = Cache::remember('system-health.drive', 300, fn () => $client->quota());
+        if (! $client->configured()) {
+            return $base + ['state' => 'unconfigured'];
+        }
+        // a refusal is remembered for a minute so the page does not ask Google again on every refresh
+        if ($refused = Cache::get('system-health.drive.refused')) {
+            return $base + $refused;
+        }
+        try {
+            $q = Cache::remember('system-health.drive', 300, fn () => $client->quota());
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            // no answer at all (timeout, no internet) is not the same as Google saying no
+            $failure = preg_match('/cURL error|timed out|resolve host|Connection refused/i', $msg) ? ['state' => 'unreachable'] : ['state' => 'rejected', 'message' => substr($msg, 0, 160)];
+            Cache::put('system-health.drive.refused', $failure, 60);
 
-        return ['connected' => true, 'provider' => 'Google Drive', 'limit_gb' => $q['limit'] !== null ? round($q['limit'] / 1073741824, 1) : null, 'used_gb' => round($q['used'] / 1073741824, 2), 'left_gb' => $q['left'] !== null ? round($q['left'] / 1073741824, 1) : null, 'trash_gb' => round(($q['trash'] ?? 0) / 1073741824, 2)];
+            return $base + $failure;
+        }
+        $gb = fn ($b, $d = 2) => round(($b ?? 0) / 1073741824, $d);
+        $trash = (int) ($q['trash'] ?? 0);
+        $inDrive = (int) ($q['drive'] ?? 0);
+        $files = max(0, $inDrive - $trash);
+        $other = max(0, (int) $q['used'] - $inDrive);
+
+        return ['connected' => true, 'state' => 'ok', 'provider' => 'Google Drive', 'limit_gb' => $q['limit'] !== null ? $gb($q['limit'], 1) : null, 'used_gb' => $gb($q['used']), 'left_gb' => $q['left'] !== null ? $gb($q['left'], 1) : null, 'trash_gb' => $gb($trash), 'files_gb' => $gb($files), 'other_gb' => $gb($other), 'checked_at' => now()->toIso8601String()];
     }
 
     // ---------------------------------------------------------------------------------------------------------------- one rating and what to do, per section
@@ -578,8 +623,21 @@ class Collector
 
     private static function driveSection(?array $drive): array
     {
+        if (is_array($drive) && ($drive['state'] ?? '') === 'rejected') {
+            // Site Diary uploads cannot reach Google while this lasts, so it is a real fault rather than an unknown
+            return self::sec(25, [['text' => __('Reconnect Google Drive in Site Diary settings: Google refused the saved credentials.'), 'route' => 'site-diary.settings']], __('Google refused the Drive credentials.'));
+        }
+        if (is_array($drive) && ($drive['state'] ?? '') === 'unreachable') {
+            return self::sec(null, [], __('This server could not reach Google Drive just now.'));
+        }
+        if (is_array($drive) && ($drive['state'] ?? '') === 'unconfigured') {
+            return self::sec(null, [['text' => __('Finish connecting Google Drive in Site Diary settings.'), 'route' => 'site-diary.settings']], __('Google Drive is switched on but not connected yet.'));
+        }
+        if (is_array($drive) && ($drive['state'] ?? '') === 'off') {
+            return self::sec(null, [], __('Google Drive is switched off for Site Diary.'));
+        }
         if (! is_array($drive) || ! empty($drive['error']) || empty($drive['connected'])) {
-            return self::sec(null, [], __('Google Drive is not connected.'));
+            return self::sec(null, [], __('Google Drive could not be read right now.'));
         }
         if (empty($drive['limit_gb'])) {
             return self::sec(98);

@@ -173,8 +173,20 @@
             </div>
           </div>
           <div v-if="ok(d.sms_usage)" class="sh-split">
-            <div><b>{{ d.sms_usage.sent_month === null ? '--' : fmtNum(d.sms_usage.sent_month) }}</b><small>{{ $t('sent this month') }}</small></div>
-            <div :class="{ 'is-bad': d.sms_usage.failed_month > 0 }"><b>{{ d.sms_usage.failed_month === null ? '--' : fmtNum(d.sms_usage.failed_month) }}</b><small>{{ $t('failed this month') }}</small></div>
+            <component :is="canLogs ? 'Link' : 'div'" v-bind="canLogs ? { href: smsLogs('SENT,DELIVERED', true), title: $t('Open the Delivery Logs') } : {}" class="sh-st"><span class="sh-st-ic"><icons name="send" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.sms_usage.sent_today == null ? '--' : fmtNum(d.sms_usage.sent_today) }}</b><small>{{ $t('Sent today') }}</small></span><icons v-if="canLogs" name="forward" class="sh-st-go w-3 h-3" /></component>
+            <component :is="canLogs ? 'Link' : 'div'" v-bind="canLogs ? { href: smsLogs('FAILED', true), title: $t('Open the Delivery Logs') } : {}" class="sh-st" :class="{ 'is-bad': d.sms_usage.failed_today > 0 }"><span class="sh-st-ic"><icons name="x-circle" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.sms_usage.failed_today == null ? '--' : fmtNum(d.sms_usage.failed_today) }}</b><small>{{ $t('Failed today') }}</small></span><icons v-if="canLogs" name="forward" class="sh-st-go w-3 h-3" /></component>
+            <component :is="canLogs ? 'Link' : 'div'" v-bind="canLogs ? { href: smsLogs('SENT,DELIVERED', false), title: $t('Open the Delivery Logs') } : {}" class="sh-st"><span class="sh-st-ic"><icons name="check-double" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.sms_usage.sent_month == null ? '--' : fmtNum(d.sms_usage.sent_month) }}</b><small>{{ $t('Sent this month') }}</small></span><icons v-if="canLogs" name="forward" class="sh-st-go w-3 h-3" /></component>
+            <component :is="canLogs ? 'Link' : 'div'" v-bind="canLogs ? { href: smsLogs('FAILED', false), title: $t('Open the Delivery Logs') } : {}" class="sh-st" :class="{ 'is-bad': d.sms_usage.failed_month > 0 }"><span class="sh-st-ic"><icons name="exclamation" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.sms_usage.failed_month == null ? '--' : fmtNum(d.sms_usage.failed_month) }}</b><small>{{ $t('Failed this month') }}</small></span><icons v-if="canLogs" name="forward" class="sh-st-go w-3 h-3" /></component>
+          </div>
+          <div v-if="ok(d.sms_usage) && d.sms_usage.week" class="sh-week" role="img" :aria-label="$t('SMS sent and failed in the last 7 days')">
+            <div class="sh-week-h"><icons name="chart-bar" class="w-4 h-4" />{{ $t('Last 7 days') }}<span class="sh-week-key"><i class="is-ok"></i>{{ $t('Sent') }}<i class="is-bad"></i>{{ $t('Failed') }}</span></div>
+            <div class="sh-week-cols">
+              <div v-for="w in d.sms_usage.week" :key="w.date" class="sh-week-col" :title="w.date + ': ' + w.sent + ' ' + $t('sent') + ', ' + w.failed + ' ' + $t('failed')">
+                <span class="sh-week-n">{{ w.sent + w.failed }}</span>
+                <div class="sh-week-bar"><i class="is-bad" :style="{ height: ready ? w.failed / smsWeekMax * 100 + '%' : '0%' }"></i><i class="is-ok" :style="{ height: ready ? w.sent / smsWeekMax * 100 + '%' : '0%' }"></i></div>
+                <small>{{ w.day }}</small>
+              </div>
+            </div>
           </div>
         </health-card>
 
@@ -182,11 +194,38 @@
         <health-card id="drive" icon="drive" :title="$t('Cloud drive space')" :subtitle="$t('Where Site Diary photos and videos go')" :section="driveSection" @action="runAction">
           <template v-if="cloud && cloud.drive">
             <template v-if="cloud.drive.connected">
-              <div class="sh-battery" :class="driveState"><div class="sh-battery-fill" :style="{ width: ready ? drivePct + '%' : '0%' }"><i class="sh-batt-stripes"></i></div><span>{{ cloud.drive.limit_gb ? drivePct + '%' : $t('no limit') }}</span></div>
-              <div class="sh-split"><div><b>{{ cloud.drive.used_gb }} GB</b><small>{{ $t('used on') }} {{ cloud.drive.provider }}</small></div><div><b>{{ cloud.drive.left_gb === null ? $t('no limit') : cloud.drive.left_gb + ' GB' }}</b><small>{{ $t('still free') }}</small></div></div>
+              <!-- the whole drive as a ring: site files, the bin, other Google services, and what is free -->
+              <div class="sh-donut-row">
+                <div class="sh-donut">
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <circle class="sh-ring-bg" cx="60" cy="60" r="46" pathLength="100" />
+                    <circle v-for="g in driveSegs" :key="g.key" class="sh-seg" :class="g.cls" cx="60" cy="60" r="46" pathLength="100" :stroke-dasharray="ready ? g.pct + ' ' + (100 - g.pct) : '0 100'" :stroke-dashoffset="-g.start" transform="rotate(-90 60 60)" />
+                    <circle class="sh-orbit-dots is-slow" cx="60" cy="60" r="55" pathLength="100" />
+                  </svg>
+                  <div class="sh-donut-mid"><b>{{ cloud.drive.limit_gb ? drivePct + '%' : cloud.drive.used_gb + ' GB' }}</b><small>{{ cloud.drive.limit_gb ? $t('used') : $t('no limit') }}</small></div>
+                </div>
+                <ul class="sh-legend sh-legend-icons">
+                  <li class="is-a"><icons name="upload" class="w-3 h-3" />{{ $t('Site Diary and Drive files') }} <b>{{ fmtGb(cloud.drive.files_gb) }}</b></li>
+                  <li class="is-warn"><icons name="archive-box" class="w-3 h-3" />{{ $t('In the bin') }} <b>{{ fmtGb(cloud.drive.trash_gb) }}</b></li>
+                  <li class="is-b"><icons name="users" class="w-3 h-3" />{{ $t('Other Google services') }} <b>{{ fmtGb(cloud.drive.other_gb) }}</b></li>
+                  <li class="is-free"><icons name="collection" class="w-3 h-3" />{{ $t('Still free') }} <b>{{ cloud.drive.left_gb === null ? $t('no limit') : fmtGb(cloud.drive.left_gb) }}</b></li>
+                </ul>
+              </div>
+              <div class="sh-split">
+                <div><span class="sh-st-ic"><icons name="chart-pie" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ fmtGb(cloud.drive.used_gb) }}</b><small>{{ $t('Used on') }} {{ cloud.drive.provider }}</small></span></div>
+                <div><span class="sh-st-ic"><icons name="database" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ cloud.drive.limit_gb ? fmtGb(cloud.drive.limit_gb) : $t('No limit') }}</b><small>{{ $t('Whole drive') }}</small></span></div>
+              </div>
               <p v-if="cloud.drive.trash_gb > 0" class="sh-note">{{ $t(':n GB of it is in the drive bin.', { n: cloud.drive.trash_gb }) }}</p>
             </template>
-            <p v-else class="sh-na">{{ $t('Google Drive is not connected (Site Diary > Settings).') }}</p>
+            <!-- not working: say exactly why, and where to fix it -->
+            <div v-else class="sh-drive-state" :class="'is-' + (cloud.drive.state || 'off')">
+              <span class="sh-ds-ic"><icons :name="['rejected', 'unreachable'].includes(cloud.drive.state) ? 'exclamation' : 'upload'" class="w-6 h-6" /></span>
+              <div class="min-w-0">
+                <b>{{ driveStateTitle }}</b>
+                <p>{{ driveStateText }}</p>
+                <Link v-if="cloud.drive.state !== 'off' || $super" :href="route('site-diary.settings')" class="sh-btn is-blue sh-ds-btn"><span class="sh-btn-ic"><icons name="adjustments" class="w-4 h-4" /></span>{{ $t('Open Site Diary settings') }}</Link>
+              </div>
+            </div>
           </template>
           <template v-else><i class="sh-skel w3"></i><i class="sh-skel w1"></i></template>
           <div class="sh-ghost"><icons name="upload" class="w-4 h-4" />{{ $t('OneDrive: not connected to WIMS') }}</div>
@@ -197,7 +236,7 @@
           <template v-if="ok(d.jobs)">
             <svg viewBox="0 0 240 46" class="sh-ecg" :class="'is-' + beatState" aria-hidden="true"><polyline points="0,26 50,26 62,26 70,8 80,42 90,22 98,26 150,26 162,26 170,8 180,42 190,22 198,26 240,26" /></svg>
             <p class="sh-beat">{{ beatText }}</p>
-            <div class="sh-split"><div :class="{ 'is-warn': d.jobs.pending > 20 }"><b>{{ d.jobs.pending === null ? '--' : d.jobs.pending }}</b><small>{{ $t('waiting in the queue') }}</small></div><div :class="{ 'is-bad': d.jobs.failed > 0 }"><b>{{ d.jobs.failed === null ? '--' : d.jobs.failed }}</b><small>{{ $t('failed jobs') }}</small></div></div>
+            <div class="sh-split"><div :class="{ 'is-warn': d.jobs.pending > 20 }"><span class="sh-st-ic"><icons name="clock" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.jobs.pending === null ? '--' : d.jobs.pending }}</b><small>{{ $t('Waiting in the queue') }}</small></span></div><div :class="{ 'is-bad': d.jobs.failed > 0 }"><span class="sh-st-ic"><icons name="x-circle" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.jobs.failed === null ? '--' : d.jobs.failed }}</b><small>{{ $t('Failed jobs') }}</small></span></div></div>
           </template>
           <p v-else class="sh-na">{{ $t('Not available') }}</p>
           <template v-if="ok(d.backups)">
@@ -217,9 +256,9 @@
               <div class="sh-online"><b>{{ d.people.online_now }}</b><small>{{ $t('people using WIMS now') }}</small><small class="sh-fine">{{ $t(':n active accounts', { n: d.people.active_users }) }}</small></div>
             </div>
             <div class="sh-vs" v-if="d.people.logins_today !== null"><i class="is-ok" :style="{ flexGrow: Math.max(d.people.logins_today, 0.05) }"></i><i class="is-bad" :style="{ flexGrow: d.people.failed_logins_today }"></i></div>
-            <div class="sh-split" v-if="d.people.logins_today !== null"><div><b>{{ d.people.logins_today }}</b><small>{{ $t('sign-ins today') }}</small></div><div :class="{ 'is-warn': d.people.failed_logins_today >= 10 }"><b>{{ d.people.failed_logins_today }}</b><small>{{ $t('failed sign-ins') }}</small></div></div>
+            <div class="sh-split" v-if="d.people.logins_today !== null"><div><span class="sh-st-ic"><icons name="key" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.people.logins_today }}</b><small>{{ $t('Sign-ins today') }}</small></span></div><div :class="{ 'is-warn': d.people.failed_logins_today >= 10 }"><span class="sh-st-ic"><icons name="exclamation" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.people.failed_logins_today }}</b><small>{{ $t('Failed sign-ins') }}</small></span></div></div>
           </template>
-          <div v-if="ok(d.logs)" class="sh-split"><div :class="{ 'is-bad': d.logs.errors_today > 20, 'is-warn': d.logs.errors_today > 0 }"><b>{{ d.logs.errors_today === null ? '--' : d.logs.errors_today }}</b><small>{{ $t('errors logged today') }}</small></div><div v-if="ok(d.slow)" :class="{ 'is-warn': d.slow.pages_24h >= 5 }"><b>{{ d.slow.pages_24h === null ? '--' : d.slow.pages_24h }}</b><small>{{ $t('slow pages, 24 h') }}</small></div></div>
+          <div v-if="ok(d.logs)" class="sh-split"><div :class="{ 'is-bad': d.logs.errors_today > 20, 'is-warn': d.logs.errors_today > 0 }"><span class="sh-st-ic"><icons name="exclamation" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.logs.errors_today === null ? '--' : d.logs.errors_today }}</b><small>{{ $t('Errors logged today') }}</small></span></div><div v-if="ok(d.slow)" :class="{ 'is-warn': d.slow.pages_24h >= 5 }"><span class="sh-st-ic"><icons name="clock" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ d.slow.pages_24h === null ? '--' : d.slow.pages_24h }}</b><small>{{ $t('Slow pages, 24 h') }}</small></span></div></div>
         </health-card>
 
         <!-- licence -->
@@ -335,6 +374,8 @@ export default {
   },
   computed: {
     canOptimize() { return this.$can('run-optimizer'); },
+    // Delivery Logs is a Super Admin page, so the SMS tiles link to it for the Super Admin only
+    canLogs() { return this.$super && this.$can('read-wims-connect'); },
     // ---- ratings
     connSection() {
       if (this.net.percent === null) return { score: null, rating: 'unknown', note: this.$t('Measuring...'), actions: [] };
@@ -429,6 +470,32 @@ export default {
     smsPct() { return this.cloud && this.cloud.sms && this.cloud.sms.ok ? Number(this.cloud.sms.percent || 0) : 0; },
     smsState() { if (!(this.cloud && this.cloud.sms && this.cloud.sms.ok)) return 'is-na'; return this.smsPct < 15 ? 'is-bad' : this.smsPct < 40 ? 'is-warn' : 'is-ok'; },
     drivePct() { const c = this.cloud && this.cloud.drive; return c && c.limit_gb ? Math.min(100, Math.round((c.used_gb / c.limit_gb) * 100)) : 4; },
+    smsWeekMax() { const w = (this.d && this.d.sms_usage && this.d.sms_usage.week) || []; return Math.max(1, ...w.map(x => x.sent + x.failed)); },
+    driveSegs() {
+      const c = this.cloud && this.cloud.drive;
+      if (!c || !c.connected) return [];
+      // with a limit the ring is the whole drive; without one it is split between what is used
+      const whole = c.limit_gb || c.used_gb || 1;
+      const parts = [['files', c.files_gb, 'is-a'], ['bin', c.trash_gb, 'is-warn'], ['other', c.other_gb, 'is-b']];
+      let start = 0;
+      return parts.map(([key, gb, cls]) => {
+        const pct = Math.max(0, Math.min(100 - start, ((gb || 0) / whole) * 100));
+        const seg = { key, cls, pct: Math.round(pct * 10) / 10, start };
+        start += pct;
+        return seg;
+      }).filter(g => g.pct > 0);
+    },
+    driveStateTitle() {
+      const st = this.cloud && this.cloud.drive && this.cloud.drive.state;
+      return st === 'rejected' ? this.$t('Google refused the connection') : st === 'unreachable' ? this.$t('Google Drive could not be reached') : st === 'unconfigured' ? this.$t('Google Drive is switched on, not connected yet') : this.$t('Google Drive is switched off');
+    },
+    driveStateText() {
+      const d = (this.cloud && this.cloud.drive) || {};
+      if (d.state === 'rejected') return this.$t('Site Diary photos and videos cannot be saved to Google Drive until the connection is renewed.') + (d.message ? ' (' + d.message + ')' : '');
+      if (d.state === 'unreachable') return this.$t('This server could not reach Google just now. Check its internet connection; the page tries again in a minute.');
+      if (d.state === 'unconfigured') return this.$t('Finish the sign-in and choose the storage folder in Site Diary settings.');
+      return this.$t('Turn it on in Site Diary settings to keep photos and videos in Google Drive.');
+    },
     driveState() { const p = this.drivePct; return this.cloud.drive.limit_gb ? (p > 90 ? 'is-bad' : p > 75 ? 'is-warn' : 'is-ok') : 'is-ok'; },
     beatState() { const j = this.d.jobs; if (!j || j.scheduler_minutes_ago === null) return 'na'; return j.scheduler_minutes_ago <= 3 ? 'ok' : j.scheduler_minutes_ago <= 15 ? 'warn' : 'bad'; },
     beatText() { const j = this.d.jobs; if (j.scheduler_minutes_ago === null) return this.$t('No heartbeat seen yet from the scheduler (cron).'); return j.scheduler_minutes_ago <= 1 ? this.$t('The scheduler is beating: last beat under a minute ago.') : this.$t('The scheduler last beat :m minutes ago.', { m: j.scheduler_minutes_ago }); },
@@ -461,9 +528,16 @@ export default {
     watchNetworkClosely(false);
   },
   methods: {
+    // the Delivery Logs list, already filtered to SMS and to the status (and the day) the tile counts
+    smsLogs(status, today) {
+      const q = { channel: 'sms', status };
+      if (today) { const d = new Date(); const p = n => String(n).padStart(2, '0'); q.date_from = q.date_to = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+      return this.route('wims-connect.logs.index', q);
+    },
     sec(k) { return (this.d.sections || {})[k] || null; },
     ratingLabel(r) { return { excellent: this.$t('Excellent'), very_good: this.$t('Very Good'), good: this.$t('Good'), fair: this.$t('Fair'), bad: this.$t('Bad'), unknown: this.$t('Not rated') }[r]; },
     ok(x) { return x && !x.error; },
+    fmtGb(v) { return v == null ? '--' : (v >= 100 ? Math.round(v) : v) + ' GB'; },
     ringDash(p) { const v = Math.max(0, Math.min(100, p || 0)); return v + ' ' + (100 - v); },
     tick(p, r) { const a = Math.PI * (1 - p / 100); return { x: 90 + Math.cos(a) * r, y: 92 - Math.sin(a) * r }; },
     fmtMb(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB'; },
@@ -707,7 +781,19 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 .sh-bolt { animation: sh-bolt 1.6s ease-in-out infinite; }
 .sh-batt-cap { width: 0.55rem; height: 1.7rem; margin-left: 2px; border-radius: 0 0.4rem 0.4rem 0; background: color-mix(in srgb, var(--bc) 70%, var(--line)); }
 .sh-batt-info { min-width: 7rem; } .sh-big { display: block; font-size: 1.7rem; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; } .sh-big.is-na { color: var(--na); } .sh-batt-info small { display: block; font-size: 0.76rem; color: var(--mute); font-weight: 700; } .sh-fine { font-size: 0.68rem !important; font-weight: 600 !important; }
-.sh-split { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; margin-top: 0.8rem; } .sh-split div { padding: 0.55rem 0.7rem; border-radius: 0.8rem; background: var(--track); } .sh-split b { display: block; font-size: 1.15rem; font-weight: 900; font-variant-numeric: tabular-nums; } .sh-split small { font-size: 0.68rem; color: var(--mute); font-weight: 700; } .sh-split .is-bad b { color: var(--bad); } .sh-split .is-warn b { color: var(--warn); }
+.sh-split { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; margin-top: 0.8rem; } .sh-split > div, .sh-split > a { display: flex; align-items: center; gap: 0.6rem; min-width: 0; padding: 0.55rem 0.7rem; border-radius: 0.8rem; background: var(--track); color: inherit; text-decoration: none; }
+.sh-split > a { transition: transform 0.2s ease, box-shadow 0.2s ease; } .sh-split > a:hover { transform: translateY(-2px); box-shadow: 0 10px 18px -12px rgba(15, 23, 42, 0.5); } .sh-split > a:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+.sh-st-ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.65rem; color: var(--a); background: color-mix(in srgb, var(--a) 14%, transparent); } .sh-split .is-bad .sh-st-ic { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); } .sh-split .is-warn .sh-st-ic { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.sh-st-tx { min-width: 0; flex: 1; } .sh-st-go { flex: none; color: var(--mute); opacity: 0.7; }
+.sh-split b { display: block; font-size: 1.15rem; font-weight: 900; font-variant-numeric: tabular-nums; } .sh-split small { font-size: 0.68rem; color: var(--mute); font-weight: 700; } .sh-split .is-bad b { color: var(--bad); } .sh-split .is-warn b { color: var(--warn); }
+.sh-legend.sh-legend-icons li { justify-content: flex-start; align-items: center; gap: 0.4rem; } .sh-legend.sh-legend-icons li::before { display: none; } .sh-legend-icons b { margin-left: auto; padding-left: 0.4rem; } .sh-legend-icons svg { flex: none; }
+.sh-legend-icons .is-a svg { color: var(--a); } .sh-legend-icons .is-warn svg { color: var(--warn); } .sh-legend-icons .is-b svg { color: var(--b); } .sh-legend-icons .is-free svg { color: var(--mute); }
+.sh-drive-state { display: flex; gap: 0.9rem; align-items: flex-start; padding: 0.9rem; border-radius: 1rem; background: var(--track); border: 1.5px solid var(--line); } .sh-drive-state b { display: block; font-size: 0.95rem; font-weight: 900; } .sh-drive-state p { margin: 0.25rem 0 0.7rem; font-size: 0.78rem; color: var(--mute); font-weight: 600; overflow-wrap: anywhere; }
+.sh-ds-ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 1rem; color: var(--na); background: color-mix(in srgb, var(--na) 16%, transparent); } .sh-drive-state.is-rejected { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); } .sh-drive-state.is-rejected .sh-ds-ic { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); } .sh-drive-state.is-unreachable .sh-ds-ic, .sh-drive-state.is-unconfigured .sh-ds-ic { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.sh-ds-btn { display: inline-flex; text-decoration: none; }
+.sh-week { margin-top: 0.8rem; padding: 0.65rem 0.75rem 0.5rem; border-radius: 0.9rem; background: var(--track); } .sh-week-h { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; font-weight: 800; color: var(--mute); } .sh-week-key { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.66rem; } .sh-week-key i { width: 0.55rem; height: 0.55rem; border-radius: 3px; margin-left: 0.4rem; } .sh-week-key i.is-ok, .sh-week-bar i.is-ok { background: var(--ok); } .sh-week-key i.is-bad, .sh-week-bar i.is-bad { background: var(--bad); }
+.sh-week-cols { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.35rem; margin-top: 0.5rem; } .sh-week-col { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; min-width: 0; } .sh-week-n { font-size: 0.66rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); } .sh-week-col small { font-size: 0.64rem; font-weight: 700; color: var(--mute); }
+.sh-week-bar { width: 100%; max-width: 1.6rem; height: 3.6rem; display: flex; flex-direction: column; justify-content: flex-end; border-radius: 0.4rem; overflow: hidden; background: color-mix(in srgb, var(--mute) 12%, transparent); } .sh-week-bar i { display: block; width: 100%; min-height: 0; transition: height 1.1s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .sh-battery { position: relative; height: 2.8rem; border-radius: 0.8rem; border: 2px solid var(--line); background: var(--track); overflow: hidden; --bc: var(--a); } .sh-battery.is-warn { --bc: var(--warn); } .sh-battery.is-bad { --bc: var(--bad); }
 .sh-battery-fill { position: relative; height: 100%; background: linear-gradient(180deg, color-mix(in srgb, var(--bc) 80%, #fff), var(--bc)); transition: width 1.6s cubic-bezier(0.2, 0.8, 0.2, 1); overflow: hidden; }
 .sh-battery span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.9rem; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }

@@ -82,6 +82,8 @@ class ReportBuilder
         }
         if ($ok($core['sms_usage'] ?? null)) {
             $u = $core['sms_usage'];
+            $rows[] = [__('Sent today'), (string) ($u['sent_today'] ?? '--')];
+            $rows[] = [__('Failed today'), (string) ($u['failed_today'] ?? '--')];
             $rows[] = [__('Sent this month'), (string) ($u['sent_month'] ?? '--')];
             $rows[] = [__('Failed this month'), (string) ($u['failed_month'] ?? '--')];
             $rows[] = [__('Last sent'), $u['last_at'] ? \Carbon\Carbon::parse($u['last_at'])->format('d M Y H:i') : '--'];
@@ -92,9 +94,10 @@ class ReportBuilder
         $dr = $cloud['drive'] ?? null;
         $rows = [];
         if ($ok($dr) && ! empty($dr['connected'])) {
-            $rows = [[__('Provider'), $dr['provider']], [__('Used'), $dr['used_gb'] . ' GB' . ($dr['limit_gb'] ? ' of ' . $dr['limit_gb'] . ' GB' : '')], [__('Still free'), $dr['left_gb'] === null ? __('no limit') : $dr['left_gb'] . ' GB'], [__('In the bin'), $dr['trash_gb'] . ' GB']];
+            $rows = [[__('Provider'), $dr['provider']], [__('Used'), $dr['used_gb'] . ' GB' . ($dr['limit_gb'] ? ' of ' . $dr['limit_gb'] . ' GB' : '')], [__('Still free'), $dr['left_gb'] === null ? __('no limit') : $dr['left_gb'] . ' GB'], [__('Site Diary and Drive files'), ($dr['files_gb'] ?? 0) . ' GB'], [__('In the bin'), $dr['trash_gb'] . ' GB'], [__('Other Google services'), ($dr['other_gb'] ?? 0) . ' GB']];
         } else {
-            $rows = [[__('Google Drive'), __('not connected')]];
+            $state = $ok($dr) ? ($dr['state'] ?? '') : '';
+            $rows = [[__('Google Drive'), $state === 'rejected' ? __('Google refused the saved credentials') : ($state === 'unconfigured' ? __('switched on, not connected yet') : ($state === 'off' ? __('switched off') : ($state === 'unreachable' ? __('could not be reached just now') : __('not connected'))))]];
         }
         $rows[] = ['OneDrive', __('not connected to WIMS')];
         $c[] = self::part('drive', '☁️', __('Cloud drive space'), $cloud['sections']['drive'] ?? ['rating' => 'unknown', 'score' => null, 'actions' => []], $rows);

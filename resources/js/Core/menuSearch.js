@@ -79,18 +79,38 @@ const PERFORMANCE_ENTRIES = [
   { route: 'performance.index', title: 'Data Retention (months kept)', icon: 'archive-box', hash: '#pf-retention' },
 ];
 
+// WIMS Connect (Super Admin): the pages already come from the menu, these add the names people type for what is inside them
+// (a failed SMS, the delivery logs, bulk SMS) and open the Delivery Logs already filtered
+const WIMS_CONNECT_ENTRIES = [
+  { route: 'wims-connect.logs.index', title: 'WIMS Connect Delivery Logs', icon: 'list', permission: 'read-wims-connect' },
+  { route: 'wims-connect.logs.index', title: 'SMS Delivery Logs', icon: 'sms', suffix: '?channel=sms', permission: 'read-wims-connect' },
+  { route: 'wims-connect.logs.index', title: 'Failed SMS Messages', icon: 'x-circle', suffix: '?channel=sms&status=FAILED', permission: 'read-wims-connect' },
+  { route: 'wims-connect.logs.index', title: 'Failed WhatsApp Messages', icon: 'x-circle', suffix: '?channel=whatsapp&status=FAILED', permission: 'read-wims-connect' },
+  { route: 'wims-connect.logs.index', title: 'Retry Failed Messages (Delivery Logs)', icon: 'refresh', suffix: '?status=FAILED', permission: 'read-wims-connect' },
+  { route: 'wims-connect.logs.index', title: 'Resend a Message (Delivery Logs)', icon: 'send', permission: 'read-wims-connect' },
+  { route: 'wims-connect.index', title: 'WIMS Connect Overview (SMS, WhatsApp, Email)', icon: 'send', permission: 'read-wims-connect' },
+  { route: 'wims-connect.bulk-connect.index', title: 'Send Bulk SMS', icon: 'forward', permission: 'read-wims-connect-bulk-connect' },
+  { route: 'wims-connect.bulk-connect.history.index', title: 'Bulk Connect History', icon: 'clock', permission: 'read-wims-connect-bulk-connect' },
+  { route: 'wims-connect.recipients.index', title: 'WIMS Connect Recipients (Who Receives Messages)', icon: 'users', permission: 'manage-wims-connect' },
+  { route: 'wims-connect.gateways.sms', title: 'SMS Gateway Settings (Beem)', icon: 'sms', permission: 'manage-wims-connect' },
+];
+
 // Launcher visibility mirrors the sidebar and Global Feature Control: a destination whose feature is switched off, or that is limited to
 // roles the person does not hold, is not offered. (Hiding is a convenience only. Every route is still authorised on the server.)
+// Returns false (not offered), true, or 'disabled': a Super Admin still sees a switched-off feature in the sidebar (marked DISABLED), so the
+// Launcher offers it too, with the same mark, instead of making the whole module unfindable.
 function allowedHere(entry, ctx) {
   const features = ctx.features || {};
+  let off = false;
   for (const key of [entry.feature, entry.parentFeature]) {
-    if (key && features[key] === false) return false;
+    if (key && features[key] === false) off = true;
   }
+  if (off && !(ctx.roles || []).includes('Super Admin')) return false;
   const roles = ctx.roles || [];
   for (const need of [entry.roles, entry.parentRoles]) {
     if (need && need.length && !need.some(r => roles.includes(r))) return false;
   }
-  return true;
+  return off ? 'disabled' : true;
 }
 
 function labelFor(entry, t) {
@@ -110,7 +130,8 @@ export function searchMenu(query, ctx) {
   for (const entry of FLAT_ENTRIES) {
     if (entry.admin && !ctx.isAdmin) continue;
     if (!ctx.can(entry.permissions || [])) continue;
-    if (!allowedHere(entry, ctx)) continue;
+    const here = allowedHere(entry, ctx);
+    if (!here) continue;
 
     const title = labelFor(entry, ctx.t);
     const haystack = title.toLowerCase();
@@ -118,7 +139,7 @@ export function searchMenu(query, ctx) {
 
     // a page that lives in a module shows the module in brackets, so the many "... Report" pages can be told apart
     const module = entry.parentEntry ? labelFor(entry.parentEntry, ctx.t) : '';
-    const shown = module && module.toLowerCase() !== title.toLowerCase() ? `${title} (${module})` : title;
+    const shown = (module && module.toLowerCase() !== title.toLowerCase() ? `${title} (${module})` : title) + (here === 'disabled' ? ` [${ctx.t('disabled')}]` : '');
 
     results.push({
       category: 'page',
@@ -179,6 +200,16 @@ export function searchMenu(query, ctx) {
     if (!haystack.includes(q)) continue;
 
     results.push({ category: 'system', label: 'System', icon: entry.icon, title: entry.title, subtitle: '', url: ctx.route(entry.route) + (entry.hash || ''), rank: haystack.startsWith(q) ? 0 : 1 });
+  }
+
+  if ((ctx.roles || []).includes('Super Admin')) {
+    const off = (ctx.features || {}).wims_connect === false ? ` [${ctx.t('disabled')}]` : '';
+    for (const entry of WIMS_CONNECT_ENTRIES) {
+      if (!ctx.can([entry.permission])) continue;
+      const haystack = entry.title.toLowerCase();
+      if (!haystack.includes(q)) continue;
+      results.push({ category: 'system', label: 'WIMS Connect', icon: entry.icon, title: entry.title + off, subtitle: '', url: ctx.route(entry.route) + (entry.suffix || ''), rank: haystack.startsWith(q) ? 0 : 1 });
+    }
   }
 
   if (ctx.isAdmin) {

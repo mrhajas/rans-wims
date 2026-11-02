@@ -221,7 +221,10 @@ export default {
       }));
     },
     statusOptions() {
-      return this.statuses.map(s => ({ value: s, label: s, dotColor: STATUS_COLORS[s] || '#94a3b8' }));
+      const list = this.statuses.map(s => ({ value: s, label: s, dotColor: STATUS_COLORS[s] || '#94a3b8' }));
+      // the System Health SMS tiles count sent and delivered together, so the list can be opened on both at once
+      if (this.filters?.status === 'SENT,DELIVERED') list.push({ value: 'SENT,DELIVERED', label: this.$t('Sent or Delivered'), dotColor: '#22c55e' });
+      return list;
     },
     eventFilterOptions() {
       return this.eventOptions;

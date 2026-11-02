@@ -317,7 +317,7 @@ class WimsConnectLogController extends Controller
         return WimsConnectLog::with('recipient:id,name')
             ->when($filters['channel'] ?? null, fn ($q, $v) => $q->where('channel', $v))
             ->when($filters['event_key'] ?? null, fn ($q, $v) => $q->whereIn('event_key', $this->eventVariants((string) $v)))
-            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['status'] ?? null, fn ($q, $v) => str_contains((string) $v, ',') ? $q->whereIn('status', array_map('trim', explode(',', (string) $v))) : $q->where('status', $v))
             ->when($filters['recipient_user_id'] ?? null, fn ($q, $v) => $q->where('recipient_user_id', $v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '>=', $v))
             ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '<=', $v));
