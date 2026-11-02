@@ -299,7 +299,7 @@
             <tbody>
                 @foreach($insights['stock_health']['critical_items'] as $row)
                     <tr>
-                        <td>{{ $row['item_name'] }} ({{ $row['item_code'] }})</td>
+                        <td>{{ $row['item_name'] }}{{ item_code_html($row['item_code'] ?? '') }}</td>
                         <td>{{ $row['warehouse_name'] }}</td>
                         <td style="text-align:right;"><span class="badge badge-red">{{ number_format($row['quantity'], 2) }}</span></td>
                     </tr>

@@ -208,8 +208,7 @@
                     <td :data-label="$t('Item')" class="tr-item-td">
                       <div class="tr-cell tr-item-line">
                         <div class="min-w-0">
-                          <div class="tr-item-name">{{ row.name }}</div>
-                          <div class="tr-item-code">{{ row.code }}</div>
+                          <div class="tr-item-name"><item-label :name="row.name" :code="row.code" /></div>
                         </div>
                         <button type="button" class="lg-btn tone tr-add-var" style="--tone: #7c3aed" @click="openVariants(row)">
                           <span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Add variation') }}
@@ -254,8 +253,7 @@
                   <td :data-label="$t('Item')" class="tr-item-td">
                     <div class="tr-cell tr-cell-err">
                       <div v-if="rowError(ii, 'item_id')" class="tr-err-msg is-left wims-field-error">{{ rowError(ii, 'item_id') }}</div>
-                      <div class="tr-item-name">{{ row.name }}</div>
-                      <div class="tr-item-code">{{ row.code }}</div>
+                      <div class="tr-item-name"><item-label :name="row.name" :code="row.code" /></div>
                     </div>
                   </td>
                   <td :data-label="$t('Quantity')">
@@ -512,6 +510,7 @@ import { Link } from '@inertiajs/vue3';
 import GatePassAction from '@/Shared/GatePassAction.vue';
 import TransportRouteAction from '@/Shared/TransportRouteAction.vue';
 import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
+import { titleWords, itemText } from '@/Core/textCase';
 import { DEFAULT_SCAN_SHORTCUT, matchesShortcut, formatShortcut } from '@/Shared/Rauncher/shortcut';
 
 let rowSeq = 0;
@@ -1182,13 +1181,13 @@ export default {
       const seen = {};
       this.form.items.forEach((row, ii) => {
         if (row.blank) return;
-        if (seen[row.item_id]) found['items.' + ii + '.item_id'] = this.$t(':item is on the list twice. Keep one row and change its quantity.', { item: row.name });
+        if (seen[row.item_id]) found['items.' + ii + '.item_id'] = titleWords(this.$t(':item is on the list twice. Keep one row and change its quantity.', { item: itemText(row.name, row.code) }));
         seen[row.item_id] = true;
         const positive = n => n !== '' && n !== null && n !== undefined && !isNaN(n) && parseFloat(n) > 0;
         if (this.hasVariations(row)) {
-          if (row.selected.variations.some(v => !positive(v.quantity))) found['items.' + ii + '.quantity'] = this.$t('Every variation of :item needs a quantity greater than 0.', { item: row.name });
+          if (row.selected.variations.some(v => !positive(v.quantity))) found['items.' + ii + '.quantity'] = titleWords(this.$t('Every variation of :item needs a quantity greater than 0.', { item: itemText(row.name, row.code) }));
         } else if (!positive(row.quantity)) {
-          found['items.' + ii + '.quantity'] = this.$t('Enter a quantity greater than 0 for :item.', { item: row.name });
+          found['items.' + ii + '.quantity'] = titleWords(this.$t('Enter a quantity greater than 0 for :item.', { item: itemText(row.name, row.code) }));
         }
       });
       return found;

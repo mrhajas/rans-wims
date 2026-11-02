@@ -102,8 +102,7 @@
                     <Link :href="route('material-reallocations.show', row.material_reallocation_id)" class="mmv-link lg-main">{{ row.reference }}</Link>
                   </td>
                   <td :data-label="$t('Item')">
-                    <div class="lg-main">{{ row.item?.name }}</div>
-                    <div v-if="row.item?.code" class="lg-subtext lg-mono">{{ row.item.code }}</div>
+                    <div class="lg-main"><item-label :name="row.item?.name || ''" :code="row.item?.code || ''" /></div>
                   </td>
                   <td :data-label="$t('Source Warehouse')">{{ row.source_warehouse?.name || '-' }}</td>
                   <td :data-label="$t('Destination Warehouse')">{{ row.destination_warehouse?.name || '-' }}</td>
@@ -176,7 +175,7 @@ export default {
       ];
     },
     itemOptions() {
-      return this.items.map(i => ({ value: i.id, label: `${i.code ? i.code + ' - ' : ''}${i.name}` }));
+      return this.items.map(i => ({ value: i.id, label: i.code ? `${i.name} (${i.code})` : i.name }));
     },
   },
 

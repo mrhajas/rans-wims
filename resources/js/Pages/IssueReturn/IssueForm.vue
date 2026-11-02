@@ -169,12 +169,12 @@
           <div class="if-err" v-if="$page.props.errors.items">{{ $page.props.errors.items }}</div>
           <div class="lg-note lg-note-red mt-2" v-if="hasLineQuantityError">
             <icons name="exclamation" class="w-4 h-4" />
-            <span>{{ $t('One or more lines exceed available stock. Please adjust issuing quantities before saving.') }}</span>
+            <span>{{ titleWords($t('One or more lines exceed available stock. Please adjust issuing quantities before saving.')) }}</span>
           </div>
         </section>
 
         <div class="lg-actionbar">
-          <span v-if="hasLineQuantityError" class="lg-actionbar-note if-err-note">{{ $t('One or more lines exceed available stock.') }}</span>
+          <span v-if="hasLineQuantityError" class="lg-actionbar-note if-err-note">{{ titleWords($t('One or more lines exceed available stock.')) }}</span>
           <div v-else></div>
           <div class="lg-actionbar-btns">
             <Link :href="route('issue-materials.index')" class="lg-btn lg-btn-soft">{{ $t('Cancel') }}</Link>
@@ -203,6 +203,7 @@ import TextareaInput from '@/Shared/TextareaInput.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
+import { titleWords, itemText } from '@/Core/textCase';
 
 export default {
   components: {
@@ -290,6 +291,7 @@ export default {
     },
   },
   methods: {
+    titleWords, // used by the messages in the template
     emptyRow() {
       return {
         _row_key: this.makeRowKey(),
@@ -402,7 +404,9 @@ export default {
 
       const available = this.lineAvailable(i, line);
       if (qty > available) {
-        return `Issued quantity exceeds available stock (${this.formatNumber(available)}).`;
+        const it = (this.warehouseItemSuggestions || []).find(x => x.id == line.item_id);
+        const item = it ? itemText(it.name, it.code) : '';
+        return titleWords(item ? this.$t(':item: issued quantity exceeds available stock (:n).', { item, n: this.formatNumber(available) }) : this.$t('Issued quantity exceeds available stock (:n).', { n: this.formatNumber(available) }));
       }
       return '';
     },
@@ -503,7 +507,7 @@ export default {
     submit() {
       this.localItemsError = '';
       if (this.hasLineQuantityError) {
-        this.localItemsError = 'One or more lines exceed available stock. Please adjust issuing quantities.';
+        this.localItemsError = titleWords(this.$t('One or more lines exceed available stock. Please adjust issuing quantities.'));
         return;
       }
 

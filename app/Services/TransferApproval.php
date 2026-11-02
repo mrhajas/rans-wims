@@ -63,7 +63,7 @@ class TransferApproval
                     $stock = $line->stock()->main()->ofWarehouse($locked->from_warehouse_id)->first();
                     $available = $stock ? (float) $stock->quantity : 0.0;
                     if (round($need, 4) > 0 && round($available, 4) < round($need, 4)) {
-                        $error = __(':item has only :available in stock, :needed are needed.', ['item' => $line->item->name, 'available' => $available + 0, 'needed' => round($need, 4) + 0]);
+                        $error = title_words(__(':item has only :available in stock, :needed are needed.', ['item' => item_text($line->item->name, $line->item->code), 'available' => $available + 0, 'needed' => round($need, 4) + 0]));
 
                         return;
                     }
@@ -134,12 +134,13 @@ class TransferApproval
         $payload = [];
         foreach ($lines as $i => $line) {
             $name = optional($line->item)->name;
+            $label = item_text($name, optional($line->item)->code);
             if (! $line->item) {
                 $out[] = ['row' => $i + 1, 'item' => null, 'message' => __('This item no longer exists. Remove the row or choose another item.')];
             } elseif ($line->variations->isEmpty() && (float) $line->quantity <= 0) {
-                $out[] = ['row' => $i + 1, 'item' => $name, 'message' => __('Enter a quantity greater than 0 for :item.', ['item' => $name])];
+                $out[] = ['row' => $i + 1, 'item' => $name, 'message' => title_words(__('Enter a quantity greater than 0 for :item.', ['item' => $label]))];
             } elseif ($line->variations->contains(fn ($v) => (float) $v->pivot->quantity <= 0)) {
-                $out[] = ['row' => $i + 1, 'item' => $name, 'message' => __('Every variation of :item needs a quantity greater than 0.', ['item' => $name])];
+                $out[] = ['row' => $i + 1, 'item' => $name, 'message' => title_words(__('Every variation of :item needs a quantity greater than 0.', ['item' => $label]))];
             }
             if (! $line->item) {
                 continue;

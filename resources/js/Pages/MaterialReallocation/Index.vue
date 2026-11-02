@@ -45,7 +45,7 @@
               <ol class="mrl-rank">
                 <li v-for="(row, ri) in dashboard.cards.top_returned_materials" :key="row.item_id">
                   <span class="mrl-rank-no">{{ ri + 1 }}</span>
-                  <span class="mrl-rank-name">{{ row.code }} - {{ row.name }}</span>
+                  <span class="mrl-rank-name"><item-label :name="row.name" :code="row.code || ''" /></span>
                   <span class="mrl-rank-val">{{ $number(row.quantity) }}</span>
                 </li>
                 <li v-if="!dashboard.cards.top_returned_materials || !dashboard.cards.top_returned_materials.length" class="mrl-rank-empty">

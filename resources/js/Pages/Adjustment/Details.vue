@@ -140,7 +140,7 @@
                   <tr v-for="(variation, vi) in item.variations" :key="'v_' + variation.id">
                     <td class="dt-muted" :data-label="$t('No')">{{ ii + 1 }}</td>
                     <td :data-label="$t('Item')">
-                      <div class="lg-main">{{ $t(item.item.name) }} <span class="dt-code">({{ item.item.code }})</span></div>
+                      <div class="lg-main">{{ $t(item.item.name) }} <span class="item-code">({{ item.item.code }})</span></div>
                       <div class="lg-subtext"><span v-html="$meta(variation.meta)"></span></div>
                     </td>
                     <td class="num" :data-label="$t('Quantity')">{{ $number(variation.pivot.quantity) }}</td>
@@ -152,7 +152,7 @@
                   <td class="dt-muted" :data-label="$t('No')">{{ ii + 1 }}</td>
                   <td :data-label="$t('Item')">
                     <div class="lg-main">
-                      {{ $t(item.item.name) }} <span class="dt-code">({{ item.item.code }})</span>
+                      {{ $t(item.item.name) }} <span class="item-code">({{ item.item.code }})</span>
                       <span
                         v-if="isCleared(item)"
                         class="dt-cleared-tag"
@@ -412,7 +412,7 @@ html.dark .dt-cleared-tag { color: #fda4af; }
 .dt-tooltip-below .dt-tooltip-arrow { bottom: 100%; border-bottom-color: #1f2937; }
 @media (max-width: 480px) { .dt-teleport-tooltip { font-size: 0.68rem; } }
 
-.dt-code { font-weight: 600; color: var(--lg-faint); }
+/* the item code beside an item name uses the shared .item-code style */
 .dt-muted { color: var(--lg-faint); }
 .dt-total { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 12px; padding: 10px 16px; border-radius: 14px; background: var(--lg-soft); border: 1px solid var(--lg-line); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute); }
 .dt-total b { font-size: 1.05rem; letter-spacing: 0; text-transform: none; color: var(--lg-ink); font-variant-numeric: tabular-nums; }

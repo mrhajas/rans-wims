@@ -128,7 +128,7 @@
                 @if($shifted) @php($anyShifted = true) @endif
                 <tr>
                     <td>
-                        {{ optional($line->item)->name ?? '-' }}{{ optional($line->item)->code ? ' ('.$line->item->code.')' : '' }}@if($superAdjustment->print_sort === 'category' && optional(optional($line->item)->categories->first())->name)<br><span style="color:#64748b;font-size:9px;">{{ $line->item->categories->first()->name }}</span>@endif
+                        {{ optional($line->item)->name ?? '-' }}{{ item_code_html(optional($line->item)->code) }}@if($superAdjustment->print_sort === 'category' && optional(optional($line->item)->categories->first())->name)<br><span style="color:#64748b;font-size:9px;">{{ $line->item->categories->first()->name }}</span>@endif
                         @if($line->auto_cleared)
                             <span class="status-pill status-danger" style="margin-left:4px; padding:1px 6px; font-size:7.5px;">CLEARED</span>
                         @endif

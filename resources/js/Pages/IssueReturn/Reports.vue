@@ -39,7 +39,7 @@
           </select-input>
           <select-input v-model="form.item_id" :label="$t('Item (for Item History)')">
             <option :value="null">{{ $t('All Items') }}</option>
-            <option v-for="item in items" :key="item.id" :value="item.id">{{ item.code ? `${item.code} - ${item.name}` : item.name }}</option>
+            <option v-for="item in items" :key="item.id" :value="item.id">{{ item.code ? `${item.name} (${item.code})` : item.name }}</option>
           </select-input>
           <select-input v-model="form.status" :label="$t('Status')">
             <option :value="null">{{ $t('All') }}</option>

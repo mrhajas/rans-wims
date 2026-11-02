@@ -33,7 +33,7 @@
           <Link v-if="t.can_open" :href="route('transfers.edit', t.id)" class="lg-icon-btn lg-tip" :data-tip="$t('Open the transfer')" :aria-label="$t('Open the transfer')"><icons name="eye-flat" class="w-4 h-4" /></Link>
         </header>
         <ul class="mt-lines">
-          <li v-for="(l, i) in t.lines" :key="i"><span class="mt-no">{{ i + 1 }}</span><span class="mt-item"><b>{{ l.item }}</b><small>{{ l.code }}</small></span><span class="mt-qty">{{ l.quantity }} {{ l.unit }}</span></li>
+          <li v-for="(l, i) in t.lines" :key="i"><span class="mt-no">{{ i + 1 }}</span><span class="mt-item"><b><item-label :name="l.item" :code="l.code" /></b></span><span class="mt-qty">{{ l.quantity }} {{ l.unit }}</span></li>
         </ul>
       </section>
     </div>

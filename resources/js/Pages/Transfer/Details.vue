@@ -123,7 +123,7 @@
                 <template v-if="item.variations.length">
                   <tr v-for="variation in item.variations" :key="'v_' + variation.id">
                     <td :data-label="$t('Item')">
-                      <div class="lg-main">{{ $t(item.item.name) }} <span class="dt-code">({{ item.item.code }})</span></div>
+                      <div class="lg-main">{{ $t(item.item.name) }} <span class="item-code">({{ item.item.code }})</span></div>
                       <div class="lg-subtext"><span v-html="$meta(variation.meta)"></span></div>
                     </td>
                     <td v-if="$settings.track_weight" class="num" :data-label="$t('Unit')">
@@ -134,7 +134,7 @@
                   </tr>
                 </template>
                 <tr v-else>
-                  <td :data-label="$t('Item')"><div class="lg-main">{{ $t(item.item.name) }} <span class="dt-code">({{ item.item.code }})</span></div></td>
+                  <td :data-label="$t('Item')"><div class="lg-main">{{ $t(item.item.name) }} <span class="item-code">({{ item.item.code }})</span></div></td>
                   <td v-if="$settings.track_weight" class="num dt-muted" :data-label="$t('Unit')">{{ item.unit ? item.unit.code : '' }}</td>
                   <td class="num" :data-label="$t('Quantity')">{{ $number(item.quantity) }}</td>
                   <td class="num lg-main" :data-label="$t('Total')">{{ $number(item.item.price * item.quantity) }} Tsh</td>
@@ -280,7 +280,7 @@ html.dark .dt-hero { background: linear-gradient(135deg, rgba(28, 63, 102, 0.45)
 .dt-k { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lg-faint); }
 .dt-v { font-size: 0.9rem; font-weight: 700; color: var(--lg-ink); overflow-wrap: anywhere; }
 
-.dt-code { font-weight: 600; color: var(--lg-faint); }
+/* the item code beside an item name uses the shared .item-code style */
 .dt-muted { color: var(--lg-faint); }
 .dt-hide-m { }
 .dt-total { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 12px; padding: 10px 16px; border-radius: 14px; background: var(--lg-soft); border: 1px solid var(--lg-line); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-mute); }

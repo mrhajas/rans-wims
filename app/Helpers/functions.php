@@ -572,3 +572,61 @@ if (! function_exists('terms_sections')) {
         return $sections;
     }
 }
+
+
+// An item code as it is printed beside an item name (printed documents, PDFs, e-mails): 15% smaller, bold, dark blue, in brackets. Returns safe HTML.
+if (! function_exists('item_code_html')) {
+    function item_code_html($code): \Illuminate\Support\HtmlString
+    {
+        $code = trim((string) $code);
+        if ($code === '') {
+            return new \Illuminate\Support\HtmlString('');
+        }
+
+        return new \Illuminate\Support\HtmlString(' <span style="font-size:85%;font-weight:bold;color:#1e3a8a;white-space:nowrap;">(' . e($code) . ')</span>');
+    }
+}
+
+// Title Case for the messages about items (stock, quantities, units): every word starts with a capital, except small joining words (of, in, and, to ...), which stay
+// lowercase unless they open the message or follow a colon. Letters after the first are never changed, so item names, codes and units keep their own spelling.
+// Only English is changed: the joining words of other languages are not known here.
+if (! function_exists('title_words')) {
+    function title_words($text): string
+    {
+        $text = (string) $text;
+        if ($text === '' || app()->getLocale() !== 'en') {
+            return $text;
+        }
+        static $small = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'from', 'in', 'into', 'of', 'on', 'onto', 'or', 'per', 'than', 'the', 'to', 'via', 'vs', 'with'];
+        $out = '';
+        $first = true;
+        $afterColon = false;
+        foreach (preg_split('/(\s+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE) as $part) {
+            if ($part === '' || preg_match('/^\s+$/u', $part)) {
+                $out .= $part;
+
+                continue;
+            }
+            $bare = mb_strtolower(trim($part, '.,:;()"\''));
+            $capital = $first || $afterColon || ! in_array($bare, $small, true);
+            if ($capital && preg_match('/^([("\']*)(\p{Ll})(.*)$/us', $part, $m)) {
+                $part = $m[1] . mb_strtoupper($m[2]) . $m[3];
+            }
+            $out .= $part;
+            $first = false;
+            $afterColon = str_ends_with($part, ':');
+        }
+
+        return $out;
+    }
+}
+
+// "NAME (CODE)" as plain text, for messages: the item name followed by its code in brackets.
+if (! function_exists('item_text')) {
+    function item_text($name, $code = null): string
+    {
+        $code = trim((string) $code);
+
+        return trim((string) $name) . ($code !== '' ? ' (' . $code . ')' : '');
+    }
+}

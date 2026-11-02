@@ -3339,3 +3339,7 @@ html.dark .tdd-body { box-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.7); }
 .da-nav-panel-btn { transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease; }
 .da-nav-panel-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.05); }
 @media (prefers-reduced-motion: reduce) { .da-nav-hero::after, .da-nav-hero-pill-in .da-nav-hero-pill-dot, .da-nav-btn-in { animation: none; } }
+
+/* The item code beside an item name, everywhere: 15% smaller than the name, bold, dark blue (lighter blue on the dark theme). Used by <item-label> and by printed pages. */
+.item-code { font-size: 0.85em; font-weight: 700; color: #1e3a8a; white-space: nowrap; }
+html.dark .item-code { color: #93c5fd; }

@@ -27,19 +27,19 @@
             <li v-for="(l, i) in form.lines" :key="l.key" :class="{ 'is-bad': lineError(i) }">
               <div class="mt-form-top">
                 <span class="mt-no">{{ i + 1 }}</span>
-                <span class="mt-item"><b>{{ l.name }}</b><small>{{ l.code }}</small></span>
+                <span class="mt-item"><b><item-label :name="l.name" :code="l.code" /></b></span>
                 <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Take the rest from another warehouse')" :aria-label="$t('Split')" @click="split(i)"><icons name="duplicate" class="w-4 h-4" /></button>
                 <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="form.lines.splice(i, 1)"><icons name="trash" class="w-4 h-4" /></button>
               </div>
-              <p v-if="l.blocked" class="mt-err">{{ $t('This item has variants or serial numbers. Use a normal transfer for it.') }}</p>
+              <p v-if="l.blocked" class="mt-err">{{ lineNote(l, ':item has variants or serial numbers. Use a normal transfer for it.') }}</p>
               <p v-else-if="l.loading" class="mt-hint">{{ $t('Checking stock...') }}</p>
-              <p v-else-if="!l.sources.length" class="mt-err">{{ $t('No warehouse you can use has this item in stock.') }}</p>
+              <p v-else-if="!l.sources.length" class="mt-err">{{ lineNote(l, ':item: no warehouse you can use has this item in stock.') }}</p>
               <div v-else class="mt-form-grid">
                 <div class="mt-f"><auto-complete :id="'mt-from-' + l.key" stock-move :label="$t('From warehouse')" :suggestions="sourceOptions(l)" v-model="l.from_warehouse_id" :placeholder="$t('Choose...')" /></div>
                 <div class="mt-f"><label>{{ $t('Quantity') }}</label><input v-model.number="l.quantity" type="number" min="0" step="any" inputmode="decimal" /></div>
                 <div class="mt-f"><auto-complete :id="'mt-unit-' + l.key" :label="$t('Unit')" :suggestions="unitOptions(l)" v-model="l.unit_id" /></div>
               </div>
-              <p v-if="over(l)" class="mt-err">{{ $t('Only :n are in stock at this warehouse.', { n: stockOf(l) }) }}</p>
+              <p v-if="over(l)" class="mt-err">{{ lineNote(l, ':item has only :n in stock at this warehouse.', { n: stockOf(l) }) }}</p>
               <p v-if="lineError(i)" class="mt-err">{{ lineError(i) }}</p>
             </li>
           </ul>
@@ -68,6 +68,7 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DatePicker from '@/Shared/DatePicker.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
+import { titleWords, itemText } from '@/Core/textCase';
 import TextareaInput from '@/Shared/TextareaInput.vue';
 
 let seq = 0;
@@ -104,6 +105,8 @@ export default {
       if (!l.unit) return [{ label: '-', value: '' }];
       return [{ label: l.unit.name, value: l.unit.id }, ...((l.unit.subunits || []).map(u => ({ label: u.name, value: u.id })))];
     },
+    // a message about one line: names the item as NAME (CODE) and is written in Title Case
+    lineNote(l, text, extra = {}) { return titleWords(this.$t(text, { item: itemText(l.name, l.code), ...extra })); },
     stockOf(l) { const s = l.sources.find(x => x.id == l.from_warehouse_id); return s ? s.quantity : 0; },
     // the same item taken twice from the same warehouse counts together
     over(l) {

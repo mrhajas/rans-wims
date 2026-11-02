@@ -62,7 +62,7 @@
             @foreach ($checkin->items as $item)
                 @if ($item->variations->isNotEmpty())
                     <tr>
-                        <td style="padding:9px 12px; border:1px solid #e5e7eb; font-weight:700; font-size:13px; color:#111827;">{{ $item->item->name }} ({{ $item->item->code }})</td>
+                        <td style="padding:9px 12px; border:1px solid #e5e7eb; font-weight:700; font-size:13px; color:#111827;">{{ $item->item->name }}{{ item_code_html($item->item->code) }}</td>
                         @if ($settings->track_weight)
                             <td style="padding:9px 12px; border:1px solid #e5e7eb; text-align:right;"></td>
                         @endif
@@ -89,7 +89,7 @@
                     @endforeach
                 @else
                     <tr>
-                        <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#111827;">{{ $item->item->name }} ({{ $item->item->code }})</td>
+                        <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#111827;">{{ $item->item->name }}{{ item_code_html($item->item->code) }}</td>
                         @if ($settings->track_weight)
                             <td style="padding:9px 12px; border:1px solid #e5e7eb; text-align:right; font-size:13px;">
                                 @if ($item->item->track_weight)

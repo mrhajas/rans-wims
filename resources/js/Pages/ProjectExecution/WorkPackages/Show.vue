@@ -261,7 +261,7 @@
             <tbody>
               <tr v-for="f in materialForecasts" :key="f.id">
                 <td :data-label="$t('Item')">
-                  <span class="lg-main">{{ f.item?.name }}</span> <span class="wps-faint">({{ f.item?.code }})</span>
+                  <span class="lg-main"><item-label :name="f.item?.name || ''" :code="f.item?.code || ''" /></span>
                 </td>
                 <td :data-label="$t('Required')">{{ f.required_quantity }} {{ f.item?.unit }}</td>
                 <td :data-label="$t('Warehouse Stock')">{{ f.available_stock }}</td>
@@ -365,7 +365,7 @@
             <tbody>
               <tr v-for="f in equipmentForecasts" :key="f.id">
                 <td :data-label="$t('Item')">
-                  <span class="lg-main">{{ f.item?.name }}</span> <span class="wps-faint">({{ f.item?.code }})</span>
+                  <span class="lg-main"><item-label :name="f.item?.name || ''" :code="f.item?.code || ''" /></span>
                 </td>
                 <td :data-label="$t('Required')">{{ f.required_quantity }}</td>
                 <td :data-label="$t('Warehouse Stock')">{{ f.available_stock }}</td>
@@ -545,7 +545,7 @@ export default {
       return Math.min(100, Math.max(0, Number(this.workPackage.schedule.actual_progress) || 0));
     },
     itemSuggestions() {
-      return this.items.map(item => ({ id: item.id, label: `${item.code} - ${item.name}` }));
+      return this.items.map(item => ({ id: item.id, label: `${item.name} (${item.code})`, name: item.name, code: item.code }));
     },
     contactSuggestions() {
       return this.contacts.map(contact => ({ id: contact.id, label: contact.name + (contact.category ? ` (${contact.category})` : '') }));

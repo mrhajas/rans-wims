@@ -66,7 +66,7 @@
             </thead>
             <tbody>
               <tr v-for="line in issue.items" :key="line.id">
-                <td :data-label="$t('Item')"><span class="lg-main">{{ line.item?.name }}</span> <span class="lg-subtext">({{ line.item?.code }})</span></td>
+                <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="line.item?.name" :code="line.item?.code" /></span></td>
                 <td :data-label="$t('Issued')" class="num">{{ formatNumber(line.issued_quantity) }}</td>
                 <td :data-label="$t('Returned')" class="num">{{ formatNumber(line.returned_quantity) }}</td>
                 <td :data-label="$t('Balance')" class="num font-bold">{{ formatNumber(line.balance_quantity) }}</td>

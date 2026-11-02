@@ -202,9 +202,9 @@ export default {
     itemSuggestions() {
       return this.items.map(item => ({
         id: item.id,
-        label: `${item.code} - ${item.name}`,
-        code: item.code,
+        label: `${item.name} (${item.code})`,
         name: item.name,
+        code: item.code,
         unit_label: item.unit_label,
         price: item.price,
       }));

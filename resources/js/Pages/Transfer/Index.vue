@@ -396,7 +396,7 @@
             <tbody>
               <tr v-for="(item, index) in cleanup.previewItems" :key="item.item_id" class="border-t border-gray-200">
                 <td class="px-2 py-1.5">{{ index + 1 }}</td>
-                <td class="px-2 py-1.5">{{ item.code ? item.code + ' - ' + item.name : item.name }}</td>
+                <td class="px-2 py-1.5"><item-label :name="item.name" :code="item.code" /></td>
                 <td class="px-2 py-1.5 text-right">{{ item.quantity }}</td>
                 <td class="px-2 py-1.5">{{ item.unit }}</td>
               </tr>
@@ -448,7 +448,7 @@
               <tbody>
                 <tr v-for="(item, index) in filteredDistributeItems" :key="item.item_id" class="border-t border-gray-200">
                   <td class="px-2 py-1.5">{{ index + 1 }}</td>
-                  <td class="px-2 py-1.5">{{ item.code ? item.code + ' - ' + item.name : item.name }}</td>
+                  <td class="px-2 py-1.5"><item-label :name="item.name" :code="item.code" /></td>
                   <td class="px-2 py-1.5 text-right">{{ item.quantity }}</td>
                   <td class="px-2 py-1.5">{{ item.unit }}</td>
                   <td class="px-2 py-1.5">
@@ -998,7 +998,7 @@ export default {
             const destination = (this.warehouses || []).find(w => w.id === row.to_warehouse_id);
             return {
               item_id: row.item_id,
-              label: row.code ? `${row.code} - ${row.name}` : row.name,
+              label: row.code ? `${row.name} (${row.code})` : row.name,
               quantity: row.quantity,
               unit: row.unit,
               destinationName: destination ? destination.name : '',
@@ -1071,7 +1071,8 @@ export default {
       if (!printWindow) return;
 
       const rowsMarkup = rows.map((item, index) => {
-        const label = item.code ? `${item.code} - ${item.name}` : item.name;
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        const label = esc(item.name) + (item.code ? ' <span style="font-size:85%;font-weight:bold;color:#1e3a8a;white-space:nowrap;">(' + esc(item.code) + ')</span>' : '');
         return `<tr><td>${index + 1}</td><td>${label}</td><td>${item.quantity}</td><td>${item.unit}</td></tr>`;
       }).join('');
 
@@ -1128,7 +1129,8 @@ export default {
       if (!printWindow) return;
 
       const rowsMarkup = rows.map((item, index) => {
-        const label = item.code ? `${item.code} - ${item.name}` : item.name;
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        const label = esc(item.name) + (item.code ? ' <span style="font-size:85%;font-weight:bold;color:#1e3a8a;white-space:nowrap;">(' + esc(item.code) + ')</span>' : '');
         return `<tr><td>${index + 1}</td><td>${label}</td><td>${item.quantity}</td><td>${item.unit}</td></tr>`;
       }).join('');
 

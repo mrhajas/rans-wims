@@ -168,17 +168,17 @@ class MaterialRequestTransfers
             $itemId = (int) ($l['item_id'] ?? 0);
             $qty = ! empty($l['selected']['variations']) ? collect($l['selected']['variations'])->sum(fn ($v) => (float) ($v['quantity'] ?? 0)) : (float) ($l['quantity'] ?? 0);
             if (! array_key_exists($itemId, $remaining)) {
-                $errors["items.$i.item_id"] = __('This item is not on :r.', ['r' => $mr->reference]);
+                $errors["items.$i.item_id"] = title_words(__('This item is not on :r.', ['r' => $mr->reference]));
                 continue;
             }
             // a negative quantity would give stock back to the source (and could hide behind the other lines of the same item); zero moves nothing
             if ($qty < 0 || ($qty < 0.00005 && empty($l['selected']['serials']) && empty($l['selected']['variations']))) {
-                $errors["items.$i.quantity"] = __('Enter a quantity greater than zero.');
+                $errors["items.$i.quantity"] = title_words(__('Enter a quantity greater than zero.'));
                 continue;
             }
             $sum[$itemId] = ($sum[$itemId] ?? 0) + $qty;
             if ($sum[$itemId] > $remaining[$itemId] + 0.00005) {
-                $errors["items.$i.quantity"] = __('Only :n is still to be moved for :r.', ['n' => rtrim(rtrim(number_format($remaining[$itemId], 4, '.', ''), '0'), '.') ?: '0', 'r' => $mr->reference]);
+                $errors["items.$i.quantity"] = title_words(__('Only :n is still to be moved for :r.', ['n' => rtrim(rtrim(number_format($remaining[$itemId], 4, '.', ''), '0'), '.') ?: '0', 'r' => $mr->reference]));
             }
         }
         if ($errors) {
@@ -207,31 +207,31 @@ class MaterialRequestTransfers
                 continue;
             }
             if (! is_numeric($q) || (float) $q < 0) {
-                $errors["quantities.$itemId"] = __('Enter a quantity of zero or more.');
+                $errors["quantities.$itemId"] = title_words(__('Enter a quantity of zero or more.'));
                 continue;
             }
             if (round((float) $q, 4) < 0.0001) {
                 // quantities are kept to 4 decimal places: anything smaller would be saved as 0
-                $errors["quantities.$itemId"] = __('The smallest quantity is 0.0001.');
+                $errors["quantities.$itemId"] = title_words(__('The smallest quantity is 0.0001.'));
                 continue;
             }
             $already = $all->first(fn ($l) => $l['item_id'] === (int) $itemId && $l['has_transfer']);
             if ($already) {
-                $errors["quantities.$itemId"] = __(':item is already on transfer :t. Change the quantity on that transfer instead.', ['item' => $already['name'], 't' => $already['transfers'][0]['reference']]);
+                $errors["quantities.$itemId"] = title_words(__(':item is already on transfer :t. Change the quantity on that transfer instead.', ['item' => item_text($already['name'], $already['code'] ?? null), 't' => $already['transfers'][0]['reference']]));
                 continue;
             }
             $itemLines = $lines->where('item_id', (int) $itemId);
             $left = round((float) $itemLines->sum('remaining'), 4);
             if ($itemLines->isEmpty()) {
-                $errors["quantities.$itemId"] = __('This item cannot be moved by transfer from this request.');
+                $errors["quantities.$itemId"] = title_words(__('This item cannot be moved by transfer from this request.'));
             } elseif ((float) $q > $left + 0.00005) {
-                $errors["quantities.$itemId"] = __('Only :n is still to be moved.', ['n' => rtrim(rtrim(number_format($left, 4, '.', ''), '0'), '.') ?: '0']);
+                $errors["quantities.$itemId"] = title_words(__('Only :n is still to be moved.', ['n' => rtrim(rtrim(number_format($left, 4, '.', ''), '0'), '.') ?: '0']));
             } else {
                 $take[(int) $itemId] = round((float) $q, 4);
             }
         }
         if (! $errors && ! $take) {
-            $errors['quantities'] = __('Enter how many of at least one item to move.');
+            $errors['quantities'] = title_words(__('Enter how many of at least one item to move.'));
         }
         if ($errors) {
             throw ValidationException::withMessages($errors);

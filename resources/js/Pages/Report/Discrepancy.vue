@@ -81,7 +81,7 @@
             <tbody>
               <tr v-for="row in discrepancies.data" :key="row.id">
                 <td :data-label="$t('Reference')"><span class="lg-mono">{{ row.reference }}</span></td>
-                <td :data-label="$t('Item')"><div class="lg-main">{{ row.item?.name }}</div><div v-if="row.item?.code" class="lg-subtext">{{ row.item.code }}</div></td>
+                <td :data-label="$t('Item')"><div class="lg-main"><item-label :name="row.item?.name || ''" :code="row.item?.code || ''" /></div></td>
                 <td :data-label="$t('Destination Warehouse')">{{ row.destination_warehouse?.name }}</td>
                 <td :data-label="$t('Allocated')" class="num">{{ formatQty(row.allocated_quantity) }}</td>
                 <td :data-label="$t('Received')" class="num">{{ formatQty(row.received_quantity) }}</td>

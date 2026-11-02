@@ -154,7 +154,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="(line, index) in invoice.items" :key="index">
-                    <td :data-label="$t('Item')"><span class="lg-main">{{ line.item_code ? line.item_code + ' - ' : '' }}{{ line.item_name }}</span></td>
+                    <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="line.item_name" :code="line.item_code" /></span></td>
                     <td :data-label="$t('Unit')">{{ line.unit_label || '-' }}</td>
                     <td :data-label="$t('Quantity')" class="num">{{ $number(line.quantity) }}</td>
                     <td :data-label="$t('Unit Price')" class="num">{{ $money(line.unit_price, currency) }}</td>

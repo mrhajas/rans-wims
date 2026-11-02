@@ -171,7 +171,7 @@
                 }"
               >
                 <div class="flex items-start justify-between gap-2">
-                  <h4 class="text-base font-bold" :class="{ '-mb-4': item.has_variants }">{{ item.name }} ({{ item.code }})</h4>
+                  <h4 class="text-base font-bold" :class="{ '-mb-4': item.has_variants }"><item-label :name="item.name" :code="item.code" /></h4>
                   <button
                     type="button"
                     @click="removeItem(item, ii)"
@@ -271,7 +271,7 @@
                         <td class="border-t" colspan="4">
                           <div class="px-2 lg:px-6 py-2 focus:text-indigo-500">
                             <h4 class="w-full lg:w-auto font-bold">
-                              <span class="text-base">{{ item.name }} ({{ item.code }})</span>
+                              <span class="text-base"><item-label :name="item.name" :code="item.code" /></span>
                             </h4>
                           </div>
                         </td>
@@ -381,7 +381,7 @@
                     <td class="border-t">
                       <div class="px-2 lg:px-6 py-2 focus:text-indigo-500">
                         <h4 class="w-full lg:w-auto">
-                          <span class="text-base">{{ item.name }} ({{ item.code }})</span>
+                          <span class="text-base"><item-label :name="item.name" :code="item.code" /></span>
                         </h4>
 
                         <div v-if="$page.props.errors['items.' + ii + '.variation_id']" class="text-red-600 pt-1 rounded-md">

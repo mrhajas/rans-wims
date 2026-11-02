@@ -92,7 +92,7 @@
                 @if($item->variations && count($item->variations))
                     <tr>
                         <td colspan="{{ in_array($type, ['checkout', 'checkin']) ? 4 : 3 }}" style="font-weight:bold; background:#f3f4f6;">
-                            {{ $item->item->name ?? '' }} ({{ $item->item->code ?? '' }})
+                            {{ $item->item->name ?? '' }}{{ item_code_html($item->item->code ?? '') }}
                         </td>
                     </tr>
                     @foreach($item->variations as $variation)
@@ -107,7 +107,7 @@
                     @endforeach
                 @else
                     <tr>
-                        <td>{{ $item->item->name ?? '' }} ({{ $item->item->code ?? '' }})</td>
+                        <td>{{ $item->item->name ?? '' }}{{ item_code_html($item->item->code ?? '') }}</td>
                         <td class="right">{{ $item->unit->code ?? '' }}</td>
                         <td class="right">{{ $item->quantity }}</td>
                         @if(in_array($type, ['checkout', 'checkin']))

@@ -50,8 +50,7 @@
               <button v-for="option in filteredItemsOptions" :key="option.id" type="button" class="icr-picker-row" @click="addItem(option)">
                 <span class="icr-picker-plus"><icons name="plus" class="w-3 h-3" /></span>
                 <span class="min-w-0">
-                  <span class="block truncate font-semibold">{{ option.name }}</span>
-                  <span class="block text-xs icr-muted">{{ option.code || $t('No code') }}</span>
+                  <span class="block truncate font-semibold"><item-label :name="option.name" :code="option.code || ''" /></span>
                 </span>
               </button>
             </div>

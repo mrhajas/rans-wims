@@ -65,7 +65,7 @@
               </thead>
               <tbody>
                 <tr v-for="(line, index) in summarySource.items" :key="index">
-                  <td>{{ line.item_code ? line.item_code + ' - ' : '' }}{{ line.item_name }}</td>
+                  <td><item-label :name="line.item_name" :code="line.item_code" /></td>
                   <td>{{ line.unit_label || '-' }}</td>
                   <td class="num">{{ $number(line.quantity) }}</td>
                   <td class="num">{{ $money(line.unit_price, currency) }}</td>

@@ -151,7 +151,7 @@
                     <a v-if="row.item_id && $can('update-items')" :href="route('items.edit', row.item_id)" target="_blank" rel="noopener" class="lg-main sa-itemlink" :title="$t('Open the item to edit it (new tab)')">{{ row.name }}<icons name="link" class="w-3 h-3 sa-itemlink-ico" /></a>
                     <span v-else class="lg-main">{{ row.name }}</span>
                     <span class="sa-itemmeta">
-                      <span class="sa-muted">({{ row.code }})</span>
+                      <span class="item-code">({{ row.code }})</span>
                       <span
                         v-if="row.auto_cleared"
                         class="sa-cleared-tag"

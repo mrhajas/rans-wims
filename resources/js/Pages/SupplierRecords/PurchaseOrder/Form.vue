@@ -317,7 +317,7 @@ export default {
       return this.purchaseRequests.map(pr => ({ id: pr.id, label: pr.reference }));
     },
     itemSuggestions() {
-      return this.items.map(i => ({ id: i.id, label: `${i.code ? i.code + ' - ' : ''}${i.name}`, name: i.name, code: i.code, unit_label: i.unit_label, price: i.price }));
+      return this.items.map(i => ({ id: i.id, label: i.code ? `${i.name} (${i.code})` : i.name, name: i.name, code: i.code, unit_label: i.unit_label, price: i.price }));
     },
     currencySuggestions() {
       return this.currencies.map(c => ({ label: c.label, value: c.code }));

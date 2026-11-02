@@ -721,13 +721,13 @@ class MaterialRequestController extends Controller
                     // Main Warehouse chosen: the quantity is validated against what that warehouse holds now. None at all is refused; less than asked is
                     // allowed (a Partially Issued request moves what there is) but the user is told.
                     $held = (float) DB::table('stocks')->where('warehouse_id', $warehouseId)->where('item_id', $item->item_id)->whereNull('variation_id')->whereNull('deleted_at')->sum('quantity');
-                    $name = optional($item->item)->name ?? '#' . $item->item_id;
+                    $name = item_text(optional($item->item)->name ?? '#' . $item->item_id, optional($item->item)->code);
                     $whName = optional(Warehouse::withoutGlobalScopes()->find($warehouseId))->name;
                     $fmt = fn ($v) => rtrim(rtrim(number_format($v, 4, '.', ''), '0'), '.') ?: '0';
                     if ($held <= 0.00005) {
-                        $errors["items.$index.warehouse_id"] = __(':item has no stock in :w (:n requested). Choose a warehouse that holds it.', ['item' => $name, 'w' => $whName, 'n' => $fmt((float) $item->quantity)]);
+                        $errors["items.$index.warehouse_id"] = title_words(__(':item has no stock in :w (:n requested). Choose a warehouse that holds it.', ['item' => $name, 'w' => $whName, 'n' => $fmt((float) $item->quantity)]));
                     } elseif ($held + 0.00005 < (float) $item->quantity) {
-                        $stockWarnings[] = __(':item: :w holds :h of the :n requested.', ['item' => $name, 'w' => $whName, 'h' => $fmt($held), 'n' => $fmt((float) $item->quantity)]);
+                        $stockWarnings[] = title_words(__(':item: :w holds :h of the :n requested.', ['item' => $name, 'w' => $whName, 'h' => $fmt($held), 'n' => $fmt((float) $item->quantity)]));
                     }
                 }
             } elseif ($procedure === MaterialRequest::PROCEDURE_OTHER) {

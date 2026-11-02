@@ -119,7 +119,7 @@
           <div class="er-modes"><label :class="{ on: content.items.mode === 'all' }"><input v-model="content.items.mode" type="radio" value="all" />{{ $t('All items') }}</label><label :class="{ on: content.items.mode === 'selected' }"><input v-model="content.items.mode" type="radio" value="selected" />{{ $t('Only selected items') }}</label></div>
           <div v-if="content.items.mode === 'selected'" class="er-projects">
             <auto-complete resolve-qr-codes id="er_pick_item" json keep-focus reset-search :suggestions="route('items.search')" :placeholder="$t('Search an item to add')" @update:model-value="itemPicked" />
-            <div class="er-plist"><span v-for="it in pickedItems" :key="it.id" class="er-pill">{{ it.name }} <em v-if="it.code">{{ it.code }}</em><button type="button" :aria-label="$t('Remove')" @click="removeItem(it.id)">×</button></span><span v-if="!pickedItems.length" class="er-hint">{{ $t('No items chosen yet. Nothing will be counted until you add some.') }}</span></div>
+            <div class="er-plist"><span v-for="it in pickedItems" :key="it.id" class="er-pill"><item-label :name="it.name" :code="it.code || ''" /><button type="button" :aria-label="$t('Remove')" @click="removeItem(it.id)">×</button></span><span v-if="!pickedItems.length" class="er-hint">{{ $t('No items chosen yet. Nothing will be counted until you add some.') }}</span></div>
           </div>
         </section>
 

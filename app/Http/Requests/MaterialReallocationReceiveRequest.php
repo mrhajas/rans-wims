@@ -48,9 +48,9 @@ class MaterialReallocationReceiveRequest extends FormRequest
                 if ($received > $cap + 0.0001) {
                     $validator->errors()->add(
                         "items.{$index}.received_quantity",
-                        __('Received quantity (:received) cannot exceed the allocated quantity (:allocated).', [
+                        title_words(__('Received quantity (:received) cannot exceed the allocated quantity (:allocated).', [
                             'received' => $received, 'allocated' => $cap,
-                        ])
+                        ]))
                     );
                 }
             }

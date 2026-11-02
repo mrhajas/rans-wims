@@ -117,7 +117,7 @@
                   <tr v-for="(row, index) in form.items" :key="index" class="align-top">
                     <td :data-label="$t('Item')" class="sd-item-td">
                       <div class="sd-cell">
-                        <span v-if="isFromPo(row)" class="lg-main">{{ row.item_code ? row.item_code + ' - ' : '' }}{{ row.item_name }}</span>
+                        <span v-if="isFromPo(row)" class="lg-main"><item-label :name="row.item_name" :code="row.item_code" /></span>
                         <auto-complete
                           v-else
                           :id="'gr-item-' + index"
@@ -265,7 +265,7 @@ export default {
       return this.purchaseOrders.map(po => ({ id: po.id, label: `${po.reference} / ${po.supplier_name}` }));
     },
     itemSuggestions() {
-      return this.items.map(i => ({ id: i.id, label: `${i.code ? i.code + ' - ' : ''}${i.name}`, name: i.name, code: i.code, unit_label: i.unit_label }));
+      return this.items.map(i => ({ id: i.id, label: i.code ? `${i.name} (${i.code})` : i.name, name: i.name, code: i.code, unit_label: i.unit_label }));
     },
   },
 

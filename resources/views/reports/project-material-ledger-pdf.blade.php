@@ -179,7 +179,7 @@
             <tbody>
                 @forelse($itemSummary as $row)
                     <tr>
-                        <td>{{ $row['item_name'] }}{{ $row['item_code'] ? ' ('.$row['item_code'].')' : '' }}</td>
+                        <td>{{ $row['item_name'] }}{{ item_code_html($row['item_code'] ?? '') }}</td>
                         <td class="center">{{ $row['unit'] }}</td>
                         <td class="right">{{ number_format($row['checked_in'], 2) }}</td>
                         <td class="right">{{ number_format($row['checked_out'], 2) }}</td>
@@ -210,7 +210,7 @@
                 @forelse($movementSummary as $row)
                     <tr>
                         <td>{{ $row['reference'] }}</td>
-                        <td>{{ $row['item_name'] }}{{ $row['item_code'] ? ' ('.$row['item_code'].')' : '' }}</td>
+                        <td>{{ $row['item_name'] }}{{ item_code_html($row['item_code'] ?? '') }}</td>
                         <td>{{ $row['from'] }}</td>
                         <td>{{ $row['to'] }}</td>
                         <td>{{ $row['transaction_type'] }}</td>
@@ -239,7 +239,7 @@
                     @forelse($group['items'] as $item)
                         <tr>
                             <td>{{ $group['supplier_name'] }}</td>
-                            <td>{{ $item['item_name'] }}{{ $item['item_code'] ? ' ('.$item['item_code'].')' : '' }}</td>
+                            <td>{{ $item['item_name'] }}{{ item_code_html($item['item_code'] ?? '') }}</td>
                             <td class="right">{{ number_format($item['quantity'], 2) }}</td>
                             <td class="center">{{ $group['unit'] }}</td>
                             <td class="right">{{ number_format($item['value'], 2) }}</td>
@@ -271,7 +271,7 @@
             <tbody>
                 @forelse($reconciliation as $row)
                     <tr>
-                        <td>{{ $row['item_name'] }}{{ $row['item_code'] ? ' ('.$row['item_code'].')' : '' }}</td>
+                        <td>{{ $row['item_name'] }}{{ item_code_html($row['item_code'] ?? '') }}</td>
                         <td class="center">{{ $row['unit'] }}</td>
                         <td class="right">{{ number_format($row['opening_stock'], 2) }}</td>
                         <td class="right">{{ number_format($row['period_movement'], 2) }}</td>
@@ -299,7 +299,7 @@
             <tbody>
                 @forelse($boq as $row)
                     <tr>
-                        <td>{{ $row['item_name'] }}{{ $row['item_code'] ? ' ('.$row['item_code'].')' : '' }}</td>
+                        <td>{{ $row['item_name'] }}{{ item_code_html($row['item_code'] ?? '') }}</td>
                         <td class="center">{{ $row['unit'] }}</td>
                         <td class="right">{{ number_format($row['boq_quantity'], 2) }}</td>
                         <td class="right">{{ number_format($row['used_quantity'], 2) }}</td>

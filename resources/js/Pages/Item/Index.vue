@@ -150,13 +150,10 @@
                 />
                 <div>
                   <div class="font-bold">
-                    <hover-preview category="items" :id="item.id">{{ item.name }}</hover-preview>
+                    <hover-preview category="items" :id="item.id"><item-label :name="item.name" :code="item.code" /></hover-preview>
                   </div>
                   <!-- the labelled chips: Item Photo (all its photos, Previous / Next) and BinCard (only when one is assigned) -->
                   <item-photo-chips :item="item" @photos="openPhotos(item)" @bincard="openBinCard(item)" />
-                  <div class="item-code-line">
-                    {{ $t('Code') }}: <strong>{{ item.code }}</strong>
-                  </div>
                   <div v-if="item.sku" class="text-gray-600">{{ $t('SKU') }}: {{ item.sku }}</div>
                   <div class="flex items-center">
                     <span class="text-gray-600 mr-1">{{ $t('Symbology') }}:</span> <span class="uppercase">{{ item.symbology }}</span>

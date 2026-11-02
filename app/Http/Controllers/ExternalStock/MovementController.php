@@ -582,7 +582,7 @@ class MovementController extends Controller
         foreach ($d['lines'] as $i => $l) {
             $item = $items[$l['item_id']] ?? null;
             if ($item && ($item->has_variants || $item->has_serials)) {
-                $errors["lines.$i.item_id"] = __(':item has variants or serial numbers, which External Stock does not handle yet.', ['item' => $item->name]);
+                $errors["lines.$i.item_id"] = title_words(__(':item has variants or serial numbers, which External Stock does not handle yet.', ['item' => item_text($item->name, $item->code)]));
                 continue;
             }
             $wid = (int) $l['warehouse_id'];

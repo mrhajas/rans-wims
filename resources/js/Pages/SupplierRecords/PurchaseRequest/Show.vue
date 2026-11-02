@@ -78,7 +78,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="(item, index) in purchaseRequest.items" :key="index">
-                    <td :data-label="$t('Item')"><span class="lg-main">{{ item.item_code }} - {{ item.item_name }}</span></td>
+                    <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="item.item_name" :code="item.item_code" /></span></td>
                     <td :data-label="$t('Unit')">{{ item.unit_label || '-' }}</td>
                     <td :data-label="$t('Quantity')" class="num font-semibold">{{ $number(item.quantity) }}</td>
                     <td :data-label="$t('Remarks')">{{ item.remarks }}</td>

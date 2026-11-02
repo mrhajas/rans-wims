@@ -90,7 +90,7 @@
               <tbody>
                 <tr v-for="(line, i) in form.items" :key="line.issue_transaction_item_id">
                   <td :data-label="$t('Select')"><input type="checkbox" class="rf-line-sel" v-model="line.selected" /></td>
-                  <td :data-label="$t('Item')"><span class="lg-main">{{ line.item_name }}</span></td>
+                  <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="line.item_name" :code="line.item_code" /></span></td>
                   <td :data-label="$t('Issued Qty')" class="num">{{ formatNumber(line.issued_qty) }}</td>
                   <td :data-label="$t('Unit')">{{ line.unit_name }}</td>
                   <td :data-label="$t('Previously Returned')" class="num">{{ formatNumber(line.previously_returned_qty) }}</td>
@@ -170,7 +170,8 @@ export default {
         items: this.issue.items.map(line => ({
           issue_transaction_item_id: line.id,
           selected: false,
-          item_name: `${line.item?.name || ''} (${line.item?.code || ''})`,
+          item_name: line.item?.name || '',
+          item_code: line.item?.code || '',
           issued_qty: Number(line.issued_quantity || 0),
           unit_name: line.unit?.name || line.unit?.code || '-',
           previously_returned_qty: Number(line.returned_quantity || 0),

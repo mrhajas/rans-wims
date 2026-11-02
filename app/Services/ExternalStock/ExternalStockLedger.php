@@ -129,7 +129,7 @@ class ExternalStockLedger
             $k = $wid . '|' . (int) $l['item_id'];
             $need[$k] = ($need[$k] ?? 0) + (float) $l['quantity'];
         }
-        $names = DB::table('items')->whereIn('id', collect(array_keys($need))->map(fn ($k) => (int) explode('|', $k)[1])->all())->pluck('name', 'id');
+        $names = DB::table('items')->whereIn('id', collect(array_keys($need))->map(fn ($k) => (int) explode('|', $k)[1])->all())->get(['id', 'name', 'code'])->mapWithKeys(fn ($r) => [$r->id => item_text($r->name, $r->code)]);
         $whs = DB::table('warehouses')->whereIn('id', collect(array_keys($need))->map(fn ($k) => (int) explode('|', $k)[0])->all())->pluck('name', 'id');
         $out = [];
         foreach ($need as $k => $qty) {
@@ -137,7 +137,7 @@ class ExternalStockLedger
             $p = self::position($contactId, $wid, $itemId, $exceptMovementId);
             $have = $useAvailable ? $p['available'] : $p['balance'];
             if ($qty > $have + 0.00005) {
-                $out[$k] = __(':item: :n requested but only :have is held for this person in :wh.', ['item' => $names[$itemId] ?? '#' . $itemId, 'n' => self::fmt($qty), 'have' => self::fmt(max(0, $have)), 'wh' => $whs[$wid] ?? __('this warehouse')]);
+                $out[$k] = title_words(__(':item: :n requested but only :have is held for this person in :wh.', ['item' => $names[$itemId] ?? '#' . $itemId, 'n' => self::fmt($qty), 'have' => self::fmt(max(0, $have)), 'wh' => $whs[$wid] ?? __('this warehouse')]));
             }
         }
 

@@ -77,7 +77,7 @@
         table.items th { background: {{ $A }}; }
         table.items tr.alt td { background: #f8fafc; }
         table.items td.idx, table.items th.idx { width: 26px; text-align: center; color: #94a3b8; }
-        table.items td .code { color: #94a3b8; font-size: 8.8px; }
+        table.items td .code { color: #1e3a8a; font-size: 85%; font-weight: bold; white-space: nowrap; }
         table.items tr.total-row td { background: {{ $AS }}; border-top: 2px solid {{ $A }}; font-weight: bold; color: {{ $AD }}; }
         table.items td.remarks { width: 22%; border-left: 1px dashed #cbd5e1; }
 

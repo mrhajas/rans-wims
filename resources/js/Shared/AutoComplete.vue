@@ -82,7 +82,8 @@
                         @mouseenter="showOptionTooltip($event, optionTipText(r))"
                         @mouseleave="hideOptionTooltip"
                       >
-                        {{ cLabel(r) }}
+                        <item-label v-if="isItemPicker && r && typeof r === 'object' && r.name && r.code" :name="String(r.name)" :code="String(r.code)" />
+                        <template v-else>{{ cLabel(r) }}</template>
                       </span>
                       <span v-if="statusDotClass(r) === 'ac-dot-green'" class="ml-2 text-[10px] font-semibold uppercase tracking-wide opacity-80">
                         {{ $t('Completed') }}
@@ -280,6 +281,8 @@ export default {
   },
 
   computed: {
+    // an item picker (it reads item codes and QR codes): its options show the item as NAME (CODE) with the code styled
+    isItemPicker() { return this.scan || this.resolveQrCodes; },
     // sections apply only to a full project / warehouse list (Main Warehouses and Projects together) and can be switched off in Settings
     // a list whose options carry their own `section` (for example Staff and Contacts) is shown in those sections, in the order they first appear
     sectioned() {
@@ -709,6 +712,8 @@ export default {
 </script>
 
 <style scoped>
+/* the dark blue code must stay readable on the blue highlighted option */
+li button.bg-blue-600 :deep(.item-code), li button:hover :deep(.item-code) { color: #dbeafe; }
 .ac-scan-ok { border-color: #22c55e !important; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.28) !important; transition: box-shadow 0.15s; }
 .ac-scan-miss { border-color: #ef4444 !important; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.28) !important; }
 .ac-status-dot {

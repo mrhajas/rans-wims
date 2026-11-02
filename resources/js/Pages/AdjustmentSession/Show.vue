@@ -142,7 +142,7 @@
             <div v-if="!can.clear" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('You can end the session, but clearing items needs the permission to create Super Adjustments.') }}</span></div>
             <ul class="asn-pick">
               <li v-for="r in pickShown" :key="r.item_id" :class="{ 'is-on': picked[r.item_id] }">
-                <label><input type="checkbox" :checked="!!picked[r.item_id]" :disabled="!can.clear" @change="picked[r.item_id] = $event.target.checked" /><span class="asn-pick__name"><b>{{ r.name }}</b><small>{{ r.code }}</small></span><span class="asn-pick__qty">{{ qty(r.quantity) }} {{ r.unit }}</span><span v-if="r.moved" class="lg-chip lg-chip-amber" style="text-transform: none"><icons name="refresh" class="w-3 h-3" /> {{ $t('moved') }}</span></label>
+                <label><input type="checkbox" :checked="!!picked[r.item_id]" :disabled="!can.clear" @change="picked[r.item_id] = $event.target.checked" /><span class="asn-pick__name"><b><item-label :name="r.name" :code="r.code" /></b></span><span class="asn-pick__qty">{{ qty(r.quantity) }} {{ r.unit }}</span><span v-if="r.moved" class="lg-chip lg-chip-amber" style="text-transform: none"><icons name="refresh" class="w-3 h-3" /> {{ $t('moved') }}</span></label>
               </li>
               <li v-if="!pickShown.length" class="asn-pick__none">{{ $t('No item matches your search.') }}</li>
             </ul>

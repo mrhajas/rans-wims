@@ -250,9 +250,9 @@ class AjaxController extends Controller
             $query->orderByRaw('CASE WHEN code = ? THEN 0 ELSE 1 END', [$exact]);
         }
 
-        // the Transfer form lists items as "CODE - name", alphabetically (other pickers keep the plain item as before)
+        // the Transfer form lists items as "NAME (CODE)", alphabetically (other pickers keep the plain item as before); name and code stay on each item so the picker can style the code
         if ($request->boolean('labelled')) {
-            return $query->orderBy('name')->take(25)->get()->each(fn ($item) => $item->setAttribute('label', $item->code.' - '.$item->name));
+            return $query->orderBy('name')->take(25)->get()->each(fn ($item) => $item->setAttribute('label', item_text($item->name, $item->code)));
         }
 
         return $query->take(25)->get();

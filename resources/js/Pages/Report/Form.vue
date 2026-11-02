@@ -99,7 +99,7 @@ export default {
         ...item,
         id: item.id,
         value: item.id,
-        label: item.code ? `${item.code} - ${item.name}` : item.name,
+        label: item.code ? `${item.name} (${item.code})` : item.name,
         name: item.name,
       }));
     }

@@ -138,9 +138,9 @@
                     :data-tip="$t('Item Details')"
                   >
                     <icons name="view" class="w-4 h-4" />
-                    <span>{{ item.item?.code }} - {{ item.item?.name }}</span>
+                    <span><item-label :name="item.item?.name || ''" :code="item.item?.code || ''" /></span>
                   </button>
-                  <span v-else class="lg-main">{{ item.item?.code }} - {{ item.item?.name }}</span>
+                  <span v-else class="lg-main"><item-label :name="item.item?.name || ''" :code="item.item?.code || ''" /></span>
                   <div v-if="transfersOfItem(item).length" class="mr-item-refs">
                     <template v-for="t in transfersOfItem(item)" :key="t.id">
                       <Link v-if="mrTransfers.can_open" :href="route('transfers.edit', t.id)" class="mr-ref-chip" :title="t.status + ': ' + t.quantity"><icons name="truck" class="w-3 h-3" />{{ t.reference }}<small>{{ t.status }}</small></Link>
@@ -286,7 +286,7 @@
               </div>
               <ul class="mr-tr-items">
                 <li v-for="l in g.items" :key="l.id">
-                  <span class="mr-tr-name">{{ l.name }} <small>{{ l.code }}</small><small v-if="!l.plain" class="block">{{ $t('Has variations or serial numbers: add it on a transfer by hand.') }}</small></span>
+                  <span class="mr-tr-name"><item-label :name="l.name" :code="l.code" /><small v-if="!l.plain" class="block">{{ $t('Has variations or serial numbers: add it on a transfer by hand.') }}</small></span>
                   <span class="mr-tr-qty">
                     <input v-model="trQty[l.item_id]" class="mr-tr-input" inputmode="decimal" :disabled="!l.plain || !mrTransfers.can_create" :placeholder="'0 - ' + l.remaining" :aria-label="$t('Quantity to move')" />
                     <span class="mr-tr-unit">{{ l.unit }} <small>/ {{ l.remaining }} {{ $t('left') }}</small></span>
@@ -304,7 +304,7 @@
           <div class="mr-tr-group-head"><div class="min-w-0"><b>{{ $t('Already on a transfer') }}</b><small>{{ $t('These items are not given another transfer. Change the quantity on their transfer to move the balance.') }}</small></div></div>
           <ul class="mr-tr-items">
             <li v-for="l in mrTransfers.lines" :key="l.id">
-              <span class="mr-tr-name">{{ l.name }} <small>{{ l.code }}</small></span>
+              <span class="mr-tr-name"><item-label :name="l.name" :code="l.code" /></span>
               <span class="mr-tr-qty">
                 <template v-for="t in l.transfers" :key="t.id"><Link v-if="mrTransfers.can_open" :href="route('transfers.edit', t.id)" class="mr-ref-chip">{{ t.reference }}<small>{{ t.quantity }} {{ l.unit }}</small></Link><span v-else class="mr-ref-chip">{{ t.reference }}<small>{{ t.quantity }} {{ l.unit }}</small></span></template>
                 <span class="mr-tr-unit"><small>{{ $t('Balance') }}: {{ l.remaining }} {{ l.unit }}</small></span>

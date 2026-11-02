@@ -102,10 +102,10 @@ class MultiTransferController extends Controller
             if (! $item) {
                 $errors["lines.$i.item_id"] = __('This item no longer exists.');
             } elseif ($item->has_variants || $item->has_serials) {
-                $errors["lines.$i.item_id"] = __(':item has variants or serial numbers. Use a normal transfer for it.', ['item' => $item->name]);
+                $errors["lines.$i.item_id"] = title_words(__(':item has variants or serial numbers. Use a normal transfer for it.', ['item' => item_text($item->name, $item->code)]));
             } elseif (! empty($line['unit_id']) && (int) $line['unit_id'] !== (int) $item->unit_id && ! $item->unit?->subunits->contains('id', (int) $line['unit_id'])) {
                 // a unit outside the item's own unit family would be counted as plain quantity here and converted differently when the stock moves
-                $errors["lines.$i.unit_id"] = __('This unit does not belong to :item.', ['item' => $item->name]);
+                $errors["lines.$i.unit_id"] = title_words(__('This unit does not belong to :item.', ['item' => item_text($item->name, $item->code)]));
             }
         }
         // enough stock at each source for everything asked from it (the same item may appear in several lines)
@@ -128,7 +128,7 @@ class MultiTransferController extends Controller
                 [$from, $itemId] = explode('|', $key);
                 $have = (float) Stock::main()->where('item_id', $itemId)->where('warehouse_id', $from)->value('quantity');
                 if (round($need, 4) > round($have, 4)) {
-                    $errors['lines.' . $asked["last|$key"] . '.quantity'] = __(':item: :need are needed from :from, only :have are in stock there.', ['item' => $items[$itemId]->name, 'need' => $need + 0, 'from' => Warehouse::withoutGlobalScopes()->whereKey($from)->value('name'), 'have' => $have + 0]);
+                    $errors['lines.' . $asked["last|$key"] . '.quantity'] = title_words(__(':item: :need are needed from :from, only :have are in stock there.', ['item' => item_text($items[$itemId]->name, $items[$itemId]->code), 'need' => $need + 0, 'from' => Warehouse::withoutGlobalScopes()->whereKey($from)->value('name'), 'have' => $have + 0]));
                 }
             }
         }

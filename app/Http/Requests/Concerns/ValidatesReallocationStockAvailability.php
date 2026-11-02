@@ -24,6 +24,7 @@ trait ValidatesReallocationStockAvailability
         }
 
         $unitsById = Unit::whereIn('id', collect($items)->pluck('unit_id')->filter()->unique())->get()->keyBy('id');
+        $itemRows = \App\Models\Item::whereIn('id', collect($items)->pluck('item_id')->filter()->unique())->get(['id', 'name', 'code'])->keyBy('id');
 
         foreach ($items as $index => $item) {
             $itemId = $item['item_id'] ?? null;
@@ -41,14 +42,14 @@ trait ValidatesReallocationStockAvailability
             if ($available <= 0) {
                 $validator->errors()->add(
                     "items.{$index}.requested_quantity",
-                    __('This item is not available in stock at the selected warehouse.')
+                    title_words(item_text(optional($itemRows->get($itemId))->name, optional($itemRows->get($itemId))->code) . ': ' . __('This item is not available in stock at the selected warehouse.'))
                 );
             } elseif ($baseQty > $available) {
                 $validator->errors()->add(
                     "items.{$index}.requested_quantity",
-                    __('Only :qty available at the selected warehouse, you requested more than is in stock.', [
+                    title_words(item_text(optional($itemRows->get($itemId))->name, optional($itemRows->get($itemId))->code) . ': ' . __('Only :qty available at the selected warehouse, you requested more than is in stock.', [
                         'qty' => $this->formatStockQuantity($available),
-                    ])
+                    ]))
                 );
             }
         }

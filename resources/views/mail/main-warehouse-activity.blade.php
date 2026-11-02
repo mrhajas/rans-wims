@@ -100,7 +100,7 @@
                     <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#374151;">{{ $item['name'] ?? '—' }}</td>
                     <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#374151;">{{ $item['size'] ?? '—' }}</td>
                 @elseif($hasVarianceData)
-                    <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#374151;">{{ $item['code'] ?? '—' }} - {{ $item['name'] ?? '—' }}</td>
+                    <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#374151;">{{ $item['name'] ?? '—' }}{{ item_code_html($item['code'] ?? '') }}</td>
                     <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#374151;">{{ $item['unit'] ?? '—' }}</td>
                     <td style="padding:9px 12px; border:1px solid #e5e7eb; text-align:right; font-size:13px; color:#374151;">{{ $item['allocated_quantity'] ?? '—' }}</td>
                     <td style="padding:9px 12px; border:1px solid #e5e7eb; font-size:13px; color:#374151;">{{ $item['destination'] ?? '—' }}</td>

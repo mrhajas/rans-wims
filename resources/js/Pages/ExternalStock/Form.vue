@@ -49,7 +49,7 @@
           <ul class="ex-lines">
             <li v-for="(l, i) in form.lines" :key="l.key" :class="{ 'is-bad': lineBad(l) || lineErr(i) }">
               <span class="ac-rico is-sm"><icons name="bag" class="w-4 h-4" /></span>
-              <div class="ex-name"><b>{{ l.name }}</b><small>{{ l.code }}<template v-if="l.unit"> · {{ l.unit }}</template></small>
+              <div class="ex-name"><b><item-label :name="l.name" :code="l.code" /></b><small v-if="l.unit">{{ l.unit }}</small>
                 <small v-if="out && l.pos" :class="{ 'ac-neg': lineBad(l) }">{{ $t('Held:') }} {{ qty(l.pos.balance) }} · {{ $t('promised:') }} {{ qty(l.pos.reserved) }} · <b>{{ $t('can take:') }} {{ qty(l.pos.available) }}</b></small>
                 <small v-if="out && l.holders && l.holders.length > 1" class="lg-subtext">{{ $t('Also held in:') }} {{ l.holders.filter(h => h.warehouse_id !== l.warehouse_id).map(h => h.warehouse + ' (' + qty(h.available) + ')').join(', ') }}</small>
                 <small v-if="out && form.contact_id && l.holders && !l.holders.length && l.loaded" class="ac-neg">{{ $t('This person holds none of it in a warehouse you can use.') }}</small>

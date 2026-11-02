@@ -164,7 +164,7 @@
                   <tr v-for="(row, ri) in form.items" :key="row.item_id" class="sa-row">
                     <td class="sa-no-td" :data-label="$t('No')">{{ ri + 1 }}</td>
                     <td :data-label="$t('Item')">
-                      <span class="lg-main">{{ row.name }}</span> <span class="sa-code">({{ row.code }})</span>
+                      <span class="lg-main">{{ row.name }}</span> <span class="item-code">({{ row.code }})</span>
                       <span
                         v-if="row.auto_cleared"
                         class="lg-chip lg-chip-red sa-cleared-tag"
@@ -395,7 +395,7 @@
               </tr></thead>
               <tbody>
                 <tr v-for="u in uncountedShown" :key="u.item_id">
-                  <td>{{ u.name }} <span class="sa-code">({{ u.code }})</span></td>
+                  <td>{{ u.name }} <span class="item-code">({{ u.code }})</span></td>
                   <td class="sa-muted">{{ u.category || '-' }}</td>
                   <td class="num tabular-nums sa-muted">{{ $number(u.system_quantity) }} {{ u.unit_name }}</td>
                 </tr>

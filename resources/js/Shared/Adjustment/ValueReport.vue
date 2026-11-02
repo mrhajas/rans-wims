@@ -34,7 +34,7 @@
             <tbody>
               <tr v-for="(r, i) in rows" :key="i">
                 <td class="idx" :data-label="$t('No')">{{ i + 1 }}</td>
-                <td class="l item" :data-label="$t('Item')"><b>{{ r.name }}</b> <span class="vr-code" v-if="r.code">({{ r.code }})</span><span v-if="sort === 'category' && r.category" class="vr-cat">{{ r.category }}</span></td>
+                <td class="l item" :data-label="$t('Item')"><b>{{ r.name }}</b> <span class="item-code" v-if="r.code">({{ r.code }})</span><span v-if="sort === 'category' && r.category" class="vr-cat">{{ r.category }}</span></td>
                 <td class="l" :data-label="$t('Unit')">{{ r.unit || '-' }}</td>
                 <td class="n" :data-label="$t('Unit price')">{{ money(r.price) }}</td>
                 <td class="n is-before" :data-label="report.labels.before">{{ qty(r.before) }}</td><td class="n is-before" :data-label="report.labels.before_total">{{ money(r.before_total) }}</td>
@@ -108,7 +108,7 @@ export default {
 .vr-table th.is-before, .vr-table td.is-before { background-color: rgba(2, 132, 199, 0.06); } .vr-table th.is-before { color: #075985; background: #bae6fd; } .vr-table th.is-after, .vr-table td.is-after { background-color: rgba(124, 58, 237, 0.06); } .vr-table th.is-after { color: #5b21b6; background: #ddd6fe; }
 .vr-table tfoot td { padding: 9px 8px; font-weight: 800; background: #e2e8f0; border-top: 2px solid #94a3b8; } .vr-table tfoot td.tot { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: #334155; }
 .vr-cat { display: block; margin-top: 1px; font-size: 0.68rem; font-weight: 700; color: #7c3aed; }
-.vr-code { color: #94a3b8; font-weight: 500; } .vr-empty { text-align: center !important; padding: 26px; color: #64748b; }
+.vr-empty { text-align: center !important; padding: 26px; color: #64748b; }
 .vr-d { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 800; white-space: nowrap; } .vr-d.is-up { color: #166534; background: #dcfce7; } .vr-d.is-down { color: #991b1b; background: #fee2e2; } .vr-d.is-same { color: #475569; background: #e2e8f0; }
 .vr-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 html.dark .vr-card { background: #1b2342; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); } html.dark .vr-card b { color: #eef0fa; } html.dark .vr-table th { background: #26305a; color: #bfdbfe; } html.dark .vr-table td { border-bottom-color: rgba(255,255,255,0.08); color: #e2e8f0; } html.dark .vr-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); } html.dark .vr-table tfoot td { background: #26305a; color: #e2e8f0; } html.dark .vr-wrap { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }

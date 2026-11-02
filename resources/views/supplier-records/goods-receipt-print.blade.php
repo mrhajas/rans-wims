@@ -65,7 +65,7 @@
             @foreach($receipt['items'] as $i => $line)
                 <tr>
                     <td>{{ $i + 1 }}</td>
-                    <td>{{ $line['item_name'] }}@if(!empty($line['item_code'])) <span style="color:#6b7280;">({{ $line['item_code'] }})</span>@endif</td>
+                    <td>{{ $line['item_name'] }}{{ item_code_html($line['item_code'] ?? '') }}</td>
                     <td>{{ $line['unit_label'] ?: '-' }}</td>
                     <td class="num">{{ $qty($line['ordered']) }}</td>
                     <td class="num" style="font-weight:bold;">{{ $qty($line['received']) }}</td>

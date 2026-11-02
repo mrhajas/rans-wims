@@ -78,8 +78,7 @@
             <label v-for="m in visibleMaterials" :key="m.id" class="mv-picker-row">
               <input type="checkbox" class="sr-only" :checked="isMaterialSelected(m.id)" @change="toggleMaterial(m.id)" />
               <span class="mv-picker-check"><icons name="tick" class="w-3 h-3" /></span>
-              <span class="truncate">{{ m.name }}</span>
-              <span v-if="m.code" class="mv-picker-code">{{ m.code }}</span>
+              <span class="truncate"><item-label :name="m.name" :code="m.code || ''" /></span>
             </label>
             <div v-if="!filteredMaterials.length" class="lg-empty">
               {{ $t('No matches.') }}
@@ -277,8 +276,7 @@
                         <button type="button" class="mv-ref-link" @click="openTransaction(it)">{{ it.reference }}</button>
                       </td>
                       <td :data-label="$t('Item')">
-                        <div class="lg-main">{{ it.name }}</div>
-                        <div v-if="it.code" class="lg-subtext">{{ it.code }}</div>
+                        <div class="lg-main"><item-label :name="it.name || ''" :code="it.code || ''" /></div>
                       </td>
                       <td :data-label="$t('Date')">{{ it.date }}</td>
                       <td class="num" :data-label="$t('Quantity')">{{ formatQty(it.quantity) }}</td>

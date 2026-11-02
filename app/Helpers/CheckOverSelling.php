@@ -34,7 +34,7 @@ class CheckOverSelling
                         $meta[] = $variant . ': ' . $option;
                     }
                     if ($base_quantity > 0 && $available < $base_quantity) {
-                        $error["items.{$key}.quantity"] = __choice('{name} ({variant}) do not have {quantity} in stock, available quantity {available}.', ['name' => $order_item['name'], 'quantity' => $base_quantity . ' ' . $item->unit->name, 'available' => $available . ' ' . $item->unit->name, 'variant' => implode(', ', $meta)]);
+                        $error["items.{$key}.quantity"] = title_words(__choice('{name} ({variant}) does not have {quantity} in stock, available quantity {available}.', ['name' => item_text($order_item['name'] ?? $item->name, $item->code), 'quantity' => $base_quantity . ' ' . $item->unit->name, 'available' => $available . ' ' . $item->unit->name, 'variant' => implode(', ', $meta)]));
                     }
                 }
             } else {
@@ -46,7 +46,7 @@ class CheckOverSelling
                 $base_quantity = $unit ? convert_to_base_quantity($quantity, $unit) : $quantity;
                 $available = $stock ? (float) $stock->quantity : 0;
                 if ($base_quantity > 0 && $available < $base_quantity) {
-                    $error["items.{$key}.quantity"] = __choice('{name} do not have {quantity} in stock, available quantity {available}.', ['name' => $order_item['name'], 'quantity' => $base_quantity . ' ' . $item->unit->name, 'available' => $available . ' ' . $item->unit->name]);
+                    $error["items.{$key}.quantity"] = title_words(__choice('{name} does not have {quantity} in stock, available quantity {available}.', ['name' => item_text($order_item['name'] ?? $item->name, $item->code), 'quantity' => $base_quantity . ' ' . $item->unit->name, 'available' => $available . ' ' . $item->unit->name]));
                 }
             }
         }

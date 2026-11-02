@@ -264,7 +264,7 @@ export default {
     itemSuggestions() {
       return this.items.map(item => ({
         id: item.id,
-        name: item.code ? `${item.code} - ${item.name}` : item.name,
+        name: item.code ? `${item.name} (${item.code})` : item.name,
       }));
     },
     warehouseSuggestions() {

@@ -257,6 +257,7 @@ import DatePicker from '@/Shared/DatePicker.vue';
 import AutoComplete from '@/Shared/AutoComplete.vue';
 import LoadingButton from '@/Shared/LoadingButton.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
+import { titleWords, itemText } from '@/Core/textCase';
 
 export default {
   components: {
@@ -309,7 +310,9 @@ export default {
     itemSuggestions() {
       return this.items.map(item => ({
         id: item.id,
-        label: `${item.code} - ${item.name}`,
+        label: `${item.name} (${item.code})`,
+        name: item.name,
+        code: item.code,
       }));
     },
   },
@@ -325,12 +328,17 @@ export default {
       const requested = parseFloat(item.requested_quantity) || 0;
 
       if (available <= 0) {
-        return { class: 'mrf-bad', message: this.$t('Not available in stock at this warehouse.') };
+        return { class: 'mrf-bad', message: titleWords(this.itemPrefix(item) + this.$t('Not available in stock at this warehouse.')) };
       }
       if (requested > available) {
-        return { class: 'mrf-bad', message: `${this.$t('Not enough stock')}: ${this.$t('only')} ${this.formatQty(available)} ${this.$t('available at this warehouse')}.` };
+        return { class: 'mrf-bad', message: titleWords(`${this.itemPrefix(item)}${this.$t('Not enough stock')}: ${this.$t('only')} ${this.formatQty(available)} ${this.$t('available at this warehouse')}.`) };
       }
       return { class: 'mrf-good', message: `${this.$t('Available')}: ${this.formatQty(available)}` };
+    },
+    // the item as NAME (CODE), put in front of a message about its stock
+    itemPrefix(item) {
+      const found = (this.items || []).find(i => i.id == item.item_id);
+      return found ? itemText(found.name, found.code) + ' ' : '';
     },
     blankItem() {
       return { item_id: null, requested_quantity: null, unit_id: null, remarks: '' };

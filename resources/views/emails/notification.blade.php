@@ -42,7 +42,7 @@
             @foreach($items as $i => $row)
             <tr>
                 <td style="padding:7px 12px; font-size:12px; color:#6b7280; border-top:1px solid #f1f4f9;">{{ $i + 1 }}</td>
-                <td style="padding:7px 12px; font-size:12px; color:#111827; border-top:1px solid #f1f4f9;">{{ ($row['code'] ?? '') !== '' ? $row['code'] . ' - ' : '' }}{{ $row['name'] ?? '' }}</td>
+                <td style="padding:7px 12px; font-size:12px; color:#111827; border-top:1px solid #f1f4f9;">{{ $row['name'] ?? '' }}{{ item_code_html($row['code'] ?? '') }}</td>
                 <td style="padding:7px 12px; font-size:12px; color:#111827; border-top:1px solid #f1f4f9; text-align:right; white-space:nowrap;">{{ $row['quantity'] ?? '' }} {{ $row['unit'] ?? '' }}</td>
             </tr>
             @endforeach

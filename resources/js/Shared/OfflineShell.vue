@@ -157,7 +157,7 @@
                 <th class="px-3 py-2">{{ $t('Priority') }}</th>
               </tr>
               <tr v-for="item in detailRecord.items || []" :key="item.id" class="ofs-mr-row">
-                <td class="px-3 py-2">{{ item.item?.code }} - {{ item.item?.name }}</td>
+                <td class="px-3 py-2"><item-label :name="item.item?.name" :code="item.item?.code" /></td>
                 <td class="px-3 py-2 text-right">{{ $number(item.quantity) }}</td>
                 <td class="px-3 py-2">{{ item.unit?.name || item.unit?.code || '-' }}</td>
                 <td class="px-3 py-2">{{ item.priority || '-' }}</td>

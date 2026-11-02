@@ -72,30 +72,30 @@ class TransferRequest extends FormRequest
                     continue;
                 }
                 if (isset($seen[$itemId])) {
-                    $validator->errors()->add("items.{$n}.item_id", __(':item is on the list twice. Keep one row and change its quantity.', ['item' => $item->name]));
+                    $validator->errors()->add("items.{$n}.item_id", title_words(__(':item is on the list twice. Keep one row and change its quantity.', ['item' => item_text($item->name, $item->code)])));
                 }
                 $seen[$itemId] = true;
 
                 $allowedUnits = collect([$item->unit_id])->merge($item->unit ? $item->unit->subunits->pluck('id') : [])->filter()->map(fn ($u) => (int) $u)->all();
                 $variations = $row['selected']['variations'] ?? [];
                 if (! empty($row['unit_id']) && $allowedUnits && ! in_array((int) $row['unit_id'], $allowedUnits, true)) {
-                    $validator->errors()->add("items.{$n}.quantity", __('The unit chosen for :item does not belong to it.', ['item' => $item->name]));
+                    $validator->errors()->add("items.{$n}.quantity", title_words(__('The unit chosen for :item does not belong to it.', ['item' => item_text($item->name, $item->code)])));
                 }
                 if (filter_var($row['has_variants'] ?? false, FILTER_VALIDATE_BOOLEAN) && empty($variations)) {
-                    $validator->errors()->add("items.{$n}.variation_id", __('Choose at least one variation of :item.', ['item' => $item->name]));
+                    $validator->errors()->add("items.{$n}.variation_id", title_words(__('Choose at least one variation of :item.', ['item' => item_text($item->name, $item->code)])));
                 }
                 foreach ((array) $variations as $v) {
                     $quantity = $v['quantity'] ?? null;
                     if (! is_numeric($quantity) || (float) $quantity <= 0) {
-                        $validator->errors()->add("items.{$n}.quantity", __('Every variation of :item needs a quantity greater than 0.', ['item' => $item->name]));
+                        $validator->errors()->add("items.{$n}.quantity", title_words(__('Every variation of :item needs a quantity greater than 0.', ['item' => item_text($item->name, $item->code)])));
                         break;
                     }
                     if (isset($v['weight']) && $v['weight'] !== '' && (! is_numeric($v['weight']) || (float) $v['weight'] < 0)) {
-                        $validator->errors()->add("items.{$n}.weight", __('The weight of :item must be 0 or more.', ['item' => $item->name]));
+                        $validator->errors()->add("items.{$n}.weight", title_words(__('The weight of :item must be 0 or more.', ['item' => item_text($item->name, $item->code)])));
                         break;
                     }
                     if (! empty($v['unit_id']) && $allowedUnits && ! in_array((int) $v['unit_id'], $allowedUnits, true)) {
-                        $validator->errors()->add("items.{$n}.quantity", __('The unit chosen for :item does not belong to it.', ['item' => $item->name]));
+                        $validator->errors()->add("items.{$n}.quantity", title_words(__('The unit chosen for :item does not belong to it.', ['item' => item_text($item->name, $item->code)])));
                         break;
                     }
                 }

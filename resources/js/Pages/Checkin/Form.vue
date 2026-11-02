@@ -171,7 +171,7 @@
                 }"
               >
                 <div class="flex items-start justify-between gap-2">
-                  <h4 class="text-base font-bold" :class="{ '-mb-4': item.has_variants }">{{ item.name }} ({{ item.code }})</h4>
+                  <h4 class="text-base font-bold" :class="{ '-mb-4': item.has_variants }"><item-label :name="item.name" :code="item.code" /></h4>
                   <button
                     type="button"
                     @click="removeItem(item, ii)"
@@ -277,7 +277,7 @@
                               class="w-full text-left rounded-md transition-all hover:bg-blue-100 -my-1 py-1 hover:pl-5 focus:outline-none focus:ring focus:ring-gray-300 focus:bg-blue-100"
                             > -->
                             <h4 class="w-full lg:w-auto font-bold">
-                              <span class="text-base">{{ item.name }} ({{ item.code }})</span>
+                              <span class="text-base"><item-label :name="item.name" :code="item.code" /></span>
                             </h4>
                             <!-- </button> -->
                           </div>
@@ -391,7 +391,7 @@
                           class="w-full text-left rounded-md hover:bg-blue-100 -m-1 p-1 lg:-mx-5 lg:px-5 focus:outline-none focus:ring focus:ring-gray-300 focus:bg-blue-100"
                         > -->
                         <h4 class="w-full lg:w-auto">
-                          <span class="text-base">{{ item.name }} ({{ item.code }})</span>
+                          <span class="text-base"><item-label :name="item.name" :code="item.code" /></span>
                         </h4>
                         <!-- </button> -->
 

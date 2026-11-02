@@ -11,6 +11,7 @@ import '../css/sitemeetings.css';
 import i18n from '@/Core/i18n';
 import mixin from '@/Core/mixin';
 import Icons from '@/Shared/Icons.vue';
+import ItemLabel from '@/Shared/ItemLabel.vue';
 import Boolean from '@/Shared/Boolean.vue';
 import Loading from '@/Shared/Loading.vue';
 import OfflineLock from '@/Shared/OfflineLock.vue';
@@ -221,6 +222,7 @@ createInertiaApp({
       .component('Head', Head)
       .component('Link', Link)
       .component('Icons', Icons)
+      .component('ItemLabel', ItemLabel)
       .component('CssSelect', CssSelect)
       .component('DatePicker', DatePicker)
       .component('Boolean', Boolean)

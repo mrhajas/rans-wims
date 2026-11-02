@@ -190,8 +190,7 @@
                   <td :data-label="$t('Type')"><span class="lg-chip" :class="typeChip(row.transaction_key)">{{ $t(row.transaction_type) }}</span></td>
                   <td :data-label="$t('Reference')" class="lg-mono">{{ row.reference }}</td>
                   <td :data-label="$t('Item')">
-                    <div class="lg-main">{{ row.item_name }}</div>
-                    <div v-if="row.item_code" class="lg-subtext">{{ row.item_code }}</div>
+                    <div class="lg-main"><item-label :name="row.item_name || ''" :code="row.item_code || ''" /></div>
                   </td>
                   <td class="num" :data-label="$t('Quantity')">{{ formatQty(row.quantity) }}</td>
                   <td class="text-center" :data-label="$t('Unit')"><span v-if="row.unit" class="lg-chip lg-chip-slate">{{ row.unit }}</span></td>
@@ -235,8 +234,7 @@
             <tbody>
               <tr v-for="row in filteredItemSummary" :key="`${row.item_id}-${row.unit}`">
                 <td :data-label="$t('Item')">
-                  <div class="lg-main">{{ row.item_name }}</div>
-                  <div v-if="row.item_code" class="lg-subtext">{{ row.item_code }}</div>
+                  <div class="lg-main"><item-label :name="row.item_name || ''" :code="row.item_code || ''" /></div>
                 </td>
                 <td class="text-center" :data-label="$t('Unit')"><span v-if="row.unit" class="lg-chip lg-chip-slate">{{ row.unit }}</span></td>
                 <td class="num pml-c-in" :data-label="$t('Checked In')">{{ formatQty(row.checked_in) }}</td>
@@ -272,8 +270,7 @@
                   <button type="button" class="pml-ref-link" @click="openTransaction(row)">{{ row.reference }}</button>
                 </td>
                 <td :data-label="$t('Item')">
-                  <div class="lg-main">{{ row.item_name }}</div>
-                  <div v-if="row.item_code" class="lg-subtext">{{ row.item_code }}</div>
+                  <div class="lg-main"><item-label :name="row.item_name || ''" :code="row.item_code || ''" /></div>
                 </td>
                 <td :data-label="$t('From')">{{ row.from }}</td>
                 <td :data-label="$t('To')">{{ row.to }}</td>
@@ -311,8 +308,7 @@
                 </tr>
                 <tr v-for="item in row.items" :key="`${row.contact_id}-${row.unit}-${item.item_id}`" class="pml-supplier-item-row">
                   <td :data-label="$t('Item')">
-                    <span class="pml-supplier-item-name">{{ item.item_name }}</span>
-                    <span v-if="item.item_code" class="lg-subtext">({{ item.item_code }})</span>
+                    <span class="pml-supplier-item-name"><item-label :name="item.item_name || ''" :code="item.item_code || ''" /></span>
                   </td>
                   <td class="num" :data-label="$t('Quantity')">{{ formatQty(item.quantity) }}</td>
                   <td class="text-center pml-c-mute" :data-label="$t('Unit')">{{ row.unit }}</td>
@@ -346,8 +342,7 @@
               <tbody>
                 <tr v-for="row in filteredReconciliation" :key="row.item_id">
                   <td :data-label="$t('Item')">
-                    <div class="lg-main">{{ row.item_name }}</div>
-                    <div v-if="row.item_code" class="lg-subtext">{{ row.item_code }}</div>
+                    <div class="lg-main"><item-label :name="row.item_name || ''" :code="row.item_code || ''" /></div>
                   </td>
                   <td class="text-center" :data-label="$t('Unit')"><span v-if="row.unit" class="lg-chip lg-chip-slate">{{ row.unit }}</span></td>
                   <td class="num" :data-label="$t('Opening Stock')">{{ formatQty(row.opening_stock) }}</td>
@@ -385,8 +380,7 @@
               <tbody>
                 <tr v-for="row in filteredBoq" :key="row.item_id">
                   <td :data-label="$t('BOQ Item')">
-                    <div class="lg-main">{{ row.item_name }}</div>
-                    <div v-if="row.item_code" class="lg-subtext">{{ row.item_code }}</div>
+                    <div class="lg-main"><item-label :name="row.item_name || ''" :code="row.item_code || ''" /></div>
                   </td>
                   <td class="text-center" :data-label="$t('Unit')"><span v-if="row.unit" class="lg-chip lg-chip-slate">{{ row.unit }}</span></td>
                   <td class="num" :data-label="$t('BOQ Quantity')">{{ formatQty(row.boq_quantity) }}</td>

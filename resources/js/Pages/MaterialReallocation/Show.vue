@@ -103,7 +103,7 @@
               </thead>
               <tbody>
                 <tr v-for="item in materialReallocation.items" :key="item.id">
-                  <td :data-label="$t('Item')"><span class="lg-main">{{ item.item?.code }} - {{ item.item?.name }}</span></td>
+                  <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="item.item?.name || ''" :code="item.item?.code || ''" /></span></td>
                   <td :data-label="$t('Unit')">{{ item.unit?.code || item.unit?.name || '-' }}</td>
                   <td :data-label="$t('Requested')" class="num">{{ $number(item.requested_quantity) }}</td>
                   <td :data-label="$t('Destination Warehouse')">{{ item.destination_warehouse?.name || '-' }}</td>
@@ -215,7 +215,7 @@
           </header>
           <div v-for="row in allocateRows" :key="row.id" class="ms-alloc">
             <div class="ms-alloc-head">
-              <span class="lg-main">{{ row.itemLabel }}</span>
+              <span class="lg-main"><item-label :name="row.itemName" :code="row.itemCode" /></span>
               <span class="lg-chip lg-chip-slate" style="text-transform: none">{{ $t('Requested') }}: {{ $number(row.requested_quantity) }}</span>
             </div>
             <div v-for="(destination, dIndex) in row.destinations" :key="dIndex" class="ms-alloc-row">
@@ -332,7 +332,7 @@
               </thead>
               <tbody>
                 <tr v-for="row in receiveFormObj.items" :key="row.id">
-                  <td :data-label="$t('Item')"><span class="lg-main">{{ row.itemLabel }}</span></td>
+                  <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="row.itemName" :code="row.itemCode" /></span></td>
                   <td :data-label="$t('Unit')">{{ row.unit }}</td>
                   <td :data-label="$t('Destination')">{{ row.destinationLabel }}</td>
                   <td :data-label="$t('Allocated')" class="num">{{ $number(row.allocated_quantity) }}</td>
@@ -393,7 +393,7 @@
               </thead>
               <tbody>
                 <tr v-for="item in materialReallocation.items" :key="item.id">
-                  <td :data-label="$t('Item')"><span class="lg-main">{{ item.item?.code }} - {{ item.item?.name }}</span></td>
+                  <td :data-label="$t('Item')"><span class="lg-main"><item-label :name="item.item?.name || ''" :code="item.item?.code || ''" /></span></td>
                   <td :data-label="$t('Unit')">{{ item.unit?.code || item.unit?.name || '-' }}</td>
                   <td :data-label="$t('Destination')">{{ item.destination_warehouse?.name || '-' }}</td>
                   <td :data-label="$t('Allocated')" class="num">{{ $number(item.allocated_quantity) }}</td>
@@ -531,7 +531,8 @@ export default {
       receiveFormObj: this.$inertia.form({
         items: (this.materialReallocation.items || []).map(item => ({
           id: item.id,
-          itemLabel: `${item.item?.code || ''} - ${item.item?.name || ''}`,
+          itemName: item.item?.name || '',
+          itemCode: item.item?.code || '',
           unit: item.unit?.code || item.unit?.name || '-',
           destinationLabel: item.destination_warehouse?.name || '-',
           allocated_quantity: item.allocated_quantity || 0,
@@ -544,7 +545,8 @@ export default {
         .filter(item => !item.parent?.id)
         .map(item => ({
           id: item.id,
-          itemLabel: `${item.item?.code || ''} - ${item.item?.name || ''}`,
+          itemName: item.item?.name || '',
+          itemCode: item.item?.code || '',
           requested_quantity: item.requested_quantity,
           destinations: [{ warehouse_id: item.destination_warehouse?.id || null, quantity: item.requested_quantity }],
         })),
