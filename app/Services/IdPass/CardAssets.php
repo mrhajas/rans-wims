@@ -143,31 +143,47 @@ class CardAssets
     }
 
     /**
-     * The drawn person shown when a card has no photograph, in the colour of its category: the supplied blue icon (null = blue as supplied), or the same drawing with every
-     * colour turned to the hue of the category colour (shades and highlights stay). $flat is the gradient-free copy for the PDF engine. Returns the file path (kept in the cache).
+     * The drawn person shown when a card has no photograph, in the colours of its category: the supplied blue icon (null = blue on white, as supplied), or the same drawing with
+     * every colour turned to the hue of the category colour, standing on the photo background colour of the category. The shades are made lighter on a dark background and darker
+     * on a light one, and a white rim separates the figure from the background, so the person is always seen clearly. $flat is the gradient-free copy for the PDF engine.
+     * Returns the file path (kept in the cache).
      */
-    public static function person(?string $hex = null, bool $flat = false): string
+    public static function person(?string $hex = null, bool $flat = false, ?string $bg = null): string
     {
         $base = self::art($flat ? 'person-flat.svg' : 'person.svg');
         $hex = $hex === null || $hex === 'blue' ? null : self::hex($hex, '');
-        if ($hex === null || $hex === '') {
+        $bg = $bg ? self::hex($bg, '') : '';
+        if (($hex === null || $hex === '') && $bg === '') {
             return $base;
         }
-        $out = self::dir('cache') . '/person-v1-' . ($flat ? 'f' : 'g') . '-' . ltrim($hex, '#') . '.svg';
+        $out = self::dir('cache') . '/person-v2-' . ($flat ? 'f' : 'g') . '-' . ltrim((string) $hex, '#') . '-' . ltrim($bg, '#') . '.svg';
         if (! is_file($out)) {
-            [$r, $g, $b] = sscanf($hex, '#%02x%02x%02x');
-            [$hue, $sat] = self::hsl($r, $g, $b);
-            $svg = preg_replace_callback('/#([0-9a-f]{6})\b/i', function ($m) use ($hue, $sat) {
+            [$hue, $sat] = $hex ? self::hsl(...sscanf($hex, '#%02x%02x%02x')) : [null, 0.0];
+            // how light the background is decides which way the shades of the person move
+            $lum = 1.0;
+            if ($bg !== '') {
+                [$br, $bgr, $bb] = sscanf($bg, '#%02x%02x%02x');
+                $lin = fn ($c) => ($c /= 255) <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+                $lum = 0.2126 * $lin($br) + 0.7152 * $lin($bgr) + 0.0722 * $lin($bb);
+            }
+            $svg = (string) file_get_contents($base);
+            $svg = preg_replace_callback('/#([0-9a-f]{6})\b/i', function ($m) use ($hue, $sat, $lum) {
                 if (strtolower($m[1]) === 'ffffff') {
                     return $m[0];
                 }
                 [$cr, $cg, $cb] = sscanf($m[0], '#%02x%02x%02x');
-                [, $s, $l] = self::hsl($cr, $cg, $cb);
+                [$h0, $s, $l] = self::hsl($cr, $cg, $cb);
+                if ($lum < 0.99) {
+                    $l = $lum >= 0.3 ? $l * 0.6 : $l + (1 - $l) * 0.32; // light background: deeper shades; dark background: lighter shades
+                }
                 // a grey category (silver) keeps a pale tint of its hue; a coloured one keeps the strength of the original shading
-                [$nr, $ng, $nb] = self::rgb($hue, $sat < 0.12 ? $sat : min(1.0, $s * 1.05), $l);
+                [$nr, $ng, $nb] = self::rgb($hue ?? $h0, $hue === null ? $s : ($sat < 0.12 ? $sat : min(1.0, $s * 1.05)), $l);
 
                 return sprintf('#%02x%02x%02x', $nr, $ng, $nb);
-            }, (string) file_get_contents($base));
+            }, $svg);
+            if ($bg !== '') {
+                $svg = str_replace('<rect width="310" height="387.5" fill="#ffffff"/>', '<rect width="310" height="387.5" fill="' . $bg . '"/>', $svg);
+            }
             file_put_contents($out, $svg);
         }
 
@@ -210,10 +226,14 @@ class CardAssets
         return [(int) round(($r + $m) * 255), (int) round(($g + $m) * 255), (int) round(($b + $m) * 255)];
     }
 
-    /** The key of the drawn person of a category in a URL: 'blue' for a Staff ID, else the band colour (six hex digits). */
-    public static function personKey(?string $kind, ?string $band): string
+    /** The key of the drawn person of a category in a URL: 'blue' for a Staff ID, else the band colour and the photo background (six hex digits each, joined by a dash). */
+    public static function personKey(?string $kind, ?string $band, ?string $bg = null): string
     {
-        return $kind === 'staff' || ! $band ? 'blue' : ltrim(self::hex($band, '#1565c0'), '#');
+        if ($kind === 'staff' || ! $band) {
+            return 'blue';
+        }
+
+        return ltrim(self::hex($band, '#1565c0'), '#') . ($bg && self::hex($bg, '') !== '' ? '-' . ltrim(self::hex($bg, ''), '#') : '');
     }
 
     /** The stamp laid over the photo of a card that is not valid: label and colour per status. */
@@ -226,31 +246,14 @@ class CardAssets
             return null;
         }
         [$label, $hex] = self::STAMPS[$status];
-        $out = self::dir('cache') . '/stamp-v2-' . strtolower($status) . '.png';
+        $out = self::dir('cache') . '/stamp-v5-' . strtolower($status) . '.png';
         if (is_file($out)) {
             return $out;
         }
         $k = 2; // drawn twice as large, then reduced, so the edges are smooth
         $W = 760 * $k;
         $H = 420 * $k;
-        $im = imagecreatetruecolor($W, $H);
-        imagealphablending($im, false);
-        imagesavealpha($im, true);
-        imagefill($im, 0, 0, imagecolorallocatealpha($im, 255, 255, 255, 127));
-        imagealphablending($im, true);
         [$r, $g, $b] = sscanf($hex, '#%02x%02x%02x');
-        $ink = imagecolorallocatealpha($im, $r, $g, $b, 8);
-        $clear = imagecolorallocatealpha($im, 255, 255, 255, 127);
-        // the frame: a thick rounded rectangle with a thin one inside it
-        $rect = function (int $x1, int $y1, int $x2, int $y2, int $rad, int $t) use ($im, $ink, $clear) {
-            self::roundRect($im, $x1, $y1, $x2, $y2, $rad, $ink);
-            imagealphablending($im, false);
-            self::roundRect($im, $x1 + $t, $y1 + $t, $x2 - $t, $y2 - $t, max(2, $rad - $t), $clear);
-            imagealphablending($im, true);
-        };
-        $rect(20 * $k, 20 * $k, $W - 20 * $k, $H - 20 * $k, 46 * $k, 16 * $k);
-        $rect(46 * $k, 46 * $k, $W - 46 * $k, $H - 46 * $k, 26 * $k, 5 * $k);
-        // the letters, as large as the frame lets them be
         $font = self::font('PillGothic-600.ttf');
         $maxW = $W - 130 * $k;
         $size = 150 * $k;
@@ -262,10 +265,47 @@ class CardAssets
         $box = imagettfbbox($size, 0, $font, $label);
         $x = (int) (($W - ($box[2] - $box[0])) / 2 - $box[0]);
         $y = (int) (($H - ($box[1] - $box[7])) / 2 - $box[7]);
-        // the font is a light one: drawn several times a hair apart it takes the weight of a stamp
-        foreach ([[0, 0], [-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [-2, 2], [2, -2]] as [$dx, $dy]) {
-            imagettftext($im, $size, 0, $x + $dx * $k, $y + $dy * $k, $ink, $font, $label);
+        $blank = function () use ($W, $H) {
+            $c = imagecreatetruecolor($W, $H);
+            imagealphablending($c, false);
+            imagesavealpha($c, true);
+            imagefill($c, 0, 0, imagecolorallocatealpha($c, 255, 255, 255, 127));
+            imagealphablending($c, true);
+
+            return $c;
+        };
+        // the whole stamp in one colour (the frame: a thick rounded rectangle with a thin one inside it; then the letters)
+        $draw = function ($c, int $cr, int $cg, int $cb, int $alpha) use ($W, $H, $k, $font, $size, $x, $y, $label) {
+            $ink = imagecolorallocatealpha($c, $cr, $cg, $cb, $alpha);
+            $clear = imagecolorallocatealpha($c, 255, 255, 255, 127);
+            $rect = function (int $x1, int $y1, int $x2, int $y2, int $rad, int $t) use ($c, $ink, $clear) {
+                self::roundRect($c, $x1, $y1, $x2, $y2, $rad, $ink);
+                imagealphablending($c, false);
+                self::roundRect($c, $x1 + $t, $y1 + $t, $x2 - $t, $y2 - $t, max(2, $rad - $t), $clear);
+                imagealphablending($c, true);
+            };
+            $rect(20 * $k, 20 * $k, $W - 20 * $k, $H - 20 * $k, 46 * $k, 16 * $k);
+            $rect(46 * $k, 46 * $k, $W - 46 * $k, $H - 46 * $k, 26 * $k, 5 * $k);
+            // the font is a light one: drawn several times a hair apart it takes the weight of a stamp
+            foreach ([[0, 0], [-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [-2, 2], [2, -2]] as [$dx, $dy]) {
+                imagettftext($c, $size, 0, $x + $dx * $k, $y + $dy * $k, $ink, $font, $label);
+            }
+        };
+        $white = $blank();
+        $draw($white, 255, 255, 255, 0);
+        $im = $blank();
+        // a white edge round everything, so the stamp reads on a photograph or colour of any kind
+        $edge = 6 * $k;
+        for ($a = 0; $a < 16; $a++) {
+            imagecopy($im, $white, (int) round(cos($a * M_PI / 8) * $edge), (int) round(sin($a * M_PI / 8) * $edge), 0, 0, $W, $H);
         }
+        imagedestroy($white);
+        // and a pale plate behind the letters, like the ink of a stamp on paper
+        self::roundRect($im, 46 * $k, 46 * $k, $W - 46 * $k, $H - 46 * $k, 26 * $k, imagecolorallocatealpha($im, 255, 255, 255, 45));
+        $stamp = $blank();
+        $draw($stamp, $r, $g, $b, 8);
+        imagecopy($im, $stamp, 0, 0, 0, 0, $W, $H);
+        imagedestroy($stamp);
         // tilted a little, as a real stamp is, and reduced
         $rot = imagerotate($im, 16, imagecolorallocatealpha($im, 255, 255, 255, 127));
         imagedestroy($im);

@@ -46,7 +46,7 @@ class CardRenderer
 
     private static function build(array $d, IdPassCategory $cat): array
     {
-        $d['cat'] = ['name' => $cat->name, 'label' => $cat->label ?: $cat->name, 'band' => CardAssets::hex($cat->band_color, '#1565c0'), 'arrow' => CardAssets::hex($cat->arrow_color, '#fff200'), 'icon' => $cat->icon];
+        $d['cat'] = ['name' => $cat->name, 'label' => $cat->label ?: $cat->name, 'band' => CardAssets::hex($cat->band_color, '#1565c0'), 'arrow' => CardAssets::hex($cat->arrow_color, '#fff200'), 'icon' => $cat->icon, 'bg' => $cat->photo_background];
         $d['pooled'] = (bool) $cat->pooled;
         $d['template'] = match ($cat->kind) {
             'staff' => 'staff', 'compound' => 'worker', default => 'pass',
@@ -161,7 +161,7 @@ class CardRenderer
         } else {
             // the photograph, cropped to the 31 x 38.75 mm frame by the photo tool; without one the frame shows the drawn blue person, cropped to fill it
             $photo = self::src($d['photo'], $mode);
-            $frame = self::img($photo !== '' ? $photo : self::src(CardAssets::person($d['template'] === 'staff' ? null : $band, $mode === 'pdf'), $mode), 0, 0, 31.0, 38.75);
+            $frame = self::img($photo !== '' ? $photo : self::src(CardAssets::person($d['template'] === 'staff' ? null : $band, $mode === 'pdf', $d['template'] === 'staff' ? null : ($cat['bg'] ?? null)), $mode), 0, 0, 31.0, 38.75);
             // a card that is suspended, expired or revoked carries a stamp over the photograph (in the colour of its status)
             $stamp = CardAssets::stamp($d['status'] ?? null);
             if ($stamp) {

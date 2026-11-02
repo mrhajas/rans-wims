@@ -138,7 +138,7 @@ export default {
     planned() { const c = this.cat; return this.plan.map(s => (s === null ? '' : c ? c.prefix + String(s).padStart(c.digits, '0') : s)); },
     sendSeq() { return !!this.startAt || this.rows.some(r => r.seq && r.state !== 'ok'); },
     dup() { const seen = {}; return this.plan.map((s, i) => { if (s === null || this.rows[i].state === 'ok') return false; const d = seen[s] !== undefined; seen[s] = i; return d; }); },
-    personUrl() { return '/id-passes/avatar/' + (this.info.kind === 'staff' || !this.cat || !/^#[0-9a-f]{6}$/i.test(this.cat.band || '') ? 'blue' : this.cat.band.slice(1)) + '.svg'; },
+    personUrl() { return '/id-passes/avatar/' + (this.info.kind === 'staff' || !this.cat || !/^#[0-9a-f]{6}$/i.test(this.cat.band || '') ? 'blue' : this.cat.band.slice(1) + (/^#[0-9a-f]{6}$/i.test(this.cat.photo_bg || '') ? '-' + this.cat.photo_bg.slice(1) : '')) + '.svg'; },
     avatarBg() { return (this.cat && this.cat.photo_bg) || '#e6edf6'; },
     noPhotoCount() { return this.rows.filter(r => r.state !== 'ok' && !r.thumb && !r.hasPhoto && !r.avatar).length; },
     readyCount() { return this.rows.filter((r, i) => r.ok && r.state !== 'ok' && !this.dup[i]).length; },
