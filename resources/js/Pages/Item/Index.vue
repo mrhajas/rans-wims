@@ -345,49 +345,8 @@
       </div>
     </Teleport>
 
-    <!-- Item Details Modal -->
-    <modal :show="details" max-width="4xl" :closeable="true" @close="hideDetails">
-      <div class="rounded-md overflow-hidden">
-        <div class="idm-head print:hidden">
-          <span class="idm-ico"><icons name="collection" class="w-5 h-5" /></span>
-          <div class="idm-title">
-            <b>{{ $t('Item Details') }}</b>
-            <span v-if="details && item">{{ $t(item.name) }}</span>
-          </div>
-          <div class="idm-actions">
-            <a
-              v-if="item"
-              target="_blank"
-              :data-tip="$t('Print Barcode')"
-              :href="route('items.barcodes', { ids: item.id })"
-              class="idm-btn lg-tip"
-             :aria-label="$t('Print Barcode')">
-              <icons name="doc" class="h-5 w-5" />
-            </a>
-            <a v-if="item" :href="route('items.report.pdf', item.id)" :data-tip="$t('Download PDF')" class="idm-btn is-green lg-tip" :aria-label="$t('Download PDF')"><icons name="download" class="h-5 w-5" /></a>
-            <button
-              @click="startPrint()"
-              class="idm-btn is-blue lg-tip"
-              :data-tip="$t('Print Report')"
-              :aria-label="$t('Print')"
-            >
-              <icons name="printer" class="h-5 w-5" />
-            </button>
-            <button
-              @click="hideDetails()"
-              class="idm-btn is-red"
-              :aria-label="$t('Close')"
-            >
-              <icons name="cross" class="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div class="p-6 print:block print:h-full bg-gray-100">
-          <Item-details v-if="item" :item="item" :modal="true" />
-        </div>
-      </div>
-    </modal>
+    <!-- Item Details Modal (shared with the Dashboard): print, PDF, barcode and Edit in a new tab -->
+    <item-details-modal :show="details" :item="item" :loading="loading" @close="hideDetails" />
 
     <camera-barcode-scanner
       ref="scanner"
@@ -442,7 +401,7 @@
 import pickBy from 'lodash/pickBy';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
-import ItemDetails from './Details.vue';
+import ItemDetailsModal from '@/Shared/Item/ItemDetailsModal.vue';
 import Dialog from '@/Shared/Dialog.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import CameraBarcodeScanner from '@/Shared/CameraBarcodeScanner.vue';
@@ -476,7 +435,7 @@ export default {
     Dialog,
     TecButton,
     Pagination,
-    ItemDetails,
+    ItemDetailsModal,
     AdminLayout,
     TecDropdown,
     SelectInput,
@@ -1196,15 +1155,4 @@ html.dark .item-th-indigo, html.dark .item-th-blue, html.dark .item-th-emerald, 
 .item-row-line { border-top: 0 !important; box-shadow: none !important; }
 
 /* the item details window: a clear header with the item name and round action buttons */
-.idm-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--lg-card, #fff); border-bottom: 1px solid var(--lg-line, #e5e7eb); }
-.idm-ico { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #2f6199, #1c3f66); }
-.idm-title { display: grid; min-width: 0; flex: 1; line-height: 1.2; } .idm-title b { font-size: 1rem; } .idm-title span { font-size: 0.82rem; color: var(--lg-mute, #64748b); overflow-wrap: anywhere; }
-.idm-actions { display: flex; align-items: center; gap: 8px; flex: none; }
-.idm-btn { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; border: 0; cursor: pointer; background: rgba(148, 163, 184, 0.16); color: #475569; transition: background 0.15s, transform 0.15s; }
-.idm-btn:hover { transform: translateY(-1px); background: rgba(148, 163, 184, 0.3); }
-.idm-btn.is-blue { background: rgba(59, 130, 196, 0.16); color: #1c3f66; } .idm-btn.is-blue:hover { background: rgba(59, 130, 196, 0.3); }
-.idm-btn.is-green { background: rgba(16, 185, 129, 0.16); color: #047857; } .idm-btn.is-green:hover { background: rgba(16, 185, 129, 0.3); }
-.idm-btn.is-red { background: rgba(225, 29, 72, 0.12); color: #be123c; } .idm-btn.is-red:hover { background: rgba(225, 29, 72, 0.24); }
-.idm-btn:focus-visible { outline: 3px solid rgba(59, 130, 196, 0.5); outline-offset: 2px; }
-@media (max-width: 479.98px) { .idm-head { padding: 12px; } .idm-actions { gap: 5px; } .idm-btn { width: 34px; height: 34px; } .idm-ico { display: none; } }
 </style>

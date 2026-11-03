@@ -387,6 +387,9 @@
                 :aria-expanded="openIndex === warehouseKey(item, ci)"
                 @click="toggleAccordion(warehouseKey(item, ci), item)"
                 @keydown.enter.prevent="toggleAccordion(warehouseKey(item, ci), item)"
+                @mouseenter="loadItems(item)"
+                @focusin="loadItems(item)"
+                @touchstart.passive="loadItems(item)"
               >
                 <span class="sv-rank" :class="{ 'sv-rank-top': ci < 3 }">{{ ci + 1 }}</span>
                 <div class="sv-name">
@@ -428,7 +431,14 @@
                   </thead>
                   <tbody>
                     <template :key="si" v-for="(stock, si) in itemsOf(item)">
-                      <tr v-if="stock.quantity > 0">
+                      <tr
+                        v-if="stock.quantity > 0"
+                        :class="{ 'sv-click': canOpenItem(stock) }"
+                        :tabindex="canOpenItem(stock) ? 0 : null"
+                        :title="canOpenItem(stock) ? $t('Open the item') : null"
+                        @click="openItem(stock)"
+                        @keydown.enter.prevent="openItem(stock)"
+                      >
                         <td class="sv-code">{{ stock.code }}</td>
                         <td>{{ stock.name }}</td>
                         <td class="text-right">{{ $number(stock.price) }} Tsh</td>
@@ -437,9 +447,14 @@
                         <td class="text-right sv-strong">{{ $number(stock.total_amount) }} Tsh</td>
                       </tr>
                     </template>
-                    <tr v-if="itemsCache[item.id] === undefined">
-                      <td class="sv-empty" colspan="6">{{ itemsFailed[item.id] ? $t('Could not load the items. Close this row and open it again.') : $t('Loading...') }}</td>
+                    <tr v-if="itemsCache[item.id] === undefined && itemsFailed[item.id]">
+                      <td class="sv-empty" colspan="6">{{ $t('Could not load the items. Close this row and open it again.') }}</td>
                     </tr>
+                    <template v-else-if="itemsCache[item.id] === undefined">
+                      <tr v-for="n in 6" :key="'sk' + n" class="sv-skel-row" aria-hidden="true">
+                        <td><i class="sv-skel w-s"></i></td><td><i class="sv-skel w-l"></i></td><td class="text-right"><i class="sv-skel w-m"></i></td><td class="text-right"><i class="sv-skel w-s"></i></td><td class="text-center"><i class="sv-skel w-xs"></i></td><td class="text-right"><i class="sv-skel w-m"></i></td>
+                      </tr>
+                    </template>
                     <tr v-else-if="!itemsOf(item).some(i => i.quantity > 0)">
                       <td class="sv-empty" colspan="6">{{ $t('The warehouse is currently empty.') }}</td>
                     </tr>
@@ -643,6 +658,9 @@
         </div>
       </div>
     </modal>
+
+    <!-- an item opened from a warehouse list: the same window as on the Items page, with Edit (new tab) -->
+    <item-details-modal :show="itemModal.show" :item="itemModal.item" :loading="itemModal.loading" :preview="itemModal.preview" @close="itemModal.show = false" />
   </admin-layout>
 </template>
 
@@ -664,11 +682,12 @@ import TecSectionTitle from '@/Jetstream/SectionTitle.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import MonthCalendar from '@/Shared/Calendar/MonthCalendar.vue';
+import ItemDetailsModal from '@/Shared/Item/ItemDetailsModal.vue';
 
 export default {
   props: ['data', 'chart', 'top_products', 'listing', 'weather', 'shortcutCardOrder', 'channelLive', 'canViewOnlineUsers', 'contractsDue'],
 
-  components: { OnlineUsers, AdminLayout, AutoComplete, AnimatedNumber, VueHighcharts, TecSectionTitle, TecDialogModal, Modal, MonthCalendar, Link },
+  components: { OnlineUsers, AdminLayout, AutoComplete, AnimatedNumber, VueHighcharts, TecSectionTitle, TecDialogModal, Modal, MonthCalendar, ItemDetailsModal, Link },
 
   data() {
     return {
@@ -691,6 +710,7 @@ export default {
       openIndex: null,
       itemsCache: {},
       itemsFailed: {},
+      itemModal: { show: false, loading: false, item: null, preview: '' },
       now: new Date(),
       clockTimer: null,
       svExpanded: false,
@@ -1034,6 +1054,7 @@ export default {
     setTimeout(() => {
       this.justLoaded = false;
     }, 900);
+    this.warmWarehouseItems();
   },
 
   methods: {
@@ -1220,12 +1241,38 @@ export default {
     itemsOf(item) {
       return (item && (this.itemsCache[item.id] || item.items)) || [];
     },
+    // Asked for as soon as the pointer, a finger or the keyboard reaches a warehouse row (and, for the biggest few, while the browser is idle), so the
+    // list is usually already here when the row is opened. One request per warehouse at a time; a failed one is tried again the next time.
     loadItems(item) {
       if (!item || !item.id || this.itemsCache[item.id] !== undefined || (Array.isArray(item.items) && item.items.length)) return;
+      this._itemsPending = this._itemsPending || {};
+      if (this._itemsPending[item.id]) return;
+      this._itemsPending[item.id] = true;
       this.itemsFailed[item.id] = false;
       axios.get('/dashboard/warehouse-stock-value/' + item.id + '/items')
         .then(res => { this.itemsCache[item.id] = Array.isArray(res.data) ? res.data : []; })
-        .catch(() => { this.itemsFailed[item.id] = true; });
+        .catch(() => { this.itemsFailed[item.id] = true; })
+        .finally(() => { this._itemsPending[item.id] = false; });
+    },
+    warmWarehouseItems() {
+      const saver = navigator.connection && navigator.connection.saveData;
+      if (saver) return;
+      const top = ((this.svGroups[0] && this.svGroups[0].rows) || []).slice(0, 3);
+      const go = () => top.forEach((row, i) => setTimeout(() => this.loadItems(row), i * 700));
+      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(go, { timeout: 5000 });
+      else setTimeout(go, 2500);
+    },
+    canOpenItem(stock) {
+      return !!(stock && stock.id && this.$can('read-items'));
+    },
+    // the item window opens at once (name and code already there) and fills when the item arrives
+    openItem(stock) {
+      if (!this.canOpenItem(stock)) return;
+      this.itemModal = { show: true, loading: true, item: null, preview: stock.name + (stock.code ? ' (' + stock.code + ')' : '') };
+      const id = stock.id;
+      axios.get(this.route('items.show', id) + '?json=yes')
+        .then(res => { if (this.itemModal.show && this.itemModal.preview.startsWith(stock.name)) this.itemModal = { ...this.itemModal, item: res.data, loading: false }; })
+        .catch(() => { this.itemModal = { ...this.itemModal, loading: false }; });
     },
     escapeHtml(value) {
       return String(value ?? '')
@@ -2687,6 +2734,12 @@ html.dark .sv-kpi { box-shadow: 0 14px 28px -14px rgba(0, 0, 0, 0.75), 0 2px 6px
 .sv-detail-table td { padding: 9px 14px; border-top: 1px solid #eef2f9; color: #334155; }
 .sv-detail-table tbody tr:hover td { background: #f8fbff; }
 .sv-code { font-weight: 700; color: #1e3a8a; }
+.sv-detail-table tbody tr.sv-click { cursor: pointer; } .sv-detail-table tbody tr.sv-click:hover td { background: #eef5ff; } .sv-detail-table tbody tr.sv-click:hover .sv-code { text-decoration: underline; }
+.sv-detail-table tbody tr.sv-click:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }
+.sv-skel { display: inline-block; height: 0.7rem; border-radius: 999px; vertical-align: middle; background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 200% 100%; animation: sv-shimmer 1.2s linear infinite; }
+.sv-skel.w-xs { width: 1.6rem; } .sv-skel.w-s { width: 4rem; } .sv-skel.w-m { width: 5.5rem; } .sv-skel.w-l { width: 60%; max-width: 20rem; }
+@keyframes sv-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sv-skel { animation: none; } }
 .sv-strong { font-weight: 800; color: #0f172a; }
 .sv-empty { text-align: center; color: #94a3b8; padding: 22px 14px !important; }
 .sv-empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 14px; color: #94a3b8; font-size: 0.85rem; font-weight: 600; }

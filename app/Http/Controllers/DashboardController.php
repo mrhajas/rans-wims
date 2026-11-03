@@ -465,6 +465,7 @@ class DashboardController extends Controller
             $price = $it->price ?? 0;
 
             return [
+                'id' => $it->id ?? null, // so a row can open the item
                 'name' => $it->name ?? 'N/A',
                 'code' => $it->code ?? 'N/A',
                 'quantity' => $row->quantity,
