@@ -123,7 +123,7 @@
             <button v-for="m in [3, 6, 12, 24, 36]" :key="m" type="button" @click="endAfter(m)">{{ m }} {{ $t('months') }}</button>
           </div>
           <label class="scm-f"><span>{{ $t('Signed on') }}</span><date-picker v-model="form.signed_date" flush /></label>
-          <label class="scm-f" :class="{ bad: errors.basic_salary }"><span>{{ $t('Basic salary') }}</span><input v-model="form.basic_salary" type="number" min="0" step="0.01" class="scm-in" /><em v-if="errors.basic_salary">{{ errors.basic_salary }}</em></label>
+          <label class="scm-f" :class="{ bad: errors.basic_salary }"><span>{{ $t('Basic salary') }}</span><input v-money v-model="form.basic_salary" type="number" min="0" step="0.01" class="scm-in" /><em v-if="errors.basic_salary">{{ errors.basic_salary }}</em></label>
           <label class="scm-f"><span>{{ $t('Probation (months)') }}</span><input v-model="form.probation_months" type="number" min="0" max="36" class="scm-in" /></label>
           <label class="scm-f"><span>{{ $t('Notice period (days)') }}</span><input v-model="form.notice_period_days" type="number" min="0" max="365" class="scm-in" /></label>
           <label class="scm-f scm-wide"><span>{{ $t('Notes') }}</span><textarea v-model="form.notes" rows="2" maxlength="3000" class="scm-in"></textarea></label>

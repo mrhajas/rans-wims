@@ -171,7 +171,7 @@
                     <text-input type="number" step="0.01" v-model="row.quantity" class="fx-num ml-auto" :error="$page.props.errors['items.' + index + '.quantity']" />
                   </td>
                   <td :data-label="$t('Unit Price')" class="text-right">
-                    <text-input type="number" step="0.01" v-model="row.unit_price" class="fx-num ml-auto" :error="$page.props.errors['items.' + index + '.unit_price']" />
+                    <text-input money type="number" step="0.01" v-model="row.unit_price" class="fx-num ml-auto" :error="$page.props.errors['items.' + index + '.unit_price']" />
                   </td>
                   <td :data-label="$t('Line Total')" class="text-right font-semibold">{{ $money(lineTotal(row), form.currency) }}</td>
                   <td :data-label="$t('Remove')" class="text-right">

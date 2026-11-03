@@ -127,8 +127,8 @@
               <text-input :label="$t('Contract Reference')" v-model="form.lease_contract_reference" />
               <date-picker :label="$t('Lease Start')" v-model="form.lease_start_date" />
               <date-picker :label="$t('Lease End')" v-model="form.lease_end_date" />
-              <text-input type="number" :label="$t('Monthly Cost')" v-model="form.lease_monthly_cost" />
-              <text-input type="number" :label="$t('Deposit')" v-model="form.lease_deposit" />
+              <text-input money type="number" :label="$t('Monthly Cost')" v-model="form.lease_monthly_cost" />
+              <text-input money type="number" :label="$t('Deposit')" v-model="form.lease_deposit" />
             </template>
           </div>
         </section>
@@ -146,21 +146,21 @@
             <auto-complete id="supplier_id" :label="$t('Supplier')" v-model="form.supplier_id" :suggestions="supplierOptions" clearable />
             <auto-complete id="warehouse_id" :label="$t('Project')" v-model="form.warehouse_id" :suggestions="warehouseOptions" clearable />
             <text-input :label="$t('Invoice Reference')" v-model="form.invoice_reference" />
-            <text-input type="number" :label="$t('Acquisition Cost') + ' (' + $t('per item') + ')'" v-model="form.acquisition_cost" />
+            <text-input money type="number" :label="$t('Acquisition Cost') + ' (' + $t('per item') + ')'" v-model="form.acquisition_cost" />
             <auto-complete id="currency" :label="$t('Currency')" v-model="form.currency" :suggestions="currencies" placeholder="TZS" freeform clearable />
             <div>
-              <text-input type="number" :label="$t('Tax Amount') + ' (' + $t('per item') + ')'" v-model="form.tax_amount" />
+              <text-input money type="number" :label="$t('Tax Amount') + ' (' + $t('per item') + ')'" v-model="form.tax_amount" />
               <p class="af-hint">{{ $t('Defaults to 15% of Acquisition Cost. Adjust if needed.') }}</p>
             </div>
-            <text-input type="number" :label="$t('Transport Cost') + ' (' + $t('per item') + ')'" v-model="form.transport_cost" />
-            <text-input type="number" :label="$t('Installation Cost') + ' (' + $t('per item') + ')'" v-model="form.installation_cost" />
-            <text-input type="number" :label="$t('Other Capitalised Cost') + ' (' + $t('per item') + ')'" v-model="form.other_capitalised_cost" />
+            <text-input money type="number" :label="$t('Transport Cost') + ' (' + $t('per item') + ')'" v-model="form.transport_cost" />
+            <text-input money type="number" :label="$t('Installation Cost') + ' (' + $t('per item') + ')'" v-model="form.installation_cost" />
+            <text-input money type="number" :label="$t('Other Capitalised Cost') + ' (' + $t('per item') + ')'" v-model="form.other_capitalised_cost" />
             <text-input :label="$t('Funding Source')" v-model="form.funding_source" />
           </div>
           <div v-if="isForeign" class="af-fx">
             <div class="af-fx__head"><icons name="refresh" class="w-4 h-4" /><b>{{ $t('Exchange rate') }}</b><span>{{ $t('required') }}</span></div>
             <div class="lg-fields af-line af-line--qty">
-              <text-input type="number" step="any" min="0" :label="'1 ' + currencyCode + ' = ... TZS'" v-model="form.exchange_rate" :error="$page.props.errors.exchange_rate" />
+              <text-input :money="{ decimals: 8 }" type="number" step="any" min="0" :label="'1 ' + currencyCode + ' = ... TZS'" v-model="form.exchange_rate" :error="$page.props.errors.exchange_rate" />
             </div>
             <p class="af-hint">{{ $t('Assets are always saved in TZS. When you save, every amount on this form (cost, tax, transport, installation, other, residual value) is multiplied by this rate.') }}</p>
           </div>
@@ -243,7 +243,7 @@
             <auto-complete id="depreciation_method" :label="$t('Method')" v-model="form.depreciation_method" :suggestions="depreciationMethodOptions" />
             <auto-complete id="depreciation_frequency" :label="$t('Frequency')" v-model="form.depreciation_frequency" :suggestions="depreciationFrequencyOptions" />
             <text-input type="number" :label="$t('Useful Life (years)') " v-model="form.useful_life_years" />
-            <text-input type="number" :label="$t('Residual Value')" v-model="form.residual_value" />
+            <text-input money type="number" :label="$t('Residual Value')" v-model="form.residual_value" />
             <date-picker :label="$t('Depreciation Start Date')" v-model="form.depreciation_start_date" />
           </div>
         </section>
@@ -277,8 +277,8 @@
             <text-input :label="$t('Policy Number')" v-model="form.insurance_policy_number" />
             <date-picker :label="$t('Insurance Start')" v-model="form.insurance_start" />
             <date-picker :label="$t('Insurance Expiry')" v-model="form.insurance_expiry" />
-            <text-input type="number" :label="$t('Insured Value')" v-model="form.insurance_insured_value" />
-            <text-input type="number" :label="$t('Premium')" v-model="form.insurance_premium" />
+            <text-input money type="number" :label="$t('Insured Value')" v-model="form.insurance_insured_value" />
+            <text-input money type="number" :label="$t('Premium')" v-model="form.insurance_premium" />
           </div>
         </section>
 

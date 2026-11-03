@@ -59,7 +59,7 @@
 
             <section class="tra-block tra-block-input">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <text-input :label="$t('Price per trip')" type="number" step="0.01" min="0" v-model="form.unit_price" :error="form.errors.unit_price" />
+                <text-input money :label="$t('Price per trip')" type="number" step="0.01" min="0" v-model="form.unit_price" :error="form.errors.unit_price" />
                 <text-input :label="$t('Number of trips')" type="number" step="1" min="1" max="50" v-model="form.trips_count" :error="form.errors.trips_count" />
               </div>
               <p class="tra-hint">{{ $t('Default price per trip') }}: {{ $money(state.defaults.unit_price) }}</p>

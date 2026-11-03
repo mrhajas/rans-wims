@@ -33,7 +33,7 @@
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-amber"><icons name="bell" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Limits and Alerts') }}</h2><p class="lg-card-sub">{{ $t('Amounts are set for each currency separately. Leave a currency empty for no limit.') }}</p></div></header>
           <div class="lg-table-wrap"><table class="lg-table lg-responsive"><thead><tr><th>{{ $t('Currency') }}</th><th>{{ $t('Large transaction alert from') }}</th><th>{{ $t('Document required above') }}</th><th>{{ $t('Two approvers for a difference above') }}</th></tr></thead>
             <tbody><tr v-for="c in currencyCodes" :key="c"><td class="lg-main" :data-label="$t('Currency')">{{ c }}</td>
-              <td :data-label="$t('Large transaction alert from')"><input v-model="s.large_txn[c]" class="ac-input" inputmode="decimal" /></td><td :data-label="$t('Document required above')"><input v-model="s.attachment_required_over[c]" class="ac-input" inputmode="decimal" /></td><td :data-label="$t('Two approvers for a difference above')"><input v-model="s.discrepancy_dual_over[c]" class="ac-input" inputmode="decimal" /></td></tr></tbody></table></div>
+              <td :data-label="$t('Large transaction alert from')"><input v-money v-model="s.large_txn[c]" class="ac-input" inputmode="decimal" /></td><td :data-label="$t('Document required above')"><input v-money v-model="s.attachment_required_over[c]" class="ac-input" inputmode="decimal" /></td><td :data-label="$t('Two approvers for a difference above')"><input v-money v-model="s.discrepancy_dual_over[c]" class="ac-input" inputmode="decimal" /></td></tr></tbody></table></div>
           <div class="lg-fields" style="margin-top: 12px">
             <div class="ac-f"><label>{{ $t('Warn when an item waits for approval (hours)') }}</label><input v-model="s.pending_alert_hours" type="number" min="1" /></div>
             <div class="ac-f"><label>{{ $t('Warn when a transfer waits (hours)') }}</label><input v-model="s.transfer_pending_hours" type="number" min="1" /></div>
@@ -60,8 +60,8 @@
           <div class="ac-f"><label>{{ $t('Name') }}</label><input v-model="rf.name" required /></div>
           <div class="ac-f"><label>{{ $t('Applies to') }}</label><acct-select v-model="rf.applies_to" :options="Object.entries(labels).map(([k, l]) => ({ value: k, label: l }))" /></div>
           <div class="ac-f"><label>{{ $t('Currency') }}</label><acct-select v-model="rf.currency" :options="(currencyCodes).map(c => ({ value: c, label: c }))" :placeholder="$t('Any')" clearable /></div>
-          <div class="ac-f"><label>{{ $t('From amount') }}</label><input v-model="rf.min_amount" inputmode="decimal" /></div>
-          <div class="ac-f"><label>{{ $t('Up to (empty = no limit)') }}</label><input v-model="rf.max_amount" inputmode="decimal" /></div>
+          <div class="ac-f"><label>{{ $t('From amount') }}</label><input v-money v-model="rf.min_amount" inputmode="decimal" /></div>
+          <div class="ac-f"><label>{{ $t('Up to (empty = no limit)') }}</label><input v-money v-model="rf.max_amount" inputmode="decimal" /></div>
           <div class="ac-f"><label>{{ $t('Account (optional)') }}</label><acct-select v-model="rf.account_id" :options="accounts" :placeholder="$t('Any')" clearable /></div>
           <div class="ac-f"><label>{{ $t('Approvals needed (at least 1)') }}</label><input v-model="rf.approvals_required" type="number" min="1" max="5" required /></div>
           <label class="ac-check"><input v-model="rf.is_active" type="checkbox" />{{ $t('Active') }}</label>

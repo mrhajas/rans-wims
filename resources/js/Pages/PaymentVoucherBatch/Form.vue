@@ -135,7 +135,7 @@
                     </template>
                   </td>
                   <td :data-label="$t('Amount')" class="num">
-                    <text-input type="number" step="0.01" v-model="row.amount" class="pvb-w-amount" :error="$page.props.errors['rows.' + index + '.amount']" />
+                    <text-input money type="number" step="0.01" v-model="row.amount" class="pvb-w-amount" :error="$page.props.errors['rows.' + index + '.amount']" />
                   </td>
                   <td :data-label="$t('Reference')">
                     <text-input v-model="row.reference" class="pvb-w-ref" />

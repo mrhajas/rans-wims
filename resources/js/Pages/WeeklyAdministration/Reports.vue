@@ -22,8 +22,8 @@
           <div v-if="uses('pstatus')" class="ac-f"><label>{{ $t('Payment status') }}</label><acct-select v-model="f.pstatus" :options="paymentStatuses" :placeholder="$t('Paid')" clearable /></div>
           <div v-if="uses('from')" class="ac-f"><label>{{ $t('From') }}</label><date-picker v-model="f.from" /></div>
           <div v-if="uses('to')" class="ac-f"><label>{{ $t('To') }}</label><date-picker v-model="f.to" /></div>
-          <div v-if="uses('amount_min')" class="ac-f"><label>{{ $t('Amount from') }}</label><input v-model="f.amount_min" type="number" min="0" step="0.01" inputmode="decimal" /></div>
-          <div v-if="uses('amount_max')" class="ac-f"><label>{{ $t('Amount up to') }}</label><input v-model="f.amount_max" type="number" min="0" step="0.01" inputmode="decimal" /></div>
+          <div v-if="uses('amount_min')" class="ac-f"><label>{{ $t('Amount from') }}</label><input v-money v-model="f.amount_min" type="number" min="0" step="0.01" inputmode="decimal" /></div>
+          <div v-if="uses('amount_max')" class="ac-f"><label>{{ $t('Amount up to') }}</label><input v-money v-model="f.amount_max" type="number" min="0" step="0.01" inputmode="decimal" /></div>
           <div class="tr-f tr-end"><label aria-hidden="true">&nbsp;</label><button type="button" class="lg-btn t-slate" :disabled="!hasFilters" @click="clear"><icons name="cross" class="w-4 h-4" />{{ $t('Clear') }}</button></div>
         </div>
         <div class="wa-adds" style="margin-top: 10px">

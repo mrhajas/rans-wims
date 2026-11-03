@@ -16,7 +16,7 @@
           <div class="tlm-grid">
             <div class="tlm-field">
               <label for="tlo_amount">{{ $t('Amount') }}</label>
-              <input id="tlo_amount" v-model="form.amount" type="number" step="0.01" class="tlm-input" autofocus />
+              <input v-money id="tlo_amount" v-model="form.amount" type="number" step="0.01" class="tlm-input" autofocus />
               <p v-if="errors.amount" class="tlm-err">{{ errors.amount }}</p>
             </div>
             <div class="tlm-field">

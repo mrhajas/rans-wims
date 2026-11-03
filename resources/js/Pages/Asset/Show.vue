@@ -434,7 +434,7 @@
             </css-select>
           </div>
           <text-input class="lg-span-all" :label="$t('Service Provider')" v-model="maintenanceForm.service_provider" />
-          <text-input type="number" :label="$t('Cost')" v-model="maintenanceForm.cost" />
+          <text-input money type="number" :label="$t('Cost')" v-model="maintenanceForm.cost" />
           <text-input type="date" :label="$t('Next Service Date')" v-model="maintenanceForm.next_service_date" />
         </div>
         <div class="as-modal-foot">
@@ -478,7 +478,7 @@
         <div class="lg-fields as-fields">
           <text-input type="date" :label="$t('Period Start')" v-model="appreciationForm.period_start" />
           <text-input type="date" :label="$t('Period End')" v-model="appreciationForm.period_end" />
-          <text-input class="lg-span-all" type="number" :label="$t('New Appraised Value')" v-model="appreciationForm.new_value" />
+          <text-input money class="lg-span-all" type="number" :label="$t('New Appraised Value')" v-model="appreciationForm.new_value" />
         </div>
         <div class="as-modal-foot">
           <button type="button" class="lg-btn lg-btn-soft" @click="modal = null">{{ $t('Cancel') }}</button>

@@ -340,7 +340,7 @@
               <div class="lg-fields">
                 <div>
                   <label class="pc-label">{{ $t('Amount Received') }}</label>
-                  <input v-model.number="paymentForm.paid_amount" type="number" step="0.01" min="0" class="pc-input" />
+                  <input v-money v-model.number="paymentForm.paid_amount" type="number" step="0.01" min="0" class="pc-input" />
                 </div>
                 <div>
                   <label class="pc-label">{{ $t('Currency Received') }}</label>
@@ -348,7 +348,7 @@
                 </div>
                 <div v-if="!isSameCurrency" class="lg-span-all">
                   <label class="pc-label">{{ $t('Exchange Rate') }} (1 {{ paymentForm.paid_currency }} = ? {{ certificate.currency }})</label>
-                  <input v-model.number="paymentForm.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" />
+                  <input v-money="{ decimals: 8 }" v-model.number="paymentForm.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" />
                   <p class="pc-hint">{{ $t('Converts to') }}: <strong>{{ money(convertedAmount) }}</strong></p>
                 </div>
               </div>
@@ -420,7 +420,7 @@
             <div class="lg-fields">
               <div>
                 <label class="pc-label">{{ $t('Amount Received') }}</label>
-                <input v-model.number="editForm.paid_amount" type="number" step="0.01" min="0" class="pc-input" />
+                <input v-money v-model.number="editForm.paid_amount" type="number" step="0.01" min="0" class="pc-input" />
               </div>
               <div>
                 <label class="pc-label">{{ $t('Currency Received') }}</label>
@@ -428,7 +428,7 @@
               </div>
               <div v-if="!isEditSameCurrency" class="lg-span-all">
                 <label class="pc-label">{{ $t('Exchange Rate') }} (1 {{ editForm.paid_currency }} = ? {{ certificate.currency }})</label>
-                <input v-model.number="editForm.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" />
+                <input v-money="{ decimals: 8 }" v-model.number="editForm.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" />
                 <p class="pc-hint">{{ $t('Converts to') }}: <strong>{{ money(editConvertedAmount) }}</strong></p>
               </div>
               <div>
@@ -553,7 +553,7 @@
               </div>
               <div v-if="(editDetailsForm.currency || 'TZS').toUpperCase() !== 'TZS'">
                 <label class="pc-label">{{ $t('Exchange Rate') }}</label>
-                <input v-model.number="editDetailsForm.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" :placeholder="$t('Rate for the day')" />
+                <input v-money="{ decimals: 8 }" v-model.number="editDetailsForm.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" :placeholder="$t('Rate for the day')" />
               </div>
               <div class="lg-span-all">
                 <label class="pc-label">{{ $t('Description') }}</label>

@@ -42,7 +42,7 @@
             </template>
           </div>
           <div v-if="['import', 'archive'].includes(forms[s.id].decision) && s.groups.some(g => g.currency)" class="sc-grp"><b>{{ $t('Work groups in US dollars') }}</b>
-            <div v-for="(g, gi) in s.groups" :key="gi"><template v-if="g.currency"><span>{{ g.name }}</span><acct-select v-model="forms[s.id].groups[gi].currency" :options="[{ value: 'TZS', label: 'TZS' }, { value: 'USD', label: 'USD' }]" /><input v-model="forms[s.id].groups[gi].rate" :placeholder="$t('Rate to TZS')" inputmode="decimal" /></template></div></div>
+            <div v-for="(g, gi) in s.groups" :key="gi"><template v-if="g.currency"><span>{{ g.name }}</span><acct-select v-model="forms[s.id].groups[gi].currency" :options="[{ value: 'TZS', label: 'TZS' }, { value: 'USD', label: 'USD' }]" /><input v-money v-model="forms[s.id].groups[gi].rate" :placeholder="$t('Rate to TZS')" inputmode="decimal" /></template></div></div>
           <div class="ac-actions"><button type="submit" class="lg-btn lg-btn-soft" :disabled="forms[s.id].processing"><icons name="tick" class="w-4 h-4" />{{ $t('Save the decision') }}</button></div>
         </form>
       </section>

@@ -48,13 +48,13 @@
             </label>
             <p class="wfa-opening-hint">{{ $t('A carried-over amount owed before this agreement. If no Agreed Amount is entered, the Opening Balance alone becomes the starting Outstanding Balance.') }}</p>
             <div v-if="hasOpeningBalance" class="max-w-xs mt-3">
-              <text-input type="number" :label="$t('Opening Balance (TZS)')" v-model="form.opening_balance" :error="$page.props.errors.opening_balance" />
+              <text-input money type="number" :label="$t('Opening Balance (TZS)')" v-model="form.opening_balance" :error="$page.props.errors.opening_balance" />
             </div>
           </div>
 
           <div class="lg-fields">
             <div><auto-complete :label="$t('Type of Work (optional)')" v-model="form.type_of_work" :suggestions="workItems" freeform :error="$page.props.errors.type_of_work" /></div>
-            <div><text-input type="number" :label="hasOpeningBalance ? $t('Agreed Amount (TZS, optional)') : $t('Agreed Amount (TZS)')" v-model="form.agreed_amount" :error="$page.props.errors.agreed_amount" /></div>
+            <div><text-input money type="number" :label="hasOpeningBalance ? $t('Agreed Amount (TZS, optional)') : $t('Agreed Amount (TZS)')" v-model="form.agreed_amount" :error="$page.props.errors.agreed_amount" /></div>
             <div><date-picker :label="$t('Agreement Date')" v-model="form.agreement_date" :error="$page.props.errors.agreement_date" /></div>
             <div><text-input :label="$t('Agreement Reference (optional)')" v-model="form.agreement_reference" :error="$page.props.errors.agreement_reference" /></div>
             <div class="lg-span-all"><textarea-input :label="$t('Scope of Work (optional)')" v-model="form.scope_of_work" :error="$page.props.errors.scope_of_work" rows="3" /></div>

@@ -12,7 +12,7 @@
             </header>
             <div class="lg-fields">
               <div>
-                <text-input type="number" step="0.01" :max="record.remaining_balance" :label="$t('Payment Amount')" v-model="form.amount" :error="form.errors.amount" required />
+                <text-input money type="number" step="0.01" :max="record.remaining_balance" :label="$t('Payment Amount')" v-model="form.amount" :error="form.errors.amount" required />
                 <button type="button" class="sl-link-btn mt-1" @click="form.amount = record.remaining_balance">{{ $t('Pay Full Remaining Balance') }}</button>
               </div>
               <date-picker :label="$t('Payment Date')" v-model="form.payment_date" :error="form.errors.payment_date" required />

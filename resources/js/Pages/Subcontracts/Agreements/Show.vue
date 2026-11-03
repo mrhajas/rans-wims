@@ -179,7 +179,7 @@
           <form v-if="showVar" class="sc-item-form" @submit.prevent="addVariation"><div class="ac-filters">
             <div class="ac-f" style="grid-column: span 2"><label>{{ $t('Title') }} <b class="wims-req">*</b></label><input v-model="vf.title" required /><span class="ac-err">{{ err('title') }}</span></div>
             <div class="ac-f"><label>{{ $t('Kind') }}</label><acct-select v-model="vf.direction" :options="[{ value: 'increase', label: $t('Increase (additional works)') }, { value: 'reduction', label: $t('Reduction') }]" /></div>
-            <div v-if="money" class="ac-f"><label>{{ $t('Amount') }}</label><input v-model="vf.amount" inputmode="decimal" /><small class="lg-subtext">{{ $t('Or add items to the variation and the amount is their total.') }}</small><span class="ac-err">{{ err('amount') }}</span></div>
+            <div v-if="money" class="ac-f"><label>{{ $t('Amount') }}</label><input v-money v-model="vf.amount" inputmode="decimal" /><small class="lg-subtext">{{ $t('Or add items to the variation and the amount is their total.') }}</small><span class="ac-err">{{ err('amount') }}</span></div>
             <div v-if="fon(variation_fields, 'reason')" class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Reason') }}{{ fstar(variation_fields, 'reason') }}</label><textarea v-model="vf.reason"></textarea><span class="ac-err">{{ err('reason') }}</span></div>
             <custom-fields v-if="variation_fields && variation_fields.custom.length" v-model="vf.custom" :defs="variation_fields.custom" :errors="vf.errors" /></div>
             <div class="ac-actions"><button type="submit" class="lg-btn lg-btn-primary" :disabled="vf.processing"><icons name="tick" class="w-4 h-4" />{{ $t('Save as draft') }}</button></div></form>

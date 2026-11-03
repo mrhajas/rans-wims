@@ -9,10 +9,10 @@
       <div v-if="fon(fields, 'unit')" class="ac-f"><label>{{ $t('Unit') }}{{ fstar(fields, 'unit') }}</label><input v-model="form.unit" list="sc-units" /><datalist id="sc-units"><option v-for="u in units" :key="u" :value="u" /></datalist></div>
       <template v-if="form.pricing_method === 'qty_rate'">
         <div class="ac-f"><label>{{ $t('Quantity') }} <b class="wims-req">*</b></label><input v-model="form.quantity" inputmode="decimal" /><span class="ac-err">{{ err('quantity') }}</span></div>
-        <div class="ac-f"><label>{{ $t('Rate') }} <b class="wims-req">*</b></label><input v-model="form.rate" inputmode="decimal" /><span class="ac-err">{{ err('rate') }}</span></div>
+        <div class="ac-f"><label>{{ $t('Rate') }} <b class="wims-req">*</b></label><input v-money v-model="form.rate" inputmode="decimal" /><span class="ac-err">{{ err('rate') }}</span></div>
         <div class="ac-f"><label>{{ $t('Amount (calculated)') }}</label><input :value="preview" readonly class="sc-ro" /></div>
       </template>
-      <div v-else class="ac-f"><label>{{ form.pricing_method === 'fixed' ? $t('Fixed amount') : $t('Lump sum') }} <b class="wims-req">*</b></label><input v-model="form.amount" inputmode="decimal" /><span class="ac-err">{{ err('amount') }}</span></div>
+      <div v-else class="ac-f"><label>{{ form.pricing_method === 'fixed' ? $t('Fixed amount') : $t('Lump sum') }} <b class="wims-req">*</b></label><input v-money v-model="form.amount" inputmode="decimal" /><span class="ac-err">{{ err('amount') }}</span></div>
       <div v-if="fon(fields, 'remarks')" class="ac-f" style="grid-column: 1 / -1"><label>{{ $t('Remarks') }}{{ fstar(fields, 'remarks') }}</label><input v-model="form.remarks" /></div>
       <custom-fields v-if="fields && fields.custom.length" v-model="form.custom" :defs="fields.custom" :errors="form.errors" />
     </div>

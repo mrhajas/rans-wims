@@ -66,10 +66,10 @@
             <h4 class="tp-h"><icons name="cash" class="w-4 h-4" />{{ $t('What it costs for ONE person') }}</h4>
             <div class="lg-fields">
               <div class="ac-f"><label>{{ $t('Currency') }}</label><acct-select v-model="form.currency" :options="currencies.map(c => ({ value: c, label: c }))" /></div>
-              <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} <b class="wims-req">*</b></label><input v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><span class="ac-err">{{ form.errors.exchange_rate }}</span></div>
+              <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} <b class="wims-req">*</b></label><input v-money="{ decimals: 8 }" v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><span class="ac-err">{{ form.errors.exchange_rate }}</span></div>
             </div>
             <div class="tp-money">
-              <div v-for="a in amountCols" :key="a.k" class="ac-f tp-mf" :style="{ '--c': a.c }"><label><icons :name="a.i" class="w-3.5 h-3.5" />{{ a.l }}</label><input v-model="form[a.k]" inputmode="decimal" placeholder="0" /><span class="ac-err">{{ form.errors[a.k] }}</span></div>
+              <div v-for="a in amountCols" :key="a.k" class="ac-f tp-mf" :style="{ '--c': a.c }"><label><icons :name="a.i" class="w-3.5 h-3.5" />{{ a.l }}</label><input v-money v-model="form[a.k]" inputmode="decimal" placeholder="0" /><span class="ac-err">{{ form.errors[a.k] }}</span></div>
             </div>
             <div class="tp-sum"><span>{{ $t('Total per person') }}</span><b>{{ form.currency }} {{ money(formTotal) }}</b><small v-if="form.currency !== 'TZS' && Number(form.exchange_rate) > 0">= TZS {{ money(formTotal * Number(form.exchange_rate)) }}</small></div>
             <div class="lg-fields" style="margin-top: 8px">

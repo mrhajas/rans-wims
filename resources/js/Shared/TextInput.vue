@@ -12,7 +12,23 @@
   />
   <div v-else class="col-span-6 sm:col-span-4 relative" :class="{ 'mb-2': size != 'small' }">
     <tec-label v-if="label" :for="id" :value="label" />
-    <template v-if="type == 'number'">
+    <template v-if="type == 'number' && money">
+      <!-- an amount: commas show as it is typed; the value that is saved stays the plain number -->
+      <tec-input
+        v-money="moneyOptions"
+        :id="id"
+        ref="input"
+        type="number"
+        :disabled="disabled"
+        :readonly="readonly"
+        :value="modelValue"
+        class="block w-full"
+        :placeholder="placeholder || label"
+        @input="$emit('update:modelValue', $event.target.value)"
+        :class="{ 'border-red-500': error, 'py-0 pr-0 h-8': size == 'small', 'mt-1': label }"
+      />
+    </template>
+    <template v-else-if="type == 'number'">
       <tec-input
         :id="id"
         ref="input"
@@ -73,6 +89,18 @@ export default {
     readonly: Boolean,
     placeholder: String,
     modelValue: [String, Number],
+    // an amount field: thousands commas while typing. `money` alone, or `:money="{ decimals: 8 }"` for a rate with more decimals.
+    money: { type: [Boolean, Object], default: false },
+  },
+  computed: {
+    moneyOptions() {
+      const given = this.money && typeof this.money === 'object' ? this.money : {};
+      // min="0" (or more) on the text-input means no minus sign (the attribute lands on the wrapper, so it is read here)
+      const min = this.$attrs.min;
+      const noMinus = min !== undefined && min !== null && min !== '' && Number(min) >= 0;
+
+      return { negative: !noMinus, ...given };
+    },
   },
   methods: {
     focus() {

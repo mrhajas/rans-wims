@@ -123,7 +123,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <tec-label :value="$t('Opening Balance Amount')" />
-                <text-input type="number" min="0" step="0.01" class="mt-1 block w-full" v-model="obForm.opening_balance" required />
+                <text-input money type="number" min="0" step="0.01" class="mt-1 block w-full" v-model="obForm.opening_balance" required />
                 <input-error :message="$page.props.errors.opening_balance" class="mt-1" />
               </div>
               <div>

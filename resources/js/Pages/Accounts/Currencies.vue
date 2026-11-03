@@ -40,7 +40,7 @@
         <header class="lg-card-head"><span class="lg-card-ico lg-ico-teal"><icons name="clock" class="w-5 h-5" /></span><div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Exchange Rate Register') }}</h2></div></header>
         <form v-if="can.create" class="ac-filters" @submit.prevent="saveRate">
           <div class="ac-f"><label>{{ $t('1 unit of') }}</label><acct-select v-model="rf.base_currency" :options="(currencies).map(c => ({ value: c.code, label: c.code }))" /></div>
-          <div class="ac-f"><label>{{ $t('equals (rate)') }}</label><input v-model="rf.rate" inputmode="decimal" required placeholder="2500" /><span class="ac-err">{{ err('rate') }}</span></div>
+          <div class="ac-f"><label>{{ $t('equals (rate)') }}</label><input v-money="{ decimals: 8 }" v-model="rf.rate" inputmode="decimal" required placeholder="2500" /><span class="ac-err">{{ err('rate') }}</span></div>
           <div class="ac-f"><label>{{ $t('of') }}</label><acct-select v-model="rf.quote_currency" :options="(currencies).map(c => ({ value: c.code, label: c.code }))" /><span class="ac-err">{{ err('quote_currency') }}</span></div>
           <div class="ac-f"><label>{{ $t('Type') }}</label><acct-select v-model="rf.rate_type" :options="rateTypes" /></div>
           <div class="ac-f"><label>{{ $t('Effective from') }}</label><date-picker v-model="rf.effective_from" :clearable="false" /></div>

@@ -102,7 +102,7 @@
               <button v-if="rv[l.id].action" type="button" class="cl-opt o-none" @click="choose(l, '')"><icons name="x-circle" class="w-4 h-4" />{{ $t('Leave it') }}</button>
             </div>
             <div v-if="rv[l.id].action" class="cl-pick-fields">
-              <div v-if="rv[l.id].action === 'partial'" class="ac-f"><label>{{ $t('Amount to approve') }} ({{ claim.currency }})</label><input v-model="rv[l.id].amount" inputmode="decimal" /></div>
+              <div v-if="rv[l.id].action === 'partial'" class="ac-f"><label>{{ $t('Amount to approve') }} ({{ claim.currency }})</label><input v-money v-model="rv[l.id].amount" inputmode="decimal" /></div>
               <div v-if="['reject', 'return', 'defer'].includes(rv[l.id].action)" class="ac-f cl-wide"><label>{{ reasonLabel(rv[l.id].action) }}</label><input v-model="rv[l.id].reason" :placeholder="$t('Required')" /></div>
               <div v-else class="ac-f cl-wide"><label>{{ $t('Remarks') }} <small class="lg-subtext">({{ $t('optional') }})</small></label><input v-model="rv[l.id].reason" /></div>
               <div v-if="over(l, rvAmount(l))" class="ac-f cl-wide"><label>{{ $t('Override reason') }}</label><input v-model="rv[l.id].override" :placeholder="$t('Required: this is above what the contract still allows')" :disabled="!can.override" /><small class="lg-subtext">{{ can.override ? $t('An override is recorded in the audit log and alerts the administrators.') : $t('You cannot give an override, so this amount cannot be approved.') }}</small></div>
@@ -124,7 +124,7 @@
           </div>
           <form v-if="!reviewing && ui[l.id].mode" class="sc-approve cl-form" @submit.prevent="runLine(l)">
             <div class="ac-filters">
-              <div v-if="['partial', 'resubmit'].includes(ui[l.id].mode) && money" class="ac-f"><label>{{ ui[l.id].mode === 'partial' ? $t('Amount to approve') : $t('New amount requested') }} ({{ claim.currency }})</label><input v-model="ui[l.id].amount" inputmode="decimal" /></div>
+              <div v-if="['partial', 'resubmit'].includes(ui[l.id].mode) && money" class="ac-f"><label>{{ ui[l.id].mode === 'partial' ? $t('Amount to approve') : $t('New amount requested') }} ({{ claim.currency }})</label><input v-money v-model="ui[l.id].amount" inputmode="decimal" /></div>
               <div v-if="ui[l.id].mode === 'resubmit'" class="ac-f cl-wide"><label>{{ $t('Note') }}</label><input v-model="ui[l.id].reason" /></div>
               <div v-else class="ac-f cl-wide"><label>{{ modeLabel(ui[l.id].mode) }}</label><input v-model="ui[l.id].reason" :required="needsReason(ui[l.id].mode)" /></div>
               <div v-if="ui[l.id].mode === 'partial' && over(l, ui[l.id].amount)" class="ac-f cl-wide"><label>{{ $t('Override reason') }}</label><input v-model="ui[l.id].override" :placeholder="$t('Required: this is above what the contract still allows')" :disabled="!can.override" /><small class="lg-subtext">{{ can.override ? $t('An override is recorded in the audit log and alerts the administrators.') : $t('You cannot give an override, so this amount cannot be approved.') }}</small></div>
@@ -144,10 +144,10 @@
           <p class="lg-sub" style="margin: 0 0 8px">{{ $t('Tick the approved contracts to pay now. The amount starts as what is left to pay on the line; you may pay less.') }}</p>
           <div v-for="l in payable" :key="l.id" class="cl-vrow" :class="{ 'is-on': vsel[l.id].on }">
             <label class="ac-check"><input v-model="vsel[l.id].on" type="checkbox" /><span><b>{{ l.agreement }}</b> <small class="lg-subtext">{{ l.title }}</small></span></label>
-            <div v-if="money" class="ac-f"><label>{{ $t('Amount to pay now') }} ({{ claim.currency }})</label><input v-model="vsel[l.id].amount" :disabled="!vsel[l.id].on" inputmode="decimal" /><small class="lg-subtext">{{ $t('At most :l (left to pay).', { l: mc(l.payment.left, claim.currency) }) }}</small><span class="ac-err">{{ err('lines.' + l.id) }}</span></div>
+            <div v-if="money" class="ac-f"><label>{{ $t('Amount to pay now') }} ({{ claim.currency }})</label><input v-money v-model="vsel[l.id].amount" :disabled="!vsel[l.id].on" inputmode="decimal" /><small class="lg-subtext">{{ $t('At most :l (left to pay).', { l: mc(l.payment.left, claim.currency) }) }}</small><span class="ac-err">{{ err('lines.' + l.id) }}</span></div>
           </div>
           <div class="cl-vsum"><span><b>{{ vCount }}</b> {{ $t('line(s) ticked') }}</span><span v-if="money">{{ $t('Total') }}: <b class="amt-appr">{{ mc(vTotal, claim.currency) }}</b></span></div>
-          <div v-if="!currency_is_tzs" class="ac-filters"><div class="ac-f"><label>{{ $t('Exchange rate to TZS') }} <b class="wims-req">*</b></label><input v-model="vf.exchange_rate" inputmode="decimal" /><span class="ac-err">{{ err('exchange_rate') }}</span></div><div class="ac-f"><label>{{ $t('Rate date') }} <b class="wims-req">*</b></label><date-picker v-model="vf.rate_date" :clearable="false" /></div></div>
+          <div v-if="!currency_is_tzs" class="ac-filters"><div class="ac-f"><label>{{ $t('Exchange rate to TZS') }} <b class="wims-req">*</b></label><input v-money="{ decimals: 8 }" v-model="vf.exchange_rate" inputmode="decimal" /><span class="ac-err">{{ err('exchange_rate') }}</span></div><div class="ac-f"><label>{{ $t('Rate date') }} <b class="wims-req">*</b></label><date-picker v-model="vf.rate_date" :clearable="false" /></div></div>
           <span class="ac-err">{{ err('lines') }}</span>
           <div class="ac-actions"><button type="submit" class="lg-btn lg-btn-primary" :disabled="busy || !vCount"><icons name="send" class="w-4 h-4" />{{ $t('Continue to the voucher') }}</button><button type="button" class="lg-btn lg-btn-soft" @click="starting = false"><icons name="cross" class="w-4 h-4" />{{ $t('Cancel') }}</button></div>
         </form>

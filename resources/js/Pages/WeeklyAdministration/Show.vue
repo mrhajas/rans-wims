@@ -97,7 +97,7 @@
                 <td class="num hide-sm tr-g">{{ Number(r.paid) ? money(r.paid) : '-' }}</td>
                 <td class="num tr-m">{{ money(r.balance) }}<div v-if="Number(r.reserved)" class="lg-subtext tr-o">{{ $t('held') }} {{ money(r.reserved) }}</div></td>
                 <td><span class="lg-chip" :class="payChip(r.status)" style="text-transform: none">{{ $t(r.status) }}</span><div v-if="r.vouchers && r.vouchers.length" class="wa-vrefs"><a v-for="v in r.vouchers" :key="v.id" :href="route('payment-vouchers.show', v.id)" target="_blank" rel="noopener" class="wa-vref" :title="$t('Open this voucher in a new tab') + ' (' + v.status + ')'"><icons name="doc-text" class="w-3 h-3" />{{ v.pv_number }}</a></div></td>
-                <td v-if="canPay" class="num"><input v-if="chosen[r.key]" v-model="amounts[r.key]" class="wa-pin" type="number" min="0" step="0.01" :max="r.balance" inputmode="decimal" :aria-label="$t('Amount to pay now')" /></td>
+                <td v-if="canPay" class="num"><input v-money v-if="chosen[r.key]" v-model="amounts[r.key]" class="wa-pin" type="number" min="0" step="0.01" :max="r.balance" inputmode="decimal" :aria-label="$t('Amount to pay now')" /></td>
                 <td v-if="canPay" class="num"><button v-if="Number(r.balance) > 0" type="button" class="lg-btn t-slate sc-sm" @click="payOne(r)">{{ $t('Pay') }}</button></td>
               </tr>
             </template>

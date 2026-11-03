@@ -47,7 +47,7 @@
         <form @submit.prevent="submitOpening">
           <div class="lg-fields">
             <text-input type="date" :label="$t('Effective Date')" v-model="openingForm.effective_date" :error="$page.props.errors.effective_date" required />
-            <text-input type="number" step="0.01" :label="$t('Amount (positive = owed to supplier)')" v-model="openingForm.amount" :error="$page.props.errors.amount" required />
+            <text-input money type="number" step="0.01" :label="$t('Amount (positive = owed to supplier)')" v-model="openingForm.amount" :error="$page.props.errors.amount" required />
             <select-input :label="$t('Project / Warehouse')" v-model="openingForm.warehouse_id" :error="$page.props.errors.warehouse_id">
               <option :value="null">{{ $t('Company-wide / Legacy') }}</option>
               <warehouse-options :items="warehouses" />
@@ -94,7 +94,7 @@
         <form @submit.prevent="submitEditOpening">
           <div class="lg-fields">
             <text-input type="date" :label="$t('Effective Date')" v-model="editOpeningForm.effective_date" :error="$page.props.errors.effective_date" required />
-            <text-input type="number" step="0.01" :label="$t('Amount (positive = owed to supplier)')" v-model="editOpeningForm.amount" :error="$page.props.errors.amount" required />
+            <text-input money type="number" step="0.01" :label="$t('Amount (positive = owed to supplier)')" v-model="editOpeningForm.amount" :error="$page.props.errors.amount" required />
             <div>
               <text-input :label="$t('Reference')" v-model="editOpeningForm.reference" readonly />
               <p class="sp-hint">{{ $t('Auto-generated when the entry was created. Can\'t be changed.') }}</p>
@@ -137,7 +137,7 @@
               <option v-for="t in manualTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
             </select-input>
             <text-input type="date" :label="$t('Date')" v-model="manualForm.entry_date" :error="$page.props.errors.entry_date" required />
-            <text-input type="number" step="0.01" :label="$t('Amount')" v-model="manualForm.amount" :error="$page.props.errors.amount" required />
+            <text-input money type="number" step="0.01" :label="$t('Amount')" v-model="manualForm.amount" :error="$page.props.errors.amount" required />
             <select-input :label="$t('Project / Warehouse')" v-model="manualForm.warehouse_id" :error="$page.props.errors.warehouse_id">
               <option :value="null">{{ $t('Company-wide / Legacy') }}</option>
               <warehouse-options :items="warehouses" />

@@ -112,9 +112,9 @@
             <div class="lg-span-all"><auto-complete id="user_id" :label="$t('Linked user account (optional)')" v-model="form.user_id" :suggestions="users" value-key="id" label-key="label" :error="$page.props.errors.user_id" clearable /></div>
             <div><auto-complete id="position" :label="$t('Position')" v-model="form.position" :suggestions="positionOptions" :error="$page.props.errors.position" freeform clearable /></div>
             <div><date-picker :label="$t('Join Date')" v-model="form.join_date" :error="$page.props.errors.join_date" /></div>
-            <div><text-input type="number" step="0.01" :label="$t('Basic Salary')" v-model="form.basic_salary" :error="$page.props.errors.basic_salary" /></div>
-            <div><text-input type="number" step="0.01" :label="$t('Allowances')" v-model="form.allowances" :error="$page.props.errors.allowances" /></div>
-            <div><text-input type="number" step="0.01" :label="$t('Deductions')" v-model="form.deductions" :error="$page.props.errors.deductions" /></div>
+            <div><text-input money type="number" step="0.01" :label="$t('Basic Salary')" v-model="form.basic_salary" :error="$page.props.errors.basic_salary" /></div>
+            <div><text-input money type="number" step="0.01" :label="$t('Allowances')" v-model="form.allowances" :error="$page.props.errors.allowances" /></div>
+            <div><text-input money type="number" step="0.01" :label="$t('Deductions')" v-model="form.deductions" :error="$page.props.errors.deductions" /></div>
             <div class="stf-net-salary-box flex flex-col justify-center">
               <span class="stf-net-label">{{ $t('Net Salary') }}</span>
               <span class="stf-net-value">{{ $money(netSalaryPreview) }}</span>

@@ -38,7 +38,7 @@
               <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Unpaid Salary') }}</h2></div>
             </header>
             <div class="lg-fields">
-              <text-input type="number" step="0.01" min="0" :label="$t('Outstanding Salary Amount')" v-model="form.outstanding_salary" :error="form.errors.outstanding_salary" :disabled="readOnly" />
+              <text-input money type="number" step="0.01" min="0" :label="$t('Outstanding Salary Amount')" v-model="form.outstanding_salary" :error="form.errors.outstanding_salary" :disabled="readOnly" />
             </div>
             <p class="sl-hint ob-help">{{ $t('Added to this employee\'s next prepared salary as a brought-forward balance, and carried forward until paid.') }}</p>
           </section>
@@ -49,7 +49,7 @@
               <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Loan Still Being Repaid') }}</h2></div>
             </header>
             <div class="lg-fields">
-              <text-input type="number" step="0.01" min="0" :label="$t('Remaining Loan Balance')" v-model="form.loan_amount" :error="form.errors.loan_amount" :disabled="readOnly" />
+              <text-input money type="number" step="0.01" min="0" :label="$t('Remaining Loan Balance')" v-model="form.loan_amount" :error="form.errors.loan_amount" :disabled="readOnly" />
               <text-input type="number" min="1" :label="$t('Instalments Remaining')" v-model="form.loan_installments" :error="form.errors.loan_installments" :disabled="readOnly" />
             </div>
             <p class="sl-hint ob-help">{{ $t('Enter only what is still owed. An Active interest-free loan is created and deducted from each salary.') }}</p>
@@ -61,7 +61,7 @@
               <div class="min-w-0 flex-1"><h2 class="lg-card-title">{{ $t('Advance Still Being Recovered') }}</h2></div>
             </header>
             <div class="lg-fields">
-              <text-input type="number" step="0.01" min="0" :label="$t('Remaining Advance Balance')" v-model="form.advance_amount" :error="form.errors.advance_amount" :disabled="readOnly" />
+              <text-input money type="number" step="0.01" min="0" :label="$t('Remaining Advance Balance')" v-model="form.advance_amount" :error="form.errors.advance_amount" :disabled="readOnly" />
               <text-input type="number" min="1" :label="$t('Instalments Remaining')" v-model="form.advance_installments" :error="form.errors.advance_installments" :disabled="readOnly" />
             </div>
           </section>

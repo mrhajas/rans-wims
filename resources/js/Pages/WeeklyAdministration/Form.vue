@@ -55,7 +55,7 @@
               <span class="wa-n">{{ i + 1 }}</span>
               <input v-model="l.description" list="wa-items" :placeholder="$t('Description')" maxlength="255" @change="fillFromItem(l)" />
               <input v-model="l.beneficiary" list="wa-people" :placeholder="beneficiaryName" maxlength="190" />
-              <input v-model="l.amount" class="wa-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+              <input v-money v-model="l.amount" class="wa-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
               <span class="wa-mv">
                 <button type="button" class="wa-mini" :disabled="i === 0" :aria-label="$t('Move up')" @click="move(form.lines, i, -1)"><icons name="chevron-up" class="w-4 h-4" /></button>
                 <button type="button" class="wa-mini" :disabled="i === form.lines.length - 1" :aria-label="$t('Move down')" @click="move(form.lines, i, 1)"><icons name="chevron-down" class="w-4 h-4" /></button>
@@ -104,7 +104,7 @@
                 <span class="wa-n">{{ i + 1 }}</span>
                 <input v-model="c.description" :placeholder="$t('CHARITY - NAME FOR MONTH')" maxlength="255" />
                 <span class="wa-ro">{{ Number(c.monthly_amount) ? money(c.monthly_amount) : '-' }}</span>
-                <input v-model="c.amount" class="wa-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+                <input v-money v-model="c.amount" class="wa-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
                 <span class="wa-mv">
                   <button type="button" class="wa-mini" :disabled="i === 0" :aria-label="$t('Move up')" @click="move(form.charity, i, -1)"><icons name="chevron-up" class="w-4 h-4" /></button>
                   <button type="button" class="wa-mini" :disabled="i === form.charity.length - 1" :aria-label="$t('Move down')" @click="move(form.charity, i, 1)"><icons name="chevron-down" class="w-4 h-4" /></button>

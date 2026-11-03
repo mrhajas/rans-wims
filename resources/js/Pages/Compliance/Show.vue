@@ -228,7 +228,7 @@
         </header>
         <div class="grid grid-cols-1 gap-3">
           <text-input :label="$t('Application Number')" v-model="submitForm.application_number" />
-          <text-input type="number" :label="$t('Renewal Fee')" v-model="submitForm.renewal_fee" />
+          <text-input money type="number" :label="$t('Renewal Fee')" v-model="submitForm.renewal_fee" />
           <text-input type="date" :label="$t('Expected Completion Date')" v-model="submitForm.expected_completion_date" />
         </div>
         <div class="cp-modal-foot">

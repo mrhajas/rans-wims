@@ -27,7 +27,7 @@
           <div class="lg-fields">
             <text-input type="date" :label="$t('Reconciliation Date')" v-model="form.reconciliation_date" :error="$page.props.errors.reconciliation_date" required />
             <text-input type="date" :label="$t('Supplier Statement Date')" v-model="form.statement_date" :error="$page.props.errors.statement_date" required />
-            <text-input type="number" step="0.01" :label="$t('Supplier Statement Balance')" v-model="form.statement_balance" :error="$page.props.errors.statement_balance" required />
+            <text-input money type="number" step="0.01" :label="$t('Supplier Statement Balance')" v-model="form.statement_balance" :error="$page.props.errors.statement_balance" required />
             <div class="lg-span-all">
               <div class="sp-diff" :class="difference === 0 ? 'is-ok' : 'is-off'">
                 <span class="sp-diff-label">{{ $t('Difference (Statement − WIMS)') }}</span>

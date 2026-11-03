@@ -132,7 +132,7 @@
                 <span class="pc-tip-bubble">{{ $t("Today's rate, used to convert this certificate's total into TZS for reporting.") }}</span>
               </span>
             </label>
-            <input v-model.number="form.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" :placeholder="$t('Rate for the day')" />
+            <input v-money="{ decimals: 8 }" v-model.number="form.exchange_rate" type="number" step="0.000001" min="0" class="pc-input" :placeholder="$t('Rate for the day')" />
           </div>
           <div class="lg-span-all">
             <label class="pc-label">
@@ -181,7 +181,7 @@
             <input v-model="line.label" type="text" class="pc-input pc-line-label" :class="{ 'pc-input-error': lineFieldError(inputAbsIndex(idx), 'label') }" :placeholder="$t('Line description')" />
 
             <template v-if="!hasChildren(line)">
-              <input v-model.number="line.value" type="number" step="0.01" class="pc-input pc-line-value" :class="{ 'pc-input-error': lineFieldError(inputAbsIndex(idx), 'value') }" />
+              <input v-money v-model.number="line.value" type="number" step="0.01" class="pc-input pc-line-value" :class="{ 'pc-input-error': lineFieldError(inputAbsIndex(idx), 'value') }" />
               <button type="button" class="pc-add-term" @click="addChild(line)">+ {{ $t('Break') }}</button>
             </template>
             <div v-else class="pc-line-value pc-line-value-computed">{{ moneyCert(inputLineValue(line)) }}</div>
@@ -194,7 +194,7 @@
               <div v-for="(child, ci) in line.operands.children" :key="ci" class="pc-child-row">
                 <span class="pc-child-num">{{ idx + 1 }}{{ letter(ci) }}</span>
                 <input v-model="child.label" type="text" class="pc-input pc-child-label" :placeholder="$t('Sub-item description')" />
-                <input v-model.number="child.value" type="number" step="0.01" class="pc-input pc-child-value" />
+                <input v-money v-model.number="child.value" type="number" step="0.01" class="pc-input pc-child-value" />
                 <button type="button" class="pc-term-remove" @click="removeChild(line, ci)">&times;</button>
               </div>
               <button type="button" class="pc-add-term" @click="addChild(line)">+ {{ $t('sub-item') }}</button>
@@ -247,7 +247,7 @@
               </div>
               <template v-if="line.operands.source === 'other'">
                 <input v-model="line.operands.reference_number" type="text" class="pc-input" style="width:140px" :placeholder="$t('Reference No.')" />
-                <input v-model.number="line.value" type="number" step="0.01" class="pc-input pc-line-value" :placeholder="$t('Amount')" />
+                <input v-money v-model.number="line.value" type="number" step="0.01" class="pc-input pc-line-value" :placeholder="$t('Amount')" />
               </template>
               <input
                 v-else type="text" class="pc-input pc-input-readonly pc-line-value" readonly disabled

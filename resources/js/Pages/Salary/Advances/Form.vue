@@ -13,7 +13,7 @@
             <div class="lg-fields">
               <auto-complete id="staff_id" class="lg-span-all" :label="$t('Employee')" v-model="form.staff_id" :suggestions="staffs" value-key="id" label-key="name" :error="form.errors.staff_id" required />
               <date-picker :label="$t('Advance Date')" v-model="form.advance_date" :error="form.errors.advance_date" required />
-              <text-input type="number" step="0.01" :label="$t('Amount')" v-model="form.amount" :error="form.errors.amount" required />
+              <text-input money type="number" step="0.01" :label="$t('Amount')" v-model="form.amount" :error="form.errors.amount" required />
               <text-input type="number" :label="$t('Number of Installments')" v-model="form.installments_count" :error="form.errors.installments_count" required />
               <textarea-input class="lg-span-all" :label="$t('Reason')" v-model="form.reason" :error="form.errors.reason" />
               <textarea-input class="lg-span-all" :label="$t('Notes')" v-model="form.notes" :error="form.errors.notes" />

@@ -32,7 +32,7 @@
                   <td :data-label="$t('Already on a voucher')" class="num">{{ r.pending ? $money(r.pending) : '-' }}</td>
                   <td :data-label="$t('Available')" class="num"><b>{{ $money(r.available) }}</b></td>
                   <td :data-label="$t('Amount to pay')" class="tlb-amount-col">
-                    <input v-model.number="amounts[r.contact_id]" type="number" min="0" step="0.01" class="tlb-input" :class="{ 'is-bad': bad(r) }" :aria-label="$t('Amount to pay') + ' ' + r.name" @focus="$event.target.select()" />
+                    <input v-money v-model.number="amounts[r.contact_id]" type="number" min="0" step="0.01" class="tlb-input" :class="{ 'is-bad': bad(r) }" :aria-label="$t('Amount to pay') + ' ' + r.name" @focus="$event.target.select()" />
                     <p v-if="errorFor(i)" class="tlb-err">{{ errorFor(i) }}</p>
                   </td>
                   <td :data-label="$t('Left after')" class="num"><span :class="{ 'tlb-neg': left(r) < 0 }">{{ $money(left(r)) }}</span></td>

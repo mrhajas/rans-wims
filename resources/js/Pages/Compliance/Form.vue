@@ -122,10 +122,10 @@
                 <option v-for="t in guaranteeTypes" :key="t" :value="t">{{ $t(t) }}</option>
               </css-select>
             </div>
-            <text-input type="number" :label="$t('Amount')" v-model="form.guarantee_amount" />
+            <text-input money type="number" :label="$t('Amount')" v-model="form.guarantee_amount" />
             <text-input :label="$t('Currency')" v-model="form.guarantee_currency" placeholder="TZS" />
             <date-picker :label="$t('Claim Expiry')" v-model="form.guarantee_claim_expiry" />
-            <text-input type="number" :label="$t('Commission')" v-model="form.guarantee_commission" />
+            <text-input money type="number" :label="$t('Commission')" v-model="form.guarantee_commission" />
             <div class="lg-span-all">
               <label class="cmp-label">{{ $t('Purpose') }}</label>
               <textarea v-model="form.guarantee_purpose" rows="2" class="cmp-ctl"></textarea>
@@ -150,7 +150,7 @@
             <text-input :label="$t('Lender')" v-model="form.loan_lender" />
             <text-input :label="$t('Loan Reference')" v-model="form.loan_reference" />
             <text-input :label="$t('Facility Type')" v-model="form.loan_facility_type" />
-            <text-input type="number" :label="$t('Principal Amount')" v-model="form.loan_principal_amount" />
+            <text-input money type="number" :label="$t('Principal Amount')" v-model="form.loan_principal_amount" />
             <text-input :label="$t('Currency')" v-model="form.loan_currency" placeholder="TZS" />
             <text-input type="number" :label="$t('Interest Rate %')" v-model="form.loan_interest_rate" />
             <date-picker :label="$t('Start Date')" v-model="form.loan_start_date" />
@@ -165,8 +165,8 @@
                 <option value="Annual">{{ $t('Annual') }}</option>
               </css-select>
             </div>
-            <text-input type="number" :label="$t('Instalment Amount')" v-model="form.loan_instalment_amount" />
-            <text-input type="number" :label="$t('Outstanding Balance')" v-model="form.loan_outstanding_balance" />
+            <text-input money type="number" :label="$t('Instalment Amount')" v-model="form.loan_instalment_amount" />
+            <text-input money type="number" :label="$t('Outstanding Balance')" v-model="form.loan_outstanding_balance" />
             <date-picker :label="$t('Next Payment Date')" v-model="form.loan_next_payment_date" />
             <div class="lg-span-all">
               <label class="cmp-label">{{ $t('Security') }}</label>
@@ -189,8 +189,8 @@
             <text-input :label="$t('Provider')" v-model="form.insurance_provider" />
             <text-input :label="$t('Policy Type')" v-model="form.insurance_policy_type" />
             <text-input :label="$t('Insured Party')" v-model="form.insurance_insured_party" />
-            <text-input type="number" :label="$t('Insured Value')" v-model="form.insurance_insured_value" />
-            <text-input type="number" :label="$t('Premium')" v-model="form.insurance_premium" />
+            <text-input money type="number" :label="$t('Insured Value')" v-model="form.insurance_insured_value" />
+            <text-input money type="number" :label="$t('Premium')" v-model="form.insurance_premium" />
           </div>
         </section>
 
@@ -206,7 +206,7 @@
           <div class="lg-fields">
             <text-input :label="$t('Contract Number')" v-model="form.contract_number" />
             <text-input :label="$t('Contract Type')" v-model="form.contract_type" />
-            <text-input type="number" :label="$t('Contract Value')" v-model="form.contract_value" />
+            <text-input money type="number" :label="$t('Contract Value')" v-model="form.contract_value" />
             <text-input type="number" :label="$t('Notice Period (days)')" v-model="form.contract_notice_period_days" />
             <div class="lg-span-all">
               <label class="cmp-label">{{ $t('Parties') }}</label>
@@ -230,7 +230,7 @@
           </header>
           <div class="lg-fields">
             <text-input :label="$t('Holder')" v-model="form.licence_or_certificate_holder" />
-            <text-input type="number" :label="$t('Renewal Fee')" v-model="form.renewal_fee" />
+            <text-input money type="number" :label="$t('Renewal Fee')" v-model="form.renewal_fee" />
             <div class="lg-span-all">
               <label class="cmp-label">{{ $t('Renewal Requirements') }}</label>
               <textarea v-model="form.renewal_requirements" rows="2" class="cmp-ctl"></textarea>

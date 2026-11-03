@@ -65,7 +65,7 @@
               </div>
               <div class="tl-rate lg-tip" :class="{ 'is-custom': isCustom(w) }" :data-tip="rateTip(w)">
                 <small><span class="tl-rate-slot" aria-hidden="true"><icons v-if="isCustom(w)" name="exclamation" class="w-3 h-3 tl-rate-flag" /></span>{{ $t('Daily Rate') }}</small>
-                <input v-model.number="rates[w.contact_id]" type="number" min="0" step="500" class="tl-rate-input" :disabled="locked(w)" :aria-label="$t('Daily Rate') + ' ' + w.name" @focus="$event.target.select()" />
+                <input v-money v-model.number="rates[w.contact_id]" type="number" min="0" step="500" class="tl-rate-input" :disabled="locked(w)" :aria-label="$t('Daily Rate') + ' ' + w.name" @focus="$event.target.select()" />
               </div>
               <div class="tl-seg" role="group" :aria-label="w.name">
                 <button type="button" class="tl-present" :class="{ 'is-on': marks[w.contact_id] === 'Present' }" :disabled="locked(w)" :aria-pressed="marks[w.contact_id] === 'Present'" @click="mark(w, 'Present')"><icons name="tick" class="w-4 h-4" />{{ $t('Present') }}</button>

@@ -266,7 +266,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <tec-label :value="$t('Paid Amount')" />
-              <text-input type="number" step="0.01" class="mt-1 block w-full" v-model="markPaidForm.paid_amount" :error="$page.props.errors.paid_amount" />
+              <text-input money type="number" step="0.01" class="mt-1 block w-full" v-model="markPaidForm.paid_amount" :error="$page.props.errors.paid_amount" />
             </div>
             <div>
               <date-picker :label="$t('Payment Date')" v-model="markPaidForm.payment_date" :error="$page.props.errors.payment_date" />

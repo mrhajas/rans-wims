@@ -68,7 +68,7 @@
                   <icons name="info" class="w-3 h-3" />
                 </span>
               </label>
-              <input
+              <input v-money="{ decimals: 8 }"
                 v-if="!isTzsRow(row)" v-model.number="row.exchange_rate" type="number" step="0.000001" min="0"
                 class="pc-input pc-num" :placeholder="$t('Rate for the day')"
               />

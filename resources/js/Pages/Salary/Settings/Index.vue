@@ -68,7 +68,7 @@
                 <tbody>
                   <tr v-for="(band, i) in statutory.paye_bands" :key="i">
                     <td>
-                      <input type="number" class="sl-input sset-rate" :value="band.up_to" :placeholder="$t('No limit')" @input="band.up_to = $event.target.value === '' ? null : +$event.target.value" />
+                      <input v-money type="number" class="sl-input sset-rate" :value="band.up_to" :placeholder="$t('No limit')" @input="band.up_to = $event.target.value === '' ? null : +$event.target.value" />
                     </td>
                     <td><input type="number" step="0.01" class="sl-input sset-rate" :value="pct(band.rate)" @input="band.rate = (+$event.target.value || 0) / 100" /></td>
                     <td class="num"><button type="button" class="lg-icon-btn is-red lg-tip" :data-tip="$t('Remove')" :aria-label="$t('Remove')" @click="removeBand(i)"><icons name="trash" class="w-4 h-4" /></button></td>

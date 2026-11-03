@@ -53,7 +53,7 @@
 
           <div class="wa-group">{{ $t('Usual values') }}</div>
           <div class="ac-f"><label>{{ $t('Usual beneficiary') }}</label><input v-model="form.default_beneficiary" list="wa-people" maxlength="190" :placeholder="$t('Who the line is for')" @input="benTouched = true" /><p class="wa-hint">{{ form.person ? $t('Follows the staff member or contact you choose. You can type another name.') : $t('Optional.') }}</p></div>
-          <div class="ac-f"><label>{{ $t('Usual amount') }} ({{ currency }})</label><input v-model="form.default_amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ err('default_amount') }}</span></div>
+          <div class="ac-f"><label>{{ $t('Usual amount') }} ({{ currency }})</label><input v-money v-model="form.default_amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /><span class="ac-err">{{ err('default_amount') }}</span></div>
           <datalist id="wa-people"><option v-for="u in users" :key="u.value" :value="u.label"></option></datalist>
 
           <div class="wa-group">{{ $t('How it is used') }}</div>

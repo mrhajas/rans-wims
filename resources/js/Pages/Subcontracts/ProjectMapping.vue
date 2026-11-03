@@ -124,7 +124,7 @@
             <div class="ac-f" style="grid-column: 1 / -1"><label for="pc-addr">{{ $t('Address') }}</label><input id="pc-addr" v-model="cf.address" maxlength="255" /><span class="ac-err">{{ cerr('address') }}</span></div>
             <div class="ac-f"><label>{{ $t('Start Date') }}</label><date-picker v-model="cf.start_date" /><span class="ac-err">{{ cerr('start_date') }}</span></div>
             <div class="ac-f"><label>{{ $t('Expected End Date') }}</label><date-picker v-model="cf.expected_end_date" /><span class="ac-err">{{ cerr('expected_end_date') }}</span></div>
-            <div class="ac-f"><label for="pc-bud">{{ $t('Site Budget') }}</label><input id="pc-bud" v-model="cf.site_budget" inputmode="decimal" /><span class="ac-err">{{ cerr('site_budget') }}</span></div>
+            <div class="ac-f"><label for="pc-bud">{{ $t('Site Budget') }}</label><input v-money id="pc-bud" v-model="cf.site_budget" inputmode="decimal" /><span class="ac-err">{{ cerr('site_budget') }}</span></div>
           </div>
           <p v-if="createProblem" class="lg-note lg-note-red" role="alert"><icons name="exclamation" class="w-4 h-4" /><span>{{ createProblem }}</span></p>
           <button type="submit" class="pm-hidden" tabindex="-1" aria-hidden="true"></button>

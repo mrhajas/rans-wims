@@ -47,7 +47,7 @@
                   <td :data-label="$t('Contract')"><div class="cl-cell"><a :href="r.url" target="_blank" rel="noopener" class="lg-main"><mark-hit :text="r.reference" :q="tq" /></a><div class="lg-subtext"><mark-hit :text="r.title" :q="tq" /></div></div></td>
                   <td v-if="money" :data-label="$t('Open to request')" class="ac-num"><b :class="neg(r.remaining_eligible_signed) ? 'amt-neg' : 'amt-out'">{{ mc(r.remaining_eligible, r.currency) }}</b></td>
                   <td v-if="money" :data-label="$t('Amount to request')" class="ac-num cl-amt">
-                    <div v-if="isSel(r)" class="cl-cell"><input v-model="sel[r.agreement_id].amount" class="cl-in" :class="{ 'is-bad': !!rowError(r) }" inputmode="decimal" :readonly="!claimSettings.allow_partial" :aria-label="$t('Amount to request for :r', { r: r.reference })" /><div v-if="rowError(r)" class="cl-err">{{ rowError(r) }}</div><div v-else-if="isPartial(r)" class="lg-subtext">{{ $t('Partial: :n left', { n: leftAfter(r) }) }}</div></div>
+                    <div v-if="isSel(r)" class="cl-cell"><input v-money v-model="sel[r.agreement_id].amount" class="cl-in" :class="{ 'is-bad': !!rowError(r) }" inputmode="decimal" :readonly="!claimSettings.allow_partial" :aria-label="$t('Amount to request for :r', { r: r.reference })" /><div v-if="rowError(r)" class="cl-err">{{ rowError(r) }}</div><div v-else-if="isPartial(r)" class="lg-subtext">{{ $t('Partial: :n left', { n: leftAfter(r) }) }}</div></div>
                     <span v-else class="lg-subtext">-</span>
                   </td>
                   <td :data-label="$t('Project / location')"><mark-hit :text="r.project || '-'" :q="tq" /><div v-if="r.projects && r.projects.length > 1" class="lg-subtext">+{{ r.projects.length - 1 }}</div></td>

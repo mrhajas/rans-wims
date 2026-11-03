@@ -272,7 +272,7 @@
             <div class="lg-fields">
               <div>
                 <tec-label for="opening_balance" :value="$t('Opening Balance Amount')" />
-                <text-input id="opening_balance" type="number" min="0" step="0.01" class="mt-1 block w-full" v-model="form.opening_balance" />
+                <text-input money id="opening_balance" type="number" min="0" step="0.01" class="mt-1 block w-full" v-model="form.opening_balance" />
                 <input-error :message="$page.props.errors.opening_balance" class="mt-1" />
               </div>
               <div>

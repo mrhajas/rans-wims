@@ -245,7 +245,7 @@
           <div class="lg-fields">
             <div>
               <tec-label for="amount" :value="$t('Amount per trip')" />
-              <text-input id="amount" type="number" step="0.01" class="mt-1 block w-full" v-model="form.amount" :error="$page.props.errors.amount" />
+              <text-input money id="amount" type="number" step="0.01" class="mt-1 block w-full" v-model="form.amount" :error="$page.props.errors.amount" />
               <p class="text-xs text-gray-500 mt-1">{{ $t('Default') }}: {{ $money(isEdit ? record.default_amount : defaultAmount) }}</p>
             </div>
             <div>

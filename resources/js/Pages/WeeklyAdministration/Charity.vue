@@ -43,7 +43,7 @@
           <div class="ac-f full"><label>{{ $t('Person / place') }} <b class="wims-req">*</b></label><input v-model="form.name" maxlength="190" required :placeholder="$t('For example SHEIKH ALI ISSA or MASJID KOMBENI')" /><span class="ac-err">{{ err('name') }}</span></div>
 
           <div class="wa-group">{{ $t('What is paid') }}</div>
-          <div class="ac-f"><label>{{ $t('Monthly amount') }} ({{ currency }}) <b class="wims-req">*</b></label><input v-model="form.monthly_amount" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00" /><span class="ac-err">{{ err('monthly_amount') }}</span></div>
+          <div class="ac-f"><label>{{ $t('Monthly amount') }} ({{ currency }}) <b class="wims-req">*</b></label><input v-money v-model="form.monthly_amount" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00" /><span class="ac-err">{{ err('monthly_amount') }}</span></div>
           <div class="ac-f"><label>{{ $t('Headquarters') }}</label><acct-select v-model="form.hq" :options="hqs.map(h => ({ value: h, label: h }))" :placeholder="$t('Every headquarters')" clearable /><p class="wa-hint">{{ $t('A document of a headquarters pulls the people of that headquarters and the ones for every headquarters.') }}</p><span class="ac-err">{{ err('hq') }}</span></div>
 
           <div class="wa-group">{{ $t('Details') }}</div>

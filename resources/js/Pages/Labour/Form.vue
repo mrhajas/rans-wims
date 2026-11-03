@@ -117,7 +117,7 @@
               </div>
               <div v-if="item.rate_type === 'day'"><text-input type="number" :label="$t('Days')" v-model="item.days" /></div>
               <div v-if="item.rate_type === 'hour'"><text-input type="number" :label="$t('Hours')" v-model="item.hours" /></div>
-              <div><text-input type="number" :label="$t('Rate (TZS)')" v-model="item.rate" :error="$page.props.errors['items.' + index + '.rate']" /></div>
+              <div><text-input money type="number" :label="$t('Rate (TZS)')" v-model="item.rate" :error="$page.props.errors['items.' + index + '.rate']" /></div>
               <div class="mb-2">
                 <label class="lbr-label">{{ $t('Amount') }}</label>
                 <div class="lbr-amount-display mt-1">{{ money(computeAmount(item)) }}</div>

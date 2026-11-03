@@ -14,7 +14,7 @@
 
           <div class="max-w-sm">
             <label class="set-field-label">{{ $t('Default Transport Price (TZS)') }}</label>
-            <input v-model="form.transport_default_price" type="number" min="0" step="1" class="set-input w-full text-sm" />
+            <input v-money v-model="form.transport_default_price" type="number" min="0" step="1" class="set-input w-full text-sm" />
             <p class="set-help mt-2">{{ $t("Auto-filled on every new Transport Routes Record, can still be changed per trip with a reason.") }}</p>
           </div>
         </section>
@@ -29,7 +29,7 @@
 
           <div class="max-w-sm">
             <label class="set-field-label">{{ $t('Daily rate per worker (TZS)') }}</label>
-            <input v-model="form.transport_loading_daily_rate" type="number" min="0" step="1" class="set-input w-full text-sm" />
+            <input v-money v-model="form.transport_loading_daily_rate" type="number" min="0" step="1" class="set-input w-full text-sm" />
             <p class="set-help mt-2">{{ $t('Earned by each loading / unloading worker for every day marked Present. Days already recorded keep the rate they were saved with.') }}</p>
           </div>
         </section>

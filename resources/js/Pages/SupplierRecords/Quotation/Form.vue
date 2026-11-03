@@ -108,7 +108,7 @@
                   </td>
                   <td :data-label="$t('Unit Price')">
                     <div class="fx-cell">
-                      <text-input type="number" step="0.01" v-model="item.unit_price" />
+                      <text-input money type="number" step="0.01" v-model="item.unit_price" />
                       <div v-if="$page.props.errors['items.' + index + '.unit_price']" class="text-red-600 text-xs mt-1 wims-field-error">
                         {{ $page.props.errors['items.' + index + '.unit_price'] }}
                       </div>

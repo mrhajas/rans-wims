@@ -20,7 +20,7 @@
               </css-select>
             </div>
             <text-input type="date" :label="$t('Disposal Date')" v-model="form.disposal_date" />
-            <text-input type="number" :label="$t('Disposal Value')" v-model="form.disposal_value" />
+            <text-input money type="number" :label="$t('Disposal Value')" v-model="form.disposal_value" />
             <text-input :label="$t('Buyer / Recipient')" v-model="form.buyer_recipient" />
             <div class="lg-span-all">
               <label class="ds-label">{{ $t('Reason') }}</label>

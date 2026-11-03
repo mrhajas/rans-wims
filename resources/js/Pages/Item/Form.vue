@@ -42,7 +42,7 @@
               <text-input v-model="form.name" :error="$page.props.errors.name" :label="$t('Name')" />
             </div>
             <div>
-              <text-input type="number" min="0" v-model="form.price" :error="$page.props.errors.price" :label="$t('Item Price')" />
+              <text-input money type="number" min="0" v-model="form.price" :error="$page.props.errors.price" :label="$t('Item Price')" />
             </div>
             <div>
               <auto-complete

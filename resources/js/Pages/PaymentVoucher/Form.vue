@@ -208,7 +208,7 @@
                     </p>
                   </td>
                   <td :data-label="$t('Amount')" class="num">
-                    <text-input type="number" step="0.01" v-model="row.amount" class="pv-amount" :error="$page.props.errors['items.' + index + '.amount']" />
+                    <text-input money type="number" step="0.01" v-model="row.amount" class="pv-amount" :error="$page.props.errors['items.' + index + '.amount']" />
                   </td>
                   <td :data-label="$t('Remove')">
                     <button type="button" v-if="form.items.length > 1" class="lg-icon-btn is-red lg-tip tip-left" @click="removeRow(index)" :data-tip="$t('Remove')">

@@ -158,7 +158,7 @@
 
           <form v-if="canEditRecord" @submit.prevent="addItem" class="sd-mini-form">
             <input v-model="newItem.label" type="text" :placeholder="$t('e.g. Overtime, Bonus, LWOP')" class="sd-mini-input flex-1" />
-            <input v-model.number="newItem.amount" type="number" step="0.01" :placeholder="$t('Amount')" class="sd-mini-input w-24" />
+            <input v-money v-model.number="newItem.amount" type="number" step="0.01" :placeholder="$t('Amount')" class="sd-mini-input w-24" />
             <css-select v-model="newItem.type" class="sd-mini-input w-28">
               <option value="earning">{{ $t('Earning') }}</option>
               <option value="deduction">{{ $t('Deduction') }}</option>
@@ -175,7 +175,7 @@
               <option value="correction">{{ $t('Correction') }}</option>
               <option value="settlement">{{ $t('Settlement') }}</option>
             </css-select>
-            <input v-model.number="adjustment.amount" type="number" step="0.01" :placeholder="$t('Amount')" class="sd-mini-input w-24" />
+            <input v-money v-model.number="adjustment.amount" type="number" step="0.01" :placeholder="$t('Amount')" class="sd-mini-input w-24" />
             <input v-model="adjustment.reason" type="text" :placeholder="$t('Reason')" class="sd-mini-input flex-1" />
             <button type="submit" class="sd-mini-btn">{{ $t('Apply') }}</button>
           </form>

@@ -24,7 +24,7 @@
             <text-input :label="$t('Tax ID')" v-model="form.tax_id" :error="$page.props.errors.tax_id" />
             <text-input type="number" :label="$t('Payment Terms (days)')" v-model="form.payment_terms_days" :error="$page.props.errors.payment_terms_days" />
             <auto-complete id="currency" :label="$t('Currency')" v-model="form.currency" :suggestions="currencyOptions" :error="$page.props.errors.currency" />
-            <text-input type="number" :label="$t('Credit Limit')" v-model="form.credit_limit" :error="$page.props.errors.credit_limit" />
+            <text-input money type="number" :label="$t('Credit Limit')" v-model="form.credit_limit" :error="$page.props.errors.credit_limit" />
             <div class="lg-span-all">
               <label class="sp-label">{{ $t('Opening Balance') }}</label>
               <div class="sp-readonly">

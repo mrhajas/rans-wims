@@ -45,10 +45,10 @@
                     <div class="lg-main">{{ row.name }}</div>
                     <div class="lg-subtext">{{ row.staff_number }}<span v-if="row.position"> &middot; {{ row.position }}</span></div>
                   </td>
-                  <td><input v-model="row.outstanding_salary" type="number" step="0.01" min="0" class="ob-input" placeholder="0.00" /></td>
-                  <td><input v-model="row.loan_amount" type="number" step="0.01" min="0" class="ob-input" placeholder="0.00" /></td>
+                  <td><input v-money v-model="row.outstanding_salary" type="number" step="0.01" min="0" class="ob-input" placeholder="0.00" /></td>
+                  <td><input v-money v-model="row.loan_amount" type="number" step="0.01" min="0" class="ob-input" placeholder="0.00" /></td>
                   <td><input v-model="row.loan_installments" type="number" min="1" class="ob-input ob-input-sm" :disabled="!num(row.loan_amount)" /></td>
-                  <td><input v-model="row.advance_amount" type="number" step="0.01" min="0" class="ob-input" placeholder="0.00" /></td>
+                  <td><input v-money v-model="row.advance_amount" type="number" step="0.01" min="0" class="ob-input" placeholder="0.00" /></td>
                   <td><input v-model="row.advance_installments" type="number" min="1" class="ob-input ob-input-sm" :disabled="!num(row.advance_amount)" /></td>
                   <td><input v-model="row.remarks" type="text" class="ob-input ob-input-wide" /></td>
                 </tr>

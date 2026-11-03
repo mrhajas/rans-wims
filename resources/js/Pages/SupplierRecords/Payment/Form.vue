@@ -31,7 +31,7 @@
               required
             />
             <div>
-              <text-input type="number" step="0.01" :label="$t('Amount')" v-model="form.amount" :error="$page.props.errors.amount" required />
+              <text-input money type="number" step="0.01" :label="$t('Amount')" v-model="form.amount" :error="$page.props.errors.amount" required />
               <p v-if="selectedRequest" class="fx-hint">{{ $t('Approved amount') }}: {{ $money(selectedRequest.amount, form.currency) }}</p>
             </div>
             <select-input :label="$t('Method')" v-model="form.method" :error="$page.props.errors.method">

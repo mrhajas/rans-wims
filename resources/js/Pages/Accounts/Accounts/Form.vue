@@ -36,11 +36,11 @@
         <section class="lg-card">
           <header class="lg-card-head"><span class="lg-card-ico lg-ico-emerald"><icons name="cash" class="w-5 h-5" /></span><div class="min-w-0"><h2 class="lg-card-title">{{ $t('Opening Balance and Limits') }}</h2><p class="lg-card-sub">{{ $t('The opening balance is the starting point. After the first transaction it can no longer be changed: corrections are made with an adjustment.') }}</p></div></header>
           <div class="lg-fields">
-            <div class="ac-f"><label>{{ $t('Opening balance') }}</label><input v-model="form.opening_balance" inputmode="decimal" :disabled="locked" /><span class="ac-err">{{ err('opening_balance') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Opening balance') }}</label><input v-money v-model="form.opening_balance" inputmode="decimal" :disabled="locked" /><span class="ac-err">{{ err('opening_balance') }}</span></div>
             <div class="ac-f"><label>{{ $t('Opening date') }}</label><date-picker v-model="form.opening_date" :disabled="locked" /></div>
-            <div class="ac-f"><label>{{ $t('Alert when below') }}</label><input v-model="form.min_balance" inputmode="decimal" /><span class="ac-err">{{ err('min_balance') }}</span></div>
-            <div class="ac-f"><label>{{ $t('Alert when above') }}</label><input v-model="form.max_balance" inputmode="decimal" :placeholder="isBank ? '' : $t('Cash holding limit')" /></div>
-            <div class="ac-f"><label>{{ $t('Limit for one transaction') }}</label><input v-model="form.txn_limit" inputmode="decimal" /></div>
+            <div class="ac-f"><label>{{ $t('Alert when below') }}</label><input v-money v-model="form.min_balance" inputmode="decimal" /><span class="ac-err">{{ err('min_balance') }}</span></div>
+            <div class="ac-f"><label>{{ $t('Alert when above') }}</label><input v-money v-model="form.max_balance" inputmode="decimal" :placeholder="isBank ? '' : $t('Cash holding limit')" /></div>
+            <div class="ac-f"><label>{{ $t('Limit for one transaction') }}</label><input v-money v-model="form.txn_limit" inputmode="decimal" /></div>
             <div class="ac-f"><label>{{ $t('Reconcile every (days)') }}</label><input v-model="form.reconcile_every_days" type="number" min="1" max="365" /></div>
             <label class="ac-check"><input v-model="form.allow_negative" type="checkbox" />{{ $t('Allow a negative balance (overdraft)') }}</label>
             <label class="ac-check"><input v-model="form.requires_approval" type="checkbox" />{{ $t('Every transaction on this account needs approval') }}</label>

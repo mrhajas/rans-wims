@@ -38,7 +38,7 @@
           <div class="lg-fields">
             <div><text-input type="date" v-model="form.effective_from" :error="form.errors.effective_from" :label="$t('Effective From')" /></div>
             <div><text-input type="date" v-model="form.effective_to" :error="form.errors.effective_to" :label="$t('Effective To')" /></div>
-            <div><text-input type="number" min="0" v-model="form.price" :error="form.errors.price" :label="$t('Price')" /></div>
+            <div><text-input money type="number" min="0" v-model="form.price" :error="form.errors.price" :label="$t('Price')" /></div>
             <div class="lg-span-all"><textarea-input v-model="form.remarks" :error="form.errors.remarks" :label="$t('Remarks')" /></div>
           </div>
           <div class="ph-form-foot">
@@ -87,7 +87,7 @@
                 <tr v-if="editingId === row.id" class="is-editing">
                   <td :data-label="$t('Effective From')"><date-picker v-model="editForm.effective_from" flush /></td>
                   <td :data-label="$t('Effective To')"><date-picker v-model="editForm.effective_to" flush /></td>
-                  <td :data-label="$t('Price')"><input type="number" min="0" step="0.01" v-model="editForm.price" class="ph-input text-right" /></td>
+                  <td :data-label="$t('Price')"><input v-money type="number" min="0" step="0.01" v-model="editForm.price" class="ph-input text-right" /></td>
                   <td class="ph-hide-m"></td>
                   <td :data-label="$t('Remarks')"><input type="text" v-model="editForm.remarks" class="ph-input" /></td>
                   <td :data-label="$t('Added By')">{{ row.added_by || '—' }}</td>

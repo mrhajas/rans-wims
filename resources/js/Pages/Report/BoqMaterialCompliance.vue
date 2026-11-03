@@ -157,7 +157,7 @@
                 <td :data-label="$t('Variance Qty')" class="num" :class="row.variance_quantity > 0 ? 'rb-bad' : 'rb-good'">{{ formatQty(row.variance_quantity) }}</td>
                 <td :data-label="$t('Compliance %')" class="num">{{ formatPercent(row.consumption_percent) }}</td>
                 <td :data-label="$t('Unit Price')" class="num">
-                  <input v-model.number="row.unit_price" type="number" min="0" step="0.01" class="rb-input rb-num" @input="recalculateRow(row)" />
+                  <input v-money v-model.number="row.unit_price" type="number" min="0" step="0.01" class="rb-input rb-num" @input="recalculateRow(row)" />
                 </td>
                 <td :data-label="$t('BOQ Cost')" class="num">{{ formatMoney(row.boq_total_cost) }}</td>
                 <td :data-label="$t('Issued Cost')" class="num">{{ formatMoney(row.issued_total_cost) }}</td>

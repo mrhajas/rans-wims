@@ -87,7 +87,7 @@
               required
             />
             <div>
-              <text-input type="number" step="0.01" :label="$t('Amount')" v-model="form.amount" :error="$page.props.errors.amount" required />
+              <text-input money type="number" step="0.01" :label="$t('Amount')" v-model="form.amount" :error="$page.props.errors.amount" required />
               <p v-if="edit && edit.available_balance !== null" class="fx-hint">
                 {{ $t('Available balance') }}: {{ $money(edit.available_balance) }}
               </p>

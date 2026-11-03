@@ -64,8 +64,8 @@
               <div class="tr-p-fields">
                 <div class="ac-f"><label>{{ $t('Mobile') }}</label><input v-model="p.phone" inputmode="tel" /></div>
                 <div class="ac-f"><label>{{ $t('Ticket number') }}</label><input v-model="p.ticket_number" /></div>
-                <div class="ac-f"><label>{{ $t('Ticket price') }} ({{ form.currency }})</label><input v-model="p.ticket_amount" inputmode="decimal" :disabled="limited" /><span class="ac-err">{{ err('travellers.' + i + '.ticket_amount') }}</span></div>
-                <div v-if="form.has_visa" class="ac-f"><label>{{ $t('Visa price') }} ({{ form.currency }})</label><input v-model="p.visa_amount" inputmode="decimal" :disabled="limited" /><span class="ac-err">{{ err('travellers.' + i + '.visa_amount') }}</span></div>
+                <div class="ac-f"><label>{{ $t('Ticket price') }} ({{ form.currency }})</label><input v-money v-model="p.ticket_amount" inputmode="decimal" :disabled="limited" /><span class="ac-err">{{ err('travellers.' + i + '.ticket_amount') }}</span></div>
+                <div v-if="form.has_visa" class="ac-f"><label>{{ $t('Visa price') }} ({{ form.currency }})</label><input v-money v-model="p.visa_amount" inputmode="decimal" :disabled="limited" /><span class="ac-err">{{ err('travellers.' + i + '.visa_amount') }}</span></div>
               </div>
             </li>
           </ul>
@@ -78,7 +78,7 @@
           <div class="lg-fields" style="margin-top: 10px">
             <div v-if="force" class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="form.currency" :options="foreign.map(c => ({ value: c, label: c }))" :disabled="limited" /><span class="ac-err">{{ err('currency') }}</span></div>
             <div v-else class="ac-f"><label>{{ $t('Currency') }}</label><div class="tr-eq">TZS</div></div>
-            <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} <b class="wims-req">*</b></label><input v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" :disabled="limited" /><span class="ac-err">{{ err('exchange_rate') }}</span><small class="lg-subtext">{{ $t('It carries to the Payment Voucher; whoever pays can still change it.') }}</small></div>
+            <div v-if="form.currency !== 'TZS'" class="ac-f"><label>{{ $t('Exchange rate (TZS per :c)', { c: form.currency }) }} <b class="wims-req">*</b></label><input v-money="{ decimals: 8 }" v-model="form.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" :disabled="limited" /><span class="ac-err">{{ err('exchange_rate') }}</span><small class="lg-subtext">{{ $t('It carries to the Payment Voucher; whoever pays can still change it.') }}</small></div>
             <div class="ac-f" style="grid-column: span 2"><label>{{ $t('Ticket issued by (ticket agent)') }} <b v-if="ticketTotal > 0">*</b></label><acct-select v-model="form.ticket_agent_contact_id" :options="issuers" :placeholder="$t('Choose the ticket agent')" :disabled="limited" clearable /><span class="ac-err">{{ err('ticket_agent_contact_id') }}</span>
               <small class="lg-subtext">{{ $t('Not in the list?') }} <a :href="newAgentUrl" target="_blank" rel="noopener">{{ $t('Add the agent as a contact in the Ticket Agent category') }}</a></small></div>
           </div>
@@ -110,8 +110,8 @@
               </div>
               <div class="tr-p-fields">
                 <div class="ac-f"><label>{{ $t('Currency') }} <b class="wims-req">*</b></label><acct-select v-model="it.currency" :options="currencies.map(c => ({ value: c, label: c }))" @update:model-value="c => itemCurrency(it, c)" /></div>
-                <div class="ac-f"><label>{{ it.currency !== 'TZS' ? $t('Rate (TZS per :c)', { c: it.currency }) : $t('Rate') }}</label><input v-if="it.currency !== 'TZS'" v-model="it.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><input v-else value="1" disabled /><span class="ac-err">{{ err('items.' + i + '.exchange_rate') }}</span></div>
-                <div class="ac-f"><label>{{ $t('Amount') }} ({{ it.currency }}) <b class="wims-req">*</b></label><input v-model="it.amount" inputmode="decimal" /><span class="ac-err">{{ err('items.' + i + '.amount') }}</span></div>
+                <div class="ac-f"><label>{{ it.currency !== 'TZS' ? $t('Rate (TZS per :c)', { c: it.currency }) : $t('Rate') }}</label><input v-money="{ decimals: 8 }" v-if="it.currency !== 'TZS'" v-model="it.exchange_rate" inputmode="decimal" :placeholder="$t('e.g. 2600')" /><input v-else value="1" disabled /><span class="ac-err">{{ err('items.' + i + '.exchange_rate') }}</span></div>
+                <div class="ac-f"><label>{{ $t('Amount') }} ({{ it.currency }}) <b class="wims-req">*</b></label><input v-money v-model="it.amount" inputmode="decimal" /><span class="ac-err">{{ err('items.' + i + '.amount') }}</span></div>
                 <div class="ac-f"><label>{{ $t('In TZS') }}</label><div class="tr-eq">TZS {{ money(itemTzs(it)) }}</div></div>
               </div>
             </li>
