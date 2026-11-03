@@ -1691,6 +1691,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::delete('company-assets/categories/{asset_category}', [Controllers\Asset\AssetCategoryController::class, 'destroy'])->name('assets.categories.destroy');
     Route::resource('company-assets', Controllers\Asset\AssetController::class)->parameters(['company-assets' => 'asset'])->names('assets');
     Route::post('company-assets/{asset}/convert-to-item', [Controllers\Asset\AssetController::class, 'convertToItem'])->name('assets.convert-to-item');
+    Route::post('company-assets/convert-from-items/preview', [Controllers\Asset\AssetController::class, 'convertFromItemsPreview'])->middleware('throttle:60,1,assets.convert-from-items.preview')->name('assets.convert-from-items.preview');
+    Route::post('company-assets/convert-from-items', [Controllers\Asset\AssetController::class, 'convertFromItems'])->middleware('throttle:10,1,assets.convert-from-items')->name('assets.convert-from-items');
     Route::patch('company-assets/{asset}/assign', [Controllers\Asset\AssetController::class, 'assign'])->name('assets.assign');
     Route::post('company-assets/{asset}/check-out', [Controllers\Asset\AssetController::class, 'checkOut'])->name('assets.check-out');
     Route::post('company-assets/{asset}/check-in', [Controllers\Asset\AssetController::class, 'checkIn'])->name('assets.check-in');

@@ -21,12 +21,13 @@
       <stat-tiles v-if="stats" :items="statTiles" @select="pickTile" />
 
       <transition name="item-bulk">
-        <div v-if="canBulk && picked.length" class="item-bulk print:hidden" role="region" :aria-label="$t('Selected items')">
+        <div v-if="canPick && picked.length" class="item-bulk print:hidden" role="region" :aria-label="$t('Selected items')">
           <span class="item-bulk-ico"><icons name="refresh" class="w-5 h-5" /></span>
-          <div class="item-bulk-text"><b>{{ picked.length }}</b> {{ $t('item(s) selected') }} <span class="item-bulk-split">({{ pickedConsumable.length }} {{ $t('consumable') }}, {{ pickedUsed.length }} {{ $t('used') }})</span><small>{{ $t('Change the Type of the selected items. Needs your Super Admin password.') }}</small></div>
+          <div class="item-bulk-text"><b>{{ picked.length }}</b> {{ $t('item(s) selected') }} <span v-if="canBulk" class="item-bulk-split">({{ pickedConsumable.length }} {{ $t('consumable') }}, {{ pickedUsed.length }} {{ $t('used') }})</span><small v-if="canBulk">{{ $t('Change the Type of the selected items. Needs your Super Admin password.') }}</small><small v-if="canAssetConvert">{{ $t('Convert to Asset turns them into assets and deletes them from Items.') }}</small></div>
           <button type="button" class="lg-btn bulk-btn bulk-btn-none" @click="picked = []"><icons name="x-circle" class="w-4 h-4" />{{ $t('Clear selection') }}</button>
-          <button v-if="pickedUsed.length" type="button" class="lg-btn bulk-btn bulk-btn-cons" @click="ask('consumable')"><icons name="refresh" class="w-4 h-4" />{{ $t('Convert to Consumable') }} ({{ pickedUsed.length }})</button>
-          <button v-if="pickedConsumable.length" type="button" class="lg-btn item-bulk-go" @click="ask('used')"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Convert to Used') }} ({{ pickedConsumable.length }})</button>
+          <button v-if="canBulk && pickedUsed.length" type="button" class="lg-btn bulk-btn bulk-btn-cons" @click="ask('consumable')"><icons name="refresh" class="w-4 h-4" />{{ $t('Convert to Consumable') }} ({{ pickedUsed.length }})</button>
+          <button v-if="canBulk && pickedConsumable.length" type="button" class="lg-btn item-bulk-go" @click="ask('used')"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Convert to Used') }} ({{ pickedConsumable.length }})</button>
+          <button v-if="canAssetConvert" type="button" class="lg-btn bulk-btn bulk-btn-asset" @click="assetAsk = true"><icons name="refresh" class="w-4 h-4" />{{ $t('Convert to Asset') }} ({{ picked.length }})</button>
         </div>
       </transition>
 
@@ -93,7 +94,7 @@
           <tr class="text-center font-bold">
             <th class="px-6 pt-6 pb-4 item-th item-th-indigo" @click="toggleSort('name')">
               <span class="item-th-inner">
-                <label v-if="canBulk" class="item-pick item-pick-all lg-tip" :data-tip="$t('Select all items on this page')" @click.stop>
+                <label v-if="canPick" class="item-pick item-pick-all lg-tip" :data-tip="$t('Select all items on this page')" @click.stop>
                   <input type="checkbox" :checked="allPicked" :disabled="!pickable.length" :aria-label="$t('Select all items on this page')" @change="toggleAll" />
                 </label>
                 <icons name="doc-text" class="w-3.5 h-3.5" />
@@ -138,7 +139,7 @@
           <tr :key="item.id" v-for="item in displayItems" :data-no-suffix="$t('Code') + ': ' + item.code" class="hover:bg-gray-100 focus-within:bg-gray-100">
             <td class="item-row-line" @click="goto(item)" :class="{ 'cursor-pointer': $can('read-items') }">
               <div class="px-6 py-4 max-w-md flex items-center focus:text-indigo-500">
-                <label v-if="canBulk && !item.deleted_at" class="item-pick mr-3" @click.stop>
+                <label v-if="canPick && !item.deleted_at" class="item-pick mr-3" @click.stop>
                   <input type="checkbox" :value="item.id" v-model="picked" :aria-label="$t('Select this item')" />
                 </label>
                 <img
@@ -308,6 +309,8 @@
       <pagination v-if="$connection.status !== 'offline'" class="mt-6" :meta="items.meta" :links="items.links" />
     </div>
 
+    <convert-to-asset-modal :show="assetAsk" :ids="picked" @close="assetAsk = false" @done="assetAsk = false; picked = []" />
+
     <super-admin-password-modal
       :show="usedAsk"
       :title="mode === 'consumable' ? $t('Convert to Consumable') : $t('Convert to Used')"
@@ -461,6 +464,7 @@ import PhotoViewerModal from '@/Shared/Item/PhotoViewerModal.vue';
 import ItemPhotoChips from '@/Shared/Item/ItemPhotoChips.vue';
 import { itemPhotoList } from '@/Core/itemPhotos';
 import SuperAdminPasswordModal from '@/Shared/SuperAdminPasswordModal.vue';
+import ConvertToAssetModal from './ConvertToAssetModal.vue';
 import { loadIndexData, loadDetail, loadItemStock, groupStockByWarehouse } from '@/Core/offlineDataSource';
 
 export default {
@@ -485,6 +489,7 @@ export default {
     TecDropdownLink,
     TecSectionTitle,
     SuperAdminPasswordModal,
+    ConvertToAssetModal,
   },
 
   props: {
@@ -498,6 +503,7 @@ export default {
     return {
       picked: [],
       usedAsk: false,
+      assetAsk: false,
       mode: 'used',
       seen: {},
       usedBusy: false,
@@ -559,6 +565,14 @@ export default {
     // Super Admin only: tick consumable items and convert their Type to Used (with their password)
     canBulk() {
       return !!this.$super && this.$connection.status !== 'offline';
+    },
+    // anyone who may turn items into assets (create assets + delete items, with the Assets module on) can tick items too
+    canAssetConvert() {
+      const on = ((this.$page.props.enabledFeatures || {}).assets !== false) || !!this.$super;
+      return on && this.$connection.status !== 'offline' && this.$can('create-assets') && this.$can('delete-items') && this.$can('read-items');
+    },
+    canPick() {
+      return this.canBulk || this.canAssetConvert;
     },
     pickable() {
       return (this.items.data || []).filter(i => !i.deleted_at);
@@ -850,6 +864,7 @@ html.dark .item-pick { background: #1e293b; }
 .bulk-btn { border: 0; color: #fff; }
 .bulk-btn-none { background: linear-gradient(145deg, #fb7185, #be123c); box-shadow: 0 10px 18px -8px rgba(190, 18, 60, 0.8), 0 2px 4px rgba(15, 23, 42, 0.15); }
 .bulk-btn:hover { transform: translateY(-1px); }
+.bulk-btn-asset { background: linear-gradient(145deg, #6366f1, #4338ca); box-shadow: 0 10px 18px -8px rgba(67, 56, 202, 0.85), 0 2px 4px rgba(15, 23, 42, 0.15); }
 .bulk-btn-cons { background: linear-gradient(145deg, #34d399, #047857); box-shadow: 0 10px 18px -8px rgba(4, 120, 87, 0.8), 0 2px 4px rgba(15, 23, 42, 0.15); }
 .item-bulk-split { font-size: 0.78rem; opacity: 0.85; }
 .item-bulk-go { color: #fff; background: linear-gradient(145deg, #fb923c, #c2410c); box-shadow: 0 10px 18px -10px rgba(194, 65, 12, 0.9); }

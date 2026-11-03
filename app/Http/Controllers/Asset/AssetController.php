@@ -423,6 +423,273 @@ class AssetController extends Controller
         return redirect()->route('items.edit', $item->id)->with('message', $msg);
     }
 
+    // ---- Items -> Assets -------------------------------------------------------------------------------------------------------------------
+
+    /** Records that name an item and stay as they are when it is deleted: the person is told how many, so nothing is a surprise. */
+    private const ITEM_REFERENCES = [
+        'material_request_items' => 'Material Requests',
+        'transfer_items' => 'Transfers',
+        'adjustment_items' => 'Adjustments',
+        'super_adjustment_items' => 'Super Adjustments',
+        'purchase_order_items' => 'Purchase Orders',
+        'purchase_request_items' => 'Purchase Requests',
+        'quotation_items' => 'Quotations',
+        'material_reallocation_items' => 'Material Reallocations',
+        'issue_transaction_items' => 'Issues',
+        'boq_material_compliances' => 'BOQ Compliance',
+    ];
+
+    /** The sentence that says why an item cannot be converted, or null when nothing stops it. */
+    private function itemBlockReason(bool $hasHistory, bool $hasVariationsOrSerials): ?string
+    {
+        if ($hasHistory) {
+            return __('It has Check-in or Check-out history, so it cannot be deleted, and an item is deleted when it is converted.');
+        }
+        if ($hasVariationsOrSerials) {
+            return __('It has variations or serial numbers, which an asset cannot carry.');
+        }
+
+        return null;
+    }
+
+    /** Why an item cannot be converted (it would not be allowed to be deleted, or it carries what an asset cannot), or null when it can. */
+    private function itemConversionBlocker(\App\Models\Item $item): ?string
+    {
+        return $this->itemBlockReason(
+            $item->checkinItems()->exists() || $item->checkoutItems()->exists(),
+            (bool) ($item->has_variants || $item->has_serials) || $item->variations()->exists() || $item->serials()->exists()
+        );
+    }
+
+    /** What a conversion of these items would do, item by item: the stock that becomes the quantity, the places, the photos, what is used elsewhere. */
+    private function itemConversionRows(array $ids): array
+    {
+        $items = \App\Models\Item::with('photos')->whereIn('id', $ids)->get()->keyBy('id');
+        $history = \App\Models\CheckinItem::whereIn('item_id', $ids)->distinct()->pluck('item_id')
+            ->merge(\App\Models\CheckoutItem::whereIn('item_id', $ids)->distinct()->pluck('item_id'))->flip();
+        $complex = \App\Models\Variation::whereIn('item_id', $ids)->distinct()->pluck('item_id')
+            ->merge(\App\Models\Serial::whereIn('item_id', $ids)->distinct()->pluck('item_id'))->flip();
+        $stock = \App\Models\Stock::query()->whereNull('variation_id')->whereIn('item_id', $ids)->get()->groupBy('item_id');
+
+        $refs = [];
+        foreach (self::ITEM_REFERENCES as $table => $label) {
+            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+                continue;
+            }
+            $q = DB::table($table)->whereIn('item_id', $ids);
+            if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            foreach ($q->selectRaw('item_id, COUNT(*) as n')->groupBy('item_id')->get() as $r) {
+                $refs[$r->item_id][] = ['label' => __($label), 'count' => (int) $r->n];
+            }
+        }
+
+        $rows = [];
+        foreach ($ids as $id) {
+            $item = $items->get($id);
+            if (! $item) {
+                continue;
+            }
+            $places = ($stock->get($id) ?? collect())->filter(fn ($s) => (float) $s->quantity > AssetPlacements::EPS)
+                ->sortByDesc('quantity')->map(fn ($s) => ['warehouse' => optional($s->warehouse)->name ?: __('No place'), 'quantity' => AssetPlacements::round((float) $s->quantity)])->values()->all();
+            $total = AssetPlacements::round(array_sum(array_column($places, 'quantity')));
+            $blocked = $this->itemBlockReason($history->has($id), $complex->has($id) || (bool) ($item->has_variants || $item->has_serials));
+            $photoCount = min(Asset::MAX_PHOTOS, count(array_unique(array_filter(array_merge([$item->photo], $item->photos->pluck('path')->all())))));
+
+            $rows[] = [
+                'id' => $item->id,
+                'name' => $item->name,
+                'code' => $item->code,
+                'unit' => optional($item->unit)->name,
+                'price' => $item->price !== null ? round((float) $item->price, 2) : null,
+                'places' => $places,
+                'quantity' => $total > 0 ? $total : 1.0,
+                'no_stock' => $total <= 0,
+                'photos' => $photoCount,
+                'used_in' => $refs[$id] ?? [],
+                'blocked' => $blocked,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /** The window's first answer: what each selected item would become, and the choices that apply to all of them. */
+    public function convertFromItemsPreview(Request $request)
+    {
+        $this->authorize('create-assets');
+        $this->authorize('delete-items');
+        $this->authorize('read-items');
+        $data = $request->validate(['ids' => 'required|array|min:1|max:200', 'ids.*' => 'integer']);
+
+        $categories = AssetCategory::active()->orderBy('name')->get(['id', 'name', 'parent_id']);
+        $byId = $categories->keyBy('id');
+        $label = fn ($c) => $c->parent_id && $byId->has($c->parent_id) ? $byId[$c->parent_id]->name . ' / ' . $c->name : $c->name;
+
+        return response()->json([
+            'rows' => $this->itemConversionRows(array_values(array_unique(array_map('intval', $data['ids'])))),
+            'categories' => $categories->map(fn ($c) => ['value' => $c->id, 'label' => $label($c)])->sortBy('label')->values()->all(),
+            'types' => Asset::ASSET_TYPES,
+            'ownership_types' => Asset::OWNERSHIP_TYPES,
+            'conditions' => Asset::CONDITIONS,
+            'defaults' => ['ownership_type' => Asset::OWNERSHIP_TYPES[0], 'condition' => 'New', 'acquisition_date' => now()->toDateString()],
+        ]);
+    }
+
+    /**
+     * Converts the chosen items into assets and deletes the items. Each item is its own all-or-nothing step: the asset is created from the item's
+     * information (name, details, SKU, unit, price as the cost of one, photos, the stock on hand as the quantity, one place per warehouse that holds
+     * stock) and the item is deleted the same way the Items list deletes it; an item that cannot be deleted is left untouched and reported.
+     */
+    public function convertFromItems(Request $request)
+    {
+        $this->authorize('create-assets');
+        $this->authorize('delete-items');
+        $this->authorize('read-items');
+
+        $opts = $request->validate([
+            'ids' => 'required|array|min:1|max:200',
+            'ids.*' => 'integer',
+            'asset_category_id' => 'nullable|exists:asset_categories,id',
+            'asset_type' => ['nullable', 'string', Rule::in(Asset::ASSET_TYPES)],
+            'ownership_type' => 'required|in:' . implode(',', Asset::OWNERSHIP_TYPES),
+            'condition' => 'nullable|in:' . implode(',', Asset::CONDITIONS),
+            'acquisition_date' => 'nullable|date',
+            'acknowledge_delete' => 'accepted',
+        ], ['acknowledge_delete.accepted' => __('Tick the box to confirm that the items will be deleted.')]);
+
+        $user = $request->user();
+        $done = [];
+        $skipped = [];
+        foreach (array_values(array_unique(array_map('intval', $opts['ids']))) as $id) {
+            try {
+                $done[] = $this->itemToAsset($id, $opts, $user);
+            } catch (\App\Exceptions\ItemConversionRefused $e) {
+                $name = optional(\App\Models\Item::withTrashed()->find($id))->name ?: '#' . $id;
+                $skipped[] = $name . ': ' . $e->getMessage();
+            }
+        }
+
+        foreach ($done as $d) {
+            \App\Services\AssetNotifier::fire('created', $d['asset'], __('Asset Registered'), $d['asset']->name . ' (' . $d['asset']->asset_number . ') was added to the Asset Register from item ' . $d['code'] . '.');
+            \App\Services\ItemNotifier::fire('deleted', __('Item Deleted'), $d['code'] . ' was converted to asset ' . $d['asset']->asset_number . ' and deleted.', null, ['url' => route('deleted.index', ['type' => 'items'])]);
+        }
+
+        if (! $done) {
+            return back()->with('error', __('Nothing was converted.') . ' ' . implode(' | ', array_slice($skipped, 0, 5)));
+        }
+
+        $numbers = collect($done)->map(fn ($d) => $d['asset']->asset_number)->implode(', ');
+        $message = trans_choice('{1} The item was converted to asset :numbers and deleted from Items.|[2,*] :count items were converted to assets (:numbers) and deleted from Items.', count($done), ['count' => count($done), 'numbers' => $numbers]);
+        if ($skipped) {
+            $message .= ' ' . __(':n not converted', ['n' => count($skipped)]) . ' - ' . implode(' | ', array_slice($skipped, 0, 5));
+        }
+
+        return count($done) === 1
+            ? redirect()->route('assets.show', $done[0]['asset']->id)->with('message', $message)
+            : redirect()->route('assets.index')->with('message', $message);
+    }
+
+    /** One item to one asset, all or nothing. Throws ItemConversionRefused (nothing changed) when the item cannot become an asset. */
+    private function itemToAsset(int $itemId, array $opts, $user): array
+    {
+        return DB::transaction(function () use ($itemId, $opts, $user) {
+            $item = \App\Models\Item::query()->lockForUpdate()->find($itemId);
+            if (! $item) {
+                throw new \App\Exceptions\ItemConversionRefused(__('The item no longer exists (it may already have been deleted or converted).'));
+            }
+            if ($reason = $this->itemConversionBlocker($item)) {
+                throw new \App\Exceptions\ItemConversionRefused($reason);
+            }
+
+            $stockRows = \App\Models\Stock::query()->whereNull('variation_id')->where('item_id', $item->id)->get()
+                ->filter(fn ($s) => (float) $s->quantity > AssetPlacements::EPS)->sortByDesc('quantity')->values();
+            $total = AssetPlacements::round((float) $stockRows->sum('quantity'));
+            $quantity = $total > 0 ? $total : 1.0; // no stock on hand: one asset is registered
+            $code = (string) $item->code;
+            $details = array_filter([
+                trim((string) $item->details),
+                $item->sku ? __('SKU') . ': ' . $item->sku : null,
+                __('Converted from item :code', ['code' => $code]),
+            ]);
+
+            $data = [
+                'name' => $item->name,
+                'asset_category_id' => $opts['asset_category_id'] ?? null,
+                'asset_type' => $opts['asset_type'] ?? null,
+                'description' => implode("\n", $details),
+                'ownership_type' => $opts['ownership_type'],
+                'acquisition_date' => $opts['acquisition_date'] ?? now()->toDateString(),
+                // the price of an item is the price of one: exactly what the asset's cost means
+                'acquisition_cost' => round((float) ($item->price ?? 0), 2),
+                'currency' => 'TZS',
+                'quantity' => $quantity,
+                'unit_id' => $item->unit_id ?: $this->defaultUnitId(),
+            ];
+
+            $asset = \App\Support\ReferenceLock::run('assets', function () use ($data, $stockRows, $opts, $item, $code, $user) {
+                $asset = new Asset();
+                $asset->fill($data);
+                $asset->asset_number = $this->nextReference();
+                $asset->total_capitalised_cost = $this->computeCapitalisedCost($data);
+                $asset->status = 'Available';
+                $asset->condition = $opts['condition'] ?? ($item->is_used ? 'Good' : 'New');
+                $asset->current_warehouse_id = optional($stockRows->first())->warehouse_id;
+                $asset->created_by_user_id = $user->id;
+                $asset->registered_in = Asset::REGISTERED_IN_ASSETS;
+                $asset->extra_attributes = ['converted_from_item_id' => $item->id, 'converted_from_item_code' => $code, 'converted_from_item_name' => $item->name];
+                $asset->save();
+
+                return $asset;
+            });
+
+            // one place per warehouse that held stock, so the quantities by place carry over
+            foreach ($stockRows as $row) {
+                AssetPlacements::add($asset->id, $row->warehouse_id, null, null, null, (float) $row->quantity);
+            }
+            AssetPlacements::ensure($asset);
+            AssetPlacements::syncSnapshot($asset);
+
+            $placeRows = $stockRows->isNotEmpty() ? $stockRows : collect([null]);
+            foreach ($placeRows as $row) {
+                AssetMovement::create([
+                    'asset_id' => $asset->id,
+                    'movement_type' => 'Registered',
+                    'quantity' => $row ? AssetPlacements::round((float) $row->quantity) : $quantity,
+                    'unit_id' => $asset->unit_id,
+                    'to_warehouse_id' => $row ? $row->warehouse_id : null,
+                    'movement_date' => $asset->acquisition_date ?? now()->toDateString(),
+                    'performed_by_user_id' => $user->id,
+                    'notes' => __('Registered from item :code.', ['code' => $code]),
+                ]);
+            }
+
+            $name = $item->name;
+            if (! $item->del()) {
+                throw new \App\Exceptions\ItemConversionRefused(__('The item could not be deleted.'));
+            }
+
+            // the item's pictures: copies, so the deleted item keeps its own
+            $paths = array_values(array_unique(array_filter(array_merge([$item->photo], $item->photos()->pluck('path')->all()))));
+            $position = 0;
+            foreach (array_slice($paths, 0, Asset::MAX_PHOTOS) as $path) {
+                if (! Storage::disk('assets')->exists($path)) {
+                    continue;
+                }
+                $copy = 'assets/' . \Illuminate\Support\Str::uuid() . '.' . (pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg');
+                if (Storage::disk('assets')->copy($path, $copy)) {
+                    $asset->photos()->create(['path' => $copy, 'position' => ++$position]);
+                }
+            }
+            $this->syncCoverPhoto($asset);
+
+            log_activity('Item converted to asset', ['item' => $code, 'item_name' => $name, 'asset' => $asset->asset_number, 'quantity' => $quantity, 'places' => $stockRows->count(), 'item_deleted' => true], $asset, 'Asset');
+
+            return ['asset' => $asset, 'code' => $code];
+        });
+    }
+
     public function assign(Request $request, Asset $asset)
     {
         $this->authorize('assign-assets');
