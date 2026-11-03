@@ -141,6 +141,7 @@ import throttle from 'lodash/throttle';
 import TecLabel from '@/Jetstream/Label.vue';
 import TecInputError from '@/Jetstream/InputError.vue';
 import { scanFields } from '@/Core/scanListener';
+import { ensureCatalogue, searchCatalogue, catalogueUnavailable } from '@/Core/itemCatalogue';
 
 // Matching of what was typed against a list label. Every word must be found ("cement 50" finds "RSI-0042 - CEMENT 50KG"); an item code can be typed as its
 // number or with RSI, with or without the dash or leading zeros ("562", "0562", "RSI562", "rsi 562" all find "RSI-0562").
@@ -264,7 +265,7 @@ export default {
         this.open = true;
         if (Array.isArray(this.suggestions)) {
           this.result = this.ordered(search ? exactFirst(this.suggestions.filter(r => this.cLabel(r, search)), r => this.cLabel(r), search) : this.suggestions);
-        } else {
+        } else if (!this.localSuggestions(search)) {
           this.loading = true;
           this.getSuggestions(search);
         }
@@ -283,6 +284,17 @@ export default {
   computed: {
     // an item picker (it reads item codes and QR codes): its options show the item as NAME (CODE) with the code styled
     isItemPicker() { return this.scan || this.resolveQrCodes; },
+    // a picker that asks the item search: it is answered from the item list kept in the browser (see Core/itemCatalogue.js) whenever that list is ready
+    itemSearch() {
+      if (typeof this.suggestions !== 'string') return null;
+      try {
+        const u = new URL(this.suggestions, window.location.origin);
+
+        return u.pathname.replace(/\/+$/, '').endsWith('/search/items') ? { labelled: u.searchParams.get('labelled') === '1' } : null;
+      } catch (e) {
+        return null;
+      }
+    },
     // sections apply only to a full project / warehouse list (Main Warehouses and Projects together) and can be switched off in Settings
     // a list whose options carry their own `section` (for example Staff and Contacts) is shown in those sections, in the order they first appear
     sectioned() {
@@ -338,9 +350,16 @@ export default {
     window.addEventListener('resize', this.onWindowReposition);
     window.addEventListener('scroll', this.onWindowReposition, true);
     this.resolveFromModelValue();
+    // an item picker gets the item list ready while the browser is idle, so the first search is already instant (it never delays the page)
+    if (this.itemSearch) {
+      const warm = () => ensureCatalogue(this.catalogueUser());
+      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warm, { timeout: 4000 });
+      else setTimeout(warm, 1500);
+    }
   },
 
   beforeUnmount() {
+    clearTimeout(this._autoPick);
     scanFields.delete(this);
     this.hideOptionTooltip();
     window.removeEventListener('resize', this.onWindowReposition);
@@ -348,6 +367,29 @@ export default {
   },
 
   methods: {
+    catalogueUser() {
+      return this.$page && this.$page.props && this.$page.props.auth && this.$page.props.auth.user ? this.$page.props.auth.user.id : null;
+    },
+    // The answer to an item search from the list kept in the browser: instant and no request. Returns false when the server has to answer (the list is not
+    // loaded yet, or nothing was found in it: an item added a moment ago may not be there yet).
+    localSuggestions(search) {
+      if (!this.itemSearch || catalogueUnavailable(this.catalogueUser())) return false;
+      const hits = searchCatalogue(this.catalogueUser(), search, { labelled: this.itemSearch.labelled });
+      // keep the list fresh (a quick "anything new?" at most every 30 seconds) and load it if it is not here yet
+      ensureCatalogue(this.catalogueUser());
+      if (hits === null || (!hits.length && String(search || '').trim() !== '')) return false;
+      this.loading = false;
+      this.result = hits;
+      // one item left after typing: it is taken once the typing pauses (the same moment the server answer used to arrive), never in the middle of a word
+      clearTimeout(this._autoPick);
+      if (hits.length === 1 && String(search || '').trim() !== '') {
+        this._autoPick = setTimeout(() => {
+          if (search === this.search && this.result && this.result.length === 1 && this.open) this.suggestionClick(0, true);
+        }, 350);
+      }
+
+      return true;
+    },
     // Resolves `selected`/`search` (the visible label) from the current
     // modelValue — run once on mount, and again from the modelValue
     // watcher whenever the parent changes it programmatically afterward.
@@ -456,7 +498,8 @@ export default {
       if (!this.selected) {
         this.current = 0;
       }
-      if (this.loadOnFocus && typeof this.suggestions === 'string' && !this.search && (!this.result || !this.result.length)) {
+      if (this.itemSearch) ensureCatalogue(this.catalogueUser());
+      if (this.loadOnFocus && typeof this.suggestions === 'string' && !this.search && (!this.result || !this.result.length) && !this.localSuggestions('')) {
         this.loading = true;
         axios
           .post(this.suggestions, { search: '' })

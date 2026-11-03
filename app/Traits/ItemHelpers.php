@@ -99,8 +99,10 @@ trait ItemHelpers
         }
         $oneWord = function ($q, string $w) {
             $code = self::canonicalCode($w);
-            $q->where('code', 'like', "%{$w}%")->orWhere('name', 'like', "%{$w}%")->orWhere('sku', 'like', "%{$w}%")
-                ->orWhereHas('categories', fn ($q) => $q->where('name', 'like', "%{$w}%")->orWhere('code', 'like', "%{$w}%"));
+            // a % or _ typed in the box is the character itself, not a wildcard that matches everything
+            $like = '%' . addcslashes($w, '\\%_') . '%';
+            $q->where('code', 'like', $like)->orWhere('name', 'like', $like)->orWhere('sku', 'like', $like)
+                ->orWhereHas('categories', fn ($q) => $q->where('name', 'like', $like)->orWhere('code', 'like', $like));
             if ($code) {
                 $q->orWhere('code', $code);
             }

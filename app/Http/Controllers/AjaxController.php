@@ -255,7 +255,87 @@ class AjaxController extends Controller
             return $query->orderBy('name')->take(25)->get()->each(fn ($item) => $item->setAttribute('label', item_text($item->name, $item->code)));
         }
 
-        return $query->take(25)->get();
+        // by item number: a fixed order (the database used to pick whichever it liked), the same one the browser list uses
+        return $query->orderBy('id')->take(25)->get();
+    }
+
+    /**
+     * The item list for the pickers, in one answer, so the browser can search it by itself while the person types (no request per key).
+     *
+     * - It is the same item the picker has always received (name, code, unit, variations, price...), minus what a picker never reads
+     *   (details, who deleted it, account number, the BinCard record, the free-form extras, dates), plus `cat`: the names and codes of the item's categories, which
+     *   the search looks in.
+     * - Only for a signed-in person, only the items of their own account (the model's account scope), never kept by the browser on disk (no-store) and never shared
+     *   (private); 30 asks a minute.
+     * - It carries a version. The browser sends it back in If-None-Match and gets an empty 304 while nothing changed, so staying up to date costs next to nothing.
+     * - A catalogue too big to be sensible in a browser (more than the limit) is not sent at all: the pickers keep asking the server, as before.
+     */
+    public function itemCatalogue(Request $request)
+    {
+        $limit = 8000;
+        $count = Item::query()->count();
+        $headers = ['Cache-Control' => 'no-store, private', 'Vary' => 'Cookie'];
+
+        if ($count > $limit) {
+            return response()->json(['too_large' => true, 'count' => $count], 200, $headers);
+        }
+
+        // what makes the answer different: an item added, changed or removed, or its unit, categories or variations
+        $itemType = (new Item())->getMorphClass();
+        $version = md5(implode('|', [
+            (string) getAccountId(1),
+            $count,
+            (string) Item::query()->max('updated_at'),
+            (string) \App\Models\Unit::query()->max('updated_at'),
+            \App\Models\Unit::query()->count(),
+            (string) \App\Models\Category::query()->max('updated_at'),
+            \App\Models\Category::query()->count(),
+            \Illuminate\Support\Facades\DB::table('categorizables')->where('categorizable_type', $itemType)->count(),
+            (string) \App\Models\Variation::query()->max('updated_at'),
+            \App\Models\Variation::query()->count(),
+        ]));
+        $etag = '"'.$version.'"';
+
+        if ($request->header('If-None-Match') === $etag) {
+            return response('', 304, $headers + ['ETag' => $etag]);
+        }
+
+        // the category names and codes of every item, in one question
+        $cats = \Illuminate\Support\Facades\DB::table('categorizables')
+            ->join('categories', 'categories.id', '=', 'categorizables.category_id')
+            ->where('categorizables.categorizable_type', $itemType)
+            ->whereNull('categories.deleted_at')
+            ->get(['categorizables.categorizable_id as item_id', 'categories.name', 'categories.code'])
+            ->groupBy('item_id')
+            ->map(fn ($rows) => $rows->map(fn ($r) => trim($r->name.' '.$r->code))->implode(' | '));
+
+        $drop = ['account_id', 'deleted_at', 'deleted_by', 'created_at', 'updated_at', 'extra_attributes', 'details', 'bincard_photo_id', 'bincard_at', 'bincard_by'];
+        $items = Item::with('variations')->orderBy('name')->get()->map(function ($item) use ($drop, $cats) {
+            $row = \Illuminate\Support\Arr::except($item->toArray(), $drop);
+            // the nested records lose the same housekeeping columns
+            if (isset($row['unit']) && is_array($row['unit'])) {
+                $row['unit'] = \Illuminate\Support\Arr::except($row['unit'], $drop);
+                if (isset($row['unit']['subunits'])) {
+                    $row['unit']['subunits'] = array_map(fn ($u) => \Illuminate\Support\Arr::except($u, $drop), $row['unit']['subunits']);
+                }
+            }
+            if (! empty($row['variations'])) {
+                $row['variations'] = array_map(fn ($v) => \Illuminate\Support\Arr::except($v, $drop), $row['variations']);
+            }
+            $row['cat'] = (string) ($cats[$item->id] ?? '');
+
+            return $row;
+        })->values();
+
+        $headers = ['Vary' => 'Cookie, Accept-Encoding', 'ETag' => $etag] + $headers;
+        $body = json_encode(['version' => $version, 'items' => $items]);
+
+        // compressed here (about 15 times smaller), so it does not depend on what the web server is set to compress
+        if ($body !== false && function_exists('gzencode') && str_contains((string) $request->header('Accept-Encoding'), 'gzip') && ($zipped = gzencode($body, 5)) !== false) {
+            return response($zipped, 200, $headers + ['Content-Type' => 'application/json', 'Content-Encoding' => 'gzip']);
+        }
+
+        return response($body, 200, $headers + ['Content-Type' => 'application/json']);
     }
 
     public function scan(Request $request)

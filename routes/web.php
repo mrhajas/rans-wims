@@ -428,7 +428,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('system-features/reconcile', [Controllers\SystemFeatureController::class, 'reconcile'])->name('system-features.reconcile');
     Route::post('system-features/reconcile', [Controllers\SystemFeatureController::class, 'reconcileApply'])->name('system-features.reconcile.apply');
 
-    Route::post('search/items', [Controllers\AjaxController::class, 'items'])->name('items.search');
+    Route::post('search/items', [Controllers\AjaxController::class, 'items'])->middleware('throttle:600,1,items.search')->name('items.search');
+    Route::get('search/items/catalogue', [Controllers\AjaxController::class, 'itemCatalogue'])->middleware('throttle:30,1,items.catalogue')->name('items.catalogue');
     Route::post('scan/item', [Controllers\AjaxController::class, 'scan'])->name('items.scan');
     Route::post('scan/resolve', [Controllers\ScanResolveController::class, 'resolve'])->middleware('throttle:120,1,scan.resolve')->name('scan.resolve');
     Route::get('barcodes', [Controllers\ItemController::class, 'barcodes'])->name('items.barcodes');
