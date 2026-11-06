@@ -889,7 +889,7 @@ class SystemFeatureRegistry
             ],
             'wims_logs' => [
                 'name' => __('WIMS Logs'),
-                'description' => __('Old log records (weather forecasts, delivery logs, downloads and prints, read alerts, slow pages) are moved out of the live database into compressed archive files on a schedule, so the system stays fast and nothing is lost. A Super Admin can read, search and download every archived record and sees the space saved. Super Admin, or a role given the WIMS Logs permissions.'),
+                'description' => __('Old log records (weather forecasts, delivery logs, downloads and prints, read alerts, slow pages, system logs) are moved out of the live database into compressed archive files on a schedule, so the system stays fast and nothing is lost. A Super Admin can read, search and download every archived record and sees the space saved. Super Admin, or a role given the WIMS Logs permissions.'),
                 'module' => __('Administration'),
                 'icon' => 'archive-box',
                 'route_prefixes' => ['wims-logs.'],

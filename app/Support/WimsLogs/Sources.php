@@ -50,6 +50,13 @@ class Sources
                     return Str::limit(trim((string) ($d['title'] ?? $d['module'] ?? '') . ' · ' . ($d['message'] ?? $d['body'] ?? '')), 140, '…');
                 },
             ],
+            'system' => [
+                'label' => 'System logs (activity history)',
+                'help' => 'The page called System Logs: who did what, and when, across WIMS. Records older than the days below are moved out of the live list and stay readable here. Business records themselves are never touched.',
+                'table' => 'activity_log', 'pk' => 'id', 'date' => 'created_at', 'keep_days' => 365,
+                'eligible' => null,
+                'summary' => fn (array $r) => Str::limit(trim(($r['log_name'] ?? '') . ' · ' . ($r['description'] ?? '') . ' · ' . (($r['subject_type'] ?? '') !== '' ? class_basename((string) $r['subject_type']) . (($r['subject_id'] ?? null) ? ' #' . $r['subject_id'] : '') : '-') . ' · user ' . ($r['causer_id'] ?? '-')), 200, '…'),
+            ],
             'slow' => [
                 'label' => 'Slow pages and queries',
                 'help' => 'The record of pages and database queries that were slower than the limits set in Settings > Performance & Data.',

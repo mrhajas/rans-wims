@@ -13,15 +13,7 @@
         </div>
       </header>
 
-      <!-- older events were moved to the archive by WIMS Logs: said here, with a way to read them -->
-      <section v-if="archived" class="dpl-arch print:hidden" role="note">
-        <span class="dpl-arch-ico"><icons name="archive-box" class="w-5 h-5" /></span>
-        <div class="dpl-arch-text">
-          <b>{{ $t(':n older events are in the archive', { n: archived.rows.toLocaleString() }) }}</b>
-          <span>{{ $t('From :a to :b. Events stay in this list for :d days, then WIMS Logs moves them to a compressed archive. Nothing is deleted.', { a: day(archived.from), b: day(archived.to), d: archived.keep_days }) }}</span>
-        </div>
-        <Link v-if="archived.can_read" :href="route('wims-logs.browse', { source: 'downloads' })" class="lg-btn tone tone-solid dpl-arch-go" style="--tone: #059669"><span class="tone-ico"><icons name="search" class="w-4 h-4" /></span>{{ $t('Read archived events') }}</Link>
-      </section>
+      <archived-notice :archived="archived" what="events" />
 
       <section class="lg-stats print:hidden">
         <div class="lg-stat">
@@ -111,6 +103,7 @@
 
 <script>
 import { Link } from '@inertiajs/vue3';
+import ArchivedNotice from '@/Shared/ArchivedNotice.vue';
 import pickBy from 'lodash/pickBy';
 import { startBackgroundTask, isTaskRunning } from '@/Core/backgroundTasks';
 import throttle from 'lodash/throttle';
@@ -124,6 +117,7 @@ import DatePicker from '@/Shared/DatePicker.vue';
 export default {
   components: {
     Link,
+    ArchivedNotice,
     Pagination,
     AdminLayout,
     SearchFilter,
@@ -180,7 +174,6 @@ export default {
   },
 
   methods: {
-    day(d) { return d ? String(d).slice(0, 10) : '-'; },
     initials(name) {
       return String(name || '?')
         .split(/\s+/)
@@ -223,13 +216,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-.dpl-arch { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; margin: 0 0 1rem; padding: 0.85rem 1rem; border-radius: 1.1rem; border: 1.5px solid rgba(5, 150, 105, 0.28); background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), rgba(99, 102, 241, 0.07)); animation: dpl-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-.dpl-arch-ico { flex: none; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 0.9rem; color: #fff; background: linear-gradient(135deg, #34d399, #059669); box-shadow: 0 8px 14px -8px #059669; }
-.dpl-arch-text { display: grid; gap: 0.1rem; flex: 1 1 18rem; min-width: 0; } .dpl-arch-text b { font-size: 0.92rem; } .dpl-arch-text span { font-size: 0.78rem; color: #64748b; line-height: 1.4; }
-.dpl-arch-go { transition: transform 0.2s ease; } .dpl-arch-go:hover { transform: translateY(-2px); }
-@keyframes dpl-in { from { opacity: 0; transform: translateY(10px); } }
-@media (max-width: 640px) { .dpl-arch-go { width: 100%; justify-content: center; } }
-@media (prefers-reduced-motion: reduce) { .dpl-arch { animation: none; } }
-</style>

@@ -134,6 +134,7 @@ class DashboardController extends Controller
             'activities' => new ActivityCollection($query->paginate()->withQueryString()),
             'users'      => User::orderBy('name')->get(['id', 'name']),
             'modules'    => \App\Support\ActivityModules::options(),
+            'archived'   => fn () => \App\Support\WimsLogs\ArchiveNotice::for('system', $request),
         ]);
     }
 

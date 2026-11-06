@@ -12,6 +12,8 @@
         </div>
       </header>
 
+      <archived-notice :archived="archived" what="records" />
+
       <section class="lg-stats print:hidden">
         <div class="lg-stat">
           <span class="lg-stat-ico lg-ico-navy"><icons name="list" class="w-5 h-5" /></span>
@@ -123,6 +125,7 @@ import pickBy from 'lodash/pickBy';
 import throttle from 'lodash/throttle';
 import mapValues from 'lodash/mapValues';
 import Modal from '@/Jetstream/Modal.vue';
+import ArchivedNotice from '@/Shared/ArchivedNotice.vue';
 import Pagination from '@/Shared/Pagination.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import SearchFilter from '@/Shared/SearchFilter.vue';
@@ -131,6 +134,7 @@ import DateRangePicker from '@/Shared/DateRangePicker.vue';
 
 export default {
   components: {
+    ArchivedNotice,
     Modal,
     Pagination,
     AdminLayout,
@@ -140,6 +144,7 @@ export default {
   },
 
   props: {
+    archived: { type: Object, default: null },
     filters: Object,
     activities: Object,
     users: { type: Array, default: () => [] },

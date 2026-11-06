@@ -229,4 +229,38 @@ class WimsLogsArchiverTest extends TestCase
         $this->assertCount(1, $found['rows']);
         $this->assertSame([], ArchiveStore::slice($rel, 0, 50, 'no such thing')['rows']);
     }
+
+    public function test_system_logs_the_activity_history_are_archived_and_read_back(): void
+    {
+        Schema::dropIfExists('activity_log');
+        Schema::create('activity_log', function (Blueprint $t) {
+            $t->bigIncrements('id');
+            $t->string('log_name')->nullable();
+            $t->text('description');
+            $t->string('subject_type')->nullable();
+            $t->unsignedBigInteger('subject_id')->nullable();
+            $t->string('causer_type')->nullable();
+            $t->unsignedBigInteger('causer_id')->nullable();
+            $t->longText('properties')->nullable();
+            $t->timestamp('created_at')->nullable();
+        });
+        $this->forgetSchemaMemo();
+        for ($i = 0; $i < 12; $i++) {
+            DB::table('activity_log')->insert(['log_name' => 'Item', 'description' => 'Item ünï ' . $i . ' was updated', 'subject_type' => 'App\\Models\\Item', 'subject_id' => $i, 'causer_id' => 7, 'properties' => json_encode(['attributes' => ['name' => 'X' . $i]]), 'created_at' => now()->subDays(400)->toDateTimeString()]);
+        }
+        DB::table('activity_log')->insert(['log_name' => 'Item', 'description' => 'recent', 'created_at' => now()->subDays(3)->toDateTimeString()]);
+
+        $run = Archiver::run('manual', null, ['system']);
+
+        $this->assertSame(12, (int) $run->rows_archived, 'only what is older than the 365 days is moved');
+        $this->assertSame(1, DB::table('activity_log')->count());
+        $rel = (string) WimsLogArchive::first()->path;
+        $e = iterator_to_array(ArchiveStore::lines($rel))[0];
+        $this->assertStringContainsString('Item', $e['s']);
+        $this->assertStringContainsString('user 7', $e['s']);
+        $row = ArchiveStore::record($rel, (string) $e['i']);
+        $this->assertSame('Item', $row['log_name']);
+        $this->assertStringContainsString('attributes', (string) $row['properties'], 'the whole record is kept, not only its description');
+        Schema::dropIfExists('activity_log');
+    }
 }

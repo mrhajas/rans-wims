@@ -122,6 +122,7 @@ export default {
         downloads: { icon: 'download', tone: '#059669', tone2: '#34d399' },
         alerts: { icon: 'bell', tone: '#d97706', tone2: '#fbbf24' },
         slow: { icon: 'lightning-bolt', tone: '#e11d48', tone2: '#fb7185' },
+        system: { icon: 'server', tone: '#4f46e5', tone2: '#818cf8' },
       })[key] || { icon: 'archive-box', tone: '#4f46e5', tone2: '#818cf8' };
     },
     savedPct(l) { return l.original > 0 ? Math.max(0, Math.round((1 - l.stored / l.original) * 100)) : 0; },
