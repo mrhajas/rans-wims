@@ -197,6 +197,65 @@ class WimsLogsController extends Controller
         return Inertia::render('Settings/WimsLogRun', ['run' => $this->runDetail($run)]);
     }
 
+    /**
+     * Every archived record of one log, newest archive first, a page at a time, searchable: the place to read what was moved out of the live database without knowing which run or
+     * archive it is in.
+     */
+    public function browse(Request $request)
+    {
+        $this->allow($request, 'read-wims-logs');
+        $keys = array_keys(Sources::all());
+        $counts = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to')->groupBy('source')->get()->keyBy('source');
+        $logs = collect(Sources::all())->map(fn ($src, $k) => [
+            'key' => $k, 'label' => $src['label'], 'rows' => (int) ($counts->get($k)->rows_n ?? 0), 'archives' => (int) ($counts->get($k)->archives ?? 0),
+            'original' => (int) ($counts->get($k)->original ?? 0), 'stored' => (int) ($counts->get($k)->stored ?? 0),
+            'date_from' => $counts->get($k)->date_from ?? null, 'date_to' => $counts->get($k)->date_to ?? null,
+        ])->values()->all();
+
+        $source = (string) $request->query('source', '');
+        if (! in_array($source, $keys, true)) {
+            $source = collect($logs)->firstWhere(fn ($l) => $l['rows'] > 0)['key'] ?? ($keys[0] ?? '');
+        }
+        $per = 50;
+        $page = max(1, (int) $request->query('page', 1));
+        $q = trim((string) $request->query('q', ''));
+        $offset = ($page - 1) * $per;
+        $need = $per;
+        $rows = [];
+        $total = 0;
+        foreach (WimsLogArchive::query()->where('source', $source)->orderByDesc('id')->get() as $a) {
+            if (! ArchiveStore::exists((string) $a->path)) {
+                continue;
+            }
+            $n = (int) $a->rows_n;
+            if ($q === '') {
+                $total += $n;
+                if ($need <= 0 || $offset >= $n) {
+                    $offset = max(0, $offset - $n);
+                    continue;
+                }
+                $res = ArchiveStore::slice((string) $a->path, $offset, $need, null, $n);
+            } else {
+                $res = ArchiveStore::slice((string) $a->path, $offset, max($need, 0), $q);
+                $total += $res['total'];
+                if ($offset >= $res['total']) {
+                    $offset -= $res['total'];
+                    continue;
+                }
+            }
+            foreach ($res['rows'] as $e) {
+                $rows[] = ['archive' => $a->id, 'ref' => $a->ref(), 'id' => $e['i'], 'at' => $e['t'] ?? null, 'summary' => $e['s'] ?? '', 'original' => (int) $e['o'], 'compressed' => (int) $e['c']];
+            }
+            $need -= count($res['rows']);
+            $offset = 0;
+        }
+
+        return Inertia::render('Settings/WimsLogBrowse', [
+            'logs' => $logs, 'source' => $source, 'records' => $rows,
+            'total' => $total, 'page' => $page, 'per' => $per, 'pages' => max(1, (int) ceil($total / $per)), 'q' => $q,
+        ]);
+    }
+
     /** The records of one archive, a page at a time, searchable. */
     public function archive(Request $request, WimsLogArchive $archive)
     {

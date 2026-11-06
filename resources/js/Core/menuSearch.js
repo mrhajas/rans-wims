@@ -72,6 +72,7 @@ const OPTIMIZER_ENTRIES = [
 // Settings > WIMS Logs: old log records archived into compressed files that can be read and downloaded (permission read-wims-logs)
 const WIMS_LOGS_ENTRIES = [
   { route: 'wims-logs.index', title: 'WIMS Logs (archived logs, space saved)', icon: 'archive-box', permission: 'read-wims-logs' },
+  { route: 'wims-logs.browse', title: 'Archived Log Records (read, search)', icon: 'doc-text', permission: 'read-wims-logs' },
   { route: 'wims-logs.index', title: 'Archived Logs (read and download)', icon: 'doc-text', hash: '#wl-history', permission: 'read-wims-logs' },
   { route: 'wims-logs.index', title: 'Archive Old Logs Now', icon: 'refresh', hash: '#wl-schedule', permission: 'run-wims-logs' },
   { route: 'wims-logs.index', title: 'Space Saved by Archiving', icon: 'database', hash: '#wl-space', permission: 'read-wims-logs' },

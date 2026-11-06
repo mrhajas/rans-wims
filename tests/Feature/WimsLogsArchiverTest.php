@@ -17,6 +17,8 @@ class WimsLogsArchiverTest extends TestCase
 {
     protected function setUp(): void
     {
+        // the tests write their archives to a folder of their own and never touch storage/app/wims-logs
+        ArchiveStore::$rootOverride = sys_get_temp_dir() . '/wims-logs-test-' . getmypid();
         parent::setUp();
         foreach (['wims_log_archives', 'wims_log_runs', 'slow_logs', 'wims_connect_logs'] as $t) {
             Schema::dropIfExists($t);
@@ -61,6 +63,7 @@ class WimsLogsArchiverTest extends TestCase
     protected function tearDown(): void
     {
         $this->cleanFiles();
+        ArchiveStore::$rootOverride = null;
         $this->forgetSchemaMemo();
         parent::tearDown();
     }
@@ -209,5 +212,21 @@ class WimsLogsArchiverTest extends TestCase
         $this->assertSame(4, DB::table('slow_logs')->count());
         $this->assertSame(2, (int) ($run->options['keep_days']['slow'] ?? 0), 'the days used are written on the run');
         $this->assertSame(7, \App\Support\WimsLogs\WimsLogSettings::keepDays('slow'), 'the saved setting is untouched');
+    }
+
+    public function test_a_window_of_the_archived_records_can_be_read_with_and_without_a_search(): void
+    {
+        $this->slow(12, now()->subDays(20)->toDateTimeString());
+        Archiver::run('manual', null, ['slow']);
+        $rel = (string) WimsLogArchive::first()->path;
+
+        $page = ArchiveStore::slice($rel, 5, 4, null, 12);
+        $this->assertCount(4, $page['rows']);
+        $this->assertSame(12, $page['total']);
+
+        $found = ArchiveStore::slice($rel, 0, 50, '1605 ms');
+        $this->assertSame(1, $found['total'], 'the search looks in the one-line description');
+        $this->assertCount(1, $found['rows']);
+        $this->assertSame([], ArchiveStore::slice($rel, 0, 50, 'no such thing')['rows']);
     }
 }

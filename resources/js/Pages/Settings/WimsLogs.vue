@@ -2,6 +2,7 @@
   <admin-layout :title="$t('WIMS Logs')">
     <div class="lg-page px-4 md:px-0 wl-page">
       <page-header icon="archive-box" :title="$t('WIMS Logs')" :subtitle="$t('Old log records are moved out of the live database into compressed archives. Nothing is lost: every record can be read and downloaded here.')">
+        <Link :href="route('wims-logs.browse')" class="lg-btn lg-btn-primary"><icons name="doc-text" class="w-4 h-4" />{{ $t('Read archived records') }}</Link>
         <Link :href="route('settings')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Back to Settings') }}</Link>
       </page-header>
 
@@ -58,7 +59,7 @@
                 <td><b>{{ l.label }}</b><small class="wl-help">{{ l.help }}</small></td>
                 <td class="wl-nw">{{ num(l.live_rows) }} <small>{{ $t('records') }}</small><small>{{ fmt(l.live_bytes) }}</small></td>
                 <td class="wl-nw"><b :class="{ 'is-due': l.due_rows > 0 }">{{ num(l.due_rows) }}</b> <small>{{ $t('records') }}</small><small>~ {{ fmt(l.due_bytes) }}</small></td>
-                <td class="wl-nw"><b>{{ num(l.archived_rows) }}</b> <small>{{ $t('records') }}</small><small>{{ fmt(l.original) }} > {{ fmt(l.stored) }}</small></td>
+                <td class="wl-nw"><b>{{ num(l.archived_rows) }}</b> <small>{{ $t('records') }}</small><small>{{ fmt(l.original) }} > {{ fmt(l.stored) }}</small><Link v-if="l.archived_rows" :href="route('wims-logs.browse', { source: l.key })" class="wl-read"><icons name="search" class="w-3 h-3" />{{ $t('Read them') }}</Link></td>
                 <td class="wl-nw"><b class="is-good">{{ fmt(l.saved) }}</b><small v-if="l.saved_pct !== null">{{ l.saved_pct }}%</small></td>
                 <td class="wl-nw"><template v-if="l.date_from">{{ day(l.date_from) }} - {{ day(l.date_to) }}</template><template v-else>-</template></td>
                 <td class="wl-nw">
@@ -405,4 +406,5 @@ html.dark .wl-input input { background: rgba(255, 255, 255, 0.06); border-color:
 .wl-dlg-none { display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.7rem; font-size: 0.78rem; color: #92400e; font-weight: 600; }
 .wl-dlg-input { width: 100%; border-radius: 0.65rem; border: 1.5px solid #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.9rem; }
 @media (prefers-reduced-motion: reduce) { .wl-seg, .wl-ov-bar i, .wl-spin, .wl-ov-spin { transition: none; animation: none; } }
+.wl-read { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.2rem; font-size: 0.74rem; font-weight: 800; color: #4f46e5; } html.dark .wl-read { color: #a5b4fc; }
 </style>

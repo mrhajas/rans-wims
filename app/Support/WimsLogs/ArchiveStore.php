@@ -15,9 +15,12 @@ namespace App\Support\WimsLogs;
  */
 class ArchiveStore
 {
+    /** Set only by the tests, so they never touch the real archives. */
+    public static ?string $rootOverride = null;
+
     public static function root(): string
     {
-        return storage_path('app/wims-logs');
+        return self::$rootOverride ?? storage_path('app/wims-logs');
     }
 
     public static function rel(string $source, int $runId): string
@@ -245,6 +248,33 @@ class ArchiveStore
         }
 
         return ['rows' => $rows, 'total' => $total];
+    }
+
+    /**
+     * A window of the record list: `$limit` records from `$offset`, optionally only those matching `$q` (id, date, description). Without a search and with the total known the scan stops
+     * as soon as the window is full.
+     *
+     * @return array{rows: array<int, array<string, mixed>>, total: int}
+     */
+    public static function slice(string $rel, int $offset, int $limit, ?string $q = null, ?int $knownTotal = null): array
+    {
+        $q = $q !== null ? mb_strtolower(trim($q)) : '';
+        $rows = [];
+        $matched = 0;
+        foreach (self::lines($rel) as $e) {
+            if ($q !== '' && ! str_contains(mb_strtolower($e['i'] . ' ' . ($e['t'] ?? '') . ' ' . ($e['s'] ?? '')), $q)) {
+                continue;
+            }
+            if ($matched >= $offset && count($rows) < $limit) {
+                $rows[] = $e;
+            }
+            $matched++;
+            if ($q === '' && $knownTotal !== null && count($rows) >= $limit) {
+                return ['rows' => $rows, 'total' => $knownTotal];
+            }
+        }
+
+        return ['rows' => $rows, 'total' => $matched];
     }
 
     /** One record, whole: the row as it was in the database. @return array<string, mixed>|null */

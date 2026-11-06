@@ -430,6 +430,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('settings/wims-logs/run', [Controllers\WimsLogsController::class, 'run'])->middleware('throttle:4,1,wims-logs.run')->name('wims-logs.run');
     Route::post('settings/wims-logs/runs/{run}/step', [Controllers\WimsLogsController::class, 'step'])->whereNumber('run')->middleware('throttle:600,1,wims-logs.step')->name('wims-logs.step');
     Route::post('settings/wims-logs/runs/{run}/finish', [Controllers\WimsLogsController::class, 'finish'])->whereNumber('run')->middleware('throttle:12,1,wims-logs.finish')->name('wims-logs.finish');
+    Route::get('settings/wims-logs/records', [Controllers\WimsLogsController::class, 'browse'])->middleware('throttle:120,1,wims-logs.browse')->name('wims-logs.browse');
     Route::get('settings/wims-logs/runs/{run}', [Controllers\WimsLogsController::class, 'show'])->whereNumber('run')->name('wims-logs.show');
     Route::get('settings/wims-logs/runs/{run}/print', [Controllers\WimsLogsController::class, 'print'])->whereNumber('run')->middleware('throttle:60,1,wims-logs.print')->name('wims-logs.print');
     Route::get('settings/wims-logs/runs/{run}/pdf', [Controllers\WimsLogsController::class, 'pdf'])->whereNumber('run')->middleware('throttle:30,1,wims-logs.pdf')->name('wims-logs.pdf');
