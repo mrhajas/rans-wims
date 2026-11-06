@@ -10,6 +10,16 @@
         </template>
       </page-header>
 
+      <!-- a part of the page that could not be loaded: said here, so it can be fixed -->
+      <section v-if="loadErrors && loadErrors.length" class="wl-loaderr" role="alert">
+        <span class="wl-loaderr-ico"><icons name="exclamation" class="w-5 h-5" /></span>
+        <div>
+          <b>{{ $t('Part of this page could not be loaded') }}</b>
+          <p>{{ $t('The rest works. Send these lines to the developer; they say exactly what failed.') }}</p>
+          <ul><li v-for="(e, i) in loadErrors" :key="i"><strong>{{ e.part }}</strong>: {{ e.error }} <small>({{ e.where }})</small></li></ul>
+        </div>
+      </section>
+
       <stat-tiles v-if="current" :items="tiles" compact />
 
       <!-- one tab per log -->
@@ -90,7 +100,7 @@ import debounce from 'lodash/debounce';
 
 export default {
   components: { AdminLayout, PageHeader, StatTiles, ArchivedRecordView, ArchivedRecordsList, RestoreRecordsDialog, Link },
-  props: { logs: Array, source: String, records: Array, total: Number, page: Number, per: Number, pages: Number, q: String, users: { type: Array, default: () => [] }, user: { type: Number, default: null }, canRun: Boolean },
+  props: { logs: Array, loadErrors: { type: Array, default: () => [] }, source: String, records: Array, total: Number, page: Number, per: Number, pages: Number, q: String, users: { type: Array, default: () => [] }, user: { type: Number, default: null }, canRun: Boolean },
   data() {
     return {
       busy: false, term: this.q || '', userSel: this.user === null ? '' : String(this.user), selected: [],
@@ -221,4 +231,8 @@ html.dark .wlb-user :deep(.cs-btn) { border-color: rgba(255, 255, 255, 0.14); }
 /* the clear (x) of the search: a true circle whatever the global button rules say, the icon dead centre, no rotation */
 .wlb-x { flex: none; box-sizing: border-box; width: 1.9rem !important; height: 1.9rem !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; aspect-ratio: 1 / 1; border: 0; border-radius: 50% !important; display: grid; place-items: center; line-height: 1; cursor: pointer; color: #64748b; background: rgba(148, 163, 184, 0.18); transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease; }
 .wlb-x svg, .wlb-x > div { display: block; margin: 0 !important; } .wlb-x:hover { color: #fff; background: #e11d48; transform: scale(1.1); } .wlb-x:active { transform: scale(0.92); } .wlb-x:focus-visible { outline: 3px solid rgba(225, 29, 72, 0.35); outline-offset: 2px; }
+
+.wl-loaderr { display: flex; gap: 0.9rem; align-items: flex-start; margin: 0 0 1rem; padding: 0.9rem 1rem; border-radius: 1.1rem; border: 1.5px solid rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.08); color: #7f1d1d; } html.dark .wl-loaderr { color: #fecaca; }
+.wl-loaderr-ico { flex: none; width: 2.4rem; height: 2.4rem; display: grid; place-items: center; border-radius: 0.85rem; color: #fff; background: linear-gradient(135deg, #f87171, #dc2626); } .wl-loaderr b { display: block; font-size: 0.95rem; } .wl-loaderr p { margin: 0.15rem 0 0.5rem; font-size: 0.8rem; opacity: 0.85; }
+.wl-loaderr ul { margin: 0; padding-left: 1.1rem; font-size: 0.78rem; line-height: 1.5; overflow-wrap: anywhere; } .wl-loaderr small { opacity: 0.7; }
 </style>

@@ -6,6 +6,16 @@
         <Link :href="route('settings')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Back to Settings') }}</Link>
       </page-header>
 
+      <!-- a part of the page that could not be loaded: said here, so it can be fixed -->
+      <section v-if="loadErrors && loadErrors.length" class="wl-loaderr" role="alert">
+        <span class="wl-loaderr-ico"><icons name="exclamation" class="w-5 h-5" /></span>
+        <div>
+          <b>{{ $t('Part of this page could not be loaded') }}</b>
+          <p>{{ $t('The rest works. Send these lines to the developer; they say exactly what failed.') }}</p>
+          <ul><li v-for="(e, i) in loadErrors" :key="i"><strong>{{ e.part }}</strong>: {{ e.error }} <small>({{ e.where }})</small></li></ul>
+        </div>
+      </section>
+
       <!-- the numbers that matter, as cards -->
       <section class="wl-kpis" :aria-label="$t('Summary')">
         <article v-for="(k, i) in kpis" :key="k.label" class="wl-kpi" :class="{ 'is-in': grown }" :style="{ '--tone': k.tone, '--tone2': k.tone2, '--d': i * 90 + 'ms' }">
@@ -289,7 +299,7 @@ import { logLook } from '@/Core/wimsLogLook';
 export default {
   components: { AdminLayout, PageHeader, TecDialogModal, Link },
   // not named "settings": that name is the app-wide shared prop the layout and menu read
-  props: { conf: Object, limits: Object, keepLimits: Array, logs: Array, overview: Object, trend: Array, runs: Object, canRun: Boolean, next: Object },
+  props: { conf: Object, loadErrors: { type: Array, default: () => [] }, limits: Object, keepLimits: Array, logs: Array, overview: Object, trend: Array, runs: Object, canRun: Boolean, next: Object },
   data() {
     return {
       rows: this.logs,
@@ -635,4 +645,8 @@ html.dark .wl-input input { background: rgba(255, 255, 255, 0.06); border-color:
   .wl-dlg-head b { font-size: 1rem; } .wl-dlg-total { align-items: flex-start; }
   .wl-go { width: 100%; justify-content: center; }
 }
+
+.wl-loaderr { display: flex; gap: 0.9rem; align-items: flex-start; margin: 0 0 1rem; padding: 0.9rem 1rem; border-radius: 1.1rem; border: 1.5px solid rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.08); color: #7f1d1d; } html.dark .wl-loaderr { color: #fecaca; }
+.wl-loaderr-ico { flex: none; width: 2.4rem; height: 2.4rem; display: grid; place-items: center; border-radius: 0.85rem; color: #fff; background: linear-gradient(135deg, #f87171, #dc2626); } .wl-loaderr b { display: block; font-size: 0.95rem; } .wl-loaderr p { margin: 0.15rem 0 0.5rem; font-size: 0.8rem; opacity: 0.85; }
+.wl-loaderr ul { margin: 0; padding-left: 1.1rem; font-size: 0.78rem; line-height: 1.5; overflow-wrap: anywhere; } .wl-loaderr small { opacity: 0.7; }
 </style>

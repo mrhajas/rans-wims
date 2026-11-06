@@ -44,20 +44,39 @@ class WimsLogsController extends Controller
     public function index(Request $request)
     {
         $this->allow($request, 'read-wims-logs');
-        $runs = WimsLogRun::query()->orderByDesc('id')->paginate(10)->through(fn (WimsLogRun $r) => $this->runRow($r))->withQueryString();
+        // each part of the page is loaded on its own: when one fails (a table that is not there yet, a database that answers differently) the page still opens and says what failed,
+        // instead of a blank 500
+        $errors = [];
+        $runs = $this->guard($errors, 'Run history', fn () => WimsLogRun::query()->orderByDesc('id')->paginate(10)->through(fn (WimsLogRun $r) => $this->runRow($r))->withQueryString(), new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10));
+        $defaults = ['general' => ['wimslogs_enabled' => 1, 'wimslogs_every_days' => 5, 'wimslogs_optimize' => 1, 'wimslogs_seconds' => 40], 'sources' => collect(Sources::all())->map(fn ($s) => ['on' => true, 'keep_days' => $s['keep_days']])->all()];
+        $zero = ['db_bytes' => 0, 'db_free' => 0, 'db_total' => 0, 'archives' => 0, 'rows' => 0, 'original' => 0, 'compressed' => 0, 'stored' => 0, 'saved' => 0, 'saved_pct' => null, 'freed' => 0, 'whole' => 0, 'disk_free' => 0];
 
         return Inertia::render('Settings/WimsLogs', [
-            'conf' => WimsLogSettings::all(),
+            'conf' => $this->guard($errors, 'Settings', fn () => WimsLogSettings::all(), $defaults),
             'limits' => WimsLogSettings::LIMITS,
             'keepLimits' => [WimsLogSettings::KEEP_MIN, WimsLogSettings::KEEP_MAX],
-            'logs' => $this->logs(),
-            'overview' => $this->overview(),
-            'trend' => WimsLogRun::query()->whereIn('status', ['done', 'partial'])->orderByDesc('id')->limit(12)->get()->reverse()->values()
-                ->map(fn ($r) => ['ref' => $r->ref(), 'at' => optional($r->started_at)->toDateString(), 'original' => (int) $r->original_bytes, 'stored' => (int) $r->stored_bytes, 'rows' => (int) $r->rows_archived])->all(),
+            'logs' => $this->guard($errors, 'The logs', fn () => $this->logs(), []),
+            'overview' => $this->guard($errors, 'The whole space', fn () => $this->overview(), $zero),
+            'trend' => $this->guard($errors, 'Run chart', fn () => WimsLogRun::query()->whereIn('status', ['done', 'partial'])->orderByDesc('id')->limit(12)->get()->reverse()->values()
+                ->map(fn ($r) => ['ref' => $r->ref(), 'at' => optional($r->started_at)->toDateString(), 'original' => (int) $r->original_bytes, 'stored' => (int) $r->stored_bytes, 'rows' => (int) $r->rows_archived])->all(), []),
             'runs' => $runs,
             'canRun' => $request->user()->can('run-wims-logs'),
-            'next' => $this->nextScheduled(),
+            'next' => $this->guard($errors, 'Schedule', fn () => $this->nextScheduled(), null),
+            'loadErrors' => $errors,
         ]);
+    }
+
+    /** Runs one part of a page; if it fails the failure is logged and described for the page (class, message and where), and the fallback is used. */
+    private function guard(array &$errors, string $part, callable $fn, $fallback)
+    {
+        try {
+            return $fn();
+        } catch (\Throwable $e) {
+            report($e);
+            $errors[] = ['part' => $part, 'error' => class_basename($e) . ': ' . \Illuminate\Support\Str::limit(preg_replace('/\s+/', ' ', $e->getMessage()), 400), 'where' => basename($e->getFile()) . ':' . $e->getLine()];
+
+            return $fallback;
+        }
     }
 
     /** The logs, one line each: what is live, what is waiting to move, and what has already been archived (records, sizes, dates). */
@@ -208,6 +227,21 @@ class WimsLogsController extends Controller
     public function browse(Request $request)
     {
         $this->allow($request, 'read-wims-logs');
+        $errors = [];
+        try {
+            return $this->browsePage($request);
+        } catch (\Throwable $e) {
+            // the page still opens, and says what failed, instead of a blank 500
+            report($e);
+            $errors[] = ['part' => 'Archived records', 'error' => class_basename($e) . ': ' . \Illuminate\Support\Str::limit(preg_replace('/\s+/', ' ', $e->getMessage()), 400), 'where' => basename($e->getFile()) . ':' . $e->getLine()];
+            $logs = collect(Sources::all())->map(fn ($src, $k) => ['key' => $k, 'label' => $src['label'], 'rows' => 0, 'archives' => 0, 'original' => 0, 'stored' => 0, 'date_from' => null, 'date_to' => null])->values()->all();
+
+            return Inertia::render('Settings/WimsLogBrowse', ['logs' => $logs, 'source' => (string) ($logs[0]['key'] ?? ''), 'records' => [], 'total' => 0, 'page' => 1, 'per' => 50, 'pages' => 1, 'q' => '', 'users' => [], 'user' => null, 'canRun' => false, 'loadErrors' => $errors]);
+        }
+    }
+
+    private function browsePage(Request $request)
+    {
         $keys = array_keys(Sources::all());
         $counts = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to')->groupBy('source')->get()->keyBy('source');
         $logs = collect(Sources::all())->map(fn ($src, $k) => [
