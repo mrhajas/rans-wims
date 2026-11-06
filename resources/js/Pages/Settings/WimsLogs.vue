@@ -6,10 +6,21 @@
         <Link :href="route('settings')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Back to Settings') }}</Link>
       </page-header>
 
-      <stat-tiles :items="tiles" compact />
+      <!-- the numbers that matter, as cards -->
+      <section class="wl-kpis" :aria-label="$t('Summary')">
+        <article v-for="(k, i) in kpis" :key="k.label" class="wl-kpi" :class="{ 'is-in': grown }" :style="{ '--tone': k.tone, '--tone2': k.tone2, '--d': i * 90 + 'ms' }">
+          <span class="wl-kpi-ico"><icons :name="k.icon" class="w-5 h-5" /></span>
+          <div class="wl-kpi-main">
+            <b class="wl-kpi-v">{{ k.text }}</b>
+            <span class="wl-kpi-l">{{ k.label }}</span>
+          </div>
+          <i v-if="k.pct !== null" class="wl-kpi-bar"><u :style="{ width: grown ? k.pct + '%' : '0%' }"></u></i>
+          <small class="wl-kpi-n">{{ k.note }}</small>
+        </article>
+      </section>
 
       <!-- the whole space -->
-      <section class="lg-card" id="wl-space">
+      <section class="lg-card wl-space" :class="{ 'is-in': grown }" id="wl-space">
         <header class="lg-card-head">
           <span class="lg-card-ico lg-ico-violet"><icons name="database" class="w-5 h-5" /></span>
           <div class="min-w-0 flex-1">
@@ -17,19 +28,38 @@
             <p class="lg-card-sub">{{ $t('The live database and the archive together: :n. Only the live database is read by every page, so the smaller it is, the faster WIMS is.', { n: fmt(overview.whole) }) }}</p>
           </div>
         </header>
-        <div class="wl-bar" role="img" :aria-label="$t('Live database and archive')">
-          <i class="wl-seg is-db" :style="{ width: pct(overview.db_total, overview.whole) + '%' }"><b v-if="pct(overview.db_total, overview.whole) > 14">{{ $t('Live database') }} · {{ fmt(overview.db_total) }}</b></i>
-          <i class="wl-seg is-ar" :style="{ width: pct(overview.stored, overview.whole) + '%' }"><b v-if="pct(overview.stored, overview.whole) > 14">{{ $t('Archive') }} · {{ fmt(overview.stored) }}</b></i>
+
+        <div class="wl-space-top">
+          <div class="wl-ring" role="img" :aria-label="$t('Saved by compression') + ' ' + (overview.saved_pct || 0) + '%'">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <defs><linearGradient id="wl-ring-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14b8a6" /><stop offset="1" stop-color="#6366f1" /></linearGradient></defs>
+              <circle class="wl-ring-track" cx="50" cy="50" r="42" />
+              <circle class="wl-ring-val" cx="50" cy="50" r="42" :stroke-dasharray="ringC" :stroke-dashoffset="grown ? ringC * (1 - Math.min(100, overview.saved_pct || 0) / 100) : ringC" />
+            </svg>
+            <span class="wl-ring-n"><b>{{ Math.round(anim.pct) }}%</b><small>{{ $t('saved') }}</small></span>
+          </div>
+          <div class="wl-bar-wrap">
+            <div class="wl-bar" role="img" :aria-label="$t('Live database and archive')">
+              <i class="wl-seg is-db" :style="{ width: grown ? pct(overview.db_total, overview.whole) + '%' : '0%' }"><b v-if="pct(overview.db_total, overview.whole) > 14">{{ $t('Live database') }} · {{ fmt(overview.db_total) }}</b></i>
+              <i class="wl-seg is-ar" :style="{ width: grown ? pct(overview.stored, overview.whole) + '%' : '0%' }"><b v-if="pct(overview.stored, overview.whole) > 14">{{ $t('Archive') }} · {{ fmt(overview.stored) }}</b></i>
+              <span class="wl-bar-shine" aria-hidden="true"></span>
+            </div>
+            <div class="wl-legend">
+              <span><i class="is-db"></i>{{ $t('Live database') }} · {{ fmt(anim.db) }} ({{ Math.round(pct(overview.db_total, overview.whole)) }}%)</span>
+              <span><i class="is-ar"></i>{{ $t('Archive') }} · {{ fmt(anim.stored) }} ({{ Math.round(pct(overview.stored, overview.whole)) }}%)</span>
+            </div>
+          </div>
         </div>
+
         <div class="wl-facts">
-          <div><b>{{ fmt(overview.original) }}</b><span>{{ $t('archived records, as they were in the database') }}</span></div>
-          <div><b>{{ fmt(overview.stored) }}</b><span>{{ $t('the same records in the archive (data and index)') }}</span></div>
-          <div><b class="is-good">{{ fmt(overview.saved) }}<em v-if="overview.saved_pct !== null"> ({{ overview.saved_pct }}%)</em></b><span>{{ $t('saved by compression') }}</span></div>
-          <div><b class="is-good">{{ fmt(overview.freed) }}</b><span>{{ $t('database files really made smaller') }}</span></div>
-          <div><b>{{ fmt(overview.disk_free) }}</b><span>{{ $t('free disk space on the server') }}</span></div>
+          <div v-for="(f, i) in facts" :key="f.label" :style="{ '--tone': f.tone, '--tone2': f.tone2, '--d': 250 + i * 80 + 'ms' }">
+            <span class="wl-fact-ico"><icons :name="f.icon" class="w-4 h-4" /></span>
+            <span class="wl-fact-body"><b :class="{ 'is-good': f.good }">{{ f.text }}<em v-if="f.extra"> ({{ f.extra }})</em></b><span>{{ f.label }}</span></span>
+          </div>
         </div>
+
         <div v-if="trend.length" class="wl-trend" :aria-label="$t('Each run: before and after')">
-          <div v-for="t in trend" :key="t.ref" class="wl-trend-col" :title="t.ref + ' · ' + fmt(t.original) + ' > ' + fmt(t.stored)">
+          <div v-for="(t, ti) in trend" :key="t.ref" class="wl-trend-col" :title="t.ref + ' · ' + fmt(t.original) + ' > ' + fmt(t.stored)" :style="{ '--i': ti }">
             <span class="wl-trend-bars"><i class="is-before" :style="{ height: pct(t.original, trendMax) + '%' }"></i><i class="is-after" :style="{ height: pct(t.stored, trendMax) + '%' }"></i></span>
             <small>{{ t.at ? t.at.slice(5) : t.ref }}</small>
           </div>
@@ -201,12 +231,11 @@
 <script>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
-import StatTiles from '@/Shared/Page/StatTiles.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import { Link } from '@inertiajs/vue3';
 
 export default {
-  components: { AdminLayout, PageHeader, StatTiles, TecDialogModal, Link },
+  components: { AdminLayout, PageHeader, TecDialogModal, Link },
   // not named "settings": that name is the app-wide shared prop the layout and menu read
   props: { conf: Object, limits: Object, keepLimits: Array, logs: Array, overview: Object, trend: Array, runs: Object, canRun: Boolean, next: Object },
   data() {
@@ -218,6 +247,8 @@ export default {
       busy: false,
       errors: '',
       pw: { open: false, password: '', error: '', sources: [], days: {}, estimates: {}, loading: false },
+      grown: false,
+      anim: { db: 0, stored: 0, saved: 0, freed: 0, rows: 0, original: 0, free: 0, pct: 0 },
       ov: { open: false, steps: [], finished: false, failed: false, error: '', rows: 0, saved: '', freed: '' },
     };
   },
@@ -237,22 +268,65 @@ export default {
       const n = this.ov.steps.length || 1;
       return Math.round((this.ov.steps.filter(s => s.state === 'done' || s.state === 'error').length / n) * 100);
     },
-    tiles() {
+    ringC() { return 2 * Math.PI * 42; },
+    kpis() {
       const o = this.overview;
+      const a = this.anim;
       return [
-        { icon: 'database', tone: 'violet', label: this.$t('Live database'), value: this.fmt(o.db_total) },
-        { icon: 'archive-box', tone: 'sky', label: this.$t('Archive on disk'), value: this.fmt(o.stored) },
-        { icon: 'tick', tone: 'forest', label: this.$t('Saved by compression'), value: this.fmt(o.saved) },
-        { icon: 'download', tone: 'emerald', label: this.$t('Database made smaller'), value: this.fmt(o.freed) },
-        { icon: 'doc-text', tone: 'orange', label: this.$t('Records archived'), value: this.num(o.rows) },
+        { icon: 'database', tone: '#7c3aed', tone2: '#a78bfa', label: this.$t('Live database'), text: this.fmt(a.db), pct: this.pct(o.db_total, o.whole), note: this.$t(':n% of the whole space', { n: Math.round(this.pct(o.db_total, o.whole)) }) },
+        { icon: 'archive-box', tone: '#0891b2', tone2: '#22d3ee', label: this.$t('Archive on disk'), text: this.fmt(a.stored), pct: this.pct(o.stored, o.whole), note: this.$t(':n% of the whole space', { n: Math.round(this.pct(o.stored, o.whole)) }) },
+        { icon: 'tick', tone: '#059669', tone2: '#34d399', label: this.$t('Saved by compression'), text: this.fmt(a.saved), pct: Math.min(100, o.saved_pct || 0), note: o.saved_pct !== null ? this.$t(':n% smaller than in the database', { n: o.saved_pct }) : '' },
+        { icon: 'download', tone: '#0d9488', tone2: '#2dd4bf', label: this.$t('Database made smaller'), text: this.fmt(a.freed), pct: this.pct(o.freed, (o.db_total || 0) + (o.freed || 0)), note: this.$t('by compacting the tables') },
+        { icon: 'doc-text', tone: '#ea580c', tone2: '#fb923c', label: this.$t('Records archived'), text: this.num(Math.round(a.rows)), pct: null, note: this.$t(':n as they were in the database', { n: this.fmt(o.original) }) },
+      ];
+    },
+    facts() {
+      const o = this.overview;
+      const a = this.anim;
+      return [
+        { icon: 'database', tone: '#7c3aed', tone2: '#a78bfa', text: this.fmt(a.original), label: this.$t('archived records, as they were in the database') },
+        { icon: 'archive-box', tone: '#0891b2', tone2: '#22d3ee', text: this.fmt(a.stored), label: this.$t('the same records in the archive (data and index)') },
+        { icon: 'tick', tone: '#059669', tone2: '#34d399', good: true, text: this.fmt(a.saved), extra: o.saved_pct !== null ? o.saved_pct + '%' : '', label: this.$t('saved by compression') },
+        { icon: 'download', tone: '#0d9488', tone2: '#2dd4bf', good: true, text: this.fmt(a.freed), label: this.$t('database files really made smaller') },
+        { icon: 'server', tone: '#64748b', tone2: '#94a3b8', text: this.fmt(a.free), label: this.$t('free disk space on the server') },
       ];
     },
   },
   watch: {
+    // the numbers count up again whenever the overview is refreshed
+    overview: { deep: true, handler() { this.countUp(); } },
     // the number of live days typed in the window: what that would move is asked again a moment after the last key
     'pw.days': { deep: true, handler() { if (this.pw.open) { clearTimeout(this._estT); this.pw.loading = true; this._estT = setTimeout(this.estimate, 450); } } },
   },
+  mounted() {
+    // one frame later, so the bars and the ring start from nothing and grow
+    this._raf0 = requestAnimationFrame(() => { this.grown = true; });
+    this.countUp();
+  },
+  beforeUnmount() { cancelAnimationFrame(this._raf0); cancelAnimationFrame(this._raf1); },
   methods: {
+    targets() {
+      const o = this.overview;
+      return { db: o.db_total || 0, stored: o.stored || 0, saved: o.saved || 0, freed: o.freed || 0, rows: o.rows || 0, original: o.original || 0, free: o.disk_free || 0, pct: o.saved_pct || 0 };
+    },
+    // numbers rise from where they are to the real value (no motion when the person asked for none)
+    countUp() {
+      const to = this.targets();
+      if (!window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { this.anim = { ...to }; return; }
+      const from = { ...this.anim };
+      cancelAnimationFrame(this._raf1);
+      const t0 = performance.now();
+      const dur = 1300;
+      const step = now => {
+        const k = Math.min(1, (now - t0) / dur);
+        const e = 1 - Math.pow(1 - k, 3);
+        const cur = {};
+        Object.keys(to).forEach(key => { cur[key] = from[key] + (to[key] - from[key]) * e; });
+        this.anim = cur;
+        if (k < 1) this._raf1 = requestAnimationFrame(step);
+      };
+      this._raf1 = requestAnimationFrame(step);
+    },
     // each log has its own colour and icon (the same as on the Archived records page)
     look(key) {
       return ({
@@ -371,20 +445,43 @@ export default {
 
 <style scoped>
 .wl-page { --tone: #0f766e; }
-.wl-bar { display: flex; height: 2.6rem; border-radius: 0.9rem; overflow: hidden; background: rgba(148, 163, 184, 0.18); margin: 0.2rem 0 1rem; }
-.wl-seg { display: flex; align-items: center; padding: 0 0.8rem; min-width: 0; transition: width 0.6s ease; }
+.wl-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 0.8rem; margin: 1rem 0 1.1rem; }
+.wl-kpi { position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.2rem 0.8rem; padding: 0.9rem 1rem 0.8rem; border-radius: 1.2rem; overflow: hidden; border: 1.5px solid color-mix(in srgb, var(--tone) 26%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--tone) 13%, var(--lg-card, #fff)), color-mix(in srgb, var(--tone2) 5%, var(--lg-card, #fff))); opacity: 0; transform: translateY(14px) scale(0.98); transition: opacity 0.55s ease var(--d), transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d), box-shadow 0.25s ease, border-color 0.25s ease; }
+.wl-kpi.is-in { opacity: 1; transform: none; } .wl-kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -18px var(--tone); border-color: var(--tone); transition-delay: 0s; }
+.wl-kpi::after { content: ''; position: absolute; right: -2.2rem; top: -2.2rem; width: 6rem; height: 6rem; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--tone2) 28%, transparent), transparent 70%); pointer-events: none; }
+.wl-kpi-ico { width: 2.9rem; height: 2.9rem; display: grid; place-items: center; border-radius: 1rem; color: #fff; background: linear-gradient(135deg, var(--tone), var(--tone2)); box-shadow: 0 8px 16px -8px var(--tone); }
+.wl-kpi-main { display: grid; min-width: 0; } .wl-kpi-v { font-size: 1.45rem; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; } .wl-kpi-l { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+.wl-kpi-bar { grid-column: 1 / -1; display: block; height: 0.32rem; margin-top: 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--tone) 14%, transparent); overflow: hidden; } .wl-kpi-bar u { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--tone), var(--tone2)); transition: width 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s; }
+.wl-kpi-n { grid-column: 1 / -1; font-size: 0.72rem; color: #64748b; font-weight: 600; }
+
+.wl-space-top { display: flex; align-items: center; gap: 1.4rem; margin: 0.2rem 0 1.1rem; flex-wrap: wrap; }
+.wl-ring { position: relative; flex: none; width: 7.2rem; height: 7.2rem; } .wl-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.wl-ring-track { fill: none; stroke: rgba(148, 163, 184, 0.22); stroke-width: 9; } .wl-ring-val { fill: none; stroke: url(#wl-ring-g); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s; filter: drop-shadow(0 0 6px rgba(20, 184, 166, 0.45)); }
+.wl-ring-n { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; } .wl-ring-n b { font-size: 1.5rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; } .wl-ring-n small { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.wl-bar-wrap { flex: 1; min-width: 16rem; }
+.wl-bar { position: relative; display: flex; height: 2.8rem; border-radius: 1rem; overflow: hidden; background: rgba(148, 163, 184, 0.18); box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.08); }
+.wl-seg { display: flex; align-items: center; padding: 0 0.8rem; min-width: 0; transition: width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s; }
 .wl-seg b { font-size: 0.78rem; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wl-seg.is-db { background: linear-gradient(135deg, #6366f1, #4338ca); } .wl-seg.is-ar { background: linear-gradient(135deg, #14b8a6, #0f766e); }
-.wl-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.7rem; }
-.wl-facts > div { padding: 0.7rem 0.85rem; border-radius: 0.9rem; background: rgba(148, 163, 184, 0.1); }
-.wl-facts b { display: block; font-size: 1.15rem; font-weight: 900; font-variant-numeric: tabular-nums; } .wl-facts b em { font-style: normal; font-size: 0.8rem; font-weight: 800; }
-.wl-facts span { font-size: 0.74rem; color: #64748b; font-weight: 600; }
-.is-good { color: #047857; } html.dark .is-good { color: #34d399; } .is-due { color: #b45309; } html.dark .is-due { color: #fbbf24; }
+.wl-seg.is-db { background: linear-gradient(135deg, #6366f1, #4338ca); } .wl-seg.is-ar { background: linear-gradient(135deg, #14b8a6, #0f766e); animation: wl-glow 3.2s ease-in-out infinite; }
+.wl-bar-shine { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.38) 50%, transparent 70%); transform: translateX(-120%); animation: wl-sweep 4.5s ease-in-out 1.6s infinite; }
+.wl-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; margin-top: 0.55rem; font-size: 0.76rem; font-weight: 700; color: #475569; } .wl-legend span { display: inline-flex; align-items: center; gap: 0.4rem; font-variant-numeric: tabular-nums; } .wl-legend i { width: 0.7rem; height: 0.7rem; border-radius: 4px; } .wl-legend i.is-db { background: #4f46e5; } .wl-legend i.is-ar { background: #0f9488; }
+html.dark .wl-legend { color: #cbd5e1; }
+
+.wl-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); gap: 0.7rem; }
+.wl-facts > div { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 0.85rem; border-radius: 1rem; background: color-mix(in srgb, var(--tone) 8%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 18%, transparent); opacity: 0; transform: translateY(10px); transition: opacity 0.5s ease var(--d), transform 0.5s ease var(--d), box-shadow 0.25s ease; }
+.wl-space.is-in .wl-facts > div { opacity: 1; transform: none; } .wl-space.is-in .wl-facts > div:hover { transform: translateY(-2px); box-shadow: 0 12px 22px -16px var(--tone); transition-delay: 0s; }
+.wl-fact-ico { flex: none; width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: 0.7rem; color: #fff; background: linear-gradient(135deg, var(--tone), var(--tone2)); }
+.wl-fact-body { display: grid; min-width: 0; } .wl-fact-body b { font-size: 1.1rem; font-weight: 900; font-variant-numeric: tabular-nums; } .wl-fact-body b em { font-style: normal; font-size: 0.78rem; font-weight: 800; } .wl-fact-body > span { font-size: 0.72rem; color: #64748b; font-weight: 600; }
+
 .wl-trend { display: flex; align-items: flex-end; gap: 0.6rem; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed rgba(148, 163, 184, 0.4); overflow-x: auto; }
 .wl-trend-col { display: grid; gap: 0.25rem; justify-items: center; min-width: 2.6rem; } .wl-trend-col small { font-size: 0.64rem; color: #64748b; }
 .wl-trend-bars { display: flex; align-items: flex-end; gap: 3px; height: 4.5rem; }
-.wl-trend-bars i, .wl-trend-key i { display: block; width: 0.8rem; border-radius: 4px 4px 0 0; min-height: 2px; } .is-before { background: #a5b4fc; } .is-after { background: #14b8a6; }
+.wl-trend-bars i, .wl-trend-key i { display: block; width: 0.8rem; border-radius: 4px 4px 0 0; min-height: 2px; } .is-before { background: #a5b4fc; } .is-after { background: linear-gradient(180deg, #2dd4bf, #0f766e); }
+.wl-trend-bars i { transform-origin: bottom; transform: scaleY(0); } .wl-space.is-in .wl-trend-bars i { animation: wl-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; animation-delay: calc(0.5s + var(--i, 0) * 90ms); }
 .wl-trend-key { margin-left: auto; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.7rem; color: #64748b; white-space: nowrap; } .wl-trend-key i { width: 0.6rem; height: 0.6rem; border-radius: 3px; min-height: 0; }
+@keyframes wl-sweep { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@keyframes wl-glow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+@keyframes wl-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .wl-table td small, .wl-table th small { display: block; color: #64748b; font-weight: 600; font-size: 0.72rem; } .wl-help { max-width: 22rem; white-space: normal; line-height: 1.35; }
 .wl-nw { white-space: nowrap; }
 tr.is-off { opacity: 0.55; }
@@ -415,7 +512,7 @@ html.dark .wl-input input { background: rgba(255, 255, 255, 0.06); border-color:
 .wl-dlg-pick { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; min-width: 0; } .wl-dlg-est { grid-column: 1 / -1; color: #64748b; font-size: 0.74rem; font-weight: 600; } .wl-dlg-est.is-due { color: #b45309; }
 .wl-dlg-none { display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.7rem; font-size: 0.78rem; color: #92400e; font-weight: 600; }
 .wl-dlg-input { width: 100%; border-radius: 0.65rem; border: 1.5px solid #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.9rem; }
-@media (prefers-reduced-motion: reduce) { .wl-seg, .wl-ov-bar i, .wl-spin, .wl-ov-spin { transition: none; animation: none; } }
+@media (prefers-reduced-motion: reduce) { .wl-seg, .wl-ov-bar i, .wl-spin, .wl-ov-spin, .wl-kpi, .wl-kpi-bar u, .wl-ring-val, .wl-facts > div, .wl-trend-bars i { transition: none; animation: none; } .wl-kpi, .wl-facts > div { opacity: 1; transform: none; } .wl-trend-bars i { transform: none; } .wl-bar-shine, .wl-seg.is-ar { animation: none; } }
 .wl-read { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.2rem; font-size: 0.74rem; font-weight: 800; color: #4f46e5; } html.dark .wl-read { color: #a5b4fc; }
 
 .wl-logcell { display: flex; align-items: center; gap: 0.7rem; min-width: 14rem; } .wl-logcell > span:last-child { min-width: 0; }
