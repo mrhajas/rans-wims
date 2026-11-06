@@ -241,4 +241,10 @@ html.dark .rv-json :deep(.j-k) { color: #a5b4fc; } html.dark .rv-json :deep(.j-s
 .rv-facts { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.75rem; } .rv-fact { padding: 0.8rem 1rem; gap: 0.3rem; border-radius: 1.1rem; }
 .rv-grid { gap: 0.7rem; } .rv-cell { padding: 0.75rem 1rem; gap: 0.3rem; border-radius: 1rem; } .rv-block > header { padding: 0.6rem 1rem; } .rv-text, .rv-json { padding: 1rem 1.2rem; line-height: 1.65; }
 @media (max-width: 640px) { .rv-who { padding: 0.7rem 0.8rem; } .rv-head { padding: 0.8rem; } .rv-tabs, .rv-body { padding-left: 0.8rem; padding-right: 0.8rem; } .rv-facts { grid-template-columns: 1fr; } }
+
+/* the round tool buttons: true circles, icon dead centre, whatever the page-wide button rules say */
+.rv-nav, .rv-btn { box-sizing: border-box; width: 2.1rem !important; height: 2.1rem !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; aspect-ratio: 1 / 1; border-radius: 50% !important; display: grid !important; place-items: center; line-height: 1; flex: none; }
+.rv-nav svg, .rv-btn svg, .rv-nav > div, .rv-btn > div { display: block; margin: 0 !important; }
+.rv-btn.is-restore:hover:not(:disabled) { transform: scale(1.12); }
+.rv-mini, .rv-tab { min-height: 0 !important; line-height: 1; }
 </style>

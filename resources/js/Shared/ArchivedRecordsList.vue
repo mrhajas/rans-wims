@@ -96,4 +96,11 @@ export default {
 .al-bar-enter-active, .al-bar-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; } .al-bar-enter-from, .al-bar-leave-to { opacity: 0; transform: translateY(-8px); }
 @media (max-width: 640px) { .al-what { max-width: none; } .al-c { text-align: left; } .al-actbox { justify-content: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .al-row { animation: none; } .al-btn, .al-ico, .al-chk i { transition: none; } }
+
+/* true circles and one height, whatever the page-wide button rules say (they add padding and a 40 px minimum); the icon sits dead centre */
+.al-ico { box-sizing: border-box; width: 2.1rem !important; height: 2.1rem !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; aspect-ratio: 1 / 1; border-radius: 50% !important; display: grid !important; place-items: center; line-height: 1; flex: none; }
+.al-ico svg, .al-ico > div { display: block; margin: 0 !important; }
+.al-btn { box-sizing: border-box; height: 2.1rem; min-height: 0 !important; padding: 0 0.9rem !important; margin: 0 !important; display: inline-flex !important; align-items: center; justify-content: center; line-height: 1; white-space: nowrap; }
+.al-btn svg, .al-btn > div { display: block; margin: 0 !important; flex: none; }
+.al-ico:hover { transform: scale(1.12); }
 </style>
