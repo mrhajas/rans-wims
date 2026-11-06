@@ -170,7 +170,10 @@ class DashboardController extends Controller
         // });
 
         // the page lists each warehouse with its value; the items of a warehouse are fetched when its row is opened (warehouseStockItems)
-        $listing = $this->buildWarehouseStockValueListing(false);
+        // Global Feature Control: figures and lists of a module that is switched off are not even worked out, so nothing of it reaches the page
+        $on = fn (string $key) => \App\Services\FeatureManager::isEnabled($key);
+
+        $listing = $on('warehouses') ? $this->buildWarehouseStockValueListing(false) : [];
 
 
 
@@ -246,7 +249,7 @@ class DashboardController extends Controller
 
         $itemsQuery = Stock::query()->where('quantity', '>', 0);
         $applyWarehouseScope($itemsQuery);
-        $data->items = $isSiteEngineer ? $itemsQuery->count() : Item::count();
+        $data->items = ! $on('items') ? 0 : ($isSiteEngineer ? $itemsQuery->count() : Item::count());
 
         $contactsQuery = Contact::query();
         if ($isSiteEngineer) {
@@ -262,68 +265,68 @@ class DashboardController extends Controller
                 });
             }
         }
-        $data->contacts = $contactsQuery->count();
+        $data->contacts = $on('contacts') ? $contactsQuery->count() : 0;
 
         $checkinsQuery = Checkin::active()->whereBetween('date', $selectedRange);
         $applyWarehouseScope($checkinsQuery);
         if ($isSiteEngineer) {
             $checkinsQuery->withoutGlobalScope('mine');
         }
-        $data->checkins = $checkinsQuery->count();
+        $data->checkins = $on('checkins') ? $checkinsQuery->count() : 0;
 
         $checkoutsQuery = Checkout::active()->whereBetween('date', $selectedRange);
         $applyWarehouseScope($checkoutsQuery);
         if ($isSiteEngineer) {
             $checkoutsQuery->withoutGlobalScope('mine');
         }
-        $data->checkouts = $checkoutsQuery->count();
+        $data->checkouts = $on('checkouts') ? $checkoutsQuery->count() : 0;
 
         $transfersQuery = Transfer::active()->whereBetween('date', $selectedRange);
         $applyTransferScope($transfersQuery);
         if ($isSiteEngineer) {
             $transfersQuery->withoutGlobalScope('mine');
         }
-        $data->transfers = $transfersQuery->count();
+        $data->transfers = $on('transfers') ? $transfersQuery->count() : 0;
 
         $adjustmentsQuery = Adjustment::active()->whereBetween('date', $selectedRange);
         $applyWarehouseScope($adjustmentsQuery);
         if ($isSiteEngineer) {
             $adjustmentsQuery->withoutGlobalScope('mine');
         }
-        $data->adjustments = $adjustmentsQuery->count();
+        $data->adjustments = $on('adjustments') ? $adjustmentsQuery->count() : 0;
 
         $materialRequestsQuery = MaterialRequest::whereBetween('date_requested', $selectedRange);
         $applyWarehouseScope($materialRequestsQuery);
         if ($user) {
             \App\Support\MaterialRequestVisibility::scopeQueryFor($materialRequestsQuery, $user);
         }
-        $data->material_requests = $materialRequestsQuery->count();
+        $data->material_requests = $on('material_requests') ? $materialRequestsQuery->count() : 0;
 
         $previousCheckinsQuery = Checkin::active()->whereBetween('date', $previousRange);
         $applyWarehouseScope($previousCheckinsQuery);
         if ($isSiteEngineer) {
             $previousCheckinsQuery->withoutGlobalScope('mine');
         }
-        $data->previous_checkins = $previousCheckinsQuery->count();
+        $data->previous_checkins = $on('checkins') ? $previousCheckinsQuery->count() : 0;
 
         $previousCheckoutsQuery = Checkout::active()->whereBetween('date', $previousRange);
         $applyWarehouseScope($previousCheckoutsQuery);
         if ($isSiteEngineer) {
             $previousCheckoutsQuery->withoutGlobalScope('mine');
         }
-        $data->previous_checkouts = $previousCheckoutsQuery->count();
+        $data->previous_checkouts = $on('checkouts') ? $previousCheckoutsQuery->count() : 0;
 
-        $data->login_logs = LoginLog::whereBetween('attempted_at', $selectedRange)
+        $data->login_logs = ! $on('login_logs') ? 0 : LoginLog::whereBetween('attempted_at', $selectedRange)
             ->when($scopeUserId, fn ($q, $userId) => $q->where('user_id', $userId))
             ->count();
 
-        $data->system_logs = Activity::whereBetween('created_at', $selectedRange)
+        $data->system_logs = ! $on('system_logs') ? 0 : Activity::whereBetween('created_at', $selectedRange)
             ->when($scopeUserId, function ($q, $userId) {
                 $q->where('causer_type', User::class)->where('causer_id', $userId);
             })
             ->count();
 
-        $data->download_print_logs = DownloadPrintLog::whereBetween('performed_at', $selectedRange)
+        $data->download_print_logs = ! $on('download_print_logs') ? 0 : DownloadPrintLog::whereBetween('performed_at', $selectedRange)
             ->when($scopeUserId, fn ($q, $userId) => $q->where('user_id', $userId))
             ->count();
 
@@ -342,11 +345,11 @@ class DashboardController extends Controller
         $deletedItems = Item::onlyTrashed()->whereBetween('deleted_at', $selectedRange)
             ->when($scopeUserId, fn ($q, $userId) => $q->where('deleted_by', $userId));
 
-        $data->deleted_records = $deletedCheckins->count()
-            + $deletedCheckouts->count()
-            + $deletedTransfers->count()
-            + $deletedAdjustments->count()
-            + $deletedItems->count();
+        $data->deleted_records = ! $on('deleted_records') ? 0 : ($on('checkins') ? $deletedCheckins->count() : 0)
+            + ($on('checkouts') ? $deletedCheckouts->count() : 0)
+            + ($on('transfers') ? $deletedTransfers->count() : 0)
+            + ($on('adjustments') ? $deletedAdjustments->count() : 0)
+            + ($on('items') ? $deletedItems->count() : 0);
         $data->total_records = collect([
             $data->checkins,
             $data->checkouts,
@@ -355,18 +358,30 @@ class DashboardController extends Controller
             $data->material_requests,
         ])->sum();
         $chart = new ChartData($request->get('month'), $request->get('year'));
+        // the charts keep the four series the page expects, but a module that is off has an empty one
+        $seriesOn = function (array $series) use ($on) {
+            $map = ['adjustment' => 'adjustments', 'transfer' => 'transfers', 'checkin' => 'checkins', 'checkout' => 'checkouts'];
+            foreach ($map as $k => $feature) {
+                $series[$k] = $on($feature) ? ($series[$k] ?? []) : [];
+            }
+
+            return $series;
+        };
+        $chartYear = $seriesOn($chart->year());
+        $chartMonth = $seriesOn($chart->month());
 
         return Inertia::render('Dashboard/Index', [
             'canViewOnlineUsers' => $request->user()->can('view-online-users'),
             // Staff contracts that have run out or end within 60 days (the number on the contracts button of the first card)
-            'contractsDue' => fn () => $request->user()->can('read-staff-contracts')
+            'contractsDue' => fn () => $request->user()->can('read-staff-contracts') && $on('staffs')
                 ? \App\Models\StaffContract::query()->where('status', \App\Models\StaffContract::STATUS_ACTIVE)->whereNotNull('end_date')
                     ->whereDate('end_date', '<=', now()->addDays(\App\Models\StaffContract::SOON_DAYS)->toDateString())->count()
                 : 0,
             'data'         => $data,
-            'top_products' => $chart->topProducts(),
+            'top_products' => $on('items') ? $chart->topProducts() : [],
             'listing' => $listing,
-            'chart'        => ['year' => $chart->year(), 'month' => $chart->month()],
+            'chart'        => ['year' => $chartYear, 'month' => $chartMonth],
+            // the small weather on the first card is its own thing: not the Weather & Site Risk module, nothing is stored, it just refreshes every 30 minutes
             'weather'      => WeatherService::current(),
             'shortcutCardOrder' => $request->user()?->extra_attributes['dashboard_shortcut_card_order'] ?? [],
             'channelLive' => ChannelAvailability::liveMap(),

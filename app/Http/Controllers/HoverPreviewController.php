@@ -35,6 +35,11 @@ class HoverPreviewController extends Controller
             abort(404);
         }
 
+        // a record of a module that is switched off in Global Feature Control is not previewed
+        $feature = ['checkins' => 'checkins', 'checkouts' => 'checkouts', 'transfers' => 'transfers', 'adjustments' => 'adjustments', 'contacts' => 'contacts',
+            'material-requests' => 'material_requests', 'items' => 'items', 'categories' => 'categories', 'daily-site-reports' => 'daily_site_reports'][$data['category']] ?? null;
+        abort_if($feature && ! \App\Services\FeatureManager::isEnabled($feature), 404);
+
         $entry = $registry[$data['category']];
         abort_unless($request->user() && collect((array) $entry['permission'])->contains(fn ($permission) => $request->user()->can($permission)), 403);
 

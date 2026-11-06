@@ -24,38 +24,13 @@ class WeatherService
         // What is cached is the raw reading (temperature, WMO code, today's sunrise/sunset).
         // Day vs night is decided on every request from those times, so the icon flips to a
         // moon at sunset instead of waiting for the 30-minute cache to expire.
-        $raw = Cache::remember('dashboard-weather-v2', now()->addMinutes(self::CACHE_TTL_MINUTES), function () {
-            try {
-                $response = Http::timeout(4)->get('https://api.open-meteo.com/v1/forecast', [
-                    'latitude' => self::DEFAULT_LAT,
-                    'longitude' => self::DEFAULT_LON,
-                    'current_weather' => 'true',
-                    'daily' => 'sunrise,sunset',
-                    'timezone' => self::TIMEZONE,
-                ]);
-
-                if (! $response->successful()) {
-                    return null;
-                }
-
-                $current = $response->json('current_weather');
-
-                if (! $current) {
-                    return null;
-                }
-
-                return [
-                    'temperature' => $current['temperature'],
-                    'code' => (int) $current['weathercode'],
-                    'sunrise' => $response->json('daily.sunrise.0'),
-                    'sunset' => $response->json('daily.sunset.0'),
-                ];
-            } catch (\Throwable $e) {
-                Log::warning('WeatherService: failed to fetch current weather', ['error' => $e->getMessage()]);
-
-                return null;
-            }
-        });
+        // Nothing is saved in the database: the reading lives in the cache for 30 minutes. When the weather service cannot be reached the
+        // failure is remembered for 5 minutes, so a slow or blocked service is not asked again on every page.
+        $raw = Cache::get('dashboard-weather-v2');
+        if ($raw === null) {
+            $raw = self::fetch();
+            Cache::put('dashboard-weather-v2', $raw ?: false, now()->addMinutes($raw ? self::CACHE_TTL_MINUTES : 5));
+        }
 
         if (! $raw) {
             return null;
@@ -70,6 +45,40 @@ class WeatherService
             'icon' => $icon,
             'is_day' => $isDay,
         ];
+    }
+
+    protected static function fetch(): ?array
+    {
+        try {
+            $response = Http::timeout(4)->get('https://api.open-meteo.com/v1/forecast', [
+                'latitude' => self::DEFAULT_LAT,
+                'longitude' => self::DEFAULT_LON,
+                'current_weather' => 'true',
+                'daily' => 'sunrise,sunset',
+                'timezone' => self::TIMEZONE,
+            ]);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $current = $response->json('current_weather');
+
+            if (! $current) {
+                return null;
+            }
+
+            return [
+                'temperature' => $current['temperature'],
+                'code' => (int) $current['weathercode'],
+                'sunrise' => $response->json('daily.sunrise.0'),
+                'sunset' => $response->json('daily.sunset.0'),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('WeatherService: failed to fetch current weather', ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     protected static function isDaytime(?string $sunrise, ?string $sunset): bool

@@ -64,14 +64,14 @@ class ScanResolveController extends Controller
         $compact = preg_replace('/\s+/', '', $noPrefix ?: $clean);
         $candidates = collect([$code, $clean, $noPrefix, $compact, ltrim((string) $compact, '0')])->filter(fn ($v) => is_string($v) && $v !== '')->unique()->values()->all();
 
-        $item = Item::query()->whereIn('code', $candidates)->orWhereIn('sku', $candidates)->first();
+        $item = \App\Services\FeatureManager::isEnabled('items') ? Item::query()->whereIn('code', $candidates)->orWhereIn('sku', $candidates)->first() : null;
         if ($item) {
             return $user->can('read-items')
                 ? response()->json(['status' => 'allowed', 'go' => route('items.show', $item->id), 'kind' => __('Item')])
                 : response()->json(['status' => 'no_permission', 'kind' => __('Item')]);
         }
 
-        $card = IdPassCard::query()->whereIn('number', $candidates)->first();
+        $card = \App\Services\FeatureManager::isEnabled('id_passes') ? IdPassCard::query()->whereIn('number', $candidates)->first() : null;
         if ($card) {
             $k = IdPassKinds::get($card->kind);
 

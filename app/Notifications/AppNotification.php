@@ -22,6 +22,15 @@ class AppNotification extends Notification implements ShouldQueue
      */
     public static function alertModules(): array
     {
+        // Global Feature Control: the alerts of a module that is switched off are hidden (and not counted) until it is switched back on.
+        // Most module names are the feature key itself; the few that differ are listed.
+        $alias = ['notice_board' => 'notices', 'issue_returns' => 'issue_return', 'site_reports' => 'daily_site_reports', 'transport' => 'transport_management'];
+
+        return array_values(array_filter(self::allAlertModules(), fn ($m) => \App\Services\FeatureManager::isEnabled($alias[$m] ?? $m)));
+    }
+
+    private static function allAlertModules(): array
+    {
         return [
             'notice_board',
             'accounts_tracking',

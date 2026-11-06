@@ -20,6 +20,15 @@ class RauncherController extends Controller
 {
     private const PER_CATEGORY_LIMIT = 5;
 
+    /** Launcher search categories that have no switch check of their own: the Feature Control function each one belongs to. */
+    private const CATEGORY_FEATURE = [
+        'items' => 'items', 'warehouses' => 'warehouses', 'checkins' => 'checkins', 'checkouts' => 'checkouts', 'adjustments' => 'adjustments',
+        'transfers' => 'transfers', 'material-requests' => 'material_requests', 'contacts' => 'contacts', 'categories' => 'categories', 'units' => 'units',
+        'daily-site-reports' => 'daily_site_reports', 'users' => 'users', 'suppliers' => 'supplier_records', 'purchase-orders' => 'supplier_records',
+        'supplier-invoices' => 'supplier_records', 'payment-vouchers' => 'payment_vouchers', 'payment-voucher-batches' => 'payment_vouchers',
+        'staffs' => 'staffs', 'assets' => 'assets', 'compliance-records' => 'compliance_records',
+    ];
+
     public function search(Request $request)
     {
         $data = $request->validate([
@@ -33,7 +42,8 @@ class RauncherController extends Controller
         }
 
         $user = $request->user();
-        $registry = $this->registry();
+        // a search category whose module is switched off in Global Feature Control returns nothing (the ones that already check their own switch below are left as they are)
+        $registry = array_filter($this->registry(), fn ($entry, $key) => ! isset(self::CATEGORY_FEATURE[$key]) || \App\Services\FeatureManager::isEnabled(self::CATEGORY_FEATURE[$key]), ARRAY_FILTER_USE_BOTH);
 
         // An explicit category/query search (e.g. "warehouses/GD1") targets one known
         // category. If the viewer can't read it, say so plainly instead of quietly
