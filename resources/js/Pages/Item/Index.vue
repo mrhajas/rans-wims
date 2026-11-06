@@ -148,7 +148,7 @@
               <span class="item-th-inner"><icons name="lightning-bolt" class="w-3.5 h-3.5" />{{ $t('Actions') }}</span>
             </th>
           </tr>
-          <tr :key="item.id" v-for="(item, rowIdx) in displayItems" :data-no-suffix="$t('Code') + ': ' + item.code" class="item-row hover:bg-gray-100 focus-within:bg-gray-100" :class="{ 'is-picked': picked.includes(item.id) }" :style="{ '--i': Math.min(rowIdx, 14) }">
+          <tr :key="item.id" v-for="(item, rowIdx) in displayItems" :data-no-suffix="$t('Code') + ': ' + item.code" class="item-row hover:bg-gray-100 focus-within:bg-gray-100" :class="{ 'is-picked': picked.includes(item.id) }" :style="{ '--i': Math.min(rowIdx, 14) }" @mouseenter="prefetchSoon(item)" @mouseleave="cancelPrefetch" @touchstart.passive="prefetchSoon(item, 0)">
             <td class="item-row-line" @click="goto(item)" :class="{ 'cursor-pointer': $can('read-items') }">
               <div class="px-6 py-4 max-w-md flex items-center focus:text-indigo-500">
                 <label v-if="canPick && !item.deleted_at" class="item-pick mr-3" @click.stop>
@@ -358,7 +358,7 @@
     </Teleport>
 
     <!-- Item Details Modal (shared with the Dashboard): print, PDF, barcode and Edit in a new tab -->
-    <item-details-modal :show="details" :item="item" :loading="loading" @close="hideDetails" />
+    <item-details-modal :show="details" :item="item" :loading="loading" :preview="previewText" @close="hideDetails" />
 
     <camera-barcode-scanner
       ref="scanner"
@@ -490,6 +490,7 @@ export default {
       scanning: false,
       showOptions: false,
       searching: false,
+      previewText: '',
       form: {
         search: this.filters.search,
         trashed: this.filters.trashed,
@@ -722,13 +723,40 @@ export default {
         return;
       }
 
+      // the window opens at once (name and a placeholder); the item fills it as soon as it is here, or is already here when the row was hovered first
+      this.item = null;
+      this.previewText = item.name + (item.code ? ' (' + item.code + ')' : '');
+      this.details = true;
       this.loading = true;
-      axios.get(route('items.show', item.id) + '?json=yes').then(res => {
-        this.item = res.data;
-        this.details = true;
+      try {
+        this.item = await this.fetchItem(item.id);
+      } catch (e) {
+        this.item = null;
+      } finally {
         this.loading = false;
-      });
+      }
     },
+    // one request per item, kept for a minute and shared by the hover and the click
+    fetchItem(id) {
+      this._pf = this._pf || {};
+      this._cache = this._cache || {};
+      const hit = this._cache[id];
+      if (hit && Date.now() - hit.at < 60000) return Promise.resolve(hit.data);
+      if (this._pf[id]) return this._pf[id];
+      this._pf[id] = axios.get(route('items.show', id) + '?json=yes').then(res => {
+        const keys = Object.keys(this._cache);
+        if (keys.length > 30) delete this._cache[keys[0]];
+        this._cache[id] = { data: res.data, at: Date.now() };
+        return res.data;
+      }).finally(() => { delete this._pf[id]; });
+      return this._pf[id];
+    },
+    prefetchSoon(item, wait = 140) {
+      if (this.$connection.status === 'offline' || !this.$can('read-items')) return;
+      clearTimeout(this._pfT);
+      this._pfT = setTimeout(() => { this.fetchItem(item.id).catch(() => {}); }, wait);
+    },
+    cancelPrefetch() { clearTimeout(this._pfT); },
     reset() {
       this.form = mapValues(this.form, () => null);
     },
@@ -1194,7 +1222,7 @@ html.dark .item-th-indigo, html.dark .item-th-blue, html.dark .item-th-emerald, 
 /* ---- header buttons ---- */
 .item-hbtn { transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; } .item-hbtn:hover:not(:disabled) { transform: translateY(-2px); } .item-hbtn:active:not(:disabled) { transform: scale(0.97); }
 .item-hbtn .tone-ico { transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); } .item-hbtn:hover .tone-ico { transform: rotate(-8deg) scale(1.12); }
-.item-hbtn-create { position: relative; overflow: hidden; } .item-hbtn-create::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%); transform: translateX(-130%); animation: item-shine 5s ease-in-out 1.2s infinite; pointer-events: none; }
+.item-hbtn-create { position: relative; overflow: hidden; } .item-hbtn-create::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%); transform: translateX(-130%); animation: item-shine 4s ease-in-out 1.2s 3; pointer-events: none; }
 @keyframes item-shine { 0%, 60% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
 
 /* ---- rows ---- */
@@ -1202,7 +1230,7 @@ html.dark .item-th-indigo, html.dark .item-th-blue, html.dark .item-th-emerald, 
 @keyframes item-row-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .item-row .item-photo-zoom { transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1); } .item-row:hover .item-photo-zoom { transform: scale(1.07) rotate(-1.5deg); }
 .item-row.is-picked > td { background: rgba(99, 102, 241, 0.07); } .item-row.is-picked > td:first-child { box-shadow: inset 4px 0 0 #6366f1; }
-.item-qty-chip.lg-chip-red { animation: item-pulse 2.4s ease-in-out infinite; }
+.item-qty-chip.lg-chip-red { animation: item-pulse 2.4s ease-in-out 2; }
 @keyframes item-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.35); } 50% { box-shadow: 0 0 0 7px rgba(225, 29, 72, 0); } }
 
 /* ---- the Options column: folded to its icon ---- */

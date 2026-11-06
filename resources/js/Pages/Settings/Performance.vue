@@ -5,7 +5,7 @@
         <Link :href="route('settings')" class="lg-btn lg-btn-soft"><icons name="chevron-down" class="w-4 h-4 transform rotate-90" />{{ $t('Back to Settings') }}</Link>
       </page-header>
 
-      <stat-tiles :items="tiles" compact />
+      <stat-tiles :items="tiles" lively />
 
       <!-- how long things are kept -->
       <section class="lg-card" id="pf-retention">
@@ -18,8 +18,8 @@
           <button type="button" class="lg-btn tone tone-solid" style="--tone: #4f46e5" :disabled="form.processing" @click="save"><span class="tone-ico"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Save') }}</button>
         </header>
         <div class="pf-grid">
-          <label v-for="f in fields" :key="f.key" class="pf-field" :class="{ 'is-main': f.main }">
-            <span class="pf-label"><icons :name="f.icon" class="w-4 h-4" />{{ f.label }}</span>
+          <label v-for="(f, fi) in fields" :key="f.key" class="pf-field" :class="{ 'is-main': f.main }" :style="{ '--tone': tones[fi % tones.length], '--i': fi }">
+            <span class="pf-label"><span class="pf-ico"><icons :name="f.icon" class="w-4 h-4" /></span>{{ f.label }}</span>
             <span class="pf-input"><input v-model.number="form[f.key]" type="number" :min="limits[f.key][0]" :max="limits[f.key][1]" inputmode="numeric" /><em>{{ f.unit }}</em></span>
             <small>{{ f.hint }}</small>
             <small v-if="form.errors[f.key]" class="pf-err">{{ form.errors[f.key] }}</small>
@@ -47,7 +47,7 @@
           <label><span>{{ $t('Log') }}</span>
             <css-select v-model="af.log" class="w-full" @change="filterChanged"><option value="">{{ $t('All logs') }}</option><option v-for="l in logNames" :key="l" :value="l">{{ l }}</option></css-select>
           </label>
-          <label class="pf-search"><span>{{ $t('Search') }}</span><input v-model="af.search" type="search" :placeholder="$t('Words in the description...')" @input="searchSoon" /></label>
+          <label class="pf-search"><span>{{ $t('Search') }}</span><span class="pf-sbox"><icons :name="archiveLoading ? 'refresh' : 'search'" class="w-4 h-4" :class="{ 'pf-spin': archiveLoading }" /><input v-model="af.search" type="search" :placeholder="$t('Words in the description...')" @input="searchSoon" /></span></label>
         </div>
         <p class="pf-scope"><icons name="info" class="w-4 h-4" /><span>{{ scopeText }}</span></p>
         <div class="pf-actions pf-archive-actions">
@@ -71,11 +71,12 @@
           </div>
         </div>
 
-        <div class="lg-table-wrap">
+        <div class="pf-bar-live" :class="{ on: archiveLoading }" aria-hidden="true"><i></i></div>
+        <div class="lg-table-wrap pf-results" :class="{ 'is-busy': archiveLoading }" :aria-busy="archiveLoading">
           <table class="lg-table lg-responsive">
             <thead><tr><th>{{ $t('Date') }}</th><th>{{ $t('Log') }}</th><th>{{ $t('What happened') }}</th><th>{{ $t('Done by') }}</th><th>{{ $t('Record') }}</th></tr></thead>
             <tbody>
-              <tr v-for="r in archive.data" :key="r.id">
+              <tr v-for="(r, ri) in archive.data" :key="r.id" class="pf-row" :style="{ '--i': Math.min(ri, 12) }">
                 <td :data-label="$t('Date')" class="pf-nowrap">{{ $datetime(r.at) }}</td>
                 <td :data-label="$t('Log')"><span class="lg-chip lg-chip-slate" style="text-transform: none">{{ r.log || '-' }}</span></td>
                 <td :data-label="$t('What happened')" class="pf-wrap">{{ r.description }}</td>
@@ -109,9 +110,9 @@
           <span><b>{{ $t('Send in the background') }}</b><small>{{ $t('Used only while the worker below is running. If it stops, WIMS goes back to sending at once, so nothing is left waiting.') }}</small></span>
         </label>
         <div class="pf-queue-stats">
-          <div><b>{{ queue.beat_ago === null ? '-' : ago(queue.beat_ago) }}</b><span>{{ $t('Worker last seen') }}</span></div>
-          <div><b>{{ queue.pending }}</b><span>{{ $t('Waiting to be sent') }}</span></div>
-          <div :class="{ 'is-bad': queue.failed }"><b>{{ queue.failed }}</b><span>{{ $t('Failed') }}</span></div>
+          <div class="is-seen"><span class="pf-qi"><icons name="clock" class="w-4 h-4" /></span><div><b>{{ queue.beat_ago === null ? '-' : ago(queue.beat_ago) }}</b><span>{{ $t('Worker last seen') }}</span></div></div>
+          <div class="is-wait"><span class="pf-qi"><icons name="send" class="w-4 h-4" /></span><div><b>{{ queue.pending }}</b><span>{{ $t('Waiting to be sent') }}</span></div></div>
+          <div class="is-fail" :class="{ 'is-bad': queue.failed }"><span class="pf-qi"><icons name="exclamation" class="w-4 h-4" /></span><div><b>{{ queue.failed }}</b><span>{{ $t('Failed') }}</span></div></div>
         </div>
         <p v-if="queue.wanted && !queue.alive" class="lg-note lg-note-amber"><icons name="exclamation" class="w-4 h-4" /><span>{{ $t('The worker has not been seen. It starts by itself when the scheduled task runs every minute on the server (php artisan schedule:run). Until then messages are sent at once.') }}</span></p>
         <ul v-if="queue.failed_list.length" class="pf-failed">
@@ -132,22 +133,23 @@
             <h2 class="lg-card-title">{{ $t('What was slow (last 7 days)') }}</h2>
             <p class="lg-card-sub">{{ $t('Pages and database queries slower than the limits above. Only the query text is kept, never the values.') }}</p>
           </div>
-          <button type="button" class="lg-btn tone" style="--tone: #dc2626" :disabled="!slow.length || busy" @click="clearSlow"><span class="tone-ico"><icons name="trash" class="w-4 h-4" /></span>{{ $t('Clear') }}</button>
+          <button type="button" class="lg-btn tone" style="--tone: #dc2626" :disabled="!slowRows.length || busy" @click="clearSlow"><span class="tone-ico"><icons name="trash" class="w-4 h-4" /></span>{{ $t('Clear') }}</button>
         </header>
         <div class="lg-table-wrap">
           <table class="lg-table lg-responsive">
             <thead><tr><th>{{ $t('Type') }}</th><th>{{ $t('What') }}</th><th class="num">{{ $t('Times') }}</th><th class="num">{{ $t('Average') }}</th><th class="num">{{ $t('Slowest') }}</th><th>{{ $t('Page') }}</th><th>{{ $t('Last seen') }}</th></tr></thead>
             <tbody>
-              <tr v-for="s in slow" :key="s.fingerprint + s.kind">
+              <template v-if="slowLoading && !slowRows.length"><tr v-for="n in 4" :key="'sk' + n" class="pf-skel-row"><td v-for="c in 7" :key="c" class="pf-skel-td"><i></i></td></tr></template>
+              <tr v-for="(s, si) in slowRows" :key="s.fingerprint + s.kind" class="pf-row" :style="{ '--i': Math.min(si, 12) }">
                 <td :data-label="$t('Type')"><span class="lg-chip" :class="s.kind === 'query' ? 'lg-chip-violet' : 'lg-chip-sky'" style="text-transform: none">{{ s.kind === 'query' ? $t('Query') : $t('Page') }}</span></td>
                 <td :data-label="$t('What')" class="pf-wrap pf-mono"><span class="pf-clamp" :title="s.label">{{ s.label }}</span></td>
                 <td :data-label="$t('Times')" class="num">{{ s.n }}</td>
                 <td :data-label="$t('Average')" class="num">{{ ms(s.avg_ms) }}</td>
-                <td :data-label="$t('Slowest')" class="num"><b :class="{ 'pf-hot': s.max_ms >= 3000 }">{{ ms(s.max_ms) }}</b></td>
+                <td :data-label="$t('Slowest')" class="num"><b :class="{ 'pf-hot': s.max_ms >= 3000 }">{{ ms(s.max_ms) }}</b><i class="pf-heat" :class="{ 'is-hot': s.max_ms >= 3000 }"><u :style="{ width: heat(s) + '%' }"></u></i></td>
                 <td :data-label="$t('Page')" class="pf-mono pf-wrap"><span class="pf-clamp" :title="s.path">{{ s.path || '-' }}</span></td>
                 <td :data-label="$t('Last seen')" class="pf-nowrap">{{ $datetime(s.last_at) }}</td>
               </tr>
-              <tr v-if="!slow.length" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ $t('Nothing slow was recorded. That is good news.') }}</td></tr>
+              <tr v-if="!slowRows.length && !slowLoading" class="lg-empty-row"><td class="lg-empty" colspan="7">{{ $t('Nothing slow was recorded. That is good news.') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -171,7 +173,11 @@
         <template #title><span class="pf-dlg-title"><icons name="lock-closed" class="w-5 h-5" />{{ pw.title }}</span></template>
         <template #content>
           <p class="pf-dlg-text">{{ pw.text }}</p>
-          <input v-model="pw.password" type="password" class="pf-dlg-input" autocomplete="current-password" :placeholder="$t('Enter your password to confirm')" @keyup.enter="confirmPw" />
+          <div class="pf-pwbox">
+            <icons name="lock-closed" class="w-4 h-4 pf-pw-ico" />
+            <input v-model="pw.password" :type="pwShow ? 'text' : 'password'" class="pf-dlg-input" autocomplete="current-password" :placeholder="$t('Enter your password to confirm')" @keyup.enter="confirmPw" />
+            <button type="button" class="pf-pw-eye" :aria-label="pwShow ? $t('Hide the password') : $t('Show the password')" @click="pwShow = !pwShow"><icons :name="pwShow ? 'eye-off' : 'eye'" class="w-4 h-4" /></button>
+          </div>
           <p v-if="pw.error" class="pf-err">{{ pw.error }}</p>
         </template>
         <template #footer>
@@ -192,7 +198,7 @@ import { Link } from '@inertiajs/vue3';
 
 export default {
   components: { AdminLayout, PageHeader, StatTiles, TecDialogModal, Link },
-  props: { perf: Object, limits: Object, defaults: Object, stats: Object, queue: Object, slow: Array, last: Object, exports: { type: Array, default: () => [] }, logNames: { type: Array, default: () => [] } },
+  props: { perf: Object, limits: Object, defaults: Object, stats: Object, queue: Object, slow: { type: Array, default: undefined }, last: Object, exports: { type: Array, default: () => [] }, logNames: { type: Array, default: () => [] } },
   data() {
     return {
       form: this.$inertia.form({ ...this.perf }),
@@ -206,9 +212,14 @@ export default {
       plan: { open: false, total: 0, parts: 1, minutes: 1, period: '' },
       exportsList: [...this.exports],
       exportTimer: null,
+      pwShow: false,
+      slowLocal: this.slow || [],
+      slowLoading: this.slow === undefined,
+      tones: ['#4f46e5', '#d97706', '#0284c7', '#059669', '#7c3aed', '#e11d48', '#0d9488'],
     };
   },
   computed: {
+    slowRows() { return this.slowLocal; },
     tiles() {
       return [
         { icon: 'doc-text', tone: 'sky', label: this.$t('Activity in the live log'), value: this.count(this.stats.live) },
@@ -248,14 +259,27 @@ export default {
   mounted() {
     this.loadArchive(1);
     this.pollExports();
+    // the first answer left the slow list out (it is the slowest part): it is asked for now, while the rest is already on screen
+    if (this.slow === undefined) this.loadSlow();
   },
   beforeUnmount() {
     clearTimeout(this.exportTimer);
   },
   watch: {
     exports(v) { this.exportsList = [...v]; this.pollExports(); },
+    // a saved setting or a clean-up answers with the whole page again: the list shown stays, and takes the new one when it comes
+    slow(v) { if (Array.isArray(v)) { this.slowLocal = v; this.slowLoading = false; } },
+    'pw.open'(o) { if (!o) this.pwShow = false; },
   },
   methods: {
+    loadSlow() {
+      this.slowLoading = true;
+      this.$inertia.reload({ only: ['slow'], preserveState: true, preserveScroll: true, headers: { 'X-Quiet': '1' }, onFinish: () => { this.slowLoading = false; } });
+    },
+    heat(s) {
+      const top = Math.max(1, ...this.slowLocal.map(x => Number(x.max_ms) || 0));
+      return Math.max(4, Math.round(((Number(s.max_ms) || 0) / top) * 100));
+    },
     count(v) { return Number(v || 0).toLocaleString(); },
     ms(v) { return Number(v) >= 1000 ? (Number(v) / 1000).toFixed(1) + ' s' : Number(v) + ' ms'; },
     ago(s) { return s < 90 ? s + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : Math.round(s / 3600) + ' h'; },
@@ -325,7 +349,7 @@ export default {
     },
     clearSlow() {
       this.busy = true;
-      this.$inertia.delete(this.route('performance.slow.clear'), { preserveScroll: true, onFinish: () => (this.busy = false) });
+      this.$inertia.delete(this.route('performance.slow.clear'), { preserveScroll: true, onSuccess: () => { this.slowLocal = []; }, onFinish: () => (this.busy = false) });
     },
     askClean() {
       this.pw = { open: true, action: 'clean', title: this.$t('Run the clean-up now'), text: this.$t('This moves activity history older than :m months to the archive and removes old weather readings, read alerts, log files and slow-query records, as set above. Nothing in the audit trail is deleted.', { m: this.form.perf_activity_keep_months }), password: '', error: '' };
@@ -340,7 +364,7 @@ export default {
       const opts = {
         preserveScroll: true,
         headers: clean ? { 'X-Progress-Label': this.$t('Cleaning up'), 'X-Progress-Done': this.$t('Clean-up finished'), 'X-Progress-Long': '1' } : {},
-        onSuccess: () => { this.pw.open = false; if (clean) this.loadArchive(1); },
+        onSuccess: () => { this.pw.open = false; if (clean) { this.loadArchive(1); this.loadSlow(); } },
         onError: e => { this.pw.error = e.password || this.$t('Could not do that.'); },
         onFinish: () => { this.busy = false; },
       };
@@ -403,4 +427,25 @@ export default {
 .pf-dlg-text { margin: 0 0 12px; font-size: 0.86rem; line-height: 1.45; }
 .pf-dlg-input { width: 100%; min-height: 2.6rem; padding: 0 12px; border-radius: 12px; border: 1px solid var(--lg-line, #e2e8f0); background: transparent; color: inherit; }
 @media (max-width: 560px) { .pf-search { grid-column: auto; } .pf-queue-stats { grid-template-columns: 1fr; } }
+
+/* ---- polish: the page builds up, fields are coloured, search gives feedback ---- */
+.pf-page > section.lg-card { animation: pf-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; } .pf-page > section.lg-card:nth-of-type(2) { animation-delay: 0.08s; } .pf-page > section.lg-card:nth-of-type(3) { animation-delay: 0.16s; } .pf-page > section.lg-card:nth-of-type(4) { animation-delay: 0.24s; }
+@keyframes pf-in { from { opacity: 0; transform: translateY(14px); } }
+.pf-field { position: relative; overflow: hidden; border-color: color-mix(in srgb, var(--tone, #4f46e5) 22%, transparent); background: color-mix(in srgb, var(--tone, #4f46e5) 6%, var(--lg-soft)); animation: pf-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+.pf-field::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--tone, #4f46e5); opacity: 0.85; } .pf-field:hover, .pf-field:focus-within { transform: translateY(-2px); border-color: var(--tone, #4f46e5); box-shadow: 0 14px 24px -18px var(--tone, #4f46e5); }
+.pf-ico { flex: none; width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border-radius: 0.6rem; color: #fff; background: linear-gradient(135deg, var(--tone, #4f46e5), color-mix(in srgb, var(--tone, #4f46e5) 62%, #000)); box-shadow: 0 6px 10px -6px var(--tone, #4f46e5); transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); } .pf-field:hover .pf-ico { transform: rotate(-8deg) scale(1.12); }
+.pf-input input { transition: box-shadow 0.2s ease, border-color 0.2s ease; } .pf-input input:focus { outline: none; border-color: var(--tone, #4f46e5); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone, #4f46e5) 22%, transparent); }
+.pf-sbox { position: relative; display: block; } .pf-sbox svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--lg-mute); pointer-events: none; } .pf-sbox input { width: 100%; padding-left: 2rem; } .pf-spin { animation: pf-rot 0.8s linear infinite; } @keyframes pf-rot { to { transform: translateY(-50%) rotate(360deg); } }
+.pf-bar-live { height: 3px; margin: 0 0 8px; border-radius: 999px; overflow: hidden; opacity: 0; transition: opacity 0.2s ease; } .pf-bar-live.on { opacity: 1; } .pf-bar-live i { display: block; width: 38%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, transparent, #6366f1, #14b8a6, transparent); animation: pf-travel 0.9s ease-in-out infinite; } @keyframes pf-travel { from { transform: translateX(-110%); } to { transform: translateX(290%); } }
+.pf-results { transition: opacity 0.2s ease; } .pf-results.is-busy { opacity: 0.55; pointer-events: none; }
+.pf-row { animation: pf-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 25ms); }
+.pf-skel-td i { display: block; height: 0.8rem; border-radius: 999px; background: linear-gradient(90deg, rgba(148, 163, 184, 0.18) 25%, rgba(148, 163, 184, 0.34) 50%, rgba(148, 163, 184, 0.18) 75%); background-size: 200% 100%; animation: pf-shimmer 1.2s linear infinite; } @keyframes pf-shimmer { to { background-position: -200% 0; } }
+.pf-heat { display: block; height: 4px; margin-top: 4px; border-radius: 999px; background: rgba(148, 163, 184, 0.22); overflow: hidden; } .pf-heat u { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #fb923c); animation: pf-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; transform-origin: left; } .pf-heat.is-hot u { background: linear-gradient(90deg, #fb7185, #dc2626); } @keyframes pf-grow { from { transform: scaleX(0); } }
+.pf-queue-stats > div { display: flex; align-items: center; gap: 0.7rem; transition: transform 0.25s ease, box-shadow 0.25s ease; } .pf-queue-stats > div > div { display: grid; gap: 2px; } .pf-queue-stats > div:hover { transform: translateY(-2px); box-shadow: 0 14px 22px -18px rgba(15, 23, 42, 0.5); }
+.pf-qi { flex: none; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 0.8rem; color: #fff; background: linear-gradient(135deg, #0ea5e9, #0369a1); } .pf-queue-stats .is-wait .pf-qi { background: linear-gradient(135deg, #8b5cf6, #6d28d9); } .pf-queue-stats .is-fail .pf-qi { background: linear-gradient(135deg, #34d399, #059669); } .pf-queue-stats .is-fail.is-bad .pf-qi { background: linear-gradient(135deg, #fb7185, #dc2626); animation: pf-pulse 2s ease-in-out 3; } @keyframes pf-pulse { 50% { transform: scale(1.12); } }
+.pf-switch-ui { transition: background 0.25s ease; } .pf-switch-ui::after { transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.pf-pwbox { position: relative; } .pf-pwbox .pf-dlg-input { padding-left: 2.2rem; padding-right: 2.6rem; } .pf-pw-ico { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--lg-mute, #64748b); pointer-events: none; } .pf-pw-eye { position: absolute; right: 0.35rem; top: 50%; transform: translateY(-50%); width: 2rem; height: 2rem; display: grid; place-items: center; border: 0; border-radius: 0.6rem; cursor: pointer; color: var(--lg-mute, #64748b); background: transparent; } .pf-pw-eye:hover { background: rgba(148, 163, 184, 0.2); }
+.pf-dlg-input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
+@media (max-width: 640px) { .pf-actions { align-items: stretch; } .pf-actions > .lg-btn, .pf-archive-actions > .lg-btn { flex: 1 1 100%; justify-content: center; } .pf-last { flex: 1 1 100%; } .pf-filters { grid-template-columns: 1fr 1fr; } .pf-export { padding: 10px; } .pf-queue-stats > div { padding: 10px; } }
+@media (prefers-reduced-motion: reduce) { .pf-page > section.lg-card, .pf-field, .pf-row, .pf-skel-td i, .pf-heat u, .pf-bar-live i, .pf-spin, .pf-qi { animation: none !important; } .pf-field, .pf-ico, .pf-queue-stats > div { transition: none; } }
 </style>

@@ -44,7 +44,8 @@ class PerformanceController extends Controller
             'defaults' => PerfSettings::DEFAULTS,
             'stats' => $this->stats(),
             'queue' => $this->queueStatus(),
-            'slow' => $this->slowSummary(),
+            // the heaviest part of this page (it groups every slow record of the week): left out of the first answer and asked for right after the page is drawn
+            'slow' => Inertia::lazy(fn () => $this->slowSummary()),
             'last' => Housekeeping::last(),
             'exports' => $this->exportList($request),
             'logNames' => \App\Support\Performance\Tables::has('activity_log_archive') ? DB::table('activity_log_archive')->whereNotNull('log_name')->distinct()->orderBy('log_name')->pluck('log_name') : [],
@@ -259,6 +260,7 @@ class PerformanceController extends Controller
     {
         $this->superOnly($request);
         $n = \App\Support\Performance\Tables::has('slow_logs') ? DB::table('slow_logs')->delete() : 0;
+        \Illuminate\Support\Facades\Cache::forget('perf:slow-summary');
         log_activity(__('Slow query records cleared'), ['rows' => $n], $request->user(), 'Setting');
 
         return back()->with('message', __('Slow query records cleared.'));
@@ -338,9 +340,10 @@ class PerformanceController extends Controller
             return [];
         }
 
-        return DB::table('slow_logs')->where('created_at', '>=', now()->subDays(7))
+        // 30 seconds is fresh enough for a diagnostics list, and the grouping over a week of records is the slowest query on the page
+        return \Illuminate\Support\Facades\Cache::remember('perf:slow-summary', 30, fn () => DB::table('slow_logs')->where('created_at', '>=', now()->subDays(7))
             ->selectRaw('fingerprint, kind, MAX(label) as label, COUNT(*) as n, ROUND(AVG(duration_ms)) as avg_ms, MAX(duration_ms) as max_ms, MAX(created_at) as last_at, MAX(path) as path, ROUND(AVG(queries)) as queries')
             ->groupBy('fingerprint', 'kind')->orderByDesc('max_ms')->limit(20)->get()
-            ->map(fn ($r) => (array) $r)->all();
+            ->map(fn ($r) => (array) $r)->all());
     }
 }
