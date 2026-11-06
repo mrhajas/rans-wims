@@ -44,7 +44,7 @@ class Archiver
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function preview(): array
+    public static function preview(array $keepOverride = []): array
     {
         $out = [];
         $sizes = self::tableSizes(array_column(Sources::all(), 'table'));
@@ -52,10 +52,11 @@ class Archiver
             if (! Tables::has($src['table'])) {
                 continue;
             }
-            $keep = WimsLogSettings::keepDays($key);
+            // a run by hand may ask for another number of live days than the saved one (the saved setting is not changed)
+            $keep = isset($keepOverride[$key]) ? max(WimsLogSettings::KEEP_MIN, min(WimsLogSettings::KEEP_MAX, (int) $keepOverride[$key])) : WimsLogSettings::keepDays($key);
             $cut = now()->subDays($keep);
             $due = (int) self::due($src, $cut, $key)->count();
-            $oldest = self::due($src, $cut, $key)->min($src['date']);
+            $oldest = $due ? self::due($src, $cut, $key)->min($src['date']) : null;
             $t = $sizes[$src['table']] ?? ['rows' => 0, 'bytes' => 0, 'avg_row' => 0, 'free' => 0];
             $live = (int) DB::table($src['table'])->count();
             $out[] = [
@@ -104,7 +105,7 @@ class Archiver
     }
 
     /** @param  array<int, string>|null  $sources the logs to look at (null: every log that is switched on) */
-    public static function begin(string $trigger, ?User $by, ?array $sources = null): WimsLogRun
+    public static function begin(string $trigger, ?User $by, ?array $sources = null, array $keepOverride = []): WimsLogRun
     {
         // a run that was started and never finished (the browser was closed) stops blocking after a while
         WimsLogRun::query()->where('status', 'running')->where('updated_at', '<', now()->subMinutes(self::STALE_MINUTES))
@@ -120,7 +121,7 @@ class Archiver
         return WimsLogRun::create([
             'account_id' => optional($by)->account_id, 'user_id' => optional($by)->id, 'user_name' => optional($by)->name ?: __('System'),
             'trigger' => $trigger, 'status' => 'running', 'sources' => $keys, 'started_at' => now(),
-            'options' => ['keep_days' => collect($keys)->mapWithKeys(fn ($k) => [$k => WimsLogSettings::keepDays($k)])->all(), 'optimized' => []],
+            'options' => ['keep_days' => collect($keys)->mapWithKeys(fn ($k) => [$k => isset($keepOverride[$k]) ? max(WimsLogSettings::KEEP_MIN, min(WimsLogSettings::KEEP_MAX, (int) $keepOverride[$k])) : WimsLogSettings::keepDays($k)])->all(), 'optimized' => [], 'by_hand_days' => array_keys(array_intersect_key($keepOverride, array_flip($keys)))],
             'before' => ['db' => self::dbSize(), 'tables' => self::tableSizes($tables), 'at' => now()->toDateTimeString()],
             'speed_before' => SpeedProbe::run(),
         ]);
@@ -310,9 +311,9 @@ class Archiver
     }
 
     /** Every step in a row (command line, schedule, tests). */
-    public static function run(string $trigger, ?User $by = null, ?array $sources = null, ?int $seconds = null): WimsLogRun
+    public static function run(string $trigger, ?User $by = null, ?array $sources = null, ?int $seconds = null, array $keepOverride = []): WimsLogRun
     {
-        $run = self::begin($trigger, $by, $sources);
+        $run = self::begin($trigger, $by, $sources, $keepOverride);
         try {
             foreach ((array) $run->sources as $key) {
                 for ($i = 0; $i < 5000; $i++) {

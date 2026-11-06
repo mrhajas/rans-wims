@@ -197,4 +197,17 @@ class WimsLogsArchiverTest extends TestCase
         $this->assertSame(0, WimsLogArchive::count(), 'an archive with no record is not kept');
         $this->assertFileDoesNotExist(ArchiveStore::bin('slow/run-' . $run->id));
     }
+
+    public function test_a_run_by_hand_can_use_fewer_live_days_without_changing_the_saved_setting(): void
+    {
+        $this->slow(6, now()->subDays(3)->toDateTimeString()); // newer than the 7 saved days, older than 2
+        $this->slow(4, now()->subHours(5)->toDateTimeString());
+
+        $run = Archiver::run('manual', null, ['slow'], null, ['slow' => 2]);
+
+        $this->assertSame(6, (int) $run->rows_archived, 'the days chosen for this run decide what is old enough');
+        $this->assertSame(4, DB::table('slow_logs')->count());
+        $this->assertSame(2, (int) ($run->options['keep_days']['slow'] ?? 0), 'the days used are written on the run');
+        $this->assertSame(7, \App\Support\WimsLogs\WimsLogSettings::keepDays('slow'), 'the saved setting is untouched');
+    }
 }

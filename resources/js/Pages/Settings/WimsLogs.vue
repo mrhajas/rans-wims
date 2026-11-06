@@ -110,7 +110,7 @@
         <div class="wl-actions">
           <span v-if="canRun" class="wl-hint"><icons name="info" class="w-4 h-4" />{{ $t('Each record is written to the archive, read back and compared with the original before it is removed from the live table. Messages still waiting, retrying or failed, and alerts not yet read, are never moved.') }}</span>
           <span v-else class="wl-hint"><icons name="lock-closed" class="w-4 h-4" />{{ $t('You can read the archives. Running needs the permission "WIMS Logs: run".') }}</span>
-          <button v-if="canRun" type="button" class="lg-btn tone tone-solid" style="--tone: #0f766e" :disabled="busy || !dueNow" @click="ask"><span class="tone-ico"><icons name="archive-box" class="w-4 h-4" /></span>{{ dueNow ? $t('Run now') + ' (' + num(dueNow) + ' ' + $t('records') + ')' : $t('Nothing to move now') }}</button>
+          <button v-if="canRun" type="button" class="lg-btn tone tone-solid" style="--tone: #0f766e" :disabled="busy" @click="ask"><span class="tone-ico"><icons name="archive-box" class="w-4 h-4" /></span>{{ dueNow ? $t('Run now') + ' (' + num(dueNow) + ' ' + $t('records') + ')' : $t('Run now') }}</button>
         </div>
       </section>
 
@@ -176,18 +176,21 @@
       <tec-dialog-modal :show="pw.open" max-width="lg" @close="pw.open = false">
         <template #title><span class="wl-dlg-title"><icons name="lock-closed" class="w-5 h-5" />{{ $t('Run WIMS Logs now') }}</span></template>
         <template #content>
-          <p class="wl-dlg-text">{{ $t('Choose the logs to archive now. Records older than the days set for each log are written to compressed archives, checked, and then removed from the live tables.') }}</p>
+          <p class="wl-dlg-text">{{ $t('Run it now, whatever the schedule says. Choose the logs and, for this run only, how many days each one stays live: everything older is written to a compressed archive, checked, and then removed from the live table. Your saved settings are not changed.') }}</p>
           <ul class="wl-dlg-list">
             <li v-for="l in rows" :key="l.key">
-              <label><input v-model="pw.sources" type="checkbox" :value="l.key" :disabled="!l.due_rows" /> <b>{{ l.label }}</b> <small>{{ num(l.due_rows) }} {{ $t('records') }} · ~ {{ fmt(l.due_bytes) }}</small></label>
+              <label class="wl-dlg-pick"><input v-model="pw.sources" type="checkbox" :value="l.key" /> <b>{{ l.label }}</b></label>
+              <span class="wl-dlg-days"><span class="wl-input"><input v-model.number="pw.days[l.key]" type="number" :min="keepLimits[0]" :max="keepLimits[1]" inputmode="numeric" :aria-label="$t('Days to keep live')" /><em>{{ $t('days live') }}</em></span></span>
+              <small class="wl-dlg-est" :class="{ 'is-due': est(l.key).rows > 0 }">{{ pw.loading ? '...' : num(est(l.key).rows) }} {{ $t('records') }} · ~ {{ fmt(est(l.key).bytes) }}</small>
             </li>
           </ul>
+          <p v-if="!pw.loading && pw.sources.length && !estTotal" class="wl-dlg-none"><icons name="info" class="w-4 h-4" />{{ $t('Nothing is older than that. Lower the days to move more.') }}</p>
           <input v-model="pw.password" type="password" class="wl-dlg-input" autocomplete="current-password" :placeholder="$t('Enter your password to confirm')" @keyup.enter="run" />
           <p v-if="pw.error" class="wl-err">{{ pw.error }}</p>
         </template>
         <template #footer>
           <button type="button" class="lg-btn lg-btn-soft" @click="pw.open = false">{{ $t('Cancel') }}</button>
-          <button type="button" class="lg-btn lg-btn-primary" :disabled="!pw.password || !pw.sources.length || busy" @click="run"><icons name="tick" class="w-4 h-4" />{{ $t('Confirm') }}</button>
+          <button type="button" class="lg-btn lg-btn-primary" :disabled="!pw.password || !pw.sources.length || !estTotal || pw.loading || busy" @click="run"><icons name="tick" class="w-4 h-4" />{{ $t('Confirm') }}<template v-if="estTotal"> ({{ num(estTotal) }})</template></button>
         </template>
       </tec-dialog-modal>
     </div>
@@ -213,7 +216,7 @@ export default {
       saving: false,
       busy: false,
       errors: '',
-      pw: { open: false, password: '', error: '', sources: [] },
+      pw: { open: false, password: '', error: '', sources: [], days: {}, estimates: {}, loading: false },
       ov: { open: false, steps: [], finished: false, failed: false, error: '', rows: 0, saved: '', freed: '' },
     };
   },
@@ -226,6 +229,7 @@ export default {
       get() { return !!this.cfg.general.wimslogs_optimize; },
       set(v) { this.cfg.general.wimslogs_optimize = v ? 1 : 0; },
     },
+    estTotal() { return this.pw.sources.reduce((a, k) => a + (this.est(k).rows || 0), 0); },
     dueNow() { return this.rows.filter(l => this.cfg.sources[l.key].on).reduce((a, l) => a + l.due_rows, 0); },
     trendMax() { return Math.max(1, ...this.trend.map(t => t.original)); },
     ovPercent() {
@@ -243,7 +247,23 @@ export default {
       ];
     },
   },
+  watch: {
+    // the number of live days typed in the window: what that would move is asked again a moment after the last key
+    'pw.days': { deep: true, handler() { if (this.pw.open) { clearTimeout(this._estT); this.pw.loading = true; this._estT = setTimeout(this.estimate, 450); } } },
+  },
   methods: {
+    est(key) { return this.pw.estimates[key] || { rows: 0, bytes: 0 }; },
+    estimate() {
+      const days = {};
+      this.rows.forEach(l => { const d = Number(this.pw.days[l.key]); if (d >= this.keepLimits[0]) days[l.key] = d; });
+      window.axios.get(this.route('wims-logs.preview'), { params: { days }, headers: { 'X-Quiet': '1' } })
+        .then(r => {
+          const e = {};
+          r.data.logs.forEach(l => { e[l.key] = { rows: l.due_rows, bytes: l.due_bytes }; });
+          this.pw.estimates = e;
+        })
+        .finally(() => { this.pw.loading = false; });
+    },
     fmt(b) {
       b = Number(b || 0);
       const neg = b < 0; b = Math.abs(b);
@@ -273,16 +293,23 @@ export default {
       });
     },
     ask() {
-      this.pw = { open: true, password: '', error: '', sources: this.rows.filter(l => this.cfg.sources[l.key].on && l.due_rows > 0).map(l => l.key) };
+      const days = {};
+      const estimates = {};
+      this.rows.forEach(l => { days[l.key] = this.cfg.sources[l.key].keep_days; estimates[l.key] = { rows: l.due_rows, bytes: l.due_bytes }; });
+      this.pw = { open: true, password: '', error: '', sources: this.rows.filter(l => this.cfg.sources[l.key].on && l.due_rows > 0).map(l => l.key), days, estimates, loading: false };
+      // the numbers shown are for the saved days; if nothing is due that way, every log is ticked so the days can simply be lowered
+      if (!this.pw.sources.length) this.pw.sources = this.rows.map(l => l.key);
     },
     // starts the run (the password is checked there), then asks for each log in turn so the window can show what is happening; a log that reached its time limit is asked again
     async run() {
-      if (!this.pw.password || !this.pw.sources.length || this.busy) return;
+      if (!this.pw.password || !this.pw.sources.length || !this.estTotal || this.busy) return;
       this.busy = true;
       this.pw.error = '';
       let started;
       try {
-        started = (await window.axios.post(this.route('wims-logs.run'), { sources: this.pw.sources, password: this.pw.password }, { headers: { 'X-Quiet': '1' } })).data;
+        const keep = {};
+        this.pw.sources.forEach(k => { keep[k] = Number(this.pw.days[k]); });
+        started = (await window.axios.post(this.route('wims-logs.run'), { sources: this.pw.sources, keep_days: keep, password: this.pw.password }, { headers: { 'X-Quiet': '1' } })).data;
       } catch (e) {
         const er = e.response && e.response.data && e.response.data.errors;
         this.pw.error = (er && (er.password || er.sources) && (er.password || er.sources)[0]) || this.$t('Could not do that.');
@@ -373,7 +400,9 @@ html.dark .wl-input input { background: rgba(255, 255, 255, 0.06); border-color:
 .wl-ov-spin { width: 1rem; height: 1rem; border-radius: 50%; border: 2.5px solid rgba(20, 184, 166, 0.3); border-top-color: #0f766e; animation: wl-rot 0.8s linear infinite; } .wl-ov-idle { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: #cbd5e1; }
 .wl-ov-result { margin: 0.9rem 0 0; font-size: 0.88rem; } .wl-ov-warn { display: flex; gap: 0.45rem; margin: 0.9rem 0 0; font-size: 0.76rem; color: #64748b; }
 .wl-dlg-title { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 800; } .wl-dlg-text { font-size: 0.86rem; color: #475569; margin: 0 0 0.7rem; line-height: 1.45; }
-.wl-dlg-list { list-style: none; margin: 0 0 0.8rem; padding: 0; display: grid; gap: 0.35rem; } .wl-dlg-list label { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; cursor: pointer; } .wl-dlg-list small { color: #64748b; }
+.wl-dlg-list { list-style: none; margin: 0 0 0.8rem; padding: 0; display: grid; gap: 0.4rem; } .wl-dlg-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.15rem 0.8rem; align-items: center; padding: 0.45rem 0.6rem; border-radius: 0.8rem; background: rgba(148, 163, 184, 0.1); }
+.wl-dlg-pick { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; min-width: 0; } .wl-dlg-est { grid-column: 1 / -1; color: #64748b; font-size: 0.74rem; font-weight: 600; } .wl-dlg-est.is-due { color: #b45309; }
+.wl-dlg-none { display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.7rem; font-size: 0.78rem; color: #92400e; font-weight: 600; }
 .wl-dlg-input { width: 100%; border-radius: 0.65rem; border: 1.5px solid #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.9rem; }
 @media (prefers-reduced-motion: reduce) { .wl-seg, .wl-ov-bar i, .wl-spin, .wl-ov-spin { transition: none; animation: none; } }
 </style>

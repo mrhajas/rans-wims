@@ -57,9 +57,9 @@ class WimsLogsController extends Controller
     }
 
     /** The logs, one line each: what is live, what is waiting to move, and what has already been archived (records, sizes, dates). */
-    private function logs(): array
+    private function logs(array $keepOverride = []): array
     {
-        $preview = collect(Archiver::preview())->keyBy('key');
+        $preview = collect(Archiver::preview($keepOverride))->keyBy('key');
         $agg = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(compressed_bytes) as compressed, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to, max(created_at) as last_at')
             ->groupBy('source')->get()->keyBy('source');
         $out = [];
@@ -116,8 +116,10 @@ class WimsLogsController extends Controller
     public function preview(Request $request)
     {
         $this->allow($request, 'read-wims-logs');
+        // `days[source]=n`: what a run by hand would move if that log kept only n days live (the saved setting is not changed)
+        $days = collect((array) $request->query('days', []))->filter(fn ($v, $k) => Sources::get((string) $k) && is_numeric($v))->map(fn ($v) => (int) $v)->all();
 
-        return response()->json(['logs' => $this->logs(), 'overview' => $this->overview()]);
+        return response()->json(['logs' => $this->logs($days), 'overview' => $this->overview()]);
     }
 
     public function updateSettings(Request $request)
@@ -143,12 +145,15 @@ class WimsLogsController extends Controller
     public function run(Request $request)
     {
         $this->allow($request, 'run-wims-logs');
-        $data = $request->validate(['sources' => 'required|array|min:1', 'sources.*' => 'string|in:' . implode(',', Sources::keys()), 'password' => 'required|string']);
+        $data = $request->validate([
+            'sources' => 'required|array|min:1', 'sources.*' => 'string|in:' . implode(',', Sources::keys()), 'password' => 'required|string',
+            'keep_days' => 'nullable|array', 'keep_days.*' => 'integer|min:' . WimsLogSettings::KEEP_MIN . '|max:' . WimsLogSettings::KEEP_MAX,
+        ]);
         if (! Hash::check($data['password'], $request->user()->password)) {
             throw ValidationException::withMessages(['password' => __('The provided password is incorrect.')]);
         }
         try {
-            $run = Archiver::begin('manual', $request->user(), $data['sources']);
+            $run = Archiver::begin('manual', $request->user(), $data['sources'], array_intersect_key((array) ($data['keep_days'] ?? []), array_flip($data['sources'])));
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages(['sources' => $e->getMessage()]);
         }
