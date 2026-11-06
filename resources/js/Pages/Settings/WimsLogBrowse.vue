@@ -39,7 +39,7 @@
 
         <!-- find: by words, and by person -->
         <div class="wlb-filters">
-          <form class="wlb-search" @submit.prevent="visit({ page: 1, q: term.trim() })"><icons :name="busy ? 'refresh' : 'search'" class="w-4 h-4" :class="{ 'wlb-spin': busy }" /><input v-model="term" type="search" :placeholder="$t('Search the id, the date or the description')" @input="liveSearch" /></form>
+          <form class="wlb-search" @submit.prevent="visit({ page: 1, q: term.trim() })"><icons :name="busy ? 'refresh' : 'search'" class="w-4 h-4" :class="{ 'wlb-spin': busy }" /><input v-model="term" type="search" :placeholder="$t('Search the id, the date or the description')" @input="liveSearch" /><button v-if="term" type="button" class="wlb-x" :aria-label="$t('Clear the search')" @click="clearTerm"><icons name="cross" class="w-3.5 h-3.5" /></button></form>
           <div v-if="users.length" class="wlb-user">
             <label>{{ $t('Person') }}</label>
             <css-select v-model="userSel" class="wlb-user-sel" @change="visit({ page: 1, user: userSel })">
@@ -47,7 +47,7 @@
               <option v-for="u in users" :key="u.id" :value="String(u.id)">{{ u.name }} ({{ num(u.n) }})</option>
             </css-select>
           </div>
-          <button v-if="q || userSel !== ''" type="button" class="lg-btn lg-btn-soft wlb-sm" @click="clearFilters"><icons name="cross" class="w-3.5 h-3.5" />{{ $t('Clear') }}</button>
+          <button v-if="q || userSel !== ''" type="button" class="lg-btn tone wlb-clear" style="--tone: #e11d48" @click="clearFilters"><span class="tone-ico"><icons name="cross" class="w-3.5 h-3.5" /></span>{{ $t('Clear filters') }}</button>
         </div>
         <div class="wlb-bar" :class="{ on: busy }" aria-hidden="true"><i></i></div>
 
@@ -134,6 +134,7 @@ export default {
       const params = { source: change.source || this.source, page: change.page || 1, q, user: user === '' || user === undefined || user === null ? undefined : user };
       this.$inertia.get(this.route('wims-logs.browse'), params, { preserveScroll: !switching, preserveState: true, replace: true, headers: { 'X-Quiet': '1' }, onStart: () => { this.busy = true; }, onFinish: () => { this.busy = false; } });
     },
+    clearTerm() { this.term = ''; this.visit({ page: 1, q: '' }); },
     clearFilters() { this.term = ''; this.userSel = ''; this.visit({ page: 1, q: '', user: '' }); },
     // the list follows the typing: one request when it pauses
     liveSearch: debounce(function () { this.visit({ page: 1, q: this.term.trim() }); }, 250),
@@ -190,9 +191,6 @@ export default {
 .wlb-tab.is-empty:not(.is-on) { opacity: 0.7; }
 .wlb-tab:focus-visible { outline: 3px solid color-mix(in srgb, var(--tone) 50%, transparent); outline-offset: 2px; }
 .wlb-head-ico { color: #fff !important; background: linear-gradient(135deg, var(--tone), var(--tone2)) !important; }
-.wlb-filters { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; margin: 0.2rem 0 1rem; }
-.wlb-search { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 18rem; min-width: 0; padding: 0 0.9rem; border-radius: 0.9rem; border: 1.5px solid #e2e8f0; background: transparent; transition: border-color 0.2s ease, box-shadow 0.2s ease; } .wlb-search:focus-within { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16); } .wlb-search input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0.7rem 0; font-size: 0.86rem; outline: none; box-shadow: none; } html.dark .wlb-search { border-color: rgba(255, 255, 255, 0.14); } html.dark .wlb-search input { color: #f1f5f9; }
-.wlb-user { display: grid; gap: 0.25rem; flex: 0 1 18rem; min-width: 12rem; } .wlb-user label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; } .wlb-user-sel { width: 100%; }
 .wlb-sm { padding: 0.35rem 0.8rem !important; font-size: 0.76rem !important; }
 .wlb-empty-box { display: grid; justify-items: center; gap: 0.45rem; padding: 2.2rem 1rem; text-align: center; } .wlb-empty-box small { color: #64748b; max-width: 26rem; }
 .wlb-empty-ico { width: 3.4rem; height: 3.4rem; display: grid; place-items: center; border-radius: 1.1rem; color: #fff; background: linear-gradient(135deg, var(--tone), var(--tone2)); box-shadow: 0 10px 22px -10px var(--tone); }
@@ -203,4 +201,21 @@ export default {
 .wlb-spin { animation: wlb-rot 0.8s linear infinite; } @keyframes wlb-rot { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .wlb-tabs { grid-template-columns: 1fr 1fr; gap: 0.6rem; } .wlb-tab { padding: 0.7rem; gap: 0.55rem; } .wlb-tab-ico { width: 2.2rem; height: 2.2rem; } .wlb-user { flex: 1 1 100%; } }
 @media (prefers-reduced-motion: reduce) { .wlb-tab, .wlb-tab-ico { transition: none; } .wlb-tab:hover, .wlb-tab:hover .wlb-tab-ico { transform: none; } .wlb-bar i, .wlb-spin { animation: none; } }
+
+/* ---- the search, the person dropdown and the buttons: one height, one look ---- */
+.wlb-filters { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; margin: 0.2rem 0 1.1rem; }
+.wlb-search { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 20rem; min-width: 0; height: 2.9rem; padding: 0 0.5rem 0 1rem; border-radius: 1rem; border: 1.5px solid #e2e8f0; background: var(--lg-card, #fff); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.wlb-search:hover { border-color: #c7d2fe; } .wlb-search:focus-within { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14); } .wlb-search > svg { flex: none; color: #6366f1; }
+.wlb-search input { flex: 1; min-width: 0; height: 100%; padding: 0 !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; font-size: 0.9rem; font-weight: 600; -webkit-appearance: none; appearance: none; color: inherit; }
+.wlb-search input::-webkit-search-cancel-button, .wlb-search input::-webkit-search-decoration { display: none; -webkit-appearance: none; } .wlb-search input::placeholder { font-weight: 500; color: #94a3b8; }
+.wlb-x { flex: none; width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #64748b; background: rgba(148, 163, 184, 0.16); transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease; } .wlb-x:hover { color: #fff; background: #e11d48; transform: rotate(90deg) scale(1.08); }
+html.dark .wlb-search { border-color: rgba(255, 255, 255, 0.14); }
+.wlb-user { display: grid; gap: 0.3rem; flex: 0 1 17rem; min-width: 12rem; } .wlb-user label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; } .wlb-user-sel { width: 100%; }
+.wlb-user :deep(.cs-btn) { min-height: 2.9rem; width: 100%; padding: 0 0.9rem; border-radius: 1rem; border: 1.5px solid #e2e8f0; background: var(--lg-card, #fff); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); font-size: 0.9rem; font-weight: 700; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.wlb-user :deep(.cs-btn:hover) { border-color: #c7d2fe; } .wlb-user :deep(.cs-btn.is-open), .wlb-user :deep(.cs-btn:focus-visible) { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14); outline: none; }
+.wlb-user :deep(.cs-btn.is-empty .cs-txt) { color: inherit; opacity: 1; } .wlb-user :deep(.cs-caret) { color: #6366f1; }
+html.dark .wlb-user :deep(.cs-btn) { border-color: rgba(255, 255, 255, 0.14); }
+.wlb-clear { height: 2.9rem; padding-right: 1rem !important; border-radius: 1rem !important; font-weight: 800; transition: transform 0.2s ease, box-shadow 0.2s ease; } .wlb-clear:hover { transform: translateY(-2px); }
+@media (max-width: 640px) { .wlb-user { flex: 1 1 100%; } .wlb-clear { flex: 1 1 100%; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .wlb-x, .wlb-clear, .wlb-search { transition: none; } }
 </style>

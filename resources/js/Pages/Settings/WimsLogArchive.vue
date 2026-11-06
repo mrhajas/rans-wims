@@ -39,7 +39,7 @@
         </header>
 
         <div class="wla-filters">
-          <form class="wla-search" @submit.prevent="visit(1, term.trim())"><icons :name="busy ? 'refresh' : 'search'" class="w-4 h-4" :class="{ 'wla-spin': busy }" /><input v-model="term" type="search" :placeholder="$t('Search the id, the date or the description')" @input="liveSearch" /></form>
+          <form class="wla-search" @submit.prevent="visit(1, term.trim())"><icons :name="busy ? 'refresh' : 'search'" class="w-4 h-4" :class="{ 'wla-spin': busy }" /><input v-model="term" type="search" :placeholder="$t('Search the id, the date or the description')" @input="liveSearch" /><button v-if="term" type="button" class="wla-x" :aria-label="$t('Clear the search')" @click="clearTerm"><icons name="cross" class="w-3.5 h-3.5" /></button></form>
           <div v-if="users.length" class="wla-user">
             <label>{{ $t('Person') }}</label>
             <css-select v-model="userSel" class="wla-user-sel" @change="visit(1, term.trim())">
@@ -47,7 +47,7 @@
               <option v-for="u in users" :key="u.id" :value="String(u.id)">{{ u.name }} ({{ num(u.n) }})</option>
             </css-select>
           </div>
-          <button v-if="q || userSel !== ''" type="button" class="lg-btn lg-btn-soft wla-sm" @click="clearFilters"><icons name="cross" class="w-3.5 h-3.5" />{{ $t('Clear') }}</button>
+          <button v-if="q || userSel !== ''" type="button" class="lg-btn tone wla-clear" style="--tone: #e11d48" @click="clearFilters"><span class="tone-ico"><icons name="cross" class="w-3.5 h-3.5" /></span>{{ $t('Clear filters') }}</button>
         </div>
         <div class="wla-bar" :class="{ on: busy }" aria-hidden="true"><i></i></div>
 
@@ -118,6 +118,7 @@ export default {
       const params = { page, q: q || undefined, user: this.userSel === '' ? undefined : this.userSel };
       this.$inertia.get(this.route('wims-logs.archives.show', this.archive.id), params, { preserveScroll: false, preserveState: true, replace: true, headers: { 'X-Quiet': '1' }, onStart: () => { this.busy = true; }, onFinish: () => { this.busy = false; } });
     },
+    clearTerm() { this.term = ''; this.visit(1, ''); },
     clearFilters() { this.term = ''; this.userSel = ''; this.visit(1, ''); },
     go(p) { this.visit(p, this.q); },
     liveSearch: debounce(function () { this.visit(1, this.term.trim()); }, 250),
@@ -160,9 +161,6 @@ export default {
 .wla-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.8rem; margin: 0; } .wla-facts > div { padding: 0.75rem 0.95rem; border-radius: 1rem; background: rgba(148, 163, 184, 0.1); min-width: 0; } .wla-wide { grid-column: 1 / -1; }
 .wla-facts dt { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: #64748b; } .wla-facts dd { margin: 0.2rem 0 0; font-weight: 800; font-size: 0.95rem; overflow-wrap: anywhere; } .wla-facts code { font-size: 0.72rem; font-weight: 600; }
 .wla-chip { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 800; } .wla-chip.is-ok { background: #d1fae5; color: #065f46; } .wla-chip.is-bad { background: #fee2e2; color: #991b1b; }
-.wla-filters { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; margin: 0.2rem 0 1rem; }
-.wla-search { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 18rem; min-width: 0; padding: 0 0.9rem; border-radius: 0.9rem; border: 1.5px solid #e2e8f0; background: transparent; transition: border-color 0.2s ease, box-shadow 0.2s ease; } .wla-search:focus-within { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16); } .wla-search input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0.7rem 0; font-size: 0.86rem; outline: none; box-shadow: none; } html.dark .wla-search { border-color: rgba(255, 255, 255, 0.14); } html.dark .wla-search input { color: #f1f5f9; }
-.wla-user { display: grid; gap: 0.25rem; flex: 0 1 18rem; min-width: 12rem; } .wla-user label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; } .wla-user-sel { width: 100%; }
 .wla-sm { padding: 0.35rem 0.8rem !important; font-size: 0.76rem !important; }
 .wla-empty { padding: 1.4rem 0.4rem; color: #64748b; font-weight: 600; }
 .wla-pager { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin-top: 1rem; font-size: 0.8rem; }
@@ -172,4 +170,21 @@ export default {
 .wla-spin { animation: wla-rot 0.8s linear infinite; } @keyframes wla-rot { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .wla-user { flex: 1 1 100%; } }
 @media (prefers-reduced-motion: reduce) { .wla-bar i, .wla-spin { animation: none; } }
+
+/* ---- the search, the person dropdown and the buttons: one height, one look ---- */
+.wla-filters { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; margin: 0.2rem 0 1.1rem; }
+.wla-search { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 20rem; min-width: 0; height: 2.9rem; padding: 0 0.5rem 0 1rem; border-radius: 1rem; border: 1.5px solid #e2e8f0; background: var(--lg-card, #fff); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.wla-search:hover { border-color: #c7d2fe; } .wla-search:focus-within { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14); } .wla-search > svg { flex: none; color: #6366f1; }
+.wla-search input { flex: 1; min-width: 0; height: 100%; padding: 0 !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; font-size: 0.9rem; font-weight: 600; -webkit-appearance: none; appearance: none; color: inherit; }
+.wla-search input::-webkit-search-cancel-button, .wla-search input::-webkit-search-decoration { display: none; -webkit-appearance: none; } .wla-search input::placeholder { font-weight: 500; color: #94a3b8; }
+.wla-x { flex: none; width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #64748b; background: rgba(148, 163, 184, 0.16); transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease; } .wla-x:hover { color: #fff; background: #e11d48; transform: rotate(90deg) scale(1.08); }
+html.dark .wla-search { border-color: rgba(255, 255, 255, 0.14); }
+.wla-user { display: grid; gap: 0.3rem; flex: 0 1 17rem; min-width: 12rem; } .wla-user label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; } .wla-user-sel { width: 100%; }
+.wla-user :deep(.cs-btn) { min-height: 2.9rem; width: 100%; padding: 0 0.9rem; border-radius: 1rem; border: 1.5px solid #e2e8f0; background: var(--lg-card, #fff); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); font-size: 0.9rem; font-weight: 700; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.wla-user :deep(.cs-btn:hover) { border-color: #c7d2fe; } .wla-user :deep(.cs-btn.is-open), .wla-user :deep(.cs-btn:focus-visible) { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14); outline: none; }
+.wla-user :deep(.cs-btn.is-empty .cs-txt) { color: inherit; opacity: 1; } .wla-user :deep(.cs-caret) { color: #6366f1; }
+html.dark .wla-user :deep(.cs-btn) { border-color: rgba(255, 255, 255, 0.14); }
+.wla-clear { height: 2.9rem; padding-right: 1rem !important; border-radius: 1rem !important; font-weight: 800; transition: transform 0.2s ease, box-shadow 0.2s ease; } .wla-clear:hover { transform: translateY(-2px); }
+@media (max-width: 640px) { .wla-user { flex: 1 1 100%; } .wla-clear { flex: 1 1 100%; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .wla-x, .wla-clear, .wla-search { transition: none; } }
 </style>
