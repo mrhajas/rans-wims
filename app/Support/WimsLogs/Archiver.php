@@ -99,17 +99,35 @@ class Archiver
         }
         $in = implode(',', array_fill(0, count($tables), '?'));
         try {
-            $rows = DB::select("select table_name as name, table_rows as rows_n, data_length, index_length, data_free, avg_row_length from information_schema.tables where table_schema = database() and table_name in ($in)", $tables);
+            // every column is given a lowercase name of our own: MySQL 8 returns an unaliased information_schema column in CAPITALS (DATA_LENGTH), MariaDB as written
+            $rows = DB::select("select table_name as name, table_rows as rows_n, data_length as data_len, index_length as index_len, data_free as free_len, avg_row_length as avg_len from information_schema.tables where table_schema = database() and table_name in ($in)", $tables);
         } catch (\Throwable $e) {
             return [];
         }
+
+        return self::readSizes($rows);
+    }
+
+    /**
+     * Turns the rows of the size query into figures per table. The keys are read in lowercase whatever case the database used, so it works on MySQL 8 and MariaDB alike.
+     *
+     * @param  array<int, object|array>  $rows
+     * @return array<string, array{rows:int, bytes:int, avg_row:float, free:int}>
+     */
+    public static function readSizes(array $rows): array
+    {
         $out = [];
         foreach ($rows as $r) {
-            $out[$r->name] = ['rows' => (int) $r->rows_n, 'bytes' => (int) $r->data_length + (int) $r->index_length, 'free' => (int) $r->data_free, 'avg_row' => (float) $r->avg_row_length];
+            $r = array_change_key_case((array) $r, CASE_LOWER);
+            $out[(string) ($r['name'] ?? $r['table_name'] ?? '')] = [
+                'rows' => (int) ($r['rows_n'] ?? $r['table_rows'] ?? 0), 'bytes' => (int) ($r['data_len'] ?? $r['data_length'] ?? 0) + (int) ($r['index_len'] ?? $r['index_length'] ?? 0),
+                'free' => (int) ($r['free_len'] ?? $r['data_free'] ?? 0), 'avg_row' => (float) ($r['avg_len'] ?? $r['avg_row_length'] ?? 0),
+            ];
         }
 
         return $out;
     }
+
 
     /** @param  array<int, string>|null  $sources the logs to look at (null: every log that is switched on) */
     public static function begin(string $trigger, ?User $by, ?array $sources = null, array $keepOverride = []): WimsLogRun

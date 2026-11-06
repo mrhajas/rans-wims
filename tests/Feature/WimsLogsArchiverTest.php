@@ -310,4 +310,17 @@ class WimsLogsArchiverTest extends TestCase
         $this->assertSame(2, $all['previously']);
         $this->assertSame(6, DB::table('slow_logs')->count());
     }
+
+    public function test_table_sizes_are_read_whatever_case_the_database_uses_for_its_column_names(): void
+    {
+        // MySQL 8 returns an unaliased information_schema column in capitals (DATA_LENGTH); MariaDB as written: both must give the same figures
+        $mysql8 = [(object) ['name' => 'weather_snapshots', 'rows_n' => '1405', 'DATA_LEN' => '17301504', 'INDEX_LEN' => '229376', 'FREE_LEN' => '4194304', 'AVG_LEN' => '12315']];
+        $maria = [(object) ['name' => 'weather_snapshots', 'rows_n' => 1405, 'data_len' => 17301504, 'index_len' => 229376, 'free_len' => 4194304, 'avg_len' => 12315]];
+        $old = [(object) ['TABLE_NAME' => 'weather_snapshots', 'TABLE_ROWS' => 1405, 'DATA_LENGTH' => 17301504, 'INDEX_LENGTH' => 229376, 'DATA_FREE' => 4194304, 'AVG_ROW_LENGTH' => 12315]];
+
+        $expected = ['weather_snapshots' => ['rows' => 1405, 'bytes' => 17530880, 'free' => 4194304, 'avg_row' => 12315.0]];
+        $this->assertSame($expected, Archiver::readSizes($mysql8));
+        $this->assertSame($expected, Archiver::readSizes($maria));
+        $this->assertSame($expected, Archiver::readSizes($old));
+    }
 }
