@@ -23,13 +23,59 @@ class FeatureManager
         return (bool) (self::enabledMap()[$key] ?? true);
     }
 
+    /**
+     * Whether a person may use a function right now. A switched-off function is off for EVERYONE, Super Admins included (their menu
+     * still lists it, marked disabled, and opening it shows the "module deactivated" notice). The $user argument is kept so callers
+     * need no change.
+     */
     public static function canAccess(string $key, ?User $user = null): bool
     {
-        if ($user && $user->hasRole('Super Admin')) {
-            return true;
+        return self::isEnabled($key);
+    }
+
+    /** Route names that must stay reachable whatever is switched off: the Feature Control page itself and the notice page. */
+    public static function alwaysReachable(?string $routeName): bool
+    {
+        return $routeName !== null && (Str::startsWith($routeName, 'system-features.') || $routeName === 'feature-unavailable');
+    }
+
+    /** Every function below $key (its sub-functions, their sub-functions...), by depends_on. */
+    public static function descendantsOf(string $key): array
+    {
+        $rows = SystemFeature::query()->whereNotNull('depends_on')->pluck('depends_on', 'key')->all();
+        $out = [];
+        $queue = [$key];
+        while ($queue) {
+            $current = array_shift($queue);
+            foreach ($rows as $child => $parent) {
+                if ($parent === $current && ! in_array($child, $out, true) && $child !== $key) {
+                    $out[] = $child;
+                    $queue[] = $child;
+                }
+            }
         }
 
-        return self::isEnabled($key);
+        return $out;
+    }
+
+    /** The nearest switched-off function on the way up from $key (itself first), or null when nothing above it is off. */
+    public static function blockingAncestor(string $key): ?SystemFeature
+    {
+        $seen = [];
+        $cursor = $key;
+        while ($cursor && ! isset($seen[$cursor])) {
+            $seen[$cursor] = true;
+            $row = SystemFeature::query()->where('key', $cursor)->first(['id', 'key', 'name', 'is_enabled', 'depends_on']);
+            if (! $row) {
+                return null;
+            }
+            if (! $row->is_enabled) {
+                return $row;
+            }
+            $cursor = $row->depends_on;
+        }
+
+        return null;
     }
 
     /**

@@ -9,9 +9,12 @@ use Illuminate\Http\Request;
 /**
  * Global Feature Control enforcement. Registered once (alias
  * `feature.gate`) on the main authenticated route group — no per-route
- * wiring needed. Super Admins always pass. Everyone else is blocked from
- * any route belonging to a currently-disabled feature, server-side,
- * regardless of what the frontend chooses to show.
+ * wiring needed. A route belonging to a currently-disabled function is
+ * blocked for EVERYONE, Super Admins included, server-side, regardless of
+ * what the frontend chooses to show. Only Feature Control itself (so it can
+ * always be switched back on) and the notice page stay reachable. A Super
+ * Admin is sent to the same notice page, which tells them the module has
+ * been deactivated and offers to switch it back on.
  */
 class FeatureGate
 {
@@ -19,11 +22,13 @@ class FeatureGate
     {
         $user = $request->user();
 
-        if (! $user || $user->hasRole('Super Admin')) {
+        $routeName = $request->route()?->getName();
+
+        if (! $user || FeatureManager::alwaysReachable($routeName)) {
             return $next($request);
         }
 
-        $featureKey = FeatureManager::featureForRoute($request->route()?->getName());
+        $featureKey = FeatureManager::featureForRoute($routeName);
 
         if (! $featureKey || FeatureManager::isEnabled($featureKey)) {
             return $next($request);
@@ -40,6 +45,9 @@ class FeatureGate
         // to a real route instead of rendering the error page in place.
         // Inertia follows the redirect natively and renders the destination
         // page normally.
-        return redirect()->route('feature-unavailable', ['feature' => $featureKey]);
+        // `from` lets the notice page send a Super Admin straight back to the page they wanted once they switch it on (same-site paths only).
+        $from = $request->isMethod('GET') ? $request->getRequestUri() : null;
+
+        return redirect()->route('feature-unavailable', array_filter(['feature' => $featureKey, 'from' => $from]));
     }
 }

@@ -241,7 +241,7 @@ export default {
       return this.$page.component === 'Dashboard/Index';
     },
     readModeEnabled() {
-      return this.$page.props.enabledFeatures?.read_mode !== false || this.$super;
+      return this.$page.props.enabledFeatures?.read_mode !== false;
     },
     // Offline read mode replaces the page and the side menu with the cached-data shell.
     offlineReadMode() {

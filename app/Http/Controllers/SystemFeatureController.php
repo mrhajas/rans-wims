@@ -32,8 +32,12 @@ class SystemFeatureController extends Controller
             'id', 'key', 'name', 'description', 'module', 'icon', 'is_enabled', 'depends_on',
         ]);
 
+        $effective = FeatureManager::enabledMap();
+        $features->each(fn ($f) => $f->setAttribute('effective', (bool) ($effective[$f->key] ?? true)));
+
         return Inertia::render('Settings/FeatureControl', [
             'features' => $features,
+            'focus' => (string) $request->query('focus', ''),
             'stats' => [
                 'total' => $features->count(),
                 'active' => $features->where('is_enabled', true)->count(),
@@ -81,6 +85,47 @@ class SystemFeatureController extends Controller
             : __(':name disabled.', ['name' => $systemFeature->name]));
     }
 
+    /**
+     * Main Switch: turns a function and every sub-function under it on or off in one go (the individual switches still work one by one).
+     * Switching off needs the Super Admin's password, exactly like a single switch.
+     */
+    public function family(Request $request, SystemFeature $systemFeature)
+    {
+        abort_unless($request->user()->hasRole('Super Admin'), 403);
+
+        $data = $request->validate([
+            'enabled' => 'required|boolean',
+            'password' => 'nullable|string',
+        ]);
+
+        if (! $data['enabled'] && ! Hash::check((string) ($data['password'] ?? ''), $request->user()->password)) {
+            throw ValidationException::withMessages(['password' => __('The provided password is incorrect.')]);
+        }
+
+        $keys = array_merge([$systemFeature->key], FeatureManager::descendantsOf($systemFeature->key));
+        $changed = SystemFeature::query()->whereIn('key', $keys)->where('is_enabled', ! $data['enabled'])->pluck('name', 'key')->all();
+        SystemFeature::query()->whereIn('key', $keys)->update(['is_enabled' => $data['enabled']]);
+
+        FeatureManager::flushCache();
+
+        log_activity(
+            $data['enabled'] ? 'Feature Group Enabled' : 'Feature Group Disabled',
+            [
+                'feature' => $systemFeature->name,
+                'key' => $systemFeature->key,
+                'functions' => count($keys),
+                'changed' => array_values($changed),
+                'new' => $data['enabled'] ? 'ACTIVE' : 'DISABLED',
+            ],
+            $systemFeature,
+            'System Feature'
+        );
+
+        return back()->with('message', $data['enabled']
+            ? __(':name and its :n sub-functions enabled.', ['name' => $systemFeature->name, 'n' => count($keys) - 1])
+            : __(':name and its :n sub-functions disabled.', ['name' => $systemFeature->name, 'n' => count($keys) - 1]));
+    }
+
     /** What is out of step between the code registry, Feature Control, the menu / Launcher and the permission registry. Read only. */
     public function reconcile(Request $request, FeatureReconciler $reconciler)
     {
@@ -99,18 +144,37 @@ class SystemFeatureController extends Controller
     }
 
     /**
-     * Landing page a blocked non-Super-Admin is redirected to by the
-     * FeatureGate middleware (see app/Http/Middleware/FeatureGate.php) —
-     * Inertia doesn't swap pages for non-2xx XHR responses, so the
-     * middleware redirects here instead of rendering in place.
+     * Landing page a blocked person is redirected to by the FeatureGate middleware (see app/Http/Middleware/FeatureGate.php) -
+     * Inertia doesn't swap pages for non-2xx XHR responses, so the middleware redirects here instead of rendering in place.
+     * A Super Admin gets the "module deactivated" notice with a way to switch it back on; everyone else the plain message.
      */
     public function unavailable(Request $request)
     {
         $feature = SystemFeature::where('key', $request->get('feature'))->first();
+        $isSuper = $request->user() && $request->user()->hasRole('Super Admin');
 
-        return Inertia::render('Errors/FeatureUnavailable', [
+        $props = [
             'featureName' => $feature->name ?? null,
             'message' => __('This WIMS function is currently disabled by the system administrator.'),
-        ]);
+            'isSuper' => (bool) $isSuper,
+        ];
+
+        if ($isSuper && $feature) {
+            $blocker = FeatureManager::blockingAncestor($feature->key);
+            $from = (string) $request->query('from', '');
+            $props += [
+                'module' => $feature->module,
+                'featureKey' => $feature->key,
+                'featureId' => $feature->id,
+                'ownSwitchOff' => ! $feature->is_enabled,
+                // set when a function above this one is what holds it off (this one's own switch may be on)
+                'heldBy' => $blocker && $blocker->key !== $feature->key ? ['key' => $blocker->key, 'name' => $blocker->name, 'id' => $blocker->id] : null,
+                'subCount' => count(FeatureManager::descendantsOf($feature->key)),
+                // only a same-site path may be used as the way back
+                'from' => preg_match('#^/(?!/)#', $from) ? $from : null,
+            ];
+        }
+
+        return Inertia::render('Errors/FeatureUnavailable', $props);
     }
 }

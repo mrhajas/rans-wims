@@ -36,7 +36,7 @@ export default {
   },
   methods: {
     featureOn(k) {
-      return this.$page.props.enabledFeatures?.[k] !== false || this.$super;
+      return this.$page.props.enabledFeatures?.[k] !== false;
     },
   },
 };

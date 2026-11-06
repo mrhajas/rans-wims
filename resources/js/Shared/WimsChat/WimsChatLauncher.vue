@@ -36,7 +36,7 @@ export default {
   computed: {
     allowed() {
       const p = this.$page.props;
-      return !!(p.auth && p.auth.user) && this.$can('view-wimschat') && (p.enabledFeatures?.wimschat !== false || this.$super);
+      return !!(p.auth && p.auth.user) && this.$can('view-wimschat') && p.enabledFeatures?.wimschat !== false;
     },
     onModulePage() {
       return String(this.$page.component || '').startsWith('WimsChat/Index');

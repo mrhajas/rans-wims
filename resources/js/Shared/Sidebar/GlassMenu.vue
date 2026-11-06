@@ -120,7 +120,7 @@ export default {
 
       return parts.length > 2 ? '' : formatShortcut(s).replace('⌘/Win', '⌘').replace(/ \+ /g, '');
     },
-    darkAllowed() { return this.$page.props.enabledFeatures?.dark_mode !== false || this.$super; },
+    darkAllowed() { return this.$page.props.enabledFeatures?.dark_mode !== false; },
     menus() { return sortMenus(this.rawMenus, m => this.trans(m.lang)); },
     // every entry of the menu in the order of the Classic menu (a section title where the menu has one); a group carries its own items
     entries() {

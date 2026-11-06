@@ -70,8 +70,8 @@ export default {
   data() { return { open: false, over: false, quickOpen: false, pinned: false, dark: false, glassPrefs, chat }; },
   computed: {
     me() { return this.$page.props.auth?.user || {}; },
-    darkAllowed() { return this.$page.props.enabledFeatures?.dark_mode !== false || this.$super; },
-    chatAllowed() { return !!this.me.id && this.$can('view-wimschat') && (this.$page.props.enabledFeatures?.wimschat !== false || this.$super); },
+    darkAllowed() { return this.$page.props.enabledFeatures?.dark_mode !== false; },
+    chatAllowed() { return !!this.me.id && this.$can('view-wimschat') && this.$page.props.enabledFeatures?.wimschat !== false; },
     toastsOn() { return toastSettings(this.me).enabled; },
     chimeOn() { return this.me.chime_enabled !== false; },
     levelLabel() { return { soft: this.$t('Soft'), medium: this.$t('Medium'), strong: this.$t('Strong') }[glassPrefs.level]; },

@@ -550,7 +550,7 @@ export default {
     },
     // anyone who may turn items into assets (create assets + delete items, with the Assets module on) can tick items too
     canAssetConvert() {
-      const on = ((this.$page.props.enabledFeatures || {}).assets !== false) || !!this.$super;
+      const on = (this.$page.props.enabledFeatures || {}).assets !== false;
       return on && this.$connection.status !== 'offline' && this.$can('create-assets') && this.$can('delete-items') && this.$can('read-items');
     },
     canPick() {

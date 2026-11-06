@@ -444,6 +444,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
 
     Route::get('system-features', [Controllers\SystemFeatureController::class, 'index'])->name('system-features.index');
     Route::put('system-features/{systemFeature}', [Controllers\SystemFeatureController::class, 'update'])->name('system-features.update');
+    Route::put('system-features/{systemFeature}/family', [Controllers\SystemFeatureController::class, 'family'])->name('system-features.family');
     Route::get('system-features/reconcile', [Controllers\SystemFeatureController::class, 'reconcile'])->name('system-features.reconcile');
     Route::post('system-features/reconcile', [Controllers\SystemFeatureController::class, 'reconcileApply'])->name('system-features.reconcile.apply');
 

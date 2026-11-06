@@ -155,7 +155,7 @@ export default {
     // an online person other than me, when I may use WIMSChat: a click opens the chat drawer on the chat with them (a new chat if there is none yet)
     canChat(u) {
       const p = this.$page.props;
-      return u.presence === 'online' && !u.is_me && !!u.can_chat && !!(p.auth && p.auth.user) && this.$can('view-wimschat') && this.$can('start-wimschat-conversations') && (p.enabledFeatures?.wimschat !== false || this.$super);
+      return u.presence === 'online' && !u.is_me && !!u.can_chat && !!(p.auth && p.auth.user) && this.$can('view-wimschat') && this.$can('start-wimschat-conversations') && p.enabledFeatures?.wimschat !== false;
     },
     async chatWith(u) {
       if (!this.canChat(u)) return;

@@ -607,7 +607,7 @@ export default {
       return this.$page.props.enabledFeatures?.case_tracking !== false || this.$super;
     },
     darkModeFeatureEnabled() {
-      return this.$page.props.enabledFeatures?.dark_mode !== false || this.$super;
+      return this.$page.props.enabledFeatures?.dark_mode !== false;
     },
     attendanceWorkedLabel() {
       if (!this.attendanceToday || !this.attendanceToday.clock_in_at) return '';
