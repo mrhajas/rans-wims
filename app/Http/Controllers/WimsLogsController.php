@@ -219,8 +219,24 @@ class WimsLogsController extends Controller
         $per = 50;
         $page = max(1, (int) $request->query('page', 1));
         $q = trim((string) $request->query('q', ''));
-        $offset = ($page - 1) * $per;
-        $need = $per;
+        $res = $this->gather($source, $q, ($page - 1) * $per, $per);
+        $rows = $res['rows'];
+        $total = $res['total'];
+
+        return Inertia::render('Settings/WimsLogBrowse', [
+            'logs' => $logs, 'source' => $source, 'records' => $rows,
+            'total' => $total, 'page' => $page, 'per' => $per, 'pages' => max(1, (int) ceil($total / $per)), 'q' => $q,
+        ]);
+    }
+
+    /**
+     * `$limit` archived records of one log starting at `$offset` (newest archive first, in the order they were written inside an archive), only those matching `$q`, and how many match in all.
+     *
+     * @return array{rows: array<int, array<string, mixed>>, total: int}
+     */
+    private function gather(string $source, string $q, int $offset, int $limit): array
+    {
+        $need = $limit;
         $rows = [];
         $total = 0;
         foreach (WimsLogArchive::query()->where('source', $source)->orderByDesc('id')->get() as $a) {
@@ -250,10 +266,71 @@ class WimsLogsController extends Controller
             $offset = 0;
         }
 
-        return Inertia::render('Settings/WimsLogBrowse', [
-            'logs' => $logs, 'source' => $source, 'records' => $rows,
-            'total' => $total, 'page' => $page, 'per' => $per, 'pages' => max(1, (int) ceil($total / $per)), 'q' => $q,
-        ]);
+        return ['rows' => $rows, 'total' => $total];
+    }
+
+    /** The log, the search and the totals the Archived records report is made from. */
+    private function browseScope(Request $request): array
+    {
+        $source = (string) $request->query('source', '');
+        abort_unless(Sources::get($source) !== null, 404);
+        $q = trim((string) $request->query('q', ''));
+        $agg = WimsLogArchive::query()->where('source', $source)->selectRaw('count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(compressed_bytes) as compressed, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to')->first();
+
+        return ['source' => $source, 'q' => $q, 'label' => Sources::get($source)['label'], 'agg' => $agg];
+    }
+
+    public function browsePrint(Request $request)
+    {
+        $this->allow($request, 'read-wims-logs');
+
+        return view('print.document', $this->browseDocument($request, false, 'printed'));
+    }
+
+    public function browsePdf(Request $request)
+    {
+        $this->allow($request, 'read-wims-logs');
+        $scope = $this->browseScope($request);
+
+        return Pdf::loadView('print.document', $this->browseDocument($request, true, 'downloaded as PDF'))->setPaper('a4', 'landscape')->download('wims-logs-records-' . $scope['source'] . '.pdf');
+    }
+
+    /** Every record that matches, as a CSV (opens in Excel): what the page lists, without the 1,000-line limit of the printed report. */
+    public function browseCsv(Request $request): StreamedResponse
+    {
+        $this->allow($request, 'read-wims-logs');
+        $scope = $this->browseScope($request);
+        log_activity('WIMS Logs records ' . $scope['source'] . ' downloaded as CSV', ['source' => $scope['source'], 'search' => $scope['q']], $request->user(), 'Setting');
+
+        return response()->streamDownload(function () use ($scope) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['No', 'Date', 'Record', 'What it was', 'Archive', 'Size before (bytes)', 'Compressed (bytes)']);
+            $n = 0;
+            $offset = 0;
+            do {
+                $res = $this->gather($scope['source'], $scope['q'], $offset, 500);
+                foreach ($res['rows'] as $r) {
+                    fputcsv($out, [++$n, $r['at'], $r['id'], $r['summary'], $r['ref'], $r['original'], $r['compressed']]);
+                }
+                $offset += 500;
+            } while (count($res['rows']) === 500 && $n < 200000);
+            fclose($out);
+        }, 'wims-logs-records-' . $scope['source'] . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function browseDocument(Request $request, bool $isPdf, string $what): array
+    {
+        $scope = $this->browseScope($request);
+        $res = $this->gather($scope['source'], $scope['q'], 0, PrintDocuments::WIMS_LOG_RECORDS_LIMIT);
+        log_activity('WIMS Logs records ' . $scope['source'] . ' ' . $what, ['source' => $scope['source'], 'search' => $scope['q'], 'rows' => count($res['rows'])], $request->user(), 'Setting');
+        $query = array_filter(['source' => $scope['source'], 'q' => $scope['q'] ?: null]);
+
+        return [
+            'doc' => PrintDocuments::wimsLogRecords($scope['source'], $scope['label'], $scope['q'], $scope['agg'], $res['rows'], $res['total'], $request->user(), $isPdf ? __('Downloaded as PDF') : __('Printed')),
+            'isPdf' => $isPdf, 'companyName' => optional($request->user()->account)->name ?? config('app.name'),
+            'qr' => PrintQrCode::dataUri(route('wims-logs.browse', $query)), 'pdfUrl' => route('wims-logs.browse.pdf', $query),
+        ];
     }
 
     /** The records of one archive, a page at a time, searchable. */

@@ -48,6 +48,8 @@ class AjaxController extends Controller
                 $ago = max(0, min(900, (int) request()->input('ago')));
                 $payload['latest'] = $this->alertsNotificationQuery(auth()->user())
                     ->where('created_at', '>', now()->subSeconds($ago + 3))
+                    // an alert stamped later than this server's clock (a copied database, or a host whose clock is ahead) is not "new": without this it popped up on every check
+                    ->where('created_at', '<=', now()->addSeconds(5))
                     ->latest()
                     ->limit(10)
                     ->get()

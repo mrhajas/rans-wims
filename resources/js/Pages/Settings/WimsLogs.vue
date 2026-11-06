@@ -56,10 +56,10 @@
             </thead>
             <tbody>
               <tr v-for="l in rows" :key="l.key" :class="{ 'is-off': !cfg.sources[l.key].on }">
-                <td><b>{{ l.label }}</b><small class="wl-help">{{ l.help }}</small></td>
+                <td class="wl-logcell"><span class="wl-logico" :style="{ '--tone': look(l.key).tone, '--tone2': look(l.key).tone2 }"><icons :name="look(l.key).icon" class="w-5 h-5" /></span><span><b>{{ l.label }}</b><small class="wl-help">{{ l.help }}</small></span></td>
                 <td class="wl-nw">{{ num(l.live_rows) }} <small>{{ $t('records') }}</small><small>{{ fmt(l.live_bytes) }}</small></td>
-                <td class="wl-nw"><b :class="{ 'is-due': l.due_rows > 0 }">{{ num(l.due_rows) }}</b> <small>{{ $t('records') }}</small><small>~ {{ fmt(l.due_bytes) }}</small></td>
-                <td class="wl-nw"><b>{{ num(l.archived_rows) }}</b> <small>{{ $t('records') }}</small><small>{{ fmt(l.original) }} > {{ fmt(l.stored) }}</small><Link v-if="l.archived_rows" :href="route('wims-logs.browse', { source: l.key })" class="wl-read"><icons name="search" class="w-3 h-3" />{{ $t('Read them') }}</Link></td>
+                <td class="wl-nw"><span class="wl-pill" :class="l.due_rows > 0 ? 'is-due' : 'is-none'">{{ num(l.due_rows) }}</span> <small>{{ $t('records') }}</small><small>~ {{ fmt(l.due_bytes) }}</small></td>
+                <td class="wl-nw"><b>{{ num(l.archived_rows) }}</b> <small>{{ $t('records') }}</small><small>{{ fmt(l.original) }} > {{ fmt(l.stored) }}</small><i v-if="l.original" class="wl-mini" :title="$t('Size in the archive compared with the size in the database')"><u :style="{ width: Math.max(3, Math.round(l.stored / l.original * 100)) + '%', background: 'linear-gradient(90deg,' + look(l.key).tone + ',' + look(l.key).tone2 + ')' }"></u></i><Link v-if="l.archived_rows" :href="route('wims-logs.browse', { source: l.key })" class="wl-read"><icons name="search" class="w-3 h-3" />{{ $t('Read them') }}</Link></td>
                 <td class="wl-nw"><b class="is-good">{{ fmt(l.saved) }}</b><small v-if="l.saved_pct !== null">{{ l.saved_pct }}%</small></td>
                 <td class="wl-nw"><template v-if="l.date_from">{{ day(l.date_from) }} - {{ day(l.date_to) }}</template><template v-else>-</template></td>
                 <td class="wl-nw">
@@ -180,7 +180,7 @@
           <p class="wl-dlg-text">{{ $t('Run it now, whatever the schedule says. Choose the logs and, for this run only, how many days each one stays live: everything older is written to a compressed archive, checked, and then removed from the live table. Your saved settings are not changed.') }}</p>
           <ul class="wl-dlg-list">
             <li v-for="l in rows" :key="l.key">
-              <label class="wl-dlg-pick"><input v-model="pw.sources" type="checkbox" :value="l.key" /> <b>{{ l.label }}</b></label>
+              <label class="wl-dlg-pick"><input v-model="pw.sources" type="checkbox" :value="l.key" /> <span class="wl-logico is-sm" :style="{ '--tone': look(l.key).tone, '--tone2': look(l.key).tone2 }"><icons :name="look(l.key).icon" class="w-4 h-4" /></span> <b>{{ l.label }}</b></label>
               <span class="wl-dlg-days"><span class="wl-input"><input v-model.number="pw.days[l.key]" type="number" :min="keepLimits[0]" :max="keepLimits[1]" inputmode="numeric" :aria-label="$t('Days to keep live')" /><em>{{ $t('days live') }}</em></span></span>
               <small class="wl-dlg-est" :class="{ 'is-due': est(l.key).rows > 0 }">{{ pw.loading ? '...' : num(est(l.key).rows) }} {{ $t('records') }} · ~ {{ fmt(est(l.key).bytes) }}</small>
             </li>
@@ -253,6 +253,16 @@ export default {
     'pw.days': { deep: true, handler() { if (this.pw.open) { clearTimeout(this._estT); this.pw.loading = true; this._estT = setTimeout(this.estimate, 450); } } },
   },
   methods: {
+    // each log has its own colour and icon (the same as on the Archived records page)
+    look(key) {
+      return ({
+        weather: { icon: 'cloud', tone: '#0284c7', tone2: '#38bdf8' },
+        delivery: { icon: 'email', tone: '#7c3aed', tone2: '#a78bfa' },
+        downloads: { icon: 'download', tone: '#059669', tone2: '#34d399' },
+        alerts: { icon: 'bell', tone: '#d97706', tone2: '#fbbf24' },
+        slow: { icon: 'lightning-bolt', tone: '#e11d48', tone2: '#fb7185' },
+      })[key] || { icon: 'archive-box', tone: '#4f46e5', tone2: '#818cf8' };
+    },
     est(key) { return this.pw.estimates[key] || { rows: 0, bytes: 0 }; },
     estimate() {
       const days = {};
@@ -407,4 +417,10 @@ html.dark .wl-input input { background: rgba(255, 255, 255, 0.06); border-color:
 .wl-dlg-input { width: 100%; border-radius: 0.65rem; border: 1.5px solid #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.9rem; }
 @media (prefers-reduced-motion: reduce) { .wl-seg, .wl-ov-bar i, .wl-spin, .wl-ov-spin { transition: none; animation: none; } }
 .wl-read { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.2rem; font-size: 0.74rem; font-weight: 800; color: #4f46e5; } html.dark .wl-read { color: #a5b4fc; }
+
+.wl-logcell { display: flex; align-items: center; gap: 0.7rem; min-width: 14rem; } .wl-logcell > span:last-child { min-width: 0; }
+.wl-logico { flex: none; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 0.85rem; color: #fff; background: linear-gradient(135deg, var(--tone), var(--tone2)); box-shadow: 0 6px 14px -7px var(--tone); } .wl-logico.is-sm { width: 1.7rem; height: 1.7rem; border-radius: 0.55rem; box-shadow: none; }
+.wl-pill { display: inline-block; min-width: 1.8rem; text-align: center; padding: 0.05rem 0.55rem; border-radius: 999px; font-weight: 900; font-size: 0.8rem; } .wl-pill.is-due { background: #fef3c7; color: #92400e; } .wl-pill.is-none { background: rgba(148, 163, 184, 0.16); color: #64748b; } html.dark .wl-pill.is-due { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+.wl-mini { display: block; height: 0.32rem; margin-top: 0.3rem; border-radius: 999px; background: rgba(148, 163, 184, 0.22); overflow: hidden; } .wl-mini u { display: block; height: 100%; border-radius: 999px; }
+.wl-dlg-pick { gap: 0.45rem; }
 </style>

@@ -438,6 +438,54 @@ class PrintDocuments
         ]);
     }
 
+    /** How many records one printed or PDF report lists; the CSV has them all. */
+    public const WIMS_LOG_RECORDS_LIMIT = 1000;
+
+    /** The archived records of one log (as the page lists them, with the search applied) as a WIMS document. */
+    public static function wimsLogRecords(string $source, string $label, string $q, $agg, array $records, int $total, ?\App\Models\User $by = null, string $action = 'Printed'): array
+    {
+        $by_ = fn ($v) => \App\Support\Optimizer\Runner::bytes((int) $v);
+        $d = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : '-';
+        $rows = [];
+        foreach ($records as $r) {
+            $rows[] = [['v' => $r['at'] ? \Illuminate\Support\Carbon::parse($r['at'])->format('d/m/Y H:i') : '-', 'a' => 'l', 'nw' => true], ['v' => (string) $r['id'], 'a' => 'l', 'nw' => true],
+                ['v' => (string) $r['summary'], 'a' => 'l'], ['v' => $r['ref'], 'a' => 'l', 'nw' => true], ['v' => $by_($r['original']), 'a' => 'r', 'nw' => true], ['v' => $by_($r['compressed']), 'a' => 'r', 'nw' => true]];
+        }
+        $shown = count($records);
+        $all = (int) ($agg->rows_n ?? 0);
+        $original = (int) ($agg->original ?? 0);
+        $stored = (int) ($agg->stored ?? 0);
+        $period = $d($agg->date_from ?? null) . ' - ' . $d($agg->date_to ?? null);
+        $cut = $total > $shown ? 'The first ' . number_format($shown) . ' of ' . number_format($total) . ' records are listed here. Narrow the search, or use Download CSV on the page to get all of them.' : null;
+
+        return self::base([
+            'accent' => '#0f766e', 'accent_dark' => '#115e59', 'accent_soft' => '#f0fdfa', 'accent_line' => '#99f6e4',
+            'icon' => 'file', 'title' => 'WIMS LOGS ARCHIVED RECORDS', 'subtitle' => $label . ': the records that were moved out of the live database, kept in compressed archives',
+            'reference' => strtoupper($source),
+            'status' => ['label' => $q !== '' ? 'SEARCH: ' . strtoupper(\Illuminate\Support\Str::limit($q, 24)) : 'ALL RECORDS', 'class' => 'status-info'],
+            'show_values' => false, 'compact' => true,
+            'stats' => [
+                ['icon' => 'package', 'label' => 'Records in this log', 'value' => number_format($all)],
+                ['icon' => 'hash', 'label' => $q !== '' ? 'Records found' : 'Records listed', 'value' => number_format($total)],
+                ['icon' => 'package', 'label' => 'Before > compressed', 'value' => $by_($original) . ' > ' . $by_($stored)],
+                ['icon' => 'calendar', 'label' => 'Period archived', 'value' => $period],
+            ],
+            'parties' => [
+                ['title' => 'Log', 'icon' => 'file', 'rows' => [['Log', $label], ['Search', $q !== '' ? $q : 'None (every record)'], ['Archives', (string) (int) ($agg->archives ?? 0)], ['Period', $period]]],
+                ['title' => $action, 'icon' => 'user', 'rows' => [['By', ($by->name ?? '-') . ($by && $by->roles->first() ? ' (' . $by->roles->first()->name . ')' : '')], ['Date', now()->format('d/m/Y')], ['Time', now()->format('H:i:s')]]],
+            ],
+            'table' => [
+                'title' => 'Archived records', 'note' => $cut ?? 'Nothing was lost: each record was written to its archive, read back and compared with the original before it was removed from the live table. Open a record in Settings > WIMS Logs > Read archived records to read it in full.', 'start' => 0,
+                'cols' => [['label' => 'Date', 'a' => 'l'], ['label' => 'Record', 'a' => 'l'], ['label' => 'What it was', 'a' => 'l'], ['label' => 'Archive', 'a' => 'l'], ['label' => 'Before', 'a' => 'r'], ['label' => 'Compressed', 'a' => 'r']],
+                'rows' => $rows,
+            ],
+            'lines' => [], 'total' => '', 'total_qty' => '',
+            'notes' => 'The archive files are kept on the server and are never removed automatically. Business records (stock, items, requests, transfers, approvals) are never touched.',
+            'signatures' => [['role' => $action . ' By', 'name' => optional($by)->name, 'date' => now()->format('d/m/Y')]],
+            'footer' => 'WIMS Logs records ' . strtoupper($source),
+        ]);
+    }
+
     /** The BinCard of an item as a WIMS document: the picture, the item, its Last update and who printed it, and when. */
     public static function binCard(\App\Models\Item $item, string $imageSrc, ?\App\Models\User $by = null): array
     {
