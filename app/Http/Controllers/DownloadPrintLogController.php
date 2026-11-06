@@ -14,6 +14,25 @@ class DownloadPrintLogController extends Controller
         $this->setAbilities([]);
     }
 
+    /** What WIMS Logs has already moved out of this list: how many records, from when to when, how long events stay here, and whether this person may read them. */
+    private function archivedInfo(Request $request): ?array
+    {
+        try {
+            $a = \App\Models\WimsLogArchive::query()->where('source', 'downloads')->selectRaw('count(*) as archives, sum(rows_n) as rows_n, min(date_from) as date_from, max(date_to) as date_to')->first();
+            if (! $a || ! (int) $a->rows_n) {
+                return null;
+            }
+
+            return [
+                'rows' => (int) $a->rows_n, 'archives' => (int) $a->archives, 'from' => $a->date_from, 'to' => $a->date_to,
+                'keep_days' => \App\Support\WimsLogs\WimsLogSettings::keepDays('downloads'),
+                'can_read' => (bool) $request->user()->can('read-wims-logs'),
+            ];
+        } catch (\Throwable $e) {
+            return null; // the archive tables do not exist here (yet)
+        }
+    }
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', DownloadPrintLog::class);
@@ -53,6 +72,8 @@ class DownloadPrintLogController extends Controller
                 'downloads' => (clone $countBase)->where('action_type', 'download')->count(),
                 'prints' => (clone $countBase)->where('action_type', 'print')->count(),
             ],
+            // older events are moved to compressed archives by Settings > WIMS Logs: said here so nobody looks for them in this list
+            'archived' => fn () => $this->archivedInfo($request),
         ]);
     }
 
