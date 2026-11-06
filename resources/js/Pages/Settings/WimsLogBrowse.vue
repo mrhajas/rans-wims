@@ -208,7 +208,6 @@ export default {
 .wlb-search:hover { border-color: #c7d2fe; } .wlb-search:focus-within { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14); } .wlb-search > svg { flex: none; color: #6366f1; }
 .wlb-search input { flex: 1; min-width: 0; height: 100%; padding: 0 !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; font-size: 0.9rem; font-weight: 600; -webkit-appearance: none; appearance: none; color: inherit; }
 .wlb-search input::-webkit-search-cancel-button, .wlb-search input::-webkit-search-decoration { display: none; -webkit-appearance: none; } .wlb-search input::placeholder { font-weight: 500; color: #94a3b8; }
-.wlb-x { flex: none; width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #64748b; background: rgba(148, 163, 184, 0.16); transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease; } .wlb-x:hover { color: #fff; background: #e11d48; transform: rotate(90deg) scale(1.08); }
 html.dark .wlb-search { border-color: rgba(255, 255, 255, 0.14); }
 .wlb-user { display: grid; gap: 0.3rem; flex: 0 1 17rem; min-width: 12rem; } .wlb-user label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; } .wlb-user-sel { width: 100%; }
 .wlb-user :deep(.cs-btn) { min-height: 2.9rem; width: 100%; padding: 0 0.9rem; border-radius: 1rem; border: 1.5px solid #e2e8f0; background: var(--lg-card, #fff); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); font-size: 0.9rem; font-weight: 700; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
@@ -218,4 +217,8 @@ html.dark .wlb-user :deep(.cs-btn) { border-color: rgba(255, 255, 255, 0.14); }
 .wlb-clear { height: 2.9rem; padding-right: 1rem !important; border-radius: 1rem !important; font-weight: 800; transition: transform 0.2s ease, box-shadow 0.2s ease; } .wlb-clear:hover { transform: translateY(-2px); }
 @media (max-width: 640px) { .wlb-user { flex: 1 1 100%; } .wlb-clear { flex: 1 1 100%; justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .wlb-x, .wlb-clear, .wlb-search { transition: none; } }
+
+/* the clear (x) of the search: a true circle whatever the global button rules say, the icon dead centre, no rotation */
+.wlb-x { flex: none; box-sizing: border-box; width: 1.9rem !important; height: 1.9rem !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; aspect-ratio: 1 / 1; border: 0; border-radius: 50% !important; display: grid; place-items: center; line-height: 1; cursor: pointer; color: #64748b; background: rgba(148, 163, 184, 0.18); transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease; }
+.wlb-x svg, .wlb-x > div { display: block; margin: 0 !important; } .wlb-x:hover { color: #fff; background: #e11d48; transform: scale(1.1); } .wlb-x:active { transform: scale(0.92); } .wlb-x:focus-visible { outline: 3px solid rgba(225, 29, 72, 0.35); outline-offset: 2px; }
 </style>
