@@ -439,6 +439,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('settings/wims-logs/runs/{run}/pdf', [Controllers\WimsLogsController::class, 'pdf'])->whereNumber('run')->middleware('throttle:30,1,wims-logs.pdf')->name('wims-logs.pdf');
     Route::get('settings/wims-logs/archives/{archive}', [Controllers\WimsLogsController::class, 'archive'])->whereNumber('archive')->middleware('throttle:120,1,wims-logs.archive')->name('wims-logs.archives.show');
     Route::get('settings/wims-logs/archives/{archive}/records/{id}', [Controllers\WimsLogsController::class, 'record'])->whereNumber('archive')->where('id', '[A-Za-z0-9\-]{1,64}')->middleware('throttle:120,1,wims-logs.record')->name('wims-logs.archives.record');
+    Route::post('settings/wims-logs/archives/{archive}/restore', [Controllers\WimsLogsController::class, 'restore'])->whereNumber('archive')->middleware('throttle:6,1,wims-logs.restore')->name('wims-logs.archives.restore');
     Route::get('settings/wims-logs/archives/{archive}/download', [Controllers\WimsLogsController::class, 'download'])->whereNumber('archive')->middleware('throttle:6,1,wims-logs.download')->name('wims-logs.archives.download');
 
     Route::get('system-features', [Controllers\SystemFeatureController::class, 'index'])->name('system-features.index');

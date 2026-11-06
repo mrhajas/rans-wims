@@ -67,7 +67,7 @@ class ArchiveStore
      * @param  array<int, array<string, mixed>>  $rows
      * @return array{entries: array<int, array<string, mixed>>, hashes: array<string, string>, skipped: array<int, mixed>, original: int, compressed: int}
      */
-    public static function append(string $rel, array $rows, string $pk, string $dateCol, callable $summary): array
+    public static function append(string $rel, array $rows, string $pk, string $dateCol, callable $summary, ?callable $userOf = null): array
     {
         self::ensureRoot($rel);
         clearstatcache(true, self::bin($rel));
@@ -98,6 +98,10 @@ class ArchiveStore
                 }
                 $id = $row[$pk];
                 $entry = ['i' => $id, 't' => $row[$dateCol] ?? null, 's' => mb_substr((string) $summary($row), 0, 220), 'o' => strlen($json), 'c' => strlen($gz), 'p' => $offset];
+                $uid = $userOf ? $userOf($row) : null;
+                if ($uid) {
+                    $entry['u'] = (int) $uid; // who the record belongs to, so the archive can be filtered by user without opening every record
+                }
                 if (fwrite($bin, $gz) !== strlen($gz)) {
                     throw new \RuntimeException('The archive file could not be written (is the disk full?).');
                 }
@@ -225,7 +229,7 @@ class ArchiveStore
      *
      * @return array{rows: array<int, array<string, mixed>>, total: int}
      */
-    public static function page(string $rel, int $page, int $per, ?string $q = null, ?int $knownTotal = null): array
+    public static function page(string $rel, int $page, int $per, ?string $q = null, ?int $knownTotal = null, ?int $user = null): array
     {
         $q = $q !== null ? mb_strtolower(trim($q)) : null;
         $skip = ($page - 1) * $per;
@@ -236,13 +240,16 @@ class ArchiveStore
             if ($q !== null && $q !== '' && ! str_contains(mb_strtolower($e['i'] . ' ' . ($e['t'] ?? '') . ' ' . ($e['s'] ?? '')), $q)) {
                 continue;
             }
+            if ($user !== null && (int) ($e['u'] ?? 0) !== $user) {
+                continue;
+            }
             $total++;
             if ($seen >= $skip && count($rows) < $per) {
                 $rows[] = $e;
             }
             $seen++;
             // without a search the total is known, so the scan can stop once the page is full
-            if (($q === null || $q === '') && $knownTotal !== null && count($rows) >= $per) {
+            if (($q === null || $q === '') && $user === null && $knownTotal !== null && count($rows) >= $per) {
                 return ['rows' => $rows, 'total' => $knownTotal];
             }
         }
@@ -256,7 +263,7 @@ class ArchiveStore
      *
      * @return array{rows: array<int, array<string, mixed>>, total: int}
      */
-    public static function slice(string $rel, int $offset, int $limit, ?string $q = null, ?int $knownTotal = null): array
+    public static function slice(string $rel, int $offset, int $limit, ?string $q = null, ?int $knownTotal = null, ?int $user = null): array
     {
         $q = $q !== null ? mb_strtolower(trim($q)) : '';
         $rows = [];
@@ -265,16 +272,67 @@ class ArchiveStore
             if ($q !== '' && ! str_contains(mb_strtolower($e['i'] . ' ' . ($e['t'] ?? '') . ' ' . ($e['s'] ?? '')), $q)) {
                 continue;
             }
+            if ($user !== null && (int) ($e['u'] ?? 0) !== $user) {
+                continue; // 0 = records that belong to nobody
+            }
             if ($matched >= $offset && count($rows) < $limit) {
                 $rows[] = $e;
             }
             $matched++;
-            if ($q === '' && $knownTotal !== null && count($rows) >= $limit) {
+            if ($q === '' && $user === null && $knownTotal !== null && count($rows) >= $limit) {
                 return ['rows' => $rows, 'total' => $knownTotal];
             }
         }
 
         return ['rows' => $rows, 'total' => $matched];
+    }
+
+    /** How many records each user has in an archive (0 = no user). @return array<int, int> */
+    public static function userCounts(string $rel): array
+    {
+        $out = [];
+        foreach (self::lines($rel) as $e) {
+            $u = (int) ($e['u'] ?? 0);
+            $out[$u] = ($out[$u] ?? 0) + 1;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Writes the user of every record into the index of an archive made before the index carried it. The records are read, not changed; the new index replaces the old one in one step.
+     */
+    public static function reindexUsers(string $rel, callable $userOf): int
+    {
+        $h = @fopen(self::bin($rel), 'rb');
+        if (! $h || ! is_file(self::idxGz($rel))) {
+            return 0;
+        }
+        $tmp = self::idxGz($rel) . '.tmp';
+        $gz = gzopen($tmp, 'wb6');
+        $n = 0;
+        try {
+            foreach (self::lines($rel) as $e) {
+                fseek($h, (int) $e['p']);
+                $blob = fread($h, (int) $e['c']);
+                $json = is_string($blob) ? @gzuncompress($blob) : false;
+                $row = $json !== false ? json_decode($json, true) : null;
+                $uid = is_array($row) ? $userOf($row) : null;
+                if ($uid) {
+                    $e['u'] = (int) $uid;
+                } else {
+                    unset($e['u']);
+                }
+                gzwrite($gz, json_encode($e, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n");
+                $n++;
+            }
+        } finally {
+            fclose($h);
+            gzclose($gz);
+        }
+        rename($tmp, self::idxGz($rel));
+
+        return $n;
     }
 
     /** One record, whole: the row as it was in the database. @return array<string, mixed>|null */

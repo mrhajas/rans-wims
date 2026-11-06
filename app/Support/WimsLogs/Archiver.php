@@ -35,6 +35,13 @@ class Archiver
         if (! empty($source['eligible'])) {
             ($source['eligible'])($q);
         }
+        // a record that was put back by hand stays live: the next run does not archive it again
+        if ($key !== null && Tables::has('wims_log_restores')) {
+            $col = ($source['pk_type'] ?? 'int') === 'int' ? 'record_num' : 'record_key';
+            $q->whereNotExists(function ($s) use ($key, $col, $source) {
+                $s->select(DB::raw(1))->from('wims_log_restores')->where('wims_log_restores.source', $key)->whereColumn('wims_log_restores.' . $col, $source['table'] . '.' . $source['pk']);
+            });
+        }
 
         return $q;
     }
@@ -140,7 +147,7 @@ class Archiver
         $deadline = microtime(true) + $seconds;
         $cut = now()->subDays((int) ($run->options['keep_days'][$key] ?? WimsLogSettings::keepDays($key)));
         $rel = ArchiveStore::rel($key, $run->id);
-        $arc = WimsLogArchive::firstOrCreate(['run_id' => $run->id, 'source' => $key], ['table_name' => $src['table'], 'path' => $rel]);
+        $arc = WimsLogArchive::firstOrCreate(['run_id' => $run->id, 'source' => $key], ['table_name' => $src['table'], 'path' => $rel, 'users_indexed' => true]);
         $result = ['ok' => true, 'more' => false, 'rows' => 0, 'original' => 0, 'compressed' => 0, 'error' => null];
         if ($arc->closed) {
             return $result;
@@ -161,7 +168,7 @@ class Archiver
                 }
 
                 // 1. written, 2. read back and compared, 3. only then removed from the live table
-                $w = ArchiveStore::append($rel, $batch, $src['pk'], $src['date'], $src['summary']);
+                $w = ArchiveStore::append($rel, $batch, $src['pk'], $src['date'], $src['summary'], $src['user'] ?? null);
                 ArchiveStore::verify($rel, $w['entries'], $w['hashes']);
                 $ids = array_column($w['entries'], 'i');
                 if ($ids) {

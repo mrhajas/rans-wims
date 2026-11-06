@@ -4,13 +4,13 @@ namespace App\Console\Commands;
 
 use App\Models\WimsLogArchive;
 use App\Support\WimsLogs\ArchiveStore;
+use App\Support\WimsLogs\Restorer;
 use App\Support\WimsLogs\Sources;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Puts the records of an archive back into their live table, exactly as they were (records that are already there are left alone). For emergencies, from the command line.
- * The archive itself is not changed or removed. Records older than the live days of their log are archived again by the next run.
+ * The archive itself is not changed or removed. Records put back stay live: the next run does not archive them again.
  */
 class WimsLogsRestore extends Command
 {
@@ -26,36 +26,14 @@ class WimsLogsRestore extends Command
 
             return self::FAILURE;
         }
-        $src = Sources::get($arc->source);
-        if (! $src) {
+        if (! Sources::get($arc->source)) {
             $this->error('That log is not known any more.');
 
             return self::FAILURE;
         }
         $only = array_map('strval', (array) $this->option('id'));
-        $put = 0;
-        $chunk = [];
-        $flush = function () use (&$chunk, &$put, $src) {
-            if ($chunk) {
-                $put += DB::table($src['table'])->insertOrIgnore($chunk);
-                $chunk = [];
-            }
-        };
-        foreach (ArchiveStore::lines((string) $arc->path) as $e) {
-            if ($only && ! in_array((string) $e['i'], $only, true)) {
-                continue;
-            }
-            $row = ArchiveStore::read((string) $arc->path, $e);
-            if ($row) {
-                $chunk[] = $row;
-            }
-            if (count($chunk) >= 200) {
-                $flush();
-            }
-        }
-        $flush();
-        $arc->update(['restored_n' => $arc->restored_n + $put, 'restored_at' => now()]);
-        $this->info("$put record(s) put back into {$src['table']}.");
+        $r = Restorer::restore($arc, $only ?: null, null);
+        $this->info("{$r['restored']} record(s) put back into {$arc->table_name} ({$r['already_live']} already there, {$r['previously']} put back before, {$r['missing']} not found).");
 
         return self::SUCCESS;
     }

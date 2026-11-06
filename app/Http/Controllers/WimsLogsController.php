@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\DownloadPrintLog;
+use App\Models\User;
+use Illuminate\Support\Facades\Cache;
+use App\Support\Performance\Tables;
 use App\Models\WimsLogArchive;
 use App\Models\WimsLogRun;
 use App\Support\Optimizer\Runner;
@@ -11,6 +14,7 @@ use App\Support\PrintQrCode;
 use App\Support\WimsLogs\ArchiveStore;
 use App\Support\WimsLogs\Archiver;
 use App\Support\WimsLogs\Sources;
+use App\Support\WimsLogs\Restorer;
 use App\Support\WimsLogs\WimsLogSettings;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -219,13 +223,17 @@ class WimsLogsController extends Controller
         $per = 50;
         $page = max(1, (int) $request->query('page', 1));
         $q = trim((string) $request->query('q', ''));
-        $res = $this->gather($source, $q, ($page - 1) * $per, $per);
-        $rows = $res['rows'];
+        $this->ensureUsersIndexed($source);
+        $users = $this->userOptions(WimsLogArchive::query()->where('source', $source)->get());
+        $user = $request->filled('user') && ctype_digit((string) $request->query('user')) ? (int) $request->query('user') : null;
+        $res = $this->gather($source, $q, ($page - 1) * $per, $per, $user);
+        $rows = $this->decorate($res['rows'], $source);
         $total = $res['total'];
 
         return Inertia::render('Settings/WimsLogBrowse', [
             'logs' => $logs, 'source' => $source, 'records' => $rows,
             'total' => $total, 'page' => $page, 'per' => $per, 'pages' => max(1, (int) ceil($total / $per)), 'q' => $q,
+            'users' => $users, 'user' => $user, 'canRun' => (bool) $request->user()->can('run-wims-logs'),
         ]);
     }
 
@@ -234,7 +242,7 @@ class WimsLogsController extends Controller
      *
      * @return array{rows: array<int, array<string, mixed>>, total: int}
      */
-    private function gather(string $source, string $q, int $offset, int $limit): array
+    private function gather(string $source, string $q, int $offset, int $limit, ?int $user = null): array
     {
         $need = $limit;
         $rows = [];
@@ -244,7 +252,7 @@ class WimsLogsController extends Controller
                 continue;
             }
             $n = (int) $a->rows_n;
-            if ($q === '') {
+            if ($q === '' && $user === null) {
                 $total += $n;
                 if ($need <= 0 || $offset >= $n) {
                     $offset = max(0, $offset - $n);
@@ -252,7 +260,7 @@ class WimsLogsController extends Controller
                 }
                 $res = ArchiveStore::slice((string) $a->path, $offset, $need, null, $n);
             } else {
-                $res = ArchiveStore::slice((string) $a->path, $offset, max($need, 0), $q);
+                $res = ArchiveStore::slice((string) $a->path, $offset, max($need, 0), $q, null, $user);
                 $total += $res['total'];
                 if ($offset >= $res['total']) {
                     $offset -= $res['total'];
@@ -260,7 +268,7 @@ class WimsLogsController extends Controller
                 }
             }
             foreach ($res['rows'] as $e) {
-                $rows[] = ['archive' => $a->id, 'ref' => $a->ref(), 'id' => $e['i'], 'at' => $e['t'] ?? null, 'summary' => $e['s'] ?? '', 'original' => (int) $e['o'], 'compressed' => (int) $e['c']];
+                $rows[] = ['archive' => $a->id, 'ref' => $a->ref(), 'id' => $e['i'], 'at' => $e['t'] ?? null, 'summary' => $e['s'] ?? '', 'original' => (int) $e['o'], 'compressed' => (int) $e['c'], 'user_id' => (int) ($e['u'] ?? 0) ?: null];
             }
             $need -= count($res['rows']);
             $offset = 0;
@@ -341,13 +349,121 @@ class WimsLogsController extends Controller
         $per = 50;
         $page = max(1, (int) $request->query('page', 1));
         $q = trim((string) $request->query('q', ''));
-        $res = ArchiveStore::page((string) $archive->path, $page, $per, $q, (int) $archive->rows_n);
+        $this->ensureUsersIndexed($archive->source);
+        $archive->refresh();
+        $users = $this->userOptions(collect([$archive]));
+        $user = $request->filled('user') && ctype_digit((string) $request->query('user')) ? (int) $request->query('user') : null;
+        $res = ArchiveStore::page((string) $archive->path, $page, $per, $q, (int) $archive->rows_n, $user);
+        $rows = $this->decorate(collect($res['rows'])->map(fn ($e) => ['archive' => $archive->id, 'ref' => $archive->ref(), 'id' => $e['i'], 'at' => $e['t'] ?? null, 'summary' => $e['s'] ?? '', 'original' => (int) $e['o'], 'compressed' => (int) $e['c'], 'user_id' => (int) ($e['u'] ?? 0) ?: null])->all(), $archive->source);
 
         return Inertia::render('Settings/WimsLogArchive', [
             'archive' => $this->archiveRow($archive) + ['run_ref' => optional($archive->run)->ref(), 'sha256' => $archive->sha256, 'skipped' => (int) $archive->skipped_n, 'restored' => (int) $archive->restored_n, 'error' => $archive->error],
-            'records' => collect($res['rows'])->map(fn ($e) => ['id' => $e['i'], 'at' => $e['t'] ?? null, 'summary' => $e['s'] ?? '', 'original' => (int) $e['o'], 'compressed' => (int) $e['c']])->all(),
+            'records' => $rows,
             'total' => (int) $res['total'], 'page' => $page, 'per' => $per, 'pages' => max(1, (int) ceil($res['total'] / $per)), 'q' => $q,
+            'users' => $users, 'user' => $user, 'canRun' => (bool) $request->user()->can('run-wims-logs'),
         ]);
+    }
+
+    /** Puts records of an archive back into their own live log: the ones named, or the whole archive. Needs the person's password. */
+    public function restore(Request $request, WimsLogArchive $archive)
+    {
+        $this->allow($request, 'run-wims-logs');
+        $data = $request->validate(['password' => 'required|string', 'all' => 'nullable|boolean', 'ids' => 'nullable|array|max:2000', 'ids.*' => 'string|max:64']);
+        if (! Hash::check($data['password'], $request->user()->password)) {
+            throw ValidationException::withMessages(['password' => __('The provided password is incorrect.')]);
+        }
+        abort_unless(ArchiveStore::exists((string) $archive->path), 404);
+        if (empty($data['all']) && empty($data['ids'])) {
+            throw ValidationException::withMessages(['ids' => __('Choose the records to put back.')]);
+        }
+        @set_time_limit(0);
+        $r = Restorer::restore($archive, ! empty($data['all']) ? null : array_values($data['ids']), $request->user());
+
+        return response()->json($r + ['restored_total' => (int) $archive->fresh()->restored_n]);
+    }
+
+    /** Names for the user ids of a page of records, and whether each record was put back. */
+    private function decorate(array $rows, string $source): array
+    {
+        $ids = array_values(array_unique(array_filter(array_column($rows, 'user_id'))));
+        $names = $ids ? User::withoutGlobalScopes()->withTrashed()->whereIn('id', $ids)->pluck('name', 'id') : collect();
+        $put = [];
+        if ($rows && Tables::has('wims_log_restores')) {
+            foreach (DB::table('wims_log_restores')->where('source', $source)->whereIn('record_key', array_map(fn ($r) => (string) $r['id'], $rows))->get(['archive_id', 'record_key']) as $x) {
+                $put[$x->archive_id . ':' . $x->record_key] = true;
+            }
+        }
+
+        return array_map(fn ($r) => $r + ['user' => $r['user_id'] ? ($names[$r['user_id']] ?? '#' . $r['user_id']) : null, 'restored' => isset($put[$r['archive'] . ':' . $r['id']])], $rows);
+    }
+
+    private function isRestored(WimsLogArchive $archive, string $id): bool
+    {
+        return Tables::has('wims_log_restores') && DB::table('wims_log_restores')->where('archive_id', $archive->id)->where('record_key', $id)->exists();
+    }
+
+    /** The person a record belongs to: name and role (or the name stored in the record when the user no longer exists). */
+    private function userInfo(?int $uid, array $row): ?array
+    {
+        $u = $uid ? User::withoutGlobalScopes()->withTrashed()->with('roles:id,name')->find($uid) : null;
+        if ($u) {
+            return ['id' => $u->id, 'name' => $u->name, 'role' => optional($u->roles->first())->name];
+        }
+        if (! empty($row['user_name'])) {
+            return ['id' => $uid, 'name' => (string) $row['user_name'], 'role' => $row['role'] ?? null];
+        }
+
+        return $uid ? ['id' => $uid, 'name' => '#' . $uid, 'role' => null] : null;
+    }
+
+    /** The people who have records in these archives, for the user filter ("no user" first when some records belong to nobody). */
+    private function userOptions($archives): array
+    {
+        $count = [];
+        foreach ($archives as $a) {
+            if (! ArchiveStore::exists((string) $a->path)) {
+                continue;
+            }
+            $key = 'wimslogs:users:' . $a->id . ':' . (int) @filemtime(ArchiveStore::idxGz((string) $a->path));
+            foreach (Cache::remember($key, 3600, fn () => ArchiveStore::userCounts((string) $a->path)) as $u => $n) {
+                $count[$u] = ($count[$u] ?? 0) + $n;
+            }
+        }
+        $names = User::withoutGlobalScopes()->withTrashed()->whereIn('id', array_filter(array_keys($count)))->pluck('name', 'id');
+        $out = [];
+        foreach ($count as $u => $n) {
+            if ($u) {
+                $out[] = ['id' => (int) $u, 'name' => $names[$u] ?? '#' . $u, 'n' => $n];
+            }
+        }
+        usort($out, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+        if (! empty($count[0]) && $out) {
+            array_unshift($out, ['id' => 0, 'name' => __('No user'), 'n' => $count[0]]);
+        }
+
+        return $out;
+    }
+
+    /** Archives made before the index carried the user of each record get it now (the records are only read, never changed). Time-boxed: the rest follows on the next visit. */
+    private function ensureUsersIndexed(string $source): void
+    {
+        try {
+            $src = Sources::get($source);
+            $start = microtime(true);
+            foreach (WimsLogArchive::query()->where('source', $source)->where('closed', true)->where('users_indexed', false)->get() as $a) {
+                if (empty($src['user'])) {
+                    $a->update(['users_indexed' => true]);
+                    continue;
+                }
+                if (microtime(true) - $start > 20 || ! ArchiveStore::exists((string) $a->path)) {
+                    continue;
+                }
+                ArchiveStore::reindexUsers((string) $a->path, $src['user']);
+                $a->update(['users_indexed' => true]);
+            }
+        } catch (\Throwable $e) {
+            // the filter simply shows what it can until the migration has run
+        }
     }
 
     /** One record, whole: every column as it was in the database. */
@@ -358,7 +474,13 @@ class WimsLogsController extends Controller
         abort_unless($row !== null, 404);
         log_activity(__('Archived record read'), ['archive' => $archive->ref(), 'log' => $archive->source, 'record' => $id], $request->user(), 'Setting');
 
-        return response()->json(['id' => $id, 'row' => $row]);
+        $src = Sources::get($archive->source);
+        $uid = $src && ! empty($src['user']) ? ($src['user'])($row) : null;
+
+        return response()->json([
+            'id' => $id, 'row' => $row, 'user' => $this->userInfo($uid, $row),
+            'restored' => $this->isRestored($archive, $id), 'can_restore' => (bool) $request->user()->can('run-wims-logs'),
+        ]);
     }
 
     /** Every record of an archive as readable lines of JSON in one compressed file (the route name has "download" in it, so every use is in the Download / Print log). */

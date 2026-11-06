@@ -284,6 +284,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import TecDialogModal from '@/Jetstream/DialogModal.vue';
 import { Link } from '@inertiajs/vue3';
+import { logLook } from '@/Core/wimsLogLook';
 
 export default {
   components: { AdminLayout, PageHeader, TecDialogModal, Link },
@@ -380,17 +381,8 @@ export default {
       };
       this._raf1 = requestAnimationFrame(step);
     },
-    // each log has its own colour and icon (the same as on the Archived records page)
-    look(key) {
-      return ({
-        weather: { icon: 'cloud', tone: '#0284c7', tone2: '#38bdf8' },
-        delivery: { icon: 'email', tone: '#7c3aed', tone2: '#a78bfa' },
-        downloads: { icon: 'download', tone: '#059669', tone2: '#34d399' },
-        alerts: { icon: 'bell', tone: '#d97706', tone2: '#fbbf24' },
-        slow: { icon: 'lightning-bolt', tone: '#e11d48', tone2: '#fb7185' },
-        system: { icon: 'server', tone: '#4f46e5', tone2: '#818cf8' },
-      })[key] || { icon: 'archive-box', tone: '#4f46e5', tone2: '#818cf8' };
-    },
+    // each log has its own colour and icon (the same everywhere)
+    look: logLook,
     // the little bar in a row: this log's share of everything that would move
     estPct(key) {
       const max = Math.max(1, ...this.rows.map(l => this.est(l.key).rows || 0));

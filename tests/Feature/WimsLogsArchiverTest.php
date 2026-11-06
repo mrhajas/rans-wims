@@ -20,7 +20,7 @@ class WimsLogsArchiverTest extends TestCase
         // the tests write their archives to a folder of their own and never touch storage/app/wims-logs
         ArchiveStore::$rootOverride = sys_get_temp_dir() . '/wims-logs-test-' . getmypid();
         parent::setUp();
-        foreach (['wims_log_archives', 'wims_log_runs', 'slow_logs', 'wims_connect_logs'] as $t) {
+        foreach (['wims_log_archives', 'wims_log_runs', 'wims_log_restores', 'slow_logs', 'wims_connect_logs'] as $t) {
             Schema::dropIfExists($t);
         }
         Schema::create('wims_log_runs', function (Blueprint $t) {
@@ -37,7 +37,7 @@ class WimsLogsArchiverTest extends TestCase
             $t->unsignedBigInteger('original_bytes')->default(0); $t->unsignedBigInteger('compressed_bytes')->default(0); $t->unsignedBigInteger('stored_bytes')->default(0);
             $t->timestamp('date_from')->nullable(); $t->timestamp('date_to')->nullable(); $t->string('path')->nullable(); $t->string('sha256', 64)->nullable();
             $t->boolean('verified')->default(false); $t->unsignedBigInteger('skipped_n')->default(0); $t->unsignedBigInteger('restored_n')->default(0); $t->timestamp('restored_at')->nullable();
-            $t->boolean('closed')->default(false); $t->text('error')->nullable(); $t->timestamps();
+            $t->boolean('closed')->default(false); $t->boolean('users_indexed')->default(false); $t->text('error')->nullable(); $t->timestamps();
         });
         Schema::create('slow_logs', function (Blueprint $t) {
             $t->id(); $t->string('kind'); $t->text('label')->nullable(); $t->string('fingerprint')->nullable(); $t->unsignedInteger('duration_ms')->default(0); $t->string('path')->nullable();
@@ -46,6 +46,10 @@ class WimsLogsArchiverTest extends TestCase
         Schema::create('wims_connect_logs', function (Blueprint $t) {
             $t->id(); $t->string('event_key')->nullable(); $t->string('channel')->nullable(); $t->string('address')->nullable(); $t->string('subject')->nullable(); $t->text('message')->nullable();
             $t->longText('body_html')->nullable(); $t->string('status')->default('SENT'); $t->timestamp('created_at')->nullable();
+        });
+        Schema::create('wims_log_restores', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('archive_id'); $t->string('source', 30); $t->string('record_key', 64); $t->unsignedBigInteger('record_num')->nullable();
+            $t->unsignedBigInteger('by_user_id')->nullable(); $t->string('by_name')->nullable(); $t->timestamp('created_at')->nullable(); $t->unique(['archive_id', 'record_key']);
         });
         $this->cleanFiles();
         $this->forgetSchemaMemo();
@@ -262,5 +266,48 @@ class WimsLogsArchiverTest extends TestCase
         $this->assertSame('Item', $row['log_name']);
         $this->assertStringContainsString('attributes', (string) $row['properties'], 'the whole record is kept, not only its description');
         Schema::dropIfExists('activity_log');
+    }
+
+    public function test_records_put_back_stay_live_and_are_not_archived_again_and_users_can_be_filtered(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            DB::table('slow_logs')->insert(['kind' => 'request', 'label' => 'GET /x ' . $i, 'fingerprint' => 'f' . $i, 'duration_ms' => 2000, 'path' => '/x', 'method' => 'GET', 'user_id' => $i <= 4 ? 7 : null, 'queries' => 1, 'memory_mb' => 40.0, 'created_at' => now()->subDays(20)->toDateTimeString()]);
+        }
+        Archiver::run('manual', null, ['slow']);
+        $arc = WimsLogArchive::first();
+        $rel = (string) $arc->path;
+
+        // the index knows whose record each one is, so the archive can be filtered by user
+        $mine = ArchiveStore::slice($rel, 0, 50, null, null, 7);
+        $nobody = ArchiveStore::slice($rel, 0, 50, null, null, 0);
+        $this->assertSame(4, $mine['total']);
+        $this->assertSame(2, $nobody['total']);
+        $this->assertSame([7 => 4, 0 => 2], ArchiveStore::userCounts($rel));
+        $this->assertSame(0, DB::table('slow_logs')->count());
+
+        // two records are put back: exactly as they were, and remembered
+        $ids = array_slice(array_column($mine['rows'], 'i'), 0, 2);
+        $r = \App\Support\WimsLogs\Restorer::restore($arc, $ids, null);
+        $this->assertSame(2, $r['restored']);
+        $this->assertSame(2, DB::table('slow_logs')->count());
+        $this->assertSame('GET /x ' . $ids[0], DB::table('slow_logs')->where('id', $ids[0])->value('label'));
+        $this->assertSame(2, DB::table('wims_log_restores')->count());
+        $this->assertSame(2, (int) $arc->fresh()->restored_n);
+
+        // putting the same ones back again changes nothing
+        $again = \App\Support\WimsLogs\Restorer::restore($arc, $ids, null);
+        $this->assertSame(0, $again['restored']);
+        $this->assertSame(2, $again['previously']);
+
+        // they are old enough to be archived, but they were put back on purpose: the next run leaves them
+        $run = Archiver::run('manual', null, ['slow']);
+        $this->assertSame(0, (int) $run->rows_archived);
+        $this->assertSame(2, DB::table('slow_logs')->count());
+
+        // the whole archive: only what is not back yet
+        $all = \App\Support\WimsLogs\Restorer::restore($arc->fresh(), null, null);
+        $this->assertSame(4, $all['restored']);
+        $this->assertSame(2, $all['previously']);
+        $this->assertSame(6, DB::table('slow_logs')->count());
     }
 }
