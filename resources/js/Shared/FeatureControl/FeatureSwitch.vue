@@ -49,11 +49,11 @@ export default {
 .fsw { position: relative; display: inline-flex; flex: none; padding: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; min-height: 0 !important; border-radius: 9999px !important; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .fsw:focus-visible { outline: 3px solid rgba(59, 130, 246, 0.45); outline-offset: 3px; }
 .fsw:disabled { opacity: 0.55; cursor: wait; }
-.fsw-track { position: relative; display: block; width: 50px; height: 28px; border-radius: 9999px; background: #cbd5e1; box-shadow: inset 0 2px 5px rgba(15, 23, 42, 0.28); transition: background 0.35s ease, box-shadow 0.35s ease; }
+.fsw-track { position: relative; display: block; width: 50px; height: 28px; border-radius: 9999px; background: linear-gradient(145deg, #fb7185, #e11d48); box-shadow: inset 0 2px 5px rgba(127, 29, 29, 0.35); transition: background 0.35s ease, box-shadow 0.35s ease; }
 .fsw.is-lg .fsw-track { width: 66px; height: 36px; }
 .fsw.on .fsw-track { background: linear-gradient(145deg, #34d399, #059669); }
 .fsw.mixed .fsw-track { background: linear-gradient(145deg, #fbbf24, #d97706); }
-.fsw:hover:not(:disabled) .fsw-track { box-shadow: inset 0 2px 5px rgba(15, 23, 42, 0.28), 0 0 0 4px rgba(100, 116, 139, 0.14); }
+.fsw:hover:not(:disabled) .fsw-track { box-shadow: inset 0 2px 5px rgba(127, 29, 29, 0.35), 0 0 0 4px rgba(244, 63, 94, 0.2); }
 .fsw.on:hover:not(:disabled) .fsw-track { box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.22), 0 0 0 4px rgba(16, 185, 129, 0.2); }
 .fsw-thumb { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 9999px; background: #fff; box-shadow: 0 3px 7px rgba(15, 23, 42, 0.4); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.5, 1), width 0.2s ease; }
 .fsw.is-lg .fsw-thumb { top: 4px; left: 4px; width: 28px; height: 28px; }
@@ -66,7 +66,7 @@ export default {
 .fsw-txt { position: absolute; top: 50%; transform: translateY(-50%); font-size: 0.5rem; font-weight: 900; letter-spacing: 0.06em; color: #fff; transition: opacity 0.25s ease; pointer-events: none; }
 .fsw.is-lg .fsw-txt { font-size: 0.6rem; }
 .fsw-on { left: 8px; opacity: 0; }
-.fsw-off { right: 7px; color: #64748b; opacity: 1; }
+.fsw-off { right: 7px; opacity: 1; }
 .fsw.on .fsw-on { opacity: 1; }
 .fsw.on .fsw-off, .fsw.mixed .fsw-off { opacity: 0; }
 .fsw-ring { position: absolute; inset: 0; border-radius: 9999px; border: 2px solid transparent; pointer-events: none; }
