@@ -41,6 +41,12 @@ class SlowLog
         });
     }
 
+    /** How many database queries this request has made so far. */
+    public static function queryCount(): int
+    {
+        return self::$queries;
+    }
+
     /** Reads the limits of Settings > Performance & Data. Called by the middleware, after the request's database is known. */
     public static function configure(): void
     {

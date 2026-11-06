@@ -665,6 +665,7 @@
 </template>
 
 <script>
+import { fresh, keep } from '@/Core/backgroundCache';
 import { cardCatalog, canOpenCard, savedCardKeys, defaultKeysFor, MAX_CARDS } from '@/Core/dashboardCards';
 
 // the standard stack's own keys -> the matching side-menu entry (so its title and description come from one place)
@@ -1045,6 +1046,9 @@ export default {
 
   beforeUnmount() {
     clearInterval(this.clockTimer);
+    this._left = true;
+    (this._warm || []).forEach(clearTimeout);
+    if (this._idle && typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(this._idle);
   },
 
   mounted() {
@@ -1072,8 +1076,11 @@ export default {
       this.contractTooltip = { show: true, x, y: rect.bottom + 10 };
       axios.get(this.route('staffs.contracts.summary')).then(res => (this.contractSummary = res.data)).catch(() => {});
     },
+    // a summary fetched in the last 2 minutes is shown again when the dashboard is opened again (or the tooltip is hovered again)
     fetchMeetWeek() {
-      axios.get(this.route('site-meetings.week-summary')).then(res => (this.meetWeek = res.data)).catch(() => {});
+      const kept = fresh('meet-week', 120000);
+      if (kept) { this.meetWeek = kept; return; }
+      axios.get(this.route('site-meetings.week-summary')).then(res => { keep('meet-week', res.data); this.meetWeek = res.data; }).catch(() => {});
     },
     showMeetTooltip(event) {
       const rect = event.currentTarget.getBoundingClientRect();
@@ -1083,10 +1090,13 @@ export default {
       this.fetchMeetWeek();
     },
     fetchComplianceDueCount() {
+      const kept = fresh('compliance-due', 120000);
+      if (kept) { this.complianceDueCount = kept.count; this.complianceUpcoming = kept.upcoming; return; }
       this.complianceTooltipLoading = true;
       axios
         .get(this.route('compliance-records.calendar.due-count'))
         .then(res => {
+          keep('compliance-due', res.data);
           this.complianceDueCount = res.data.count;
           this.complianceUpcoming = res.data.upcoming;
         })
@@ -1258,9 +1268,11 @@ export default {
       const saver = navigator.connection && navigator.connection.saveData;
       if (saver) return;
       const top = ((this.svGroups[0] && this.svGroups[0].rows) || []).slice(0, 3);
-      const go = () => top.forEach((row, i) => setTimeout(() => this.loadItems(row), i * 700));
-      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(go, { timeout: 5000 });
-      else setTimeout(go, 2500);
+      this._warm = [];
+      // nothing is asked for once the dashboard has been left (the pre-loading used to go on after a person had moved to another page)
+      const go = () => { if (this._left) return; top.forEach((row, i) => this._warm.push(setTimeout(() => { if (!this._left) this.loadItems(row); }, i * 700))); };
+      if (typeof window.requestIdleCallback === 'function') this._idle = window.requestIdleCallback(go, { timeout: 5000 });
+      else this._warm.push(setTimeout(go, 2500));
     },
     canOpenItem(stock) {
       return !!(stock && stock.id && this.$can('read-items'));

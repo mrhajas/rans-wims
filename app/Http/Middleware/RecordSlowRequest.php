@@ -25,6 +25,7 @@ class RecordSlowRequest
     {
         try {
             SlowLog::request($request);
+            \App\Support\Performance\RequestStats::record($request, $response);
         } catch (\Throwable $e) {
             // never break the answer
         }

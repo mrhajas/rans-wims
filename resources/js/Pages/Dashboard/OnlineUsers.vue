@@ -80,6 +80,7 @@
 </template>
 
 <script>
+import { fresh, keep } from '@/Core/backgroundCache';
 import Modal from '@/Jetstream/Modal.vue';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import { chat, startDirect, start, errorText, toast } from '@/Core/wimschat';
@@ -137,7 +138,7 @@ export default {
       this.observer = new ResizeObserver(() => this.measure());
       this.observer.observe(this.$el.querySelector('.ou-line'));
     }
-    this.load();
+    this.load(true);
     this.timer = setInterval(() => !document.hidden && this.load(), REFRESH_MS);
     // coming back to the tab after a while: refresh once now instead of showing old faces until the next tick
     this.onVisible = () => { if (!document.hidden && Date.now() - this.loadedAt > REFRESH_MS) this.load(); };
@@ -176,18 +177,27 @@ export default {
       const room = line.clientWidth - BUTTON - LINE_GAP;
       this.slots = Math.max(1, Math.floor((room + GAP) / (AVATAR + GAP)));
     },
-    load() {
+    // `useKept`: when the dashboard is opened, the list fetched in the last minute is shown at once instead of asking again
+    load(useKept = false) {
+      if (useKept) {
+        const kept = fresh('online-users', 60000);
+        if (kept) { this.apply(kept); this.loading = false; return; }
+      }
       if (this.fetching) return; // never two requests at once
       this.fetching = true;
       axios
         .get(this.route('dashboard.online-users'))
         .then(({ data }) => {
-          this.users = data.users;
-          this.loadedAt = Date.now();
-          this.counts = { online: data.online, idle: data.idle, offline: data.offline };
+          keep('online-users', data);
+          this.apply(data);
         })
         .catch(() => {})
         .finally(() => { this.loading = false; this.fetching = false; });
+    },
+    apply(data) {
+      this.users = data.users;
+      this.loadedAt = Date.now();
+      this.counts = { online: data.online, idle: data.idle, offline: data.offline };
     },
     openAll() {
       this.filter = 'all';

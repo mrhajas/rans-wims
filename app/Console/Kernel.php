@@ -27,6 +27,7 @@ class Kernel extends ConsoleKernel
         // Background Tasks (long reports): runs any that nobody picked up, fails stuck ones and frees their lock, tidies old files. cPanel cron: * * * * * php artisan schedule:run
         $schedule->command('background:sweep')->everyMinute()->withoutOverlapping(10)->runInBackground();
         $schedule->command('archive:export-run')->everyMinute()->withoutOverlapping(3)->runInBackground();
+        $schedule->command('perf:aggregate')->everyFiveMinutes()->withoutOverlapping(10);
         $schedule->command('housekeeping:run')->dailyAt('02:10')->withoutOverlapping();
         // WIMS Logs: archives old log records when the days set in Settings > WIMS Logs have passed since the last run (it checks itself)
         $schedule->command('wims-logs:run --scheduled')->dailyAt('02:40')->withoutOverlapping();

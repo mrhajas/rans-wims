@@ -94,6 +94,16 @@
             </div>
             <button type="button" class="sh-btn is-teal sh-test" :disabled="testing" @click="runTest"><span class="sh-btn-ic"><icons name="chart-bar" class="w-4 h-4" :class="{ 'sh-pulse-ic': testing }" /></span>{{ testing ? $t('Testing...') : $t('Test now') }}</button>
             <p class="sh-note">{{ $t('This page was put together in :ms ms (database and files included).', { ms: d.build_ms }) }}</p>
+            <!-- how long pages really take for people (measured on every page opened, added up hourly) -->
+            <template v-if="ok(d.latency) && d.latency.available">
+              <div v-if="d.latency.pages && d.latency.pages.n" class="sh-split">
+                <div :class="{ 'is-warn': d.latency.pages.p50 > 1500, 'is-bad': d.latency.pages.p50 > 4000 }"><span class="sh-st-ic"><icons name="clock" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ fmtMs(d.latency.pages.p50) }}</b><small>{{ $t('Typical page, last 24 h') }}</small></span></div>
+                <div :class="{ 'is-warn': d.latency.pages.p95 > 3000, 'is-bad': d.latency.pages.p95 > 8000 }"><span class="sh-st-ic"><icons name="chart-bar" class="w-4 h-4" /></span><span class="sh-st-tx"><b>{{ fmtMs(d.latency.pages.p95) }}</b><small>{{ $t('Slowest 5% of pages') }}</small></span></div>
+              </div>
+              <p v-if="d.latency.pages && d.latency.pages.n" class="sh-note">{{ $t(':n pages opened, :e answered with an error. Background calls: typical :b, slowest 5% :c.', { n: d.latency.pages.n.toLocaleString(), e: d.latency.pages.errors, b: d.latency.api && d.latency.api.n ? fmtMs(d.latency.api.p50) : '-', c: d.latency.api && d.latency.api.n ? fmtMs(d.latency.api.p95) : '-' }) }}</p>
+              <p v-if="d.latency.worst && d.latency.worst.length" class="sh-note">{{ $t('Slowest sections (95% of visits faster than):') }} <template v-for="(w, i) in d.latency.worst" :key="w.module"><b>{{ w.module }}</b> {{ fmtMs(w.p95) }}<template v-if="i < d.latency.worst.length - 1">, </template></template></p>
+              <p v-else-if="!d.latency.pages || !d.latency.pages.n" class="sh-note">{{ $t('Page times are being measured. The first figures appear within about 5 minutes of people using WIMS.') }}</p>
+            </template>
           </template>
           <p v-else class="sh-na">{{ $t('Not available') }}</p>
         </health-card>
@@ -568,6 +578,7 @@ export default {
     ratingLabel(r) { return { excellent: this.$t('Excellent'), very_good: this.$t('Very Good'), good: this.$t('Good'), fair: this.$t('Fair'), bad: this.$t('Bad'), unknown: this.$t('Not rated') }[r]; },
     ok(x) { return x && !x.error; },
     fmtGb(v) { return v == null ? '--' : (v >= 100 ? Math.round(v) : v) + ' GB'; },
+    fmtMs(v) { v = Number(v); return !isFinite(v) ? '-' : v >= 1000 ? (v / 1000).toFixed(1) + ' s' : Math.round(v) + ' ms'; },
     ringDash(p) { const v = Math.max(0, Math.min(100, p || 0)); return v + ' ' + (100 - v); },
     tick(p, r) { const a = Math.PI * (1 - p / 100); return { x: 90 + Math.cos(a) * r, y: 92 - Math.sin(a) * r }; },
     fmtMb(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB'; },

@@ -413,6 +413,7 @@
 </template>
 
 <script>
+import { fresh, keep } from '@/Core/backgroundCache';
 import { groupWarehouses, progressOf } from '@/Core/warehouseGroups';
 import PhotoZoom from '@/Shared/Page/PhotoZoom.vue';
 import IconMenus from './IconMenus.vue';
@@ -680,7 +681,7 @@ export default {
     window.addEventListener('scroll', this.onPageScroll, { passive: true });
     document.addEventListener('inertia:navigate', this.onPageScroll);
     if (this.$can('read-digital-attendance')) {
-      this.fetchAttendanceWidget();
+      this.loadAttendanceWidget();
       this.attendancePollTimer = setInterval(() => !document.hidden && this.fetchAttendanceWidget(), 180000);
       this.attendanceTickTimer = setInterval(() => (this.attendanceNow = new Date()), 1000);
       // Clock in/out can also happen from MyAttendance.vue's own buttons —
@@ -757,14 +758,29 @@ export default {
       const sec = s % 60;
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
     },
+    // When a page opens, a widget answer fetched in the last 90 seconds is used instead of asking again (the header is rebuilt on every page);
+    // the 3-minute timer and a clock-in / clock-out always ask the server.
+    loadAttendanceWidget() {
+      const kept = fresh('attendance-widget', 90000);
+      if (kept) {
+        this.applyAttendanceWidget(kept);
+
+        return;
+      }
+      this.fetchAttendanceWidget();
+    },
+    applyAttendanceWidget(data) {
+      this.attendanceToday = data.today;
+      this.attendanceSettings = data.settings;
+      this.maybeShowAttendanceNudge();
+      // A fresh clock-in/out can change today's session count — collapse
+      // rather than risk showing a stale breakdown from before it changed.
+      this.attendanceSessionsExpanded = false;
+    },
     fetchAttendanceWidget() {
       axios.get(route('digital-attendance.widget')).then(res => {
-        this.attendanceToday = res.data.today;
-        this.attendanceSettings = res.data.settings;
-        this.maybeShowAttendanceNudge();
-        // A fresh clock-in/out can change today's session count — collapse
-        // rather than risk showing a stale breakdown from before it changed.
-        this.attendanceSessionsExpanded = false;
+        keep('attendance-widget', res.data);
+        this.applyAttendanceWidget(res.data);
       });
     },
     // Multiple clock-in/out sessions on the same day are all rolled into

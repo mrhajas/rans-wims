@@ -356,21 +356,7 @@ class ItemController extends Controller
 
         // Headline numbers for the tiles above the table: whole catalogue (within the user's warehouse scope),
         // independent of the search / sort / page the table is showing.
-        $statsOf = function () {
-        // plain rows, not models: only a few columns and the stock total are read, so nothing needs building for 1,000+ items
-        $all = Item::query()
-            ->withSum('stock', 'quantity')
-            ->when(warehouse_scope_ids() !== null, fn ($q) => $q->whereHas('stock', fn ($s) => $s->whereIn('warehouse_id', warehouse_scope_ids())))
-            ->toBase()->get();
-        $tracked = $all->filter(fn ($i) => (int) $i->track_quantity === 1);
-        return [
-            'total'      => $all->count(),
-            'consumable' => $all->where('is_used', 0)->count(),
-            'used'       => $all->where('is_used', 1)->count(),
-            'out'        => $tracked->filter(fn ($i) => (float) $i->stock_sum_quantity <= 0)->count(),
-            'low'        => $tracked->filter(fn ($i) => (float) $i->alert_quantity > 0 && (float) $i->stock_sum_quantity > 0 && (float) $i->stock_sum_quantity <= (float) $i->alert_quantity)->count(),
-        ];
-        };
+        $statsOf = fn () => $this->itemStats();
 
         return Inertia::render('Item/Index', [
             // closures: a search / sort / page reload asks only for `items` and `filters`, so these are not worked out again for it
@@ -379,6 +365,25 @@ class ItemController extends Controller
             'warehouses' => fn () => Warehouse::ofAccount()->active()->visible()->get(),
             'items'      => new ItemCollection($query->paginate()->withQueryString()),
         ]);
+    }
+
+    /**
+     * The numbers on the tiles of the Items page, in one pass of the database: the stock of every item is added up once (a grouped read of the stock lines) and the five
+     * counts are made from that, instead of asking for the stock total of each of the 1,000+ items one by one. Same rules as before: stock = main stock (no variations) of this
+     * account, an item is Out when it tracks quantity and has nothing, Low when its alert quantity is set and the stock is above 0 but not above it.
+     */
+    private function itemStats(): array
+    {
+        $sums = DB::table('stocks')->selectRaw('item_id, sum(quantity) as q')->whereNull('variation_id')->whereNull('deleted_at')->where('account_id', getAccountId())->groupBy('item_id');
+        $r = Item::query()
+            ->when(warehouse_scope_ids() !== null, fn ($q) => $q->whereHas('stock', fn ($s) => $s->whereIn('warehouse_id', warehouse_scope_ids())))
+            ->leftJoinSub($sums, 'st', 'st.item_id', '=', 'items.id')
+            ->selectRaw('count(*) as total, coalesce(sum(items.is_used = 0), 0) as consumable, coalesce(sum(items.is_used = 1), 0) as used, '
+                . 'coalesce(sum(items.track_quantity = 1 and coalesce(st.q, 0) <= 0), 0) as out_n, '
+                . 'coalesce(sum(items.track_quantity = 1 and items.alert_quantity > 0 and coalesce(st.q, 0) > 0 and coalesce(st.q, 0) <= items.alert_quantity), 0) as low_n')
+            ->toBase()->first();
+
+        return ['total' => (int) $r->total, 'consumable' => (int) $r->consumable, 'used' => (int) $r->used, 'out' => (int) $r->out_n, 'low' => (int) $r->low_n];
     }
 
     /** The conditions the Items page and its Print / PDF / CSV reports share: the person's warehouse scope and the summary-tile type (consumable, used, low, out). */

@@ -19,6 +19,7 @@ class PerfSettings
         'perf_slow_query_ms' => 300,            // a database query slower than this is recorded (0 = off)
         'perf_slow_request_ms' => 1500,         // a page slower than this is recorded (0 = off)
         'perf_queue_background' => 0,           // 1 = send SMS, e-mail and bell alerts in the background after the save
+        'perf_request_stats' => 1,              // 1 = measure how long pages and background calls take (System Health), 0 = do not
     ];
 
     /** The allowed range of each number (min, max). */
@@ -31,6 +32,7 @@ class PerfSettings
         'perf_slow_query_ms' => [0, 60000],
         'perf_slow_request_ms' => [0, 120000],
         'perf_queue_background' => [0, 1],
+        'perf_request_stats' => [0, 1],
     ];
 
     public static function get(string $key): int

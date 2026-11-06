@@ -32,6 +32,8 @@ class Collector
             'backups' => self::probe(fn () => self::brief('backups', $user, fn () => self::backups())),
             'logs' => self::probe(fn () => self::brief('logs', $user, fn () => self::logs())),
             'slow' => self::probe(fn () => self::brief('slow', $user, fn () => self::slow())),
+            // how long pages and background calls really take: read from the hourly figures (never measured while the page opens), remembered for 60 seconds
+            'latency' => self::probe(fn () => Cache::remember('system-health.latency', 60, fn () => \App\Support\Performance\RequestStats::summary(24))),
             'licence' => self::probe(fn () => self::brief('licence', $user, fn () => self::licence())),
             'sms_usage' => self::probe(fn () => self::brief('sms', $user, fn () => self::smsUsage())),
             'you' => self::probe(fn () => self::you($user)),
