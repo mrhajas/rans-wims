@@ -5,7 +5,7 @@
         <span class="idm-ico"><icons name="collection" class="w-5 h-5" /></span>
         <div class="idm-title">
           <b>{{ $t('Item Details') }}</b>
-          <span v-if="show && item">{{ $t(item.name) }}</span>
+          <span v-if="show && item">{{ $t(item.name) }}<template v-if="item.code"> · {{ item.code }}</template></span>
           <span v-else-if="show && preview">{{ preview }}</span>
         </div>
         <div class="idm-actions">
@@ -44,8 +44,9 @@
       <div class="p-6 print:block print:h-full bg-gray-100">
         <item-details v-if="item" :item="item" :modal="true" />
         <div v-else-if="loading" class="idm-skel" aria-busy="true" :aria-label="$t('Loading...')">
-          <i class="idm-skel-photo"></i>
-          <span class="idm-skel-line w1"></span><span class="idm-skel-line w2"></span><span class="idm-skel-line w3"></span>
+          <div class="idm-skel-hero"><i class="idm-skel-photo"></i><span class="idm-skel-col"><span class="idm-skel-line w1"></span><span class="idm-skel-line w3"></span></span><i class="idm-skel-code"></i><i class="idm-skel-code"></i></div>
+          <div class="idm-skel-tiles"><i></i><i></i><i></i><i></i></div>
+          <span class="idm-skel-line w2"></span><span class="idm-skel-line w1"></span><span class="idm-skel-line w3"></span>
         </div>
         <p v-else class="idm-none">{{ $t('The item could not be loaded.') }}</p>
       </div>
@@ -101,4 +102,10 @@ export default {
 .idm-btn:hover { transform: translateY(-3px) scale(1.1); box-shadow: 0 10px 16px -8px rgba(15, 23, 42, 0.45); } .idm-btn:active { transform: scale(0.92); } .idm-btn.is-red:hover { transform: translateY(-3px) scale(1.1) rotate(90deg); }
 @keyframes idm-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .idm-ico, .idm-btn { animation: none; transition: none; } }
+
+.idm-skel-hero { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem; border-radius: 1.2rem; background: rgba(148, 163, 184, 0.14); } .idm-skel-col { flex: 1; display: grid; gap: 0.5rem; } .idm-skel-code { display: block; width: 4.5rem; height: 3.6rem; border-radius: 0.9rem; }
+.idm-skel-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.6rem; } .idm-skel-tiles i { display: block; height: 3.6rem; border-radius: 1.1rem; }
+.idm-skel i, .idm-skel span.idm-skel-line { background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 200% 100%; animation: idm-shimmer 1.2s linear infinite; }
+html.dark .idm-skel i, html.dark .idm-skel span.idm-skel-line { background: linear-gradient(90deg, rgba(148, 163, 184, 0.14) 25%, rgba(148, 163, 184, 0.28) 50%, rgba(148, 163, 184, 0.14) 75%); background-size: 200% 100%; }
+@media (max-width: 479.98px) { .idm-skel-code { display: none; } }
 </style>

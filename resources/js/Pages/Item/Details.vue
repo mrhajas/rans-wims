@@ -21,14 +21,19 @@
       <!-- Hero -->
       <section class="dt-hero print:hidden">
         <button type="button" class="dt-photo" :aria-label="$t('Image')" @click="() => (show = true)">
-          <img v-if="item.photo" class="block w-full h-full object-cover" :src="item.photo" alt="" />
-          <span v-else class="dt-photo-ph"><icons name="image" class="w-7 h-7" /></span>
+          <template v-if="item.photo">
+            <img class="block w-full h-full object-cover" :src="item.photo" alt="" />
+            <span class="dt-photo-zoom" aria-hidden="true"><icons name="zoom-in" class="w-5 h-5" /></span>
+          </template>
+          <span v-else class="dt-photo-ph is-initials" :style="{ '--h': hue }" aria-hidden="true">{{ initials }}</span>
         </button>
         <div class="min-w-0 flex-1 dt-title">
           <div class="dt-kicker"><icons name="collection" class="w-3.5 h-3.5" />{{ $t('Item') }}</div>
           <h2 class="dt-ref">{{ item.name }}</h2>
           <div class="dt-chips">
             <span class="lg-chip lg-chip-blue"><icons name="hash" class="w-3 h-3" />{{ $t('Code') }}: {{ item.code || '-' }}</span>
+            <button v-if="item.code" type="button" class="dt-copy lg-tip" :class="{ 'is-done': copied }" :data-tip="copied ? $t('Copied') : $t('Copy the code')" :aria-label="$t('Copy the code')" @click.stop="copyCode"><icons :name="copied ? 'tick' : 'duplicate'" class="w-3.5 h-3.5" /></button>
+            <span class="dt-state" :class="'is-' + stockState.key"><i></i>{{ stockState.label }}</span>
             <span v-if="item.sku" class="lg-chip lg-chip-slate">{{ $t('SKU') }}: {{ item.sku }}</span>
             <span v-if="item.categories && item.categories.length" class="lg-chip lg-chip-violet"><icons name="folder" class="w-3 h-3" />{{ item.categories[0].name }}</span>
             <span v-if="item.is_used" class="lg-chip lg-chip-amber">{{ $t('Used Item') }}</span>
@@ -51,10 +56,10 @@
 
       <!-- Key figures: every value stays on one line -->
       <div class="dt-tiles">
-        <div v-for="t in tiles" :key="t.label" class="dt-tile" :class="'is-' + t.tone">
+        <div v-for="(t, ti) in tiles" :key="t.label" class="dt-tile" :class="'is-' + t.tone" :style="{ '--ti': ti }">
           <span class="dt-tile-ico"><icons :name="t.icon" class="w-5 h-5" /></span>
           <div class="dt-tile-t">
-            <b class="dt-tile-v" :class="{ 'is-money': t.money }" :style="{ '--n': String(t.value).length }">{{ t.value }}</b>
+            <b class="dt-tile-v" :class="{ 'is-money': t.money }" :style="{ '--n': String(t.text !== undefined ? t.text : t.num).length + 4 }"><template v-if="t.text !== undefined">{{ t.text }}</template><count-number v-else :value="t.num" :prefix="t.prefix || ''" :suffix="t.suffix || ''" :delay="ti * 90" /></b>
             <small>{{ t.label }}</small>
           </div>
         </div>
@@ -118,7 +123,9 @@
       </section>
       <section v-if="item.track_quantity && !availableStock.length" class="lg-card dt-card dt-none">
         <div class="dt-none-ico"><icons name="building" class="w-6 h-6" /></div>
-        {{ $t('This item is not currently available in any warehouse.') }}
+        <b>{{ $t('No stock yet') }}</b>
+        <p>{{ $t('This item is not currently available in any project(s) / warehouse(s).') }}</p>
+        <a v-if="$can('create-checkins')" :href="route('checkins.create')" target="_blank" rel="noopener" class="lg-btn tone dt-none-go" style="--tone: #059669"><span class="tone-ico"><icons name="plus" class="w-4 h-4" /></span>{{ $t('Check in stock') }}</a>
       </section>
 
       <template v-if="item.has_variants && variations.length">
@@ -176,14 +183,16 @@ import JsBarcode from 'jsbarcode';
 import Loading from '@/Shared/Loading.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import CountNumber from '@/Shared/CountNumber.vue';
 export default {
-  components: { Loading, Modal, StatTiles },
+  components: { Loading, Modal, StatTiles, CountNumber },
 
   props: { item: Object, modal: { default: false } },
 
   data() {
     return {
       show: false,
+      copied: false,
       qr: null,
       loading: false,
       variations: [],
@@ -207,12 +216,35 @@ export default {
       const price = Number(this.item.price || 0);
       return this.totalQuantity * price;
     },
+    // In stock / Low stock / Out of stock, by the same rule as the Items page
+    stockState() {
+      const it = this.item;
+      if (!it.track_quantity) return { key: 'untracked', label: this.$t('Not stock-tracked') };
+      const q = this.totalQuantity;
+      if (q <= 0) return { key: 'out', label: this.$t('Out of stock') };
+      if (Number(it.alert_quantity) > 0 && q <= Number(it.alert_quantity)) return { key: 'low', label: this.$t('Low stock') };
+      return { key: 'in', label: this.$t('In stock') };
+    },
+    initials() {
+      const w = String(this.item.name || '?').trim().split(/\s+/).filter(Boolean);
+      return ((w[0] || '?')[0] + (w[1] ? w[1][0] : '')).toUpperCase();
+    },
+    // a colour for the letters, the same for the same item
+    hue() {
+      let h = 0;
+      String(this.item.code || this.item.name || '').split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) % 360; });
+      return h;
+    },
     tiles() {
-      const list = [{ label: this.$t('Item Price'), value: this.$number(this.item.price) + ' Tsh', icon: 'cash', tone: 'indigo', money: true }];
-      if (this.item.track_quantity && this.availableStock.length) {
-        list.push({ label: this.$t('Total Value of All Warehouses'), value: 'Tsh ' + this.$number(this.totalValue), icon: 'chart-bar', tone: 'emerald', money: true });
-        list.push({ label: this.$t('Quantity'), value: (this.$number(this.totalQuantity) + ' ' + (this.item.unit ? this.item.unit.code : '')).trim(), icon: 'collection', tone: 'navy' });
-        list.push({ label: this.$t('Project(s) / Warehouse(s)'), value: String(this.availableStock.length), icon: 'building', tone: 'teal' });
+      const unit = this.item.unit ? this.item.unit.code : '';
+      const list = [{ label: this.$t('Item Price'), num: Number(this.item.price || 0), suffix: ' Tsh', icon: 'cash', tone: 'indigo', money: true }];
+      if (this.item.track_quantity) {
+        const out = this.totalQuantity <= 0;
+        list.push({ label: this.$t('Quantity'), num: this.totalQuantity, suffix: unit ? ' ' + unit : '', icon: 'collection', tone: out ? 'rose' : 'navy' });
+        list.push({ label: this.$t('Total Value of All Warehouses'), num: this.totalValue, prefix: 'Tsh ', icon: 'chart-bar', tone: 'emerald', money: true });
+        list.push({ label: this.$t('Project(s) / Warehouse(s)'), num: this.availableStock.length, icon: 'building', tone: 'teal' });
+      } else {
+        list.push({ label: this.$t('Stock'), text: this.$t('Not tracked'), icon: 'collection', tone: 'slate' });
       }
       return list;
     },
@@ -240,6 +272,14 @@ export default {
     loadQr() {
       if (!this.item || !this.item.id) return;
       window.axios.get(route('qr-codes.show', { type: 'item', id: this.item.id })).then(r => { this.qr = r.data && r.data.image ? r.data.image : null; }).catch(() => { this.qr = null; });
+    },
+    copyCode() {
+      const code = String(this.item.code || '');
+      const done = () => { this.copied = true; clearTimeout(this._ct); this._ct = setTimeout(() => { this.copied = false; }, 1600); };
+      // the older way, for a browser that does not allow the clipboard here
+      const old = () => { const t = document.createElement('textarea'); t.value = code; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); try { if (document.execCommand('copy')) done(); } catch (e) { /* not copied */ } t.remove(); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(old);
+      else old();
     },
     // this stock line's share of the item's whole quantity
     share(stock) {
@@ -388,4 +428,22 @@ html.dark .text-maroon { color: #f87171; }
 @media (prefers-reduced-motion: reduce) { .dt-hero, .dt-hero::after, .dt-tile, .dt-card, .dt-f, .dt-pill, .dt-wh, .dt-share i, .dt-none-ico { animation: none; } .dt-photo, .dt-barcode, .dt-qr, .dt-tile, .dt-f, .dt-wh, .dt-tile-ico, .dt-f-ico { transition: none; } }
 @media print { .dt-hero, .dt-tile, .dt-card, .dt-f, .dt-pill, .dt-wh, .dt-share i { animation: none !important; } .dt-hero::after { display: none; } }
 @media (max-width: 640px) { .dt-hero { padding: 0.8rem; gap: 10px; } .dt-codes { width: 100%; justify-content: flex-start; } .dt-kv { grid-template-columns: 1fr !important; } }
+
+/* ---- polish: state badge, copy, initials, richer tiles, friendlier empty stock ---- */
+.dt-hero { background: radial-gradient(circle at 8% 0%, rgba(99, 102, 241, 0.16), transparent 45%), radial-gradient(circle at 96% 100%, rgba(20, 184, 166, 0.14), transparent 45%), linear-gradient(135deg, rgba(224, 233, 250, 0.8), rgba(255, 251, 235, 0.65)); }
+.dt-photo { position: relative; box-shadow: 0 10px 22px -14px rgba(15, 23, 42, 0.55), 0 0 0 3px rgba(255, 255, 255, 0.85); } html.dark .dt-photo { box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.7), 0 0 0 3px rgba(255, 255, 255, 0.08); }
+.dt-photo-zoom { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(15, 23, 42, 0.45); opacity: 0; transition: opacity 0.2s ease; } .dt-photo:hover .dt-photo-zoom, .dt-photo:focus-visible .dt-photo-zoom { opacity: 1; }
+.dt-photo-ph.is-initials { font-size: 1.5rem; font-weight: 900; letter-spacing: 0.02em; color: hsl(var(--h) 55% 34%); background: linear-gradient(135deg, hsl(var(--h) 80% 90%), hsl(calc(var(--h) + 40) 80% 82%)); } html.dark .dt-photo-ph.is-initials { color: hsl(var(--h) 80% 85%); background: linear-gradient(135deg, hsl(var(--h) 45% 24%), hsl(calc(var(--h) + 40) 45% 18%)); }
+.dt-copy { display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 0; border-radius: 999px; cursor: pointer; color: #1d4ed8; background: rgba(37, 99, 235, 0.12); transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease; } .dt-copy:hover { transform: scale(1.12); background: rgba(37, 99, 235, 0.22); } .dt-copy:active { transform: scale(0.9); } .dt-copy.is-done { color: #fff; background: #059669; animation: dt-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.dt-state { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.7rem; border-radius: 999px; font-size: 0.74rem; font-weight: 800; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 28%, transparent); } .dt-state i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--c); }
+.dt-state.is-in { --c: #059669; } .dt-state.is-low { --c: #d97706; } .dt-state.is-out { --c: #e11d48; } .dt-state.is-untracked { --c: #64748b; } .dt-state.is-out i, .dt-state.is-low i { animation: dt-dot 1.6s ease-in-out 3; } @keyframes dt-dot { 50% { transform: scale(1.7); opacity: 0.5; } }
+.dt-tile { animation-delay: calc(0.1s + var(--ti, 0) * 70ms); } .dt-tile.is-rose { --tone: #e11d48; --soft: rgba(225, 29, 72, 0.12); } .dt-tile.is-slate { --tone: #64748b; --soft: rgba(100, 116, 139, 0.14); }
+.dt-none { gap: 6px; } .dt-none b { font-size: 1rem; color: var(--lg-ink); } .dt-none p { margin: 0; max-width: 26rem; font-size: 0.84rem; font-weight: 500; } .dt-none-go { margin-top: 6px; }
+@media (max-width: 640px) { .dt-tiles { grid-template-columns: 1fr 1fr; gap: 8px; } .dt-tile { padding: 10px 12px; gap: 8px; } .dt-tile-ico { transform: scale(0.9); } }
+@media (max-width: 340px) { .dt-tiles { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .dt-copy.is-done, .dt-state i { animation: none; } .dt-copy, .dt-photo-zoom { transition: none; } }
+@media print { .dt-copy, .dt-photo-zoom { display: none !important; } }
+
+.dt-tiles { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
+.dt-tile-v { overflow-wrap: anywhere; }
 </style>
