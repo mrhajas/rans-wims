@@ -546,6 +546,14 @@ class PermissionRegistry
                 ],
             ],
 
+            'wims_logs' => [
+                'label' => __('WIMS Logs'),
+                'abilities' => [
+                    'read-wims-logs' => __('Open Settings > WIMS Logs: see what was archived, the space saved, every archived record, and download it. Only the Super Admin has it by default.'),
+                    'run-wims-logs' => __('Run the archiving now, see what it would move, and change how long each log stays live and how often it runs. Only the Super Admin has it by default.'),
+                ],
+            ],
+
             'system_health' => [
                 'label' => __('System Health'),
                 'abilities' => [

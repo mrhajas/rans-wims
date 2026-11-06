@@ -21,6 +21,10 @@ class SpeedProbe
             'Material requests' => ['material_requests', 'select id, status, created_at from material_requests order by id desc limit 300'],
             'Alerts' => ['notifications', "select id, type, read_at from notifications order by created_at desc limit 200"],
             'Transfers' => ['transfers', 'select id, status, created_at from transfers order by id desc limit 300'],
+            'Delivery logs' => ['wims_connect_logs', 'select id, event_key, channel, status, created_at from wims_connect_logs order by id desc limit 25'],
+            'Delivery logs (total)' => ['wims_connect_logs', 'select count(*) as n from wims_connect_logs'],
+            'Weather latest' => ['weather_snapshots', "select id, kind, fetched_at from weather_snapshots where kind = 'current' order by fetched_at desc limit 50"],
+            'Download and print log' => ['download_print_logs', 'select id, user_name, module, performed_at from download_print_logs order by performed_at desc limit 25'],
             'Users and roles' => ['users', 'select users.id, users.name, count(model_has_roles.role_id) as r from users left join model_has_roles on model_has_roles.model_id = users.id group by users.id, users.name'],
         ];
     }

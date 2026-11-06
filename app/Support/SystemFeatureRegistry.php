@@ -887,6 +887,13 @@ class SystemFeatureRegistry
                 'icon' => 'chart-bar',
                 'route_prefixes' => ['optimizer.'],
             ],
+            'wims_logs' => [
+                'name' => __('WIMS Logs'),
+                'description' => __('Old log records (weather forecasts, delivery logs, downloads and prints, read alerts, slow pages) are moved out of the live database into compressed archive files on a schedule, so the system stays fast and nothing is lost. A Super Admin can read, search and download every archived record and sees the space saved. Super Admin, or a role given the WIMS Logs permissions.'),
+                'module' => __('Administration'),
+                'icon' => 'archive-box',
+                'route_prefixes' => ['wims-logs.'],
+            ],
             'background_tasks' => [
                 'name' => __('Background Tasks'),
                 'description' => __('Long reports (PDF) are prepared in the background so people can keep working, with a toast that shows progress and a lock against starting the same report twice. Switched off, every report is made on the page as before.'),

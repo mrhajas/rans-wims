@@ -28,6 +28,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('background:sweep')->everyMinute()->withoutOverlapping(10)->runInBackground();
         $schedule->command('archive:export-run')->everyMinute()->withoutOverlapping(3)->runInBackground();
         $schedule->command('housekeeping:run')->dailyAt('02:10')->withoutOverlapping();
+        // WIMS Logs: archives old log records when the days set in Settings > WIMS Logs have passed since the last run (it checks itself)
+        $schedule->command('wims-logs:run --scheduled')->dailyAt('02:40')->withoutOverlapping();
         $schedule->command('stock:alert')->daily();
         // Stock Archive: the day and time are settings, so the check runs every minute and acts only when they have come; old entries go once a day
         $schedule->command('stock-archive:run')->everyMinute()->withoutOverlapping(10);

@@ -423,6 +423,20 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('settings/performance/queue/run', [Controllers\PerformanceController::class, 'queueRun'])->middleware('throttle:6,1,performance.queue.run')->name('performance.queue.run');
     Route::post('settings/performance/queue/retry', [Controllers\PerformanceController::class, 'queueRetry'])->middleware('throttle:6,1,performance.queue.retry')->name('performance.queue.retry');
     Route::delete('settings/performance/queue/failed', [Controllers\PerformanceController::class, 'queueFlush'])->middleware('throttle:4,1,performance.queue.flush')->name('performance.queue.flush');
+    // Settings > WIMS Logs: old log records are archived into compressed files that a Super Admin can read, search and download (permissions read-wims-logs / run-wims-logs)
+    Route::get('settings/wims-logs', [Controllers\WimsLogsController::class, 'index'])->name('wims-logs.index');
+    Route::get('settings/wims-logs/preview', [Controllers\WimsLogsController::class, 'preview'])->middleware('throttle:30,1,wims-logs.preview')->name('wims-logs.preview');
+    Route::put('settings/wims-logs', [Controllers\WimsLogsController::class, 'updateSettings'])->middleware('throttle:20,1,wims-logs.settings')->name('wims-logs.settings');
+    Route::post('settings/wims-logs/run', [Controllers\WimsLogsController::class, 'run'])->middleware('throttle:4,1,wims-logs.run')->name('wims-logs.run');
+    Route::post('settings/wims-logs/runs/{run}/step', [Controllers\WimsLogsController::class, 'step'])->whereNumber('run')->middleware('throttle:600,1,wims-logs.step')->name('wims-logs.step');
+    Route::post('settings/wims-logs/runs/{run}/finish', [Controllers\WimsLogsController::class, 'finish'])->whereNumber('run')->middleware('throttle:12,1,wims-logs.finish')->name('wims-logs.finish');
+    Route::get('settings/wims-logs/runs/{run}', [Controllers\WimsLogsController::class, 'show'])->whereNumber('run')->name('wims-logs.show');
+    Route::get('settings/wims-logs/runs/{run}/print', [Controllers\WimsLogsController::class, 'print'])->whereNumber('run')->middleware('throttle:60,1,wims-logs.print')->name('wims-logs.print');
+    Route::get('settings/wims-logs/runs/{run}/pdf', [Controllers\WimsLogsController::class, 'pdf'])->whereNumber('run')->middleware('throttle:30,1,wims-logs.pdf')->name('wims-logs.pdf');
+    Route::get('settings/wims-logs/archives/{archive}', [Controllers\WimsLogsController::class, 'archive'])->whereNumber('archive')->middleware('throttle:120,1,wims-logs.archive')->name('wims-logs.archives.show');
+    Route::get('settings/wims-logs/archives/{archive}/records/{id}', [Controllers\WimsLogsController::class, 'record'])->whereNumber('archive')->where('id', '[A-Za-z0-9\-]{1,64}')->middleware('throttle:120,1,wims-logs.record')->name('wims-logs.archives.record');
+    Route::get('settings/wims-logs/archives/{archive}/download', [Controllers\WimsLogsController::class, 'download'])->whereNumber('archive')->middleware('throttle:6,1,wims-logs.download')->name('wims-logs.archives.download');
+
     Route::get('system-features', [Controllers\SystemFeatureController::class, 'index'])->name('system-features.index');
     Route::put('system-features/{systemFeature}', [Controllers\SystemFeatureController::class, 'update'])->name('system-features.update');
     Route::get('system-features/reconcile', [Controllers\SystemFeatureController::class, 'reconcile'])->name('system-features.reconcile');

@@ -69,6 +69,14 @@ const OPTIMIZER_ENTRIES = [
   { route: 'optimizer.index', title: 'Compress Pictures', icon: 'image', hash: '#op-tasks', permission: 'read-optimizer' },
 ];
 
+// Settings > WIMS Logs: old log records archived into compressed files that can be read and downloaded (permission read-wims-logs)
+const WIMS_LOGS_ENTRIES = [
+  { route: 'wims-logs.index', title: 'WIMS Logs (archived logs, space saved)', icon: 'archive-box', permission: 'read-wims-logs' },
+  { route: 'wims-logs.index', title: 'Archived Logs (read and download)', icon: 'doc-text', hash: '#wl-history', permission: 'read-wims-logs' },
+  { route: 'wims-logs.index', title: 'Archive Old Logs Now', icon: 'refresh', hash: '#wl-schedule', permission: 'run-wims-logs' },
+  { route: 'wims-logs.index', title: 'Space Saved by Archiving', icon: 'database', hash: '#wl-space', permission: 'read-wims-logs' },
+];
+
 // Settings > Performance & Data (Super Admin only), reachable by what a person would type
 const PERFORMANCE_ENTRIES = [
   { route: 'performance.index', title: 'Performance & Data', icon: 'chart-bar' },
@@ -193,7 +201,7 @@ export function searchMenu(query, ctx) {
     });
   }
 
-  for (const entry of [...OPTIMIZER_ENTRIES, ...SYSTEM_HEALTH_ENTRIES]) {
+  for (const entry of [...OPTIMIZER_ENTRIES, ...WIMS_LOGS_ENTRIES, ...SYSTEM_HEALTH_ENTRIES]) {
     if (!ctx.can([entry.permission])) continue;
 
     const haystack = entry.title.toLowerCase();

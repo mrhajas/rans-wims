@@ -59,6 +59,18 @@
             </header>
           </section>
 
+          <!-- WIMS Logs: Super Admin, or a role given the WIMS Logs permission -->
+          <section v-if="$can('read-wims-logs')" id="st-wims-logs" class="lg-card">
+            <header class="lg-card-head">
+              <span class="lg-card-ico lg-ico-sky"><icons name="archive-box" class="w-5 h-5" /></span>
+              <div class="min-w-0">
+                <h2 class="lg-card-title">{{ $t('WIMS Logs') }}</h2>
+                <p class="lg-card-sub">{{ $t('Old log records are moved into compressed archives you can read and download, so the system stays fast and nothing is lost.') }}</p>
+              </div>
+              <Link :href="route('wims-logs.index')" class="lg-btn lg-btn-primary st-card-action">{{ $t('Open WIMS Logs') }}</Link>
+            </header>
+          </section>
+
           <!-- Main settings form -->
           <form @submit.prevent="submit" class="st-form">
             <section id="st-general" class="lg-card">

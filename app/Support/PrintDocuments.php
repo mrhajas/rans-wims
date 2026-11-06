@@ -354,6 +354,90 @@ class PrintDocuments
         ]);
     }
 
+    /** One run of WIMS Logs as a WIMS document: what was archived log by log, the space it took before and after, the speed, who ran it, and who printed it. */
+    public static function wimsLogRun(\App\Models\WimsLogRun $run, ?\App\Models\User $by = null, array $earlier = [], string $action = 'Printed'): array
+    {
+        $by_ = fn ($v) => \App\Support\Optimizer\Runner::bytes((int) $v);
+        $sb = (float) $run->speed_before_ms;
+        $sa = (float) $run->speed_after_ms;
+        $speed = $sb > 0 ? round((($sb - $sa) / $sb) * 100, 1) : 0;
+        $ref = $run->ref();
+        $labels = collect(\App\Support\WimsLogs\Sources::all())->map(fn ($s) => $s['label'])->all();
+        $status = ['done' => ['Completed', 'status-info'], 'partial' => ['Partly done', 'status-warn'], 'failed' => ['Failed', 'status-warn'], 'running' => ['Running', 'status-warn']][$run->status] ?? ['Completed', 'status-info'];
+        $saved = max(0, (int) $run->original_bytes - (int) $run->stored_bytes);
+
+        $rows = [];
+        foreach ($run->archives()->orderBy('id')->get() as $a) {
+            $pct = $a->original_bytes > 0 ? round((1 - $a->stored_bytes / $a->original_bytes) * 100) : 0;
+            $period = ($a->date_from ? $a->date_from->format('d/m/Y') : '-') . ' - ' . ($a->date_to ? $a->date_to->format('d/m/Y') : '-');
+            $rows[] = [['v' => $a->ref(), 'a' => 'l', 'nw' => true], ['v' => $labels[$a->source] ?? $a->source, 'a' => 'l'], ['v' => number_format($a->rows_n), 'a' => 'r', 'nw' => true],
+                ['v' => $by_($a->original_bytes), 'a' => 'r', 'nw' => true], ['v' => $by_($a->stored_bytes), 'a' => 'r', 'nw' => true], ['v' => $pct . '%', 'a' => 'r', 'nw' => true],
+                ['v' => $period, 'a' => 'l', 'nw' => true], ['v' => $a->verified ? 'Verified' : ($a->error ? 'Error' : 'Not verified'), 'a' => 'l', 'nw' => true]];
+        }
+
+        $b = (array) ($run->before['db'] ?? []);
+        $af = (array) ($run->after['db'] ?? []);
+        $bt = (int) ($b['bytes'] ?? 0) + (int) ($b['free'] ?? 0);
+        $at = (int) ($af['bytes'] ?? 0) + (int) ($af['free'] ?? 0);
+        $pair = fn ($label, $x, $y) => [$label, $by_($x) . '  >  ' . $by_($y) . '  (' . (($x - $y) >= 0 ? '-' : '+') . $by_(abs($x - $y)) . ')'];
+        $sizes = [
+            $pair('Whole database (with its free space)', $bt, $at),
+            ['Archived records as they were in the database', $by_($run->original_bytes)],
+            ['The same records in the archive files (data and index)', $by_($run->stored_bytes)],
+            ['Space saved by compression', $by_($saved)],
+            ['Database files really made smaller', $by_(max(0, (int) $run->db_freed_bytes))],
+        ];
+        $after = [];
+        foreach ((array) (((array) $run->speed_after)['items'] ?? []) as $i) {
+            $after[$i['name']] = $i['ms'];
+        }
+        $reads = [];
+        foreach ((array) (((array) $run->speed_before)['items'] ?? []) as $i) {
+            $y = $after[$i['name']] ?? $i['ms'];
+            $reads[] = [$i['name'], number_format($i['ms'], 2) . ' ms  >  ' . number_format($y, 2) . ' ms'];
+        }
+        $reads[] = ['All together', number_format($sb, 2) . ' ms  >  ' . number_format($sa, 2) . ' ms  (' . ($sb > 0 ? ($speed >= 0 ? '+' : '') . $speed . '%' : '-') . ')'];
+
+        $o = (array) ($run->options['keep_days'] ?? []);
+        $keep = implode(', ', array_map(fn ($k, $d) => ($labels[$k] ?? $k) . ' ' . $d . ' d', array_keys($o), $o));
+        $print = [[$action, ($by->name ?? '-') . ($by && $by->roles->first() ? ' (' . $by->roles->first()->name . ')' : '') . ', ' . now()->format('d/m/Y H:i:s')]];
+        foreach ($earlier as $e) {
+            $print[] = [$e['action'], ($e['who'] ?? '-') . ($e['role'] ? ' (' . $e['role'] . ')' : '') . ', ' . \Illuminate\Support\Carbon::parse($e['at'])->format('d/m/Y H:i:s')];
+        }
+
+        return self::base([
+            'accent' => '#0f766e', 'accent_dark' => '#115e59', 'accent_soft' => '#f0fdfa', 'accent_line' => '#99f6e4',
+            'icon' => 'file', 'title' => 'WIMS LOGS ARCHIVE REPORT', 'subtitle' => 'Which logs were moved out of the live database, how big they were before and after, and who ran it',
+            'reference' => $ref,
+            'status' => ['label' => strtoupper($status[0]), 'class' => $status[1]],
+            'show_values' => false, 'compact' => true,
+            'stats' => [
+                ['icon' => 'package', 'label' => 'Records archived', 'value' => number_format((int) $run->rows_archived)],
+                ['icon' => 'package', 'label' => 'Space saved', 'value' => $by_($saved)],
+                ['icon' => 'package', 'label' => 'Database made smaller by', 'value' => $by_(max(0, (int) $run->db_freed_bytes))],
+                ['icon' => 'clock', 'label' => 'Database speed', 'value' => ($sb > 0 ? ($speed >= 0 ? '+' : '') . $speed . '%' : '-')],
+            ],
+            'parties' => [
+                ['title' => 'Run', 'icon' => 'user', 'rows' => [['Done by', ($run->user_name ?: '-')], ['How', $run->trigger === 'schedule' ? 'By the schedule' : 'Run by hand'], ['Started', optional($run->started_at)->format('d/m/Y H:i:s') ?: '-'], ['Finished', optional($run->finished_at)->format('d/m/Y H:i:s') ?: '-'], ['Time taken', (int) $run->seconds . ' s']]],
+                ['title' => 'Days each log stays live', 'icon' => 'calendar', 'rows' => [['Rule', $keep ?: '-']]],
+            ],
+            'extra_parties' => [
+                ['title' => 'Sizes', 'icon' => 'package', 'rows' => $sizes],
+                ['title' => 'Database speed, read by read (middle of five tries)', 'icon' => 'clock', 'rows' => $reads],
+                ['title' => 'Printed and downloaded by', 'icon' => 'user', 'rows' => $print],
+            ],
+            'table' => [
+                'title' => 'What was archived', 'note' => 'Nothing was lost: each record was written to its archive, read back and compared with the original before it was removed from the live table. Every archived record can be read and downloaded in Settings > WIMS Logs.', 'start' => 0,
+                'cols' => [['label' => 'Archive', 'a' => 'l'], ['label' => 'Log', 'a' => 'l'], ['label' => 'Records', 'a' => 'r'], ['label' => 'Before', 'a' => 'r'], ['label' => 'Archive', 'a' => 'r'], ['label' => 'Saved', 'a' => 'r'], ['label' => 'Period', 'a' => 'l'], ['label' => 'Check', 'a' => 'l']],
+                'rows' => $rows,
+            ],
+            'lines' => [], 'total' => '', 'total_qty' => '',
+            'notes' => 'The archive files are kept on the server and are never removed automatically. Business records (stock, items, requests, transfers, approvals) are never touched.',
+            'signatures' => [['role' => 'Run By', 'name' => $run->user_name, 'date' => optional($run->finished_at ?: $run->started_at)->format('d/m/Y')], ['role' => $action . ' By', 'name' => optional($by)->name, 'date' => now()->format('d/m/Y')]],
+            'footer' => 'WIMS Logs ' . $ref,
+        ]);
+    }
+
     /** The BinCard of an item as a WIMS document: the picture, the item, its Last update and who printed it, and when. */
     public static function binCard(\App\Models\Item $item, string $imageSrc, ?\App\Models\User $by = null): array
     {
