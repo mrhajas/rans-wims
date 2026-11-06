@@ -83,7 +83,7 @@ class WimsLogsController extends Controller
     private function logs(array $keepOverride = []): array
     {
         $preview = collect(Archiver::preview($keepOverride))->keyBy('key');
-        $agg = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(compressed_bytes) as compressed, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to, max(created_at) as last_at')
+        $agg = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(compressed_bytes) as compressed, sum(stored_bytes) as `stored`, min(date_from) as date_from, max(date_to) as date_to, max(created_at) as last_at')
             ->groupBy('source')->get()->keyBy('source');
         $out = [];
         foreach (Sources::all() as $key => $src) {
@@ -108,7 +108,7 @@ class WimsLogsController extends Controller
     private function overview(): array
     {
         $db = Archiver::dbSize();
-        $t = WimsLogArchive::query()->selectRaw('count(*) as n, coalesce(sum(rows_n),0) as rows_n, coalesce(sum(original_bytes),0) as original, coalesce(sum(compressed_bytes),0) as compressed, coalesce(sum(stored_bytes),0) as stored')->first();
+        $t = WimsLogArchive::query()->selectRaw('count(*) as n, coalesce(sum(rows_n),0) as rows_n, coalesce(sum(original_bytes),0) as original, coalesce(sum(compressed_bytes),0) as compressed, coalesce(sum(stored_bytes),0) as `stored`')->first();
         $freed = (int) WimsLogRun::query()->whereIn('status', ['done', 'partial'])->sum('db_freed_bytes');
         $original = (int) $t->original;
         $stored = (int) $t->stored;
@@ -243,7 +243,7 @@ class WimsLogsController extends Controller
     private function browsePage(Request $request)
     {
         $keys = array_keys(Sources::all());
-        $counts = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to')->groupBy('source')->get()->keyBy('source');
+        $counts = WimsLogArchive::query()->selectRaw('source, count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(stored_bytes) as `stored`, min(date_from) as date_from, max(date_to) as date_to')->groupBy('source')->get()->keyBy('source');
         $logs = collect(Sources::all())->map(fn ($src, $k) => [
             'key' => $k, 'label' => $src['label'], 'rows' => (int) ($counts->get($k)->rows_n ?? 0), 'archives' => (int) ($counts->get($k)->archives ?? 0),
             'original' => (int) ($counts->get($k)->original ?? 0), 'stored' => (int) ($counts->get($k)->stored ?? 0),
@@ -317,7 +317,7 @@ class WimsLogsController extends Controller
         $source = (string) $request->query('source', '');
         abort_unless(Sources::get($source) !== null, 404);
         $q = trim((string) $request->query('q', ''));
-        $agg = WimsLogArchive::query()->where('source', $source)->selectRaw('count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(compressed_bytes) as compressed, sum(stored_bytes) as stored, min(date_from) as date_from, max(date_to) as date_to')->first();
+        $agg = WimsLogArchive::query()->where('source', $source)->selectRaw('count(*) as archives, sum(rows_n) as rows_n, sum(original_bytes) as original, sum(compressed_bytes) as compressed, sum(stored_bytes) as `stored`, min(date_from) as date_from, max(date_to) as date_to')->first();
 
         return ['source' => $source, 'q' => $q, 'label' => Sources::get($source)['label'], 'agg' => $agg];
     }

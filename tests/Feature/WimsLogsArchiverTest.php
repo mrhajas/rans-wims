@@ -323,4 +323,23 @@ class WimsLogsArchiverTest extends TestCase
         $this->assertSame($expected, Archiver::readSizes($maria));
         $this->assertSame($expected, Archiver::readSizes($old));
     }
+
+    public function test_raw_sql_aliases_in_the_new_code_are_not_mysql_8_reserved_words(): void
+    {
+        // MariaDB (used for testing here) accepts `as stored`; MySQL 8 (the live server) rejects it as a syntax error. Such an alias must be quoted with backticks.
+        $reserved = ['stored', 'system', 'rank', 'rows', 'groups', 'window', 'row', 'lead', 'lag', 'function', 'virtual', 'empty', 'except', 'of', 'over', 'recursive', 'lateral', 'generated', 'cume_dist', 'dense_rank', 'first_value', 'last_value', 'nth_value', 'ntile', 'percent_rank', 'row_number', 'json_table', 'optimizer_costs'];
+        $files = array_merge(glob(base_path('app/Support/WimsLogs/*.php')), glob(base_path('app/Support/Performance/*.php')), [base_path('app/Http/Controllers/WimsLogsController.php'), base_path('app/Http/Controllers/ItemController.php'), base_path('app/Http/Controllers/QuickMenuController.php')]);
+        $found = [];
+        foreach ($files as $f) {
+            foreach (preg_split('/\R/', (string) file_get_contents($f)) as $n => $line) {
+                if (! preg_match('/selectRaw|DB::select|whereRaw|orderByRaw|DB::raw|statement\(/i', $line)) {
+                    continue;
+                }
+                if (preg_match('/\bas\s+(' . implode('|', $reserved) . ')\b(?!\s*[\x60\'"])/i', $line, $m) && ! preg_match('/\bas\s+`' . $m[1] . '`/i', $line)) {
+                    $found[] = basename($f) . ':' . ($n + 1) . ' as ' . $m[1];
+                }
+            }
+        }
+        $this->assertSame([], $found, 'unquoted reserved-word alias in raw SQL');
+    }
 }
