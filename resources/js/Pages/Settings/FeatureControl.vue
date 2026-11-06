@@ -319,7 +319,9 @@ export default {
       };
       return this.rows
         .filter(f => !(f.depends_on && this.byKey[f.depends_on] && this.byKey[f.depends_on].module === f.module))
-        .map(root => ({ root, all: below(root.key, { [root.key]: true }) }));
+        .map(root => ({ root, all: below(root.key, { [root.key]: true }) }))
+        // a function with only ONE sub-function gets no Main switch: the two are shown as ordinary cards side by side
+        .flatMap(t => (t.all.length === 1 ? [{ root: t.root, all: [] }, { root: t.all[0], all: [] }] : [t]));
     },
 
     groupedFeatures() {
