@@ -450,6 +450,9 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('search/items/catalogue', [Controllers\AjaxController::class, 'itemCatalogue'])->middleware('throttle:30,1,items.catalogue')->name('items.catalogue');
     Route::post('scan/item', [Controllers\AjaxController::class, 'scan'])->name('items.scan');
     Route::post('scan/resolve', [Controllers\ScanResolveController::class, 'resolve'])->middleware('throttle:120,1,scan.resolve')->name('scan.resolve');
+    Route::get('items-list/print', [Controllers\ItemController::class, 'listPrint'])->middleware('throttle:30,1,items.list.print')->name('items.list.print');
+    Route::get('items-list/pdf', [Controllers\ItemController::class, 'listPdf'])->middleware('throttle:20,1,items.list.pdf')->name('items.list.pdf');
+    Route::get('items-list/download', [Controllers\ItemController::class, 'listCsv'])->middleware('throttle:10,1,items.list.download')->name('items.list.download');
     Route::get('barcodes', [Controllers\ItemController::class, 'barcodes'])->name('items.barcodes');
     Route::get('barcodes/print', [Controllers\ItemController::class, 'barcodesPrint'])->middleware('throttle:30,1,items.barcodes.print')->name('items.barcodes.print');
     Route::post('barcodes/preferences', [Controllers\ItemController::class, 'saveBarcodePrefs'])->middleware('throttle:60,1,items.barcodes.preferences')->name('items.barcodes.preferences');

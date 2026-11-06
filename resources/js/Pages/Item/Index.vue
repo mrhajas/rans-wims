@@ -8,6 +8,11 @@
         <Link v-if="$can('read-items')" :href="route('items.barcodes', form.search ? { search: form.search } : {})" class="lg-btn lg-btn-soft">
           <icons name="doc" class="w-4 h-4" />{{ $t('Barcodes') }}
         </Link>
+        <template v-if="$can('read-items') && $connection.status !== 'offline'">
+          <a :href="route('items.list.print', reportQuery)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</a>
+          <a :href="route('items.list.pdf', reportQuery)" class="lg-btn lg-btn-soft"><icons name="download" class="w-4 h-4" />{{ $t('PDF') }}</a>
+          <a :href="route('items.list.download', reportQuery)" class="lg-btn lg-btn-soft"><icons name="table" class="w-4 h-4" />{{ $t('Excel (CSV)') }}</a>
+        </template>
         <offline-lock v-if="$can('create-items')">
           <Link :href="route('items.create')" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" />{{ $t('create_x', { x: $t('Item') }) }}</Link>
         </offline-lock>
@@ -498,6 +503,12 @@ export default {
   },
 
   computed: {
+    // what the page is showing right now (search, type tile, deleted, category, sort): the report lists exactly that
+    reportQuery() {
+      const q = { search: this.form.search, type: this.form.type, trashed: this.form.trashed, category: this.filters.category, sort: this.form.sort, direction: this.form.direction };
+      Object.keys(q).forEach(k => { if (q[k] === null || q[k] === undefined || q[k] === '') delete q[k]; });
+      return q;
+    },
     statTiles() {
       const s = this.stats || {};
 

@@ -438,6 +438,84 @@ class PrintDocuments
         ]);
     }
 
+    /** How many items one printed or PDF Items report lists; the CSV has them all. */
+    public const ITEMS_LIST_LIMIT = 2000;
+
+    /** "Out of stock", "Low" or "In stock", by the same rule as the tiles on the Items page. */
+    public static function itemStockState($item): string
+    {
+        $q = (float) ($item->stock_sum_quantity ?? 0);
+        if ((int) $item->track_quantity !== 1) {
+            return 'Not tracked';
+        }
+        if ($q <= 0) {
+            return 'Out of stock';
+        }
+
+        return (float) $item->alert_quantity > 0 && $q <= (float) $item->alert_quantity ? 'Low' : 'In stock';
+    }
+
+    /** The Items list as a WIMS document: the items the page is showing (same search, type, category, deleted and sort), who printed it and when. */
+    public static function itemsList($items, int $total, array $f, ?\App\Models\User $by = null, string $action = 'Printed'): array
+    {
+        $money = fn ($v) => number_format((float) $v, 2);
+        $qty = fn ($v) => rtrim(rtrim(number_format((float) $v, 3), '0'), '.') ?: '0';
+        $rows = [];
+        $value = 0.0;
+        $counts = ['Consumable' => 0, 'Used' => 0, 'Out of stock' => 0, 'Low' => 0];
+        foreach ($items as $item) {
+            $state = self::itemStockState($item);
+            $item->is_used ? $counts['Used']++ : $counts['Consumable']++;
+            if (isset($counts[$state])) {
+                $counts[$state]++;
+            }
+            $value += (float) $item->price * max(0, (float) $item->stock_sum_quantity);
+            $rows[] = [
+                ['v' => (string) $item->code, 'a' => 'l', 'nw' => true],
+                ['v' => (string) $item->name . ($item->deleted_at ? ' (deleted)' : ''), 'a' => 'l'],
+                ['v' => $item->is_used ? 'Used' : 'Consumable', 'a' => 'l', 'nw' => true],
+                ['v' => $item->categories->pluck('name')->implode(', ') ?: '-', 'a' => 'l'],
+                ['v' => optional($item->unit)->name ?: '-', 'a' => 'l', 'nw' => true],
+                ['v' => $money($item->price), 'a' => 'r', 'nw' => true],
+                ['v' => $qty($item->stock_sum_quantity), 'a' => 'r', 'nw' => true],
+                ['v' => $state, 'a' => 'l', 'nw' => true],
+            ];
+        }
+        $shown = count($rows);
+        $typeLabel = ['consumable' => 'Consumable', 'used' => 'Used', 'low' => 'Low stock', 'out' => 'Out of stock'][$f['type'] ?? ''] ?? 'All items';
+        $sortLabel = ($f['sort'] ?? null) ? ucfirst($f['sort']) . ' (' . (($f['direction'] ?? 'desc') === 'asc' ? 'low to high' : 'high to low') . ')' : 'Newest first';
+        $trash = ['with' => 'Including deleted items', 'only' => 'Deleted items only'][$f['trashed'] ?? ''] ?? 'Not deleted';
+        $cut = $total > $shown ? 'The first ' . number_format($shown) . ' of ' . number_format($total) . ' items are listed here. Use Download CSV on the Items page to get all of them.' : null;
+        $search = trim((string) ($f['search'] ?? ''));
+
+        return self::base([
+            'accent' => '#0f766e', 'accent_dark' => '#115e59', 'accent_soft' => '#f0fdfa', 'accent_line' => '#99f6e4',
+            'icon' => 'package', 'title' => 'ITEMS LIST', 'subtitle' => 'The catalogue as the Items page shows it: prices, stock levels and types',
+            'reference' => $search !== '' ? strtoupper(\Illuminate\Support\Str::limit($search, 22)) : 'ALL ITEMS',
+            'status' => ['label' => strtoupper($typeLabel), 'class' => 'status-info'],
+            'show_values' => false, 'compact' => true,
+            'stats' => [
+                ['icon' => 'package', 'label' => $search !== '' || ($f['type'] ?? null) || ($f['category'] ?? null) ? 'Items found' : 'Items', 'value' => number_format($total)],
+                ['icon' => 'hash', 'label' => 'Consumable / Used (listed)', 'value' => number_format($counts['Consumable']) . ' / ' . number_format($counts['Used'])],
+                ['icon' => 'package', 'label' => 'Out of stock / Low (listed)', 'value' => number_format($counts['Out of stock']) . ' / ' . number_format($counts['Low'])],
+                ['icon' => 'cash', 'label' => 'Stock value at item price (listed)', 'value' => number_format($value, 2) . ' Tsh'],
+            ],
+            'parties' => [
+                ['title' => 'Filters', 'icon' => 'sliders', 'rows' => [['Search', $search !== '' ? $search : 'None'], ['Type', $typeLabel], ['Category', $f['category_name'] ?? 'All'], ['Deleted', $trash], ['Order', $sortLabel]]],
+                ['title' => $action, 'icon' => 'user', 'rows' => [['By', ($by->name ?? '-') . ($by && $by->roles->first() ? ' (' . $by->roles->first()->name . ')' : '')], ['Date', now()->format('d/m/Y')], ['Time', now()->format('H:i:s')]]],
+            ],
+            'table' => [
+                'title' => 'Items', 'note' => $cut ?? 'The quantity is the stock on hand in the warehouses you can see, added together.', 'start' => 0,
+                'cols' => [['label' => 'Code', 'a' => 'l'], ['label' => 'Item', 'a' => 'l'], ['label' => 'Type', 'a' => 'l'], ['label' => 'Category', 'a' => 'l'], ['label' => 'Unit', 'a' => 'l'], ['label' => 'Price (Tsh)', 'a' => 'r'], ['label' => 'Quantity', 'a' => 'r'], ['label' => 'Stock', 'a' => 'l']],
+                'rows' => $rows,
+            ],
+            'lines' => [], 'total' => '', 'total_qty' => '',
+            'notes' => null,
+            'signatures' => [['role' => $action . ' By', 'name' => optional($by)->name, 'date' => now()->format('d/m/Y')]],
+            'footer' => 'Items list',
+        ]);
+    }
+
     /** How many records one printed or PDF report lists; the CSV has them all. */
     public const WIMS_LOG_RECORDS_LIMIT = 1000;
 

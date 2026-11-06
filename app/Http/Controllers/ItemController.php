@@ -343,23 +343,9 @@ class ItemController extends Controller
 
         $query = Item::with(['categories:id,code,name', 'bincardPhoto:id,item_id,path', 'photos:id,item_id,path,kind,cutout,position', 'stock' => fn ($q) => $q->without('variation')->where(fn ($w) => $w->where('quantity', '!=', 0)->orWhere('weight', '!=', 0))])
             ->withSum('stock', 'quantity')
-            ->filter($filters)
-            ->when(warehouse_scope_ids() !== null, fn ($q) => $q->whereHas('stock', fn ($s) => $s->whereIn('warehouse_id', warehouse_scope_ids())));
+            ->filter($filters);
+        $query = $this->listConditions($query, $type);
 
-        if ($type === 'consumable') {
-            $query->where('items.is_used', 0);
-        } elseif ($type === 'used') {
-            $query->where('items.is_used', 1);
-        } elseif ($type === 'low' || $type === 'out') {
-            // Same total the "stock_sum_quantity" column shows (main stock, this account), written as a WHERE so paging counts stay valid.
-            $total = '(select coalesce(sum(stocks.quantity), 0) from stocks where stocks.item_id = items.id and stocks.variation_id is null and stocks.deleted_at is null and stocks.account_id = ?)';
-            $query->where('items.track_quantity', 1);
-            if ($type === 'low') {
-                $query->where('items.alert_quantity', '>', 0)->whereRaw("$total > 0", [getAccountId()])->whereRaw("$total <= items.alert_quantity", [getAccountId()]);
-            } else {
-                $query->whereRaw("$total <= 0", [getAccountId()]);
-            }
-        }
 
         if (isset($sortable[$sort])) {
             $query->orderBy($sortable[$sort], $direction);
@@ -389,6 +375,101 @@ class ItemController extends Controller
             'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
             'items'      => new ItemCollection($query->paginate()->withQueryString()),
         ]);
+    }
+
+    /** The conditions the Items page and its Print / PDF / CSV reports share: the person's warehouse scope and the summary-tile type (consumable, used, low, out). */
+    private function listConditions($query, ?string $type)
+    {
+        $query->when(warehouse_scope_ids() !== null, fn ($q) => $q->whereHas('stock', fn ($s) => $s->whereIn('warehouse_id', warehouse_scope_ids())));
+
+        if ($type === 'consumable') {
+            $query->where('items.is_used', 0);
+        } elseif ($type === 'used') {
+            $query->where('items.is_used', 1);
+        } elseif ($type === 'low' || $type === 'out') {
+            // Same total the "stock_sum_quantity" column shows (main stock, this account), written as a WHERE so paging counts stay valid.
+            $total = '(select coalesce(sum(stocks.quantity), 0) from stocks where stocks.item_id = items.id and stocks.variation_id is null and stocks.deleted_at is null and stocks.account_id = ?)';
+            $query->where('items.track_quantity', 1);
+            if ($type === 'low') {
+                $query->where('items.alert_quantity', '>', 0)->whereRaw("$total > 0", [getAccountId()])->whereRaw("$total <= items.alert_quantity", [getAccountId()]);
+            } else {
+                $query->whereRaw("$total <= 0", [getAccountId()]);
+            }
+        }
+
+        return $query;
+    }
+
+    /** The items the page is showing (same search, deleted, category, type and sort), for the reports. @return array{0: \Illuminate\Database\Eloquent\Builder, 1: array} */
+    private function reportQuery(Request $request): array
+    {
+        $filters = $request->all('search', 'trashed', 'category', 'type');
+        $filters['trashed'] = in_array($filters['trashed'] ?? null, ['with', 'only'], true) ? $filters['trashed'] : null;
+        $filters['type'] = in_array($filters['type'] ?? null, ['consumable', 'used', 'low', 'out'], true) ? $filters['type'] : null;
+        $filters['category'] = is_numeric($filters['category'] ?? null) ? (int) $filters['category'] : null;
+        $filters['search'] = is_string($filters['search'] ?? null) ? $filters['search'] : null;
+        $sortable = ['name' => 'items.name', 'type' => 'items.is_used', 'price' => 'items.price', 'quantity' => 'stock_sum_quantity'];
+        $sort = $request->get('sort');
+        $direction = $request->get('direction') === 'asc' ? 'asc' : 'desc';
+
+        $query = Item::with(['categories:id,code,name', 'unit:id,name,code'])->withSum('stock', 'quantity')->filter($filters);
+        $query = $this->listConditions($query, $filters['type']);
+        isset($sortable[$sort]) ? $query->orderBy($sortable[$sort], $direction) : $query->orderByDesc('id');
+
+        return [$query, $filters + ['sort' => isset($sortable[$sort]) ? $sort : null, 'direction' => isset($sortable[$sort]) ? $direction : null]];
+    }
+
+    public function listPrint(Request $request)
+    {
+        abort_unless($request->user()->can('read-items'), 403);
+
+        return view('print.document', $this->listDocument($request, false, 'printed'));
+    }
+
+    public function listPdf(Request $request)
+    {
+        abort_unless($request->user()->can('read-items'), 403);
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('print.document', $this->listDocument($request, true, 'downloaded as PDF'))->setPaper('a4', 'landscape')->download('items-' . now()->format('Ymd-His') . '.pdf');
+    }
+
+    /** Every item the page lists, as a CSV that opens in Excel (no row limit). */
+    public function listCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($request->user()->can('read-items'), 403);
+        [$query, $filters] = $this->reportQuery($request);
+        log_activity(__('Items list downloaded as CSV'), ['filters' => array_filter($filters)], null, 'Item');
+
+        return response()->streamDownload(function () use ($query) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['No', 'Code', 'Name', 'SKU', 'Type', 'Categories', 'Unit', 'Price (Tsh)', 'Quantity', 'Alert quantity', 'Stock']);
+            $n = 0;
+            $query->chunk(500, function ($items) use ($out, &$n) {
+                foreach ($items as $item) {
+                    fputcsv($out, [++$n, $item->code, $item->name, $item->sku, $item->is_used ? 'Used' : 'Consumable', $item->categories->pluck('name')->implode(', '), optional($item->unit)->name,
+                        (float) $item->price, (float) $item->stock_sum_quantity, (float) $item->alert_quantity, \App\Support\PrintDocuments::itemStockState($item)]);
+                }
+            });
+            fclose($out);
+        }, 'items-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function listDocument(Request $request, bool $isPdf, string $what): array
+    {
+        [$query, $filters] = $this->reportQuery($request);
+        $limit = \App\Support\PrintDocuments::ITEMS_LIST_LIMIT;
+        $total = (clone $query)->count();
+        $items = $query->limit($limit)->get();
+        log_activity(__('Items list :what', ['what' => $what]), ['items' => $items->count(), 'of' => $total, 'filters' => array_filter($filters)], null, 'Item');
+        $category = $filters['category'] ? optional(Category::find($filters['category']))->name : null;
+        $query_ = array_filter(['search' => $filters['search'], 'type' => $filters['type'], 'trashed' => $filters['trashed'], 'category' => $filters['category']]);
+
+        return [
+            'doc' => \App\Support\PrintDocuments::itemsList($items, $total, $filters + ['category_name' => $category], $request->user(), $isPdf ? 'Downloaded as PDF' : 'Printed'),
+            'isPdf' => $isPdf, 'companyName' => optional($request->user()->account)->name,
+            'qr' => \App\Support\PrintQrCode::dataUri(route('items.index', $query_)), 'pdfUrl' => route('items.list.pdf', $request->query()),
+        ];
     }
 
     public function restore(Item $item)
