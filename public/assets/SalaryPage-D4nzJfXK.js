@@ -1,0 +1,1 @@
+import{_ as o}from"./app-DZSpMsNP.js";import{o as s,c as t,k as a}from"./vendor-core-C-kKFPt_.js";const r={},c={class:"lg-page px-4 md:px-0 sl-page"};function n(e,p,l,_,d,f){return s(),t("div",c,[a(e.$slots,"default")])}const $=o(r,[["render",n]]);export{$ as S};

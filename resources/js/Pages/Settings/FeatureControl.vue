@@ -99,9 +99,9 @@
                     <div class="fc-fam-name" v-html="hl(unit.root.name)"></div>
                     <p class="fc-fam-desc" v-html="hl(unit.root.description)"></p>
                   </div>
-                  <span class="fc-fam-meter" :class="'is-' + unit.state" :title="unit.on + ' / ' + unit.total">
-                    <span class="fc-fam-bar"><i :style="{ width: (unit.total ? Math.round((unit.on / unit.total) * 100) : 0) + '%' }"></i></span>
-                    <small>{{ unit.on }}/{{ unit.total }} {{ $t('on') }}</small>
+                  <span class="fc-fam-meter" :class="'is-' + unit.state" :title="unit.subOn + ' / ' + unit.all">
+                    <span class="fc-fam-bar"><i :style="{ width: (unit.all ? Math.round((unit.subOn / unit.all) * 100) : 0) + '%' }"></i></span>
+                    <small>{{ unit.subOn }}/{{ unit.all }} {{ $t('sub-functions on') }}</small>
                   </span>
                   <div class="fc-fam-main-switch" @click.stop>
                     <span class="fc-fam-ms-label">{{ $t('Main switch') }}</span>
@@ -342,7 +342,7 @@ export default {
         const state = on === members.length ? 'on' : (root.is_enabled || on) && on ? 'mixed' : 'off';
         if (!groups[root.module]) { groups[root.module] = { module: root.module, icon: root.icon, units: [], on: 0, total: 0 }; order.push(root.module); }
         const g = groups[root.module];
-        g.units.push({ root, kids, all: all.length, on, total: members.length, state: all.length ? (on === 0 ? 'off' : state) : (root.is_enabled ? 'on' : 'off') });
+        g.units.push({ root, kids, all: all.length, subOn: all.filter(m => m.is_enabled).length, on, total: members.length, state: all.length ? (on === 0 ? 'off' : state) : (root.is_enabled ? 'on' : 'off') });
         g.on += members.filter(m => m.is_enabled).length;
         g.total += members.length;
       });
@@ -531,7 +531,7 @@ export default {
 .fc-fam-name { font-size: 1rem; font-weight: 800; color: var(--lg-ink); }
 .fc-fam-desc { margin: 3px 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--lg-mute); }
 .fc-fam-meter { display: grid; gap: 4px; flex: none; min-width: 110px; }
-.fc-fam-meter small { font-size: 0.7rem; font-weight: 800; color: var(--lg-mute); font-variant-numeric: tabular-nums; }
+.fc-fam-meter small { white-space: nowrap; font-size: 0.7rem; font-weight: 800; color: var(--lg-mute); font-variant-numeric: tabular-nums; }
 .fc-fam-bar { display: block; height: 7px; border-radius: 9999px; background: var(--lg-soft); box-shadow: inset 0 0 0 1px var(--lg-line); overflow: hidden; }
 .fc-fam-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #34d399, #059669); transition: width 0.7s cubic-bezier(0.3, 0.9, 0.3, 1), background 0.4s ease; }
 .fc-fam-meter.is-mixed .fc-fam-bar i { background: linear-gradient(90deg, #fbbf24, #d97706); }
