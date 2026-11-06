@@ -324,26 +324,49 @@
       </div>
 
       <!-- Optimize All -->
-      <div v-if="opt.open" class="sh-modal" role="dialog" aria-modal="true" @keydown.esc="closeOptimize">
-        <div class="sh-modal-bg" @click="closeOptimize"></div>
-        <div class="sh-modal-card">
-          <div class="sh-modal-head"><span class="sh-modal-ic"><icons name="sparkles" class="w-5 h-5" /></span><div><h3>{{ $t('Optimize All') }}</h3><p>{{ opt.stage === 'ask' ? $t('Makes the data already on the server smaller and faster. No record is changed or deleted.') : opt.stage === 'run' ? $t('Working. You can keep this page open; please do not close the browser.') : opt.failed ? $t('It stopped. What was done is kept in the history.') : $t('Done.') }}</p></div></div>
-          <ul class="sh-steps">
-            <li v-for="s in opt.steps" :key="s.key" :class="'is-' + s.state"><span class="sh-step-dot"><icons v-if="s.state === 'done'" name="tick" class="w-3 h-3" /><icons v-else-if="s.state === 'error'" name="cross" class="w-3 h-3" /></span><div><b>{{ s.title }}</b><small>{{ s.summary || s.what }}</small></div></li>
-          </ul>
-          <template v-if="opt.stage === 'ask'">
-            <label class="sh-pwl" for="sh-opt-pw">{{ $t('Your password, to confirm') }}</label>
-            <input id="sh-opt-pw" ref="pw" v-model="opt.password" type="password" class="sh-pw" autocomplete="current-password" @keydown.enter="startOptimize" />
-            <p v-if="opt.error" class="sh-err" role="alert">{{ opt.error }}</p>
-            <div class="sh-modal-actions"><button type="button" class="sh-btn is-plain" @click="closeOptimize">{{ $t('Cancel') }}</button><button type="button" class="sh-btn is-amber" :disabled="opt.busy" @click="startOptimize"><span class="sh-btn-ic"><icons name="sparkles" class="w-4 h-4" /></span>{{ opt.busy ? $t('Starting...') : $t('Start') }}</button></div>
-          </template>
-          <template v-else-if="opt.stage === 'done'">
-            <div v-if="!opt.failed" class="sh-result"><b>{{ opt.saved }}</b><small>{{ $t('saved') }} · {{ opt.rating }}</small></div>
-            <p v-if="opt.error" class="sh-err">{{ opt.error }}</p>
-            <div class="sh-modal-actions"><Link v-if="opt.url" :href="opt.url" class="sh-btn is-plain">{{ $t('See the report') }}</Link><button type="button" class="sh-btn is-blue" @click="closeOptimize"><span class="sh-btn-ic"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Close') }}</button></div>
-          </template>
+      <transition name="sh-m">
+        <div v-if="opt.open" class="sh-modal" role="dialog" aria-modal="true" aria-labelledby="sh-opt-title" @keydown.esc="closeOptimize">
+          <div class="sh-modal-bg" @click="closeOptimize"></div>
+          <div class="sh-modal-card sh-opt" :class="'is-' + opt.stage">
+            <div class="sh-modal-head">
+              <span class="sh-modal-ic sh-opt-ic"><icons name="sparkles" class="w-5 h-5" /><i class="sh-twinkle"></i><i class="sh-twinkle t2"></i></span>
+              <div>
+                <h3 id="sh-opt-title">{{ $t('Optimize All') }}</h3>
+                <p>{{ opt.stage === 'ask' ? $t('Makes the data already on the server smaller and faster. No record is changed or deleted.') : opt.stage === 'run' ? $t('Working. You can keep this page open; please do not close the browser.') : opt.failed ? $t('It stopped. What was done is kept in the history.') : $t('Done.') }}</p>
+              </div>
+            </div>
+            <div v-if="opt.stage !== 'ask'" class="sh-opt-prog" role="progressbar" :aria-valuenow="optPercent" aria-valuemin="0" aria-valuemax="100">
+              <span class="sh-opt-bar"><i :style="{ width: optPercent + '%' }"></i></span><b>{{ optPercent }}%</b>
+            </div>
+            <ul class="sh-steps sh-opt-steps">
+              <li v-for="(s, si) in opt.steps" :key="s.key" :class="'is-' + s.state" :style="{ '--tone': stepLook(s.key).tone, '--d': si * 70 + 'ms' }">
+                <span class="sh-st-ico"><icons :name="stepLook(s.key).icon" class="w-4 h-4" /></span>
+                <div class="sh-st-txt"><b>{{ s.title }}</b><small>{{ s.summary || s.what }}</small></div>
+                <span class="sh-st-state" aria-hidden="true">
+                  <icons v-if="s.state === 'done'" name="tick" class="w-3.5 h-3.5" />
+                  <icons v-else-if="s.state === 'error'" name="cross" class="w-3.5 h-3.5" />
+                  <i v-else-if="s.state === 'running'" class="sh-st-spin"></i>
+                </span>
+              </li>
+            </ul>
+            <template v-if="opt.stage === 'ask'">
+              <label class="sh-pwl" for="sh-opt-pw">{{ $t('Your password, to confirm') }}</label>
+              <div class="sh-pwbox">
+                <icons name="lock-closed" class="w-4 h-4 sh-pw-ico" />
+                <input id="sh-opt-pw" ref="pw" v-model="opt.password" :type="opt.show ? 'text' : 'password'" class="sh-pw" autocomplete="current-password" @keydown.enter="startOptimize" />
+                <button type="button" class="sh-pw-eye" :aria-label="opt.show ? $t('Hide the password') : $t('Show the password')" @click="opt.show = !opt.show"><icons :name="opt.show ? 'eye-off' : 'eye'" class="w-4 h-4" /></button>
+              </div>
+              <p v-if="opt.error" class="sh-err" role="alert">{{ opt.error }}</p>
+              <div class="sh-modal-actions"><button type="button" class="sh-btn is-plain" @click="closeOptimize">{{ $t('Cancel') }}</button><button type="button" class="sh-btn is-amber" :disabled="opt.busy" @click="startOptimize"><span class="sh-btn-ic"><icons name="sparkles" class="w-4 h-4" /></span>{{ opt.busy ? $t('Starting...') : $t('Start') }}</button></div>
+            </template>
+            <template v-else-if="opt.stage === 'done'">
+              <div v-if="!opt.failed" class="sh-result sh-result-burst"><b>{{ opt.saved }}</b><small>{{ $t('saved') }} · {{ opt.rating }}</small><i v-for="n in 8" :key="n" class="sh-burst" :style="{ '--a': n * 45 + 'deg' }"></i></div>
+              <p v-if="opt.error" class="sh-err">{{ opt.error }}</p>
+              <div class="sh-modal-actions"><Link v-if="opt.url" :href="opt.url" class="sh-btn is-plain">{{ $t('See the report') }}</Link><button type="button" class="sh-btn is-blue" @click="closeOptimize"><span class="sh-btn-ic"><icons name="tick" class="w-4 h-4" /></span>{{ $t('Close') }}</button></div>
+            </template>
+          </div>
         </div>
-      </div>
+      </transition>
     </div>
   </admin-layout>
 </template>
@@ -369,10 +392,17 @@ export default {
     return {
       d: this.core, cloud: null, busy: false, testing: false, ready: false, shownScore: 0, shownSms: 0, timer: null, now: Date.now(), net, updatedAt: Date.now(), tickTimer: null,
       rep: { open: false, stage: 'ask', extra: '', busy: false, error: '', sent: [], failed: [] },
-      opt: { open: false, stage: 'ask', password: '', error: '', busy: false, steps: [], failed: false, saved: '', rating: '', url: '' },
+      opt: { open: false, show: false, stage: 'ask', password: '', error: '', busy: false, steps: [], failed: false, saved: '', rating: '', url: '' },
     };
   },
   computed: {
+    // how much of the work is finished: each step counts once it is done (or has failed)
+    optPercent() {
+      const n = this.opt.steps.length || 1;
+      const done = this.opt.steps.filter(x => x.state === 'done' || x.state === 'error').length;
+      const running = this.opt.steps.some(x => x.state === 'running') ? 0.5 : 0;
+      return this.opt.stage === 'done' ? 100 : Math.min(99, Math.round(((done + running) / n) * 100));
+    },
     canOptimize() { return this.$can('run-optimizer'); },
     // Delivery Logs is a Super Admin page, so the SMS tiles link to it for the Super Admin only
     canLogs() { return this.$super && this.$can('read-wims-connect'); },
@@ -612,13 +642,17 @@ export default {
     },
     // ---- Optimize All: the same steps as Settings > Optimize (its own tasks, password and history), shown here with a progress list
     openOptimize() {
-      this.opt = { open: true, stage: 'ask', password: '', error: '', busy: false, failed: false, saved: '', rating: '', url: '', steps: [
+      this.opt = { open: true, show: false, stage: 'ask', password: '', error: '', busy: false, failed: false, saved: '', rating: '', url: '', steps: [
         { key: 'database', title: this.$t('Rebuild the database tables'), what: this.$t('Wasted space is rebuilt; no record is changed.'), state: 'wait', summary: '' },
         { key: 'images', title: this.$t('Compress uploaded pictures'), what: this.$t('Large pictures are saved again smaller; originals are kept for a few days.'), state: 'wait', summary: '' },
         { key: 'logs', title: this.$t('Compress server log files'), what: this.$t('Older log files are zipped; today\'s is never touched.'), state: 'wait', summary: '' },
         { key: 'technical', title: this.$t('Remove expired technical leftovers'), what: this.$t('Expired sessions, cache entries and temporary files only.'), state: 'wait', summary: '' },
       ] };
       this.$nextTick(() => this.$refs.pw && this.$refs.pw.focus());
+    },
+    // each task has its own colour and icon
+    stepLook(key) {
+      return ({ database: { icon: 'database', tone: '#7c3aed' }, images: { icon: 'image', tone: '#db2777' }, logs: { icon: 'doc-text', tone: '#0891b2' }, technical: { icon: 'refresh', tone: '#059669' } })[key] || { icon: 'cog', tone: '#64748b' };
     },
     closeOptimize() { if (this.opt.stage !== 'run') this.opt.open = false; },
     async startOptimize() {
@@ -849,4 +883,27 @@ html.dark .sh { --card: #0f172a; --line: rgba(255, 255, 255, 0.1); --ink: #e2e8f
 @media (max-width: 960px) { .sh-over { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .sh-actions { flex-wrap: wrap; overflow: visible; width: 100%; gap: 0.35rem; padding: 0.2rem 0 0.7rem; } .sh-live { flex: 1 1 100%; font-size: 0.68rem; } .sh-btns { flex: 1 1 100%; gap: 0.4rem; width: 100%; } .sh-btns .sh-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding: 0.32rem 0.4rem 0.32rem 0.32rem; font-size: 0.72rem; gap: 0.3rem; white-space: nowrap; } .sh-btns .sh-btn:first-child { flex: 0 0 auto; padding-right: 0.32rem; } .sh-btns .sh-btn-ic { width: 1.4rem; height: 1.4rem; flex: none; } .is-hide-sm { display: none; } .sh-lbl { overflow: hidden; text-overflow: ellipsis; } .sh-orb { flex-direction: column; text-align: center; } .sh-tally { justify-content: center; } .sh-facts { grid-template-columns: repeat(2, 1fr); } .sh-grid { grid-template-columns: 1fr; } .sh-bar-row { grid-template-columns: 5.5rem 1fr auto; } .sh-ring-wrap { width: 8.4rem; } }
 @media (prefers-reduced-motion: reduce) { .sh-live i, .sh-spin, .sh-pulse-ic, .sh-skel, .sh-btn::after, .sh-orb::after, .sh-ring-orbit, .sh-orbit-dots, .sh-radiate i, .sh-bar i::after, .sh-batt-stripes, .sh-bolt, .sh-radar-sweep, .sh-blip, .sh-tally i, .sh-modal-card { animation: none !important; } .sh-ring-fg, .sh-arc-fg, .sh-seg, .sh-bar i, .sh-batt-fill, .sh-battery-fill, .sh-btn { transition: none; } .sh-ecg polyline { stroke-dashoffset: 0; } }
+
+/* ---- Optimize All: coloured tasks, motion, phone-friendly ---- */
+.sh-m-enter-active, .sh-m-leave-active { transition: opacity 0.25s ease; } .sh-m-enter-from, .sh-m-leave-to { opacity: 0; } .sh-m-enter-active .sh-modal-card { animation: sh-pop 0.35s cubic-bezier(0.3, 1.4, 0.5, 1) both; } .sh-m-leave-active .sh-modal-card { transition: transform 0.2s ease; transform: translateY(10px) scale(0.97); }
+.sh-opt { max-width: 32rem; }
+.sh-opt-ic { position: relative; animation: sh-opt-float 3s ease-in-out infinite; } @keyframes sh-opt-float { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3px) rotate(-4deg); } }
+.sh-twinkle { position: absolute; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: #fde68a; top: -0.15rem; right: -0.1rem; animation: sh-twinkle 2s ease-in-out infinite; } .sh-twinkle.t2 { top: auto; right: auto; bottom: -0.1rem; left: -0.1rem; width: 0.3rem; height: 0.3rem; animation-delay: 1s; }
+@keyframes sh-twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1.3); } }
+.sh-opt-prog { display: flex; align-items: center; gap: 0.7rem; margin: 0 0 0.8rem; } .sh-opt-prog b { font-size: 0.82rem; font-variant-numeric: tabular-nums; min-width: 2.6rem; text-align: right; }
+.sh-opt-bar { flex: 1; height: 0.55rem; border-radius: 999px; background: var(--track); overflow: hidden; } .sh-opt-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #ea580c, #db2777); background-size: 200% 100%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); animation: sh-opt-flow 2s linear infinite; } @keyframes sh-opt-flow { to { background-position: -200% 0; } }
+.sh-opt-steps li { position: relative; align-items: center; overflow: hidden; border: 1.5px solid color-mix(in srgb, var(--tone) 22%, transparent); background: color-mix(in srgb, var(--tone) 7%, transparent); transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease; animation: sh-opt-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: var(--d); }
+.sh-opt-steps li::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--tone); }
+.sh-opt-steps li.is-running { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 13%, transparent); transform: translateX(3px); } .sh-opt-steps li.is-running::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--tone) 22%, transparent) 50%, transparent 70%); transform: translateX(-100%); animation: sh-opt-scan 1.4s ease-in-out infinite; pointer-events: none; }
+.sh-opt-steps li.is-done { border-color: color-mix(in srgb, var(--ok) 45%, transparent); } .sh-opt-steps li.is-error { border-color: var(--bad); }
+@keyframes sh-opt-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } @keyframes sh-opt-scan { to { transform: translateX(100%); } }
+.sh-st-ico { flex: none; width: 2.1rem; height: 2.1rem; display: grid; place-items: center; border-radius: 0.7rem; color: #fff; background: linear-gradient(135deg, var(--tone), color-mix(in srgb, var(--tone) 60%, #000)); box-shadow: 0 8px 14px -8px var(--tone); } .sh-opt-steps li.is-running .sh-st-ico { animation: sh-opt-pulse 1s ease-in-out infinite; } @keyframes sh-opt-pulse { 50% { transform: scale(1.12); } }
+.sh-st-txt { min-width: 0; flex: 1; } .sh-st-state { flex: none; width: 1.5rem; height: 1.5rem; display: grid; place-items: center; border-radius: 50%; color: #fff; } .sh-opt-steps li.is-done .sh-st-state { background: var(--ok); animation: sh-opt-tick 0.45s cubic-bezier(0.3, 1.7, 0.5, 1); } .sh-opt-steps li.is-error .sh-st-state { background: var(--bad); } @keyframes sh-opt-tick { from { transform: scale(0); } to { transform: scale(1); } }
+.sh-st-spin { width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--tone) 30%, transparent); border-top-color: var(--tone); animation: sh-rot 0.8s linear infinite; }
+.sh-pwbox { position: relative; } .sh-pwbox .sh-pw { padding-left: 2.2rem; padding-right: 2.6rem; } .sh-pw-ico { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--mute); pointer-events: none; } .sh-pw-eye { position: absolute; right: 0.35rem; top: 50%; transform: translateY(-50%); width: 2rem; height: 2rem; display: grid; place-items: center; border: 0; border-radius: 0.6rem; cursor: pointer; color: var(--mute); background: transparent; } .sh-pw-eye:hover { background: var(--track); color: #ea580c; }
+.sh-result-burst { position: relative; animation: sh-pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; } .sh-burst { position: absolute; left: 50%; top: 50%; width: 0.4rem; height: 0.4rem; margin: -0.2rem; border-radius: 50%; background: #fbbf24; opacity: 0; animation: sh-burst 0.9s ease-out 0.2s forwards; } .sh-burst:nth-of-type(even) { background: #34d399; }
+@keyframes sh-burst { 0% { opacity: 1; transform: rotate(var(--a)) translateX(1.5rem); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(5rem) scale(0.3); } }
+@media (max-width: 560px) { .sh-modal { align-items: flex-end; padding: 0; } .sh-modal-card.sh-opt { max-width: none; max-height: 92vh; border-radius: 1.3rem 1.3rem 0 0; padding: 1.1rem 1rem calc(1rem + env(safe-area-inset-bottom)); } .sh-m-enter-active .sh-modal-card { animation: sh-sheet 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; } .sh-modal-actions .sh-btn { flex: 1 1 0; justify-content: center; } }
+@keyframes sh-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sh-opt-ic, .sh-twinkle, .sh-opt-bar i, .sh-opt-steps li, .sh-opt-steps li::after, .sh-st-ico, .sh-st-spin, .sh-result-burst, .sh-burst, .sh-m-enter-active .sh-modal-card { animation: none !important; } .sh-m-enter-active, .sh-m-leave-active { transition: none; } }
 </style>

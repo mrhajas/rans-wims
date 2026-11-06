@@ -2,19 +2,19 @@
   <admin-layout :title="$t('Items')">
     <div class="lg-page px-4 md:px-0 txn-shell">
       <page-header icon="bag" :title="$t('Items')" :subtitle="$t('Your full catalogue: prices, stock levels and tracking options.')">
-        <button v-if="$can('read-items')" type="button" class="lg-btn lg-btn-green" @click="openCameraScanner">
-          <icons name="search" class="w-4 h-4" />{{ $t('Scan Barcode') }}
+        <button v-if="$can('read-items')" type="button" class="lg-btn tone tone-solid item-hbtn" style="--tone: #059669" @click="openCameraScanner">
+          <span class="tone-ico"><icons name="search" class="w-4 h-4" /></span>{{ $t('Scan Barcode') }}
         </button>
-        <Link v-if="$can('read-items')" :href="route('items.barcodes', form.search ? { search: form.search } : {})" class="lg-btn lg-btn-soft">
-          <icons name="doc" class="w-4 h-4" />{{ $t('Barcodes') }}
+        <Link v-if="$can('read-items')" :href="route('items.barcodes', form.search ? { search: form.search } : {})" class="lg-btn tone item-hbtn" style="--tone: #7c3aed">
+          <span class="tone-ico"><icons name="qr-code" class="w-4 h-4" /></span>{{ $t('Barcodes') }}
         </Link>
         <template v-if="$can('read-items') && $connection.status !== 'offline'">
-          <a :href="route('items.list.print', reportQuery)" target="_blank" rel="noopener" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</a>
-          <a :href="route('items.list.pdf', reportQuery)" class="lg-btn lg-btn-soft"><icons name="download" class="w-4 h-4" />{{ $t('PDF') }}</a>
-          <a :href="route('items.list.download', reportQuery)" class="lg-btn lg-btn-soft"><icons name="table" class="w-4 h-4" />{{ $t('Excel (CSV)') }}</a>
+          <a :href="route('items.list.print', reportQuery)" target="_blank" rel="noopener" class="lg-btn tone item-hbtn item-hbtn-ico" style="--tone: #0284c7" :title="$t('Print')"><span class="tone-ico"><icons name="printer" class="w-4 h-4" /></span><span class="item-hlabel">{{ $t('Print') }}</span></a>
+          <a :href="route('items.list.pdf', reportQuery)" class="lg-btn tone item-hbtn item-hbtn-ico" style="--tone: #e11d48" :title="$t('PDF')"><span class="tone-ico"><icons name="download" class="w-4 h-4" /></span><span class="item-hlabel">{{ $t('PDF') }}</span></a>
+          <a :href="route('items.list.download', reportQuery)" class="lg-btn tone item-hbtn item-hbtn-ico" style="--tone: #0d9488" :title="$t('Excel (CSV)')"><span class="tone-ico"><icons name="table" class="w-4 h-4" /></span><span class="item-hlabel">{{ $t('Excel (CSV)') }}</span></a>
         </template>
         <offline-lock v-if="$can('create-items')">
-          <Link :href="route('items.create')" class="lg-btn lg-btn-primary"><icons name="plus" class="w-4 h-4" />{{ $t('create_x', { x: $t('Item') }) }}</Link>
+          <Link :href="route('items.create')" class="lg-btn lg-btn-primary item-hbtn item-hbtn-create"><icons name="plus" class="w-4 h-4" />{{ $t('create_x', { x: $t('Item') }) }}</Link>
         </offline-lock>
       </page-header>
 
@@ -23,7 +23,7 @@
         <span>{{ $t('Showing cached items.') }} <span v-if="$connection.lastSyncAt">{{ $t('Last synced') }}: {{ $date($connection.lastSyncAt) }} {{ $time($connection.lastSyncAt) }}</span></span>
       </div>
 
-      <stat-tiles v-if="stats" :items="statTiles" @select="pickTile" />
+      <stat-tiles v-if="stats" :items="statTiles" lively @select="pickTile" />
 
       <transition name="item-bulk">
         <div v-if="canPick && picked.length" class="item-bulk print:hidden" role="region" :aria-label="$t('Selected items')">
@@ -60,9 +60,10 @@
           </auto-complete>
         </search-filter>
         <div class="w-full md:w-auto flex flex-wrap md:flex-nowrap items-center justify-end gap-2">
+          <span v-if="items.meta && $connection.status !== 'offline'" :key="items.meta.total" class="item-count" :class="{ 'is-busy': searching }"><icons :name="searching ? 'refresh' : 'bag'" class="w-3.5 h-3.5" :class="{ 'item-count-spin': searching }" />{{ searching ? $t('Searching...') : Number(items.meta.total).toLocaleString() + ' ' + $t('items') }}</span>
           <tec-dropdown align="right" width="48" v-if="$can(['import-items', 'export-items'])">
           <template #trigger>
-            <button class="lg-btn lg-btn-soft"><icons name="menu" class="w-4 h-4" />{{ $t('More') }}</button>
+            <button class="lg-btn tone item-hbtn" style="--tone: #475569"><span class="tone-ico"><icons name="menu" class="w-4 h-4" /></span>{{ $t('More') }}</button>
           </template>
 
           <template #content>
@@ -94,7 +95,9 @@
           <icons name="chevron-down" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': form.direction === 'asc' }" />
         </button>
       </div>
-      <div id="dd-table" class="txn-table-shell overflow-x-auto relative z-[1]">
+      <button type="button" class="item-opt-chip md:hidden print:hidden" :aria-pressed="showOptions" @click="toggleOptions"><icons name="cog" class="w-4 h-4" />{{ showOptions ? $t('Hide options') : $t('Show options') }}</button>
+      <div class="item-searchbar print:hidden" :class="{ on: searching }" aria-hidden="true"><i></i></div>
+      <div id="dd-table" class="txn-table-shell overflow-x-auto relative z-[1] item-results" :class="{ 'is-searching': searching }" :aria-busy="searching">
         <table v-labelize class="txn-cards w-full overflow-y-visible">
           <tr class="text-center font-bold">
             <th class="px-6 pt-6 pb-4 item-th item-th-indigo" @click="toggleSort('name')">
@@ -134,14 +137,18 @@
                 <icons v-if="form.sort === 'quantity'" :name="form.direction === 'asc' ? 'up' : 'down'" class="w-3 h-3 item-th-sort-icon" />
               </span>
             </th>
-            <th class="px-6 pt-6 pb-4 item-th-static item-th-slate">
-              <span class="item-th-inner">
-                <icons name="cog" class="w-3.5 h-3.5" />
-                {{ $t('Options') }}
-              </span>
+            <th class="pt-6 pb-4 item-th-static item-th-slate item-opt-th" :class="{ 'is-collapsed': !showOptions, 'px-6': showOptions }">
+              <button type="button" class="item-opt-toggle lg-tip" :class="{ 'is-open': showOptions }" :data-tip="showOptions ? $t('Hide the Options column') : $t('Show the Options column')" :aria-expanded="showOptions" :aria-label="showOptions ? $t('Hide the Options column') : $t('Show the Options column')" @click.stop="toggleOptions">
+                <icons name="cog" class="w-4 h-4 item-opt-cog" />
+                <span v-if="showOptions" class="item-opt-label">{{ $t('Options') }}</span>
+                <icons v-if="showOptions" name="chevron-down" class="w-3 h-3 item-opt-caret" />
+              </button>
+            </th>
+            <th class="px-4 pt-6 pb-4 item-th-static item-th-rose">
+              <span class="item-th-inner"><icons name="lightning-bolt" class="w-3.5 h-3.5" />{{ $t('Actions') }}</span>
             </th>
           </tr>
-          <tr :key="item.id" v-for="item in displayItems" :data-no-suffix="$t('Code') + ': ' + item.code" class="hover:bg-gray-100 focus-within:bg-gray-100">
+          <tr :key="item.id" v-for="(item, rowIdx) in displayItems" :data-no-suffix="$t('Code') + ': ' + item.code" class="item-row hover:bg-gray-100 focus-within:bg-gray-100" :class="{ 'is-picked': picked.includes(item.id) }" :style="{ '--i': Math.min(rowIdx, 14) }">
             <td class="item-row-line" @click="goto(item)" :class="{ 'cursor-pointer': $can('read-items') }">
               <div class="px-6 py-4 max-w-md flex items-center focus:text-indigo-500">
                 <label v-if="canPick && !item.deleted_at" class="item-pick mr-3" @click.stop>
@@ -206,8 +213,8 @@
                 </div>
               </div>
             </td>
-            <td class="item-row-line" @click="goto(item)" :class="{ 'cursor-pointer': $can('read-items') }">
-              <div class="px-6 py-4 w-48">
+            <td class="item-row-line item-opt-td" :class="{ 'is-collapsed': !showOptions, 'cursor-pointer': $can('read-items') }" @click="goto(item)">
+              <div v-if="showOptions" class="px-6 py-4 w-48 item-opt-in">
                 <!-- <div class="flex items-center">
                   <span class="text-gray-600 mr-1">{{ $t('Track Serials') }}</span>
                   <boolean :value="item.has_serials" class="w-3 h-3 ml-1" />
@@ -235,12 +242,12 @@
             </td> -->
             <td class="item-row-line w-16">
               <div class="px-4 flex items-center print:hidden">
-                <div class="txn-action-toolbar flex items-center gap-1.5" v-if="$can(['create-items', 'import-items', 'export-items'])">
+                <div class="txn-action-toolbar item-actions flex items-center gap-1.5" v-if="$can(['create-items', 'import-items', 'export-items'])">
                   <Link
                     v-if="$can('trail-items')"
                     :href="route('items.trail', item.id)"
                     :aria-label="$t('Trail')"
-                    class="tec-tooltip group relative txn-icon-btn txn-icon-btn-blue"
+                    class="tec-tooltip group relative item-act item-act-blue"
                   >
                     <icons name="list"></icons>
                     <span class="tec-tooltip-bubble">{{ $t('Trail') }}</span>
@@ -248,7 +255,7 @@
                   <Link
                     :href="route('items.show', item.id)"
                     :aria-label="$t('View')"
-                    class="tec-tooltip group relative txn-icon-btn txn-icon-btn-blue"
+                    class="tec-tooltip group relative item-act item-act-indigo"
                   >
                     <icons name="doc"></icons>
                     <span class="tec-tooltip-bubble">{{ $t('View') }}</span>
@@ -257,7 +264,7 @@
                     v-if="canViewPriceHistory"
                     :href="route('items.price-history.index', item.id)"
                     :aria-label="$t('Price Inflation')"
-                    class="tec-tooltip group relative txn-icon-btn txn-icon-btn-cyan"
+                    class="tec-tooltip group relative item-act item-act-cyan"
                   >
                     <icons name="chart-bar"></icons>
                     <span class="tec-tooltip-bubble">{{ $t('Price Inflation') }}</span>
@@ -266,7 +273,7 @@
                     v-if="$can('update-items')"
                     :href="route('items.edit', item.id)"
                     :aria-label="$t('Edit')"
-                    class="tec-tooltip group relative txn-icon-btn txn-icon-btn-amber"
+                    class="tec-tooltip group relative item-act item-act-amber"
                   >
                     <icons name="edit"></icons>
                     <span class="tec-tooltip-bubble">{{ $t('Edit') }}</span>
@@ -276,7 +283,7 @@
                       type="button"
                       @click="restore(item)"
                       :aria-label="$t('Restore')"
-                      class="tec-tooltip group relative txn-icon-btn txn-icon-btn-blue"
+                      class="tec-tooltip group relative item-act item-act-green"
                     >
                       <icons name="refresh"></icons>
                       <span class="tec-tooltip-bubble">{{ $t('Restore') }}</span>
@@ -285,7 +292,7 @@
                       type="button"
                       @click="deletePermanently(item)"
                       :aria-label="$t('Delete Permanently')"
-                      class="tec-tooltip group relative txn-icon-btn txn-icon-btn-red"
+                      class="tec-tooltip group relative item-act item-act-red"
                     >
                       <icons name="trash"></icons>
                       <span class="tec-tooltip-bubble">{{ $t('Delete Permanently') }}</span>
@@ -296,7 +303,7 @@
                       type="button"
                       @click="destroy(item)"
                       :aria-label="$t('Delete')"
-                      class="tec-tooltip group relative txn-icon-btn txn-icon-btn-red"
+                      class="tec-tooltip group relative item-act item-act-red"
                     >
                       <icons name="trash"></icons>
                       <span class="tec-tooltip-bubble">{{ $t('Delete') }}</span>
@@ -307,7 +314,7 @@
             </td>
           </tr>
           <tr v-if="displayItems.length === 0">
-            <td class="lg-empty" colspan="6">{{ $t('There is no data to display.') }}</td>
+            <td class="lg-empty" colspan="7">{{ $t('There is no data to display.') }}</td>
           </tr>
         </table>
       </div>
@@ -404,7 +411,7 @@
 
 <script>
 import pickBy from 'lodash/pickBy';
-import throttle from 'lodash/throttle';
+import debounce from 'lodash/debounce';
 import mapValues from 'lodash/mapValues';
 import ItemDetailsModal from '@/Shared/Item/ItemDetailsModal.vue';
 import Dialog from '@/Shared/Dialog.vue';
@@ -481,6 +488,8 @@ export default {
       permanent: false,
       restoreConf: false,
       scanning: false,
+      showOptions: false,
+      searching: false,
       form: {
         search: this.filters.search,
         trashed: this.filters.trashed,
@@ -497,6 +506,8 @@ export default {
   },
 
   mounted() {
+    // the Options column is folded to its icon unless this person opened it before
+    try { this.showOptions = localStorage.getItem('wims.items.options') === '1'; } catch (e) { /* storage blocked: stays folded */ }
     if (this.$connection.status === 'offline') {
       this.loadOfflineItems();
     }
@@ -577,18 +588,27 @@ export default {
       this.remember();
     },
     form: {
-      handler: throttle(function () {
+      // one request when typing pauses (not one at the first key and another at the last), asking only for the list: the tiles and warehouses are not worked out again
+      handler: debounce(function () {
         if (this.$connection.status === 'offline') {
           this.loadOfflineItems();
           return;
         }
         let query = pickBy(this.form);
         this.$inertia.visit(this.route('items.index', Object.keys(query).length ? query : { remember: 'forget' }), {
+          only: ['items', 'filters'],
+          preserveState: true,
+          preserveScroll: true,
+          replace: true,
+          headers: { 'X-Quiet': '1' },
+          onStart: () => { this.searching = true; },
           onFinish: () => {
-            document.getElementById('page-search').focus();
+            this.searching = false;
+            const box = document.getElementById('page-search');
+            if (box) box.focus();
           },
         });
-      }, 150),
+      }, 220),
       deep: true,
     },
   },
@@ -629,6 +649,10 @@ export default {
     // Clicking a tile filters the list to it; clicking the lit tile (or "Total Items") shows everything again.
     pickTile(tile) {
       this.form.type = tile.type && this.form.type !== tile.type ? tile.type : null;
+    },
+    toggleOptions() {
+      this.showOptions = !this.showOptions;
+      try { localStorage.setItem('wims.items.options', this.showOptions ? '1' : '0'); } catch (e) { /* not remembered */ }
     },
     qtyChip(item) {
       const qty = (item.stock || []).reduce((a, c) => a + parseFloat(c.quantity), 0);
@@ -1166,4 +1190,59 @@ html.dark .item-th-indigo, html.dark .item-th-blue, html.dark .item-th-emerald, 
 .item-row-line { border-top: 0 !important; box-shadow: none !important; }
 
 /* the item details window: a clear header with the item name and round action buttons */
+
+/* ---- header buttons ---- */
+.item-hbtn { transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; } .item-hbtn:hover:not(:disabled) { transform: translateY(-2px); } .item-hbtn:active:not(:disabled) { transform: scale(0.97); }
+.item-hbtn .tone-ico { transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); } .item-hbtn:hover .tone-ico { transform: rotate(-8deg) scale(1.12); }
+.item-hbtn-create { position: relative; overflow: hidden; } .item-hbtn-create::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%); transform: translateX(-130%); animation: item-shine 5s ease-in-out 1.2s infinite; pointer-events: none; }
+@keyframes item-shine { 0%, 60% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+
+/* ---- rows ---- */
+.item-row { animation: item-row-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes item-row-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.item-row .item-photo-zoom { transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1); } .item-row:hover .item-photo-zoom { transform: scale(1.07) rotate(-1.5deg); }
+.item-row.is-picked > td { background: rgba(99, 102, 241, 0.07); } .item-row.is-picked > td:first-child { box-shadow: inset 4px 0 0 #6366f1; }
+.item-qty-chip.lg-chip-red { animation: item-pulse 2.4s ease-in-out infinite; }
+@keyframes item-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.35); } 50% { box-shadow: 0 0 0 7px rgba(225, 29, 72, 0); } }
+
+/* ---- the Options column: folded to its icon ---- */
+.item-opt-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 2.3rem; height: 2.3rem; padding: 0 0.6rem; border: 0; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 0.8rem; color: #334155; background: rgba(71, 85, 105, 0.1); box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.18); transition: background 0.25s ease, color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease; }
+.item-opt-toggle:hover { color: #fff; background: linear-gradient(135deg, #64748b, #334155); transform: translateY(-1px); box-shadow: 0 10px 16px -10px #334155; }
+.item-opt-cog { transition: transform 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); } .item-opt-toggle:hover .item-opt-cog { transform: rotate(120deg); } .item-opt-toggle.is-open .item-opt-cog { transform: rotate(60deg); }
+.item-opt-caret { transition: transform 0.3s ease; transform: rotate(90deg); } .item-opt-toggle.is-open:hover .item-opt-caret { transform: rotate(90deg) translateY(2px); }
+.item-opt-th.is-collapsed, .item-opt-td.is-collapsed { width: 3.6rem; min-width: 3.6rem; max-width: 3.6rem; padding-left: 0.3rem; padding-right: 0.3rem; }
+.item-opt-in { animation: item-opt-in 0.35s ease both; } @keyframes item-opt-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+html.dark .item-opt-toggle { color: #cbd5e1; background: rgba(148, 163, 184, 0.14); box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22); }
+.item-opt-chip { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0 0 0.7rem; padding: 0.4rem 0.85rem; border: 0; border-radius: 999px; font-size: 0.78rem; font-weight: 800; color: #334155; background: rgba(71, 85, 105, 0.1); }
+html.dark .item-opt-chip { color: #cbd5e1; background: rgba(148, 163, 184, 0.14); }
+@media (max-width: 767px) { .item-opt-td.is-collapsed { display: none !important; } }
+
+/* ---- Actions: a pill of coloured round buttons ---- */
+.item-th-rose { color: #be123c; background-color: rgba(225, 29, 72, 0.1) !important; }
+.item-actions { display: inline-flex; padding: 5px; border-radius: 16px; background: rgba(148, 163, 184, 0.12); box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18); transition: background 0.25s ease, box-shadow 0.25s ease; }
+.item-row:hover .item-actions { background: rgba(99, 102, 241, 0.1); box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25); }
+.item-act { --c: #2563eb; position: relative; display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border: 0; border-radius: 0.85rem; cursor: pointer; color: color-mix(in srgb, var(--c) 82%, #000); background: color-mix(in srgb, var(--c) 13%, transparent); transition: transform 0.22s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; }
+.item-act:hover { color: #fff; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 60%, #000)); transform: translateY(-3px) scale(1.1); box-shadow: 0 12px 18px -9px var(--c); z-index: 2; }
+.item-act:active { transform: scale(0.92); } .item-act:focus-visible { outline: 3px solid color-mix(in srgb, var(--c) 50%, transparent); outline-offset: 2px; }
+.item-act-blue { --c: #2563eb; } .item-act-indigo { --c: #4f46e5; } .item-act-cyan { --c: #0891b2; } .item-act-amber { --c: #d97706; } .item-act-green { --c: #059669; } .item-act-red { --c: #e11d48; }
+.item-act-red:hover { animation: item-shake 0.45s ease; }
+@keyframes item-shake { 0%, 100% { rotate: 0deg; } 25% { rotate: -9deg; } 50% { rotate: 8deg; } 75% { rotate: -5deg; } }
+html.dark .item-act { color: color-mix(in srgb, var(--c) 55%, #fff); background: color-mix(in srgb, var(--c) 20%, transparent); } html.dark .item-act:hover { color: #fff; }
+@media (prefers-reduced-motion: reduce) { .item-row, .item-opt-in, .item-qty-chip.lg-chip-red, .item-hbtn-create::after, .item-act-red:hover { animation: none; } .item-hbtn, .item-act, .item-opt-toggle, .item-opt-cog { transition: none; } }
+
+/* ---- searching: a thin travelling bar, the list dims a little, the count pops when it changes ---- */
+.item-searchbar { height: 3px; margin: -0.6rem 0 0.7rem; border-radius: 999px; overflow: hidden; opacity: 0; transition: opacity 0.2s ease; } .item-searchbar.on { opacity: 1; }
+.item-searchbar i { display: block; width: 38%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, transparent, #6366f1, #14b8a6, transparent); animation: item-travel 0.9s ease-in-out infinite; }
+@keyframes item-travel { from { transform: translateX(-110%); } to { transform: translateX(290%); } }
+.item-results { transition: opacity 0.2s ease, filter 0.2s ease; } .item-results.is-searching { opacity: 0.55; filter: saturate(0.85); pointer-events: none; }
+.item-count { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; color: #4338ca; background: rgba(79, 70, 229, 0.1); box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.18); animation: item-count-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.item-count.is-busy { color: #0f766e; background: rgba(20, 184, 166, 0.12); box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.25); } .item-count-spin { animation: item-spin 0.8s linear infinite; }
+@keyframes item-count-pop { from { transform: scale(0.8); opacity: 0.4; } to { transform: none; opacity: 1; } } @keyframes item-spin { to { transform: rotate(360deg); } }
+html.dark .item-count { color: #c7d2fe; background: rgba(129, 140, 248, 0.16); } html.dark .item-count.is-busy { color: #5eead4; }
+@media (prefers-reduced-motion: reduce) { .item-searchbar i, .item-count, .item-count-spin { animation: none; } }
+
+@media (max-width: 640px) {
+  .item-hbtn-ico { padding: 0 !important; width: 2.6rem; justify-content: center; } .item-hbtn-ico .item-hlabel { display: none; } .item-hbtn-ico .tone-ico { margin: 0; }
+  .item-count { font-size: 0.72rem; padding: 0.35rem 0.7rem; }
+}
 </style>

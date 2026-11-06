@@ -356,23 +356,27 @@ class ItemController extends Controller
 
         // Headline numbers for the tiles above the table: whole catalogue (within the user's warehouse scope),
         // independent of the search / sort / page the table is showing.
+        $statsOf = function () {
+        // plain rows, not models: only a few columns and the stock total are read, so nothing needs building for 1,000+ items
         $all = Item::query()
             ->withSum('stock', 'quantity')
             ->when(warehouse_scope_ids() !== null, fn ($q) => $q->whereHas('stock', fn ($s) => $s->whereIn('warehouse_id', warehouse_scope_ids())))
-            ->get(['items.id', 'items.is_used', 'items.track_quantity', 'items.alert_quantity']);
+            ->toBase()->get();
         $tracked = $all->filter(fn ($i) => (int) $i->track_quantity === 1);
-        $stats = [
+        return [
             'total'      => $all->count(),
             'consumable' => $all->where('is_used', 0)->count(),
             'used'       => $all->where('is_used', 1)->count(),
             'out'        => $tracked->filter(fn ($i) => (float) $i->stock_sum_quantity <= 0)->count(),
             'low'        => $tracked->filter(fn ($i) => (float) $i->alert_quantity > 0 && (float) $i->stock_sum_quantity > 0 && (float) $i->stock_sum_quantity <= (float) $i->alert_quantity)->count(),
         ];
+        };
 
         return Inertia::render('Item/Index', [
-            'stats'      => $stats,
+            // closures: a search / sort / page reload asks only for `items` and `filters`, so these are not worked out again for it
+            'stats'      => $statsOf,
             'filters'    => array_merge($filters, ['sort' => $sort, 'direction' => $sort ? $direction : null]),
-            'warehouses' => Warehouse::ofAccount()->active()->visible()->get(),
+            'warehouses' => fn () => Warehouse::ofAccount()->active()->visible()->get(),
             'items'      => new ItemCollection($query->paginate()->withQueryString()),
         ]);
     }

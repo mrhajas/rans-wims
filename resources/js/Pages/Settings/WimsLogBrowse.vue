@@ -36,19 +36,20 @@
               <template v-if="current && current.date_from"> · {{ $t('from :a to :b', { a: day(current.date_from), b: day(current.date_to) }) }}</template>
             </p>
           </div>
-          <form class="wlb-search" @submit.prevent="visit({ page: 1, q: term.trim() })"><icons name="search" class="w-4 h-4" /><input v-model="term" type="search" :placeholder="$t('Search the id, the date or the description')" /><button type="submit" class="lg-btn lg-btn-soft wlb-sm">{{ $t('Search') }}</button><button v-if="q" type="button" class="lg-btn lg-btn-soft wlb-sm" @click="term = ''; visit({ page: 1, q: '' })">{{ $t('Clear') }}</button></form>
+          <form class="wlb-search" @submit.prevent="visit({ page: 1, q: term.trim() })"><icons :name="busy ? 'refresh' : 'search'" class="w-4 h-4" :class="{ 'wlb-spin': busy }" /><input v-model="term" type="search" :placeholder="$t('Search the id, the date or the description')" @input="liveSearch" /><button type="submit" class="lg-btn lg-btn-soft wlb-sm">{{ $t('Search') }}</button><button v-if="q" type="button" class="lg-btn lg-btn-soft wlb-sm" @click="term = ''; visit({ page: 1, q: '' })">{{ $t('Clear') }}</button></form>
         </header>
+        <div class="wlb-bar" :class="{ on: busy }" aria-hidden="true"><i></i></div>
         <div v-if="!records.length" class="wlb-empty-box">
           <span class="wlb-empty-ico" :style="{ '--tone': look(source).tone, '--tone2': look(source).tone2 }"><icons :name="look(source).icon" class="w-6 h-6" /></span>
           <b>{{ current && !current.rows ? $t('Nothing has been archived from this log yet.') : $t('No record found.') }}</b>
           <small v-if="current && !current.rows">{{ $t('Records appear here after WIMS Logs has run. Run it from the WIMS Logs page.') }}</small>
           <Link v-if="current && !current.rows" :href="route('wims-logs.index')" class="lg-btn lg-btn-primary wlb-sm">{{ $t('Go to WIMS Logs') }}</Link>
         </div>
-        <div v-else class="lg-table-wrap">
+        <div v-else class="lg-table-wrap wlb-results" :class="{ 'is-busy': busy }" :aria-busy="busy">
           <table v-labelize class="lg-table lg-responsive">
             <thead><tr><th>{{ $t('No') }}</th><th>{{ $t('Date') }}</th><th>{{ $t('Record') }}</th><th>{{ $t('What it was') }}</th><th>{{ $t('Archive') }}</th><th>{{ $t('Size') }}</th><th>{{ $t('Actions') }}</th></tr></thead>
             <tbody>
-              <tr v-for="(r, i) in records" :key="r.archive + '-' + r.id">
+              <tr v-for="(r, i) in records" :key="r.archive + '-' + r.id" class="wlb-row" :style="{ '--i': Math.min(i, 12) }">
                 <td class="wlb-nw">{{ (page - 1) * per + i + 1 }}</td>
                 <td class="wlb-nw">{{ r.at ? $datetime(r.at) : '-' }}</td>
                 <td class="wlb-nw"><b>{{ r.id }}</b></td>
@@ -91,12 +92,13 @@ import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import { Link } from '@inertiajs/vue3';
+import debounce from 'lodash/debounce';
 
 export default {
   components: { AdminLayout, PageHeader, StatTiles, Modal, Link },
   props: { logs: Array, source: String, records: Array, total: Number, page: Number, per: Number, pages: Number, q: String },
   data() {
-    return { term: this.q || '', rec: { open: false, id: '', loading: false, error: '', row: {} } };
+    return { busy: false, term: this.q || '', rec: { open: false, id: '', loading: false, error: '', row: {} } };
   },
   computed: {
     current() { return this.logs.find(l => l.key === this.source); },
@@ -143,8 +145,10 @@ export default {
       const switching = change.source && change.source !== this.source;
       if (switching) this.term = '';
       const params = { source: change.source || this.source, page: change.page || 1, q: switching ? undefined : ('q' in change ? change.q : this.q) || undefined };
-      this.$inertia.get(this.route('wims-logs.browse'), params, { preserveScroll: false, preserveState: true });
+      this.$inertia.get(this.route('wims-logs.browse'), params, { preserveScroll: !switching, preserveState: true, replace: true, headers: { 'X-Quiet': '1' }, onStart: () => { this.busy = true; }, onFinish: () => { this.busy = false; } });
     },
+    // the list follows the typing: one request when it pauses
+    liveSearch: debounce(function () { this.visit({ page: 1, q: this.term.trim() }); }, 250),
     open(r) {
       this.rec = { open: true, id: r.id, loading: true, error: '', row: {} };
       window.axios.get(this.route('wims-logs.archives.record', [r.archive, r.id]), { headers: { 'X-Quiet': '1' } })
@@ -179,4 +183,14 @@ export default {
 .wlb-rec-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.8rem; } .wlb-rec-head b { display: block; } .wlb-rec-head small { color: #64748b; }
 .wlb-cols { margin: 0; display: grid; gap: 0.5rem; } .wlb-cols > div { padding: 0.5rem 0.75rem; border-radius: 0.8rem; background: rgba(148, 163, 184, 0.1); }
 .wlb-cols dt { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; } .wlb-cols dd { margin: 0.15rem 0 0; } .wlb-cols pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; max-height: 16rem; overflow: auto; }
+
+/* ---- searching ---- */
+.wlb-bar { height: 3px; margin: 0 0 0.6rem; border-radius: 999px; overflow: hidden; opacity: 0; transition: opacity 0.2s ease; } .wlb-bar.on { opacity: 1; }
+.wlb-bar i { display: block; width: 38%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, transparent, #6366f1, #14b8a6, transparent); animation: wlb-travel 0.9s ease-in-out infinite; } @keyframes wlb-travel { from { transform: translateX(-110%); } to { transform: translateX(290%); } }
+.wlb-results { transition: opacity 0.2s ease; } .wlb-results.is-busy { opacity: 0.55; pointer-events: none; }
+.wlb-row { animation: wlb-row-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 25ms); } @keyframes wlb-row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.wlb-spin { animation: wlb-rot 0.8s linear infinite; } @keyframes wlb-rot { to { transform: rotate(360deg); } }
+.wlb-search { max-width: 100%; } .wlb-search input { max-width: 100%; }
+@media (max-width: 640px) { .wlb-search { width: 100%; } .wlb-search input { flex: 1; min-width: 0; } .wlb-tabs { grid-template-columns: 1fr 1fr; } .wlb-tab { padding: 0.6rem 0.65rem; gap: 0.5rem; } .wlb-tab-ico { width: 2.1rem; height: 2.1rem; } }
+@media (prefers-reduced-motion: reduce) { .wlb-bar i, .wlb-row, .wlb-spin { animation: none; } }
 </style>

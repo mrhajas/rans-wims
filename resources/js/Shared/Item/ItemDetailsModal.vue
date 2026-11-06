@@ -94,4 +94,11 @@ export default {
 @keyframes idm-shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .idm-skel i, .idm-skel span { animation: none; } }
 @media (max-width: 479.98px) { .idm-head { padding: 12px; } .idm-actions { gap: 5px; } .idm-btn { width: 34px; height: 34px; } .idm-ico { display: none; } }
+
+.idm-head { position: relative; background: linear-gradient(135deg, color-mix(in srgb, var(--lg-card, #fff) 92%, #6366f1), var(--lg-card, #fff)); }
+.idm-ico { animation: idm-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; } .idm-btn { animation: idm-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; transition: background 0.15s, transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), box-shadow 0.2s; }
+.idm-actions .idm-btn:nth-child(1) { animation-delay: 0.1s; } .idm-actions .idm-btn:nth-child(2) { animation-delay: 0.16s; } .idm-actions .idm-btn:nth-child(3) { animation-delay: 0.22s; } .idm-actions .idm-btn:nth-child(4) { animation-delay: 0.28s; } .idm-actions .idm-btn:nth-child(5) { animation-delay: 0.34s; }
+.idm-btn:hover { transform: translateY(-3px) scale(1.1); box-shadow: 0 10px 16px -8px rgba(15, 23, 42, 0.45); } .idm-btn:active { transform: scale(0.92); } .idm-btn.is-red:hover { transform: translateY(-3px) scale(1.1) rotate(90deg); }
+@keyframes idm-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .idm-ico, .idm-btn { animation: none; transition: none; } }
 </style>

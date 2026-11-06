@@ -364,4 +364,28 @@ html.dark .text-maroon { color: #f87171; }
 .dt-line-c small { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lg-faint); }
 .dt-line-c b { font-size: 1rem; font-variant-numeric: tabular-nums; }
 .dt-share { height: 6px; margin-top: 8px; border-radius: 4px; background: rgba(148, 163, 184, 0.22); overflow: hidden; } .dt-share i { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+
+/* ---- motion: the window builds up piece by piece ---- */
+.dt-hero { position: relative; overflow: hidden; animation: dt-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.dt-hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%); transform: translateX(-130%); animation: dt-sweep 1.4s ease 0.5s 1 both; }
+.dt-photo { transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.3s ease; } .dt-photo:hover { transform: scale(1.05) rotate(-2deg); box-shadow: 0 16px 28px -14px rgba(15, 23, 42, 0.5); }
+.dt-barcode, .dt-qr { transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.3s ease; } .dt-barcode:hover, .dt-qr:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 16px 26px -16px rgba(15, 23, 42, 0.5); }
+.dt-tile { animation: dt-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: 0.1s; transition: transform 0.25s ease, box-shadow 0.25s ease; } .dt-tile:hover { transform: translateY(-3px); box-shadow: 0 16px 26px -16px rgba(15, 23, 42, 0.45); }
+.dt-tile-ico { transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); } .dt-tile:hover .dt-tile-ico { transform: rotate(-8deg) scale(1.12); }
+.dt-card { animation: dt-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: 0.2s; } .dt-card ~ .dt-card { animation-delay: 0.3s; }
+.dt-f { animation: dt-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: transform 0.25s ease, box-shadow 0.25s ease; } .dt-f:nth-child(1) { animation-delay: 0.28s; } .dt-f:nth-child(2) { animation-delay: 0.33s; } .dt-f:nth-child(3) { animation-delay: 0.38s; } .dt-f:nth-child(4) { animation-delay: 0.43s; } .dt-f:nth-child(5) { animation-delay: 0.48s; } .dt-f:nth-child(6) { animation-delay: 0.53s; }
+.dt-f:hover { transform: translateY(-2px); box-shadow: 0 14px 22px -16px rgba(15, 23, 42, 0.4); } .dt-f-ico { transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); } .dt-f:hover .dt-f-ico { transform: rotate(-10deg) scale(1.12); }
+.dt-pill { animation: dt-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; transition: transform 0.2s ease; } .dt-pill:nth-child(1) { animation-delay: 0.5s; } .dt-pill:nth-child(2) { animation-delay: 0.58s; } .dt-pill:nth-child(3) { animation-delay: 0.66s; } .dt-pill:hover { transform: translateY(-2px) scale(1.04); }
+.dt-wh { animation: dt-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: transform 0.25s ease, box-shadow 0.25s ease; } .dt-wh:hover { transform: translateY(-3px); box-shadow: 0 18px 28px -18px rgba(15, 23, 42, 0.45); }
+.dt-wh:nth-child(1) { animation-delay: 0.4s; } .dt-wh:nth-child(2) { animation-delay: 0.48s; } .dt-wh:nth-child(3) { animation-delay: 0.56s; } .dt-wh:nth-child(n+4) { animation-delay: 0.64s; }
+.dt-share i { transform-origin: left; animation: dt-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s both; }
+.dt-none-ico { animation: dt-float 3s ease-in-out infinite; }
+@keyframes dt-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes dt-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+@keyframes dt-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes dt-sweep { to { transform: translateX(130%); } }
+@keyframes dt-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .dt-hero, .dt-hero::after, .dt-tile, .dt-card, .dt-f, .dt-pill, .dt-wh, .dt-share i, .dt-none-ico { animation: none; } .dt-photo, .dt-barcode, .dt-qr, .dt-tile, .dt-f, .dt-wh, .dt-tile-ico, .dt-f-ico { transition: none; } }
+@media print { .dt-hero, .dt-tile, .dt-card, .dt-f, .dt-pill, .dt-wh, .dt-share i { animation: none !important; } .dt-hero::after { display: none; } }
+@media (max-width: 640px) { .dt-hero { padding: 0.8rem; gap: 10px; } .dt-codes { width: 100%; justify-content: flex-start; } .dt-kv { grid-template-columns: 1fr !important; } }
 </style>

@@ -188,7 +188,31 @@
       <teleport to="body">
         <div v-if="ov.open" class="wl-ov" role="dialog" aria-modal="true" :aria-label="$t('Archiving')">
           <div class="wl-ov-card" :class="{ 'is-done': ov.finished && !ov.failed, 'is-fail': ov.failed }">
-            <h2>{{ ov.finished ? (ov.failed ? $t('The run stopped') : $t('Archiving finished')) : $t('Archiving the logs') }}</h2>
+            <h2>{{ ov.finished ? (ov.failed ? $t('The run stopped') : $t('Archiving finished')) : $t('Compressing the logs') }}</h2>
+            <!-- records leave the live database, are squeezed by the press and land in the archive -->
+            <div class="wlx-stage" :class="{ 'is-run': !ov.finished, 'is-done': ov.finished && !ov.failed, 'is-fail': ov.failed }" aria-hidden="true">
+              <svg class="wlx-st-db" viewBox="0 0 64 72">
+                <defs><linearGradient id="wl-g-db" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8" /><stop offset="1" stop-color="#4338ca" /></linearGradient></defs>
+                <path d="M8 14v44c0 6 10 10 24 10s24-4 24-10V14z" fill="url(#wl-g-db)" />
+                <path d="M8 30c0 5 10 9 24 9s24-4 24-9M8 45c0 5 10 9 24 9s24-4 24-9" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" />
+                <ellipse cx="32" cy="14" rx="24" ry="9" fill="#a5b4fc" />
+              </svg>
+              <div class="wlx-lane">
+                <i v-for="n in 10" :key="n" class="wlx-chipx" :style="{ '--n': n }"></i>
+                <span class="wlx-press wlx-press-top"></span><span class="wlx-press wlx-press-bot"></span><span class="wlx-press-flash"></span>
+              </div>
+              <div class="wlx-st-boxwrap">
+                <svg class="wlx-st-box" viewBox="0 0 64 64">
+                  <defs><linearGradient id="wl-g-box" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf" /><stop offset="1" stop-color="#0f766e" /></linearGradient></defs>
+                  <rect x="5" y="9" width="54" height="17" rx="5" fill="#5eead4" />
+                  <path d="M10 26h44v28a5 5 0 0 1-5 5H15a5 5 0 0 1-5-5z" fill="url(#wl-g-box)" />
+                  <rect x="24" y="34" width="16" height="5" rx="2.5" fill="rgba(255,255,255,.75)" />
+                </svg>
+                <span class="wlx-st-tick"><icons :name="ov.failed ? 'x-circle' : 'tick'" class="w-6 h-6" /></span>
+                <i v-for="n in 8" :key="'sp' + n" class="wlx-spark" :style="{ '--a': n * 45 + 'deg' }"></i>
+              </div>
+            </div>
+            <p class="wlx-st-line"><b>{{ ovPercent }}%</b> · {{ ov.finished ? (ov.failed ? $t('Stopped. What was archived is kept.') : $t('Every record is safe in the archive.')) : runningTitle }}</p>
             <div class="wl-ov-bar" role="progressbar" :aria-valuenow="ovPercent"><i :style="{ width: ovPercent + '%' }"></i></div>
             <ul class="wl-ov-steps">
               <li v-for="s in ov.steps" :key="s.key" :class="'is-' + s.state">
@@ -205,23 +229,50 @@
 
       <!-- the password: running moves data out of the live tables -->
       <tec-dialog-modal :show="pw.open" max-width="lg" @close="pw.open = false">
-        <template #title><span class="wl-dlg-title"><icons name="lock-closed" class="w-5 h-5" />{{ $t('Run WIMS Logs now') }}</span></template>
+        <template #title>
+          <span class="wl-dlg-head">
+            <span class="wl-dlg-badge"><icons name="archive-box" class="w-5 h-5" /></span>
+            <span><b>{{ $t('Run WIMS Logs now') }}</b><small>{{ $t('Whatever the schedule says') }}</small></span>
+          </span>
+        </template>
         <template #content>
-          <p class="wl-dlg-text">{{ $t('Run it now, whatever the schedule says. Choose the logs and, for this run only, how many days each one stays live: everything older is written to a compressed archive, checked, and then removed from the live table. Your saved settings are not changed.') }}</p>
+          <p class="wl-dlg-text">{{ $t('Choose the logs and, for this run only, how many days each one stays live. Everything older is written to a compressed archive, checked, and then removed from the live table. Your saved settings are not changed.') }}</p>
           <ul class="wl-dlg-list">
-            <li v-for="l in rows" :key="l.key">
-              <label class="wl-dlg-pick"><input v-model="pw.sources" type="checkbox" :value="l.key" /> <span class="wl-logico is-sm" :style="{ '--tone': look(l.key).tone, '--tone2': look(l.key).tone2 }"><icons :name="look(l.key).icon" class="w-4 h-4" /></span> <b>{{ l.label }}</b></label>
-              <span class="wl-dlg-days"><span class="wl-input"><input v-model.number="pw.days[l.key]" type="number" :min="keepLimits[0]" :max="keepLimits[1]" inputmode="numeric" :aria-label="$t('Days to keep live')" /><em>{{ $t('days live') }}</em></span></span>
-              <small class="wl-dlg-est" :class="{ 'is-due': est(l.key).rows > 0 }">{{ pw.loading ? '...' : num(est(l.key).rows) }} {{ $t('records') }} · ~ {{ fmt(est(l.key).bytes) }}</small>
+            <li v-for="(l, li) in rows" :key="l.key" :class="{ 'is-off': !pw.sources.includes(l.key), 'has-due': est(l.key).rows > 0 }" :style="{ '--tone': look(l.key).tone, '--tone2': look(l.key).tone2, '--d': li * 55 + 'ms' }">
+              <label class="wl-dlg-pick">
+                <input v-model="pw.sources" type="checkbox" :value="l.key" class="wl-chk-in" />
+                <i class="wl-chk" aria-hidden="true"><icons name="tick" class="w-3 h-3" /></i>
+                <span class="wl-logico is-sm" :style="{ '--tone': look(l.key).tone, '--tone2': look(l.key).tone2 }"><icons :name="look(l.key).icon" class="w-4 h-4" /></span>
+                <b>{{ l.label }}</b>
+              </label>
+              <span class="wl-step" role="group" :aria-label="$t('Days to keep live')">
+                <button type="button" class="wl-step-b" :aria-label="$t('One day less')" @click="bumpDays(l.key, -1)"><icons name="minus" class="w-3 h-3" /></button>
+                <input v-model.number="pw.days[l.key]" type="number" :min="keepLimits[0]" :max="keepLimits[1]" inputmode="numeric" :aria-label="$t('Days to keep live')" />
+                <button type="button" class="wl-step-b" :aria-label="$t('One day more')" @click="bumpDays(l.key, 1)"><icons name="plus" class="w-3 h-3" /></button>
+                <em>{{ $t('days live') }}</em>
+              </span>
+              <span class="wl-dlg-est" :class="{ 'is-due': est(l.key).rows > 0 }">
+                <span class="wl-dlg-bar"><u :style="{ width: estPct(l.key) + '%' }"></u></span>
+                <span>{{ pw.loading ? '...' : num(est(l.key).rows) }} {{ $t('records') }} · ~ {{ fmt(est(l.key).bytes) }}</span>
+              </span>
             </li>
           </ul>
-          <p v-if="!pw.loading && pw.sources.length && !estTotal" class="wl-dlg-none"><icons name="info" class="w-4 h-4" />{{ $t('Nothing is older than that. Lower the days to move more.') }}</p>
-          <input v-model="pw.password" type="password" class="wl-dlg-input" autocomplete="current-password" :placeholder="$t('Enter your password to confirm')" @keyup.enter="run" />
+          <div class="wl-dlg-total" :class="{ 'is-none': !estTotal }">
+            <span class="wl-dlg-total-ico"><icons :name="estTotal ? 'archive-box' : 'info'" class="w-5 h-5" /></span>
+            <span v-if="estTotal"><b>{{ num(estTotal) }}</b> {{ $t('records will be compressed') }} · ~ <b>{{ fmt(estBytes) }}</b> {{ $t('leave the live database') }}</span>
+            <span v-else-if="pw.loading">{{ $t('Counting...') }}</span>
+            <span v-else>{{ $t('Nothing is older than that. Lower the days to move more.') }}</span>
+          </div>
+          <div class="wl-pass">
+            <icons name="lock-closed" class="w-4 h-4 wl-pass-ico" />
+            <input v-model="pw.password" :type="pw.show ? 'text' : 'password'" class="wl-dlg-input" autocomplete="current-password" :placeholder="$t('Enter your password to confirm')" @keyup.enter="run" />
+            <button type="button" class="wl-pass-eye" :aria-label="pw.show ? $t('Hide the password') : $t('Show the password')" @click="pw.show = !pw.show"><icons :name="pw.show ? 'eye-off' : 'eye'" class="w-4 h-4" /></button>
+          </div>
           <p v-if="pw.error" class="wl-err">{{ pw.error }}</p>
         </template>
         <template #footer>
           <button type="button" class="lg-btn lg-btn-soft" @click="pw.open = false">{{ $t('Cancel') }}</button>
-          <button type="button" class="lg-btn lg-btn-primary" :disabled="!pw.password || !pw.sources.length || !estTotal || pw.loading || busy" @click="run"><icons name="tick" class="w-4 h-4" />{{ $t('Confirm') }}<template v-if="estTotal"> ({{ num(estTotal) }})</template></button>
+          <button type="button" class="lg-btn tone tone-solid wl-go" style="--tone: #0f766e" :disabled="!pw.password || !pw.sources.length || !estTotal || pw.loading || busy" @click="run"><span class="tone-ico"><icons name="archive-box" class="w-4 h-4" /></span>{{ $t('Compress now') }}<template v-if="estTotal"> ({{ num(estTotal) }})</template></button>
         </template>
       </tec-dialog-modal>
     </div>
@@ -246,7 +297,7 @@ export default {
       saving: false,
       busy: false,
       errors: '',
-      pw: { open: false, password: '', error: '', sources: [], days: {}, estimates: {}, loading: false },
+      pw: { open: false, password: '', error: '', sources: [], days: {}, estimates: {}, loading: false, show: false },
       grown: false,
       anim: { db: 0, stored: 0, saved: 0, freed: 0, rows: 0, original: 0, free: 0, pct: 0 },
       ov: { open: false, steps: [], finished: false, failed: false, error: '', rows: 0, saved: '', freed: '' },
@@ -261,6 +312,8 @@ export default {
       get() { return !!this.cfg.general.wimslogs_optimize; },
       set(v) { this.cfg.general.wimslogs_optimize = v ? 1 : 0; },
     },
+    estBytes() { return this.pw.sources.reduce((a, k) => a + (this.est(k).bytes || 0), 0); },
+    runningTitle() { const r = this.ov.steps.find(x => x.state === 'running'); return r ? r.title : this.$t('Getting ready'); },
     estTotal() { return this.pw.sources.reduce((a, k) => a + (this.est(k).rows || 0), 0); },
     dueNow() { return this.rows.filter(l => this.cfg.sources[l.key].on).reduce((a, l) => a + l.due_rows, 0); },
     trendMax() { return Math.max(1, ...this.trend.map(t => t.original)); },
@@ -337,6 +390,16 @@ export default {
         slow: { icon: 'lightning-bolt', tone: '#e11d48', tone2: '#fb7185' },
       })[key] || { icon: 'archive-box', tone: '#4f46e5', tone2: '#818cf8' };
     },
+    // the little bar in a row: this log's share of everything that would move
+    estPct(key) {
+      const max = Math.max(1, ...this.rows.map(l => this.est(l.key).rows || 0));
+      const n = this.est(key).rows || 0;
+      return n ? Math.max(4, Math.round((n / max) * 100)) : 0;
+    },
+    bumpDays(key, d) {
+      const v = Number(this.pw.days[key]) || this.keepLimits[0];
+      this.pw.days[key] = Math.min(this.keepLimits[1], Math.max(this.keepLimits[0], v + d));
+    },
     est(key) { return this.pw.estimates[key] || { rows: 0, bytes: 0 }; },
     estimate() {
       const days = {};
@@ -381,7 +444,7 @@ export default {
       const days = {};
       const estimates = {};
       this.rows.forEach(l => { days[l.key] = this.cfg.sources[l.key].keep_days; estimates[l.key] = { rows: l.due_rows, bytes: l.due_bytes }; });
-      this.pw = { open: true, password: '', error: '', sources: this.rows.filter(l => this.cfg.sources[l.key].on && l.due_rows > 0).map(l => l.key), days, estimates, loading: false };
+      this.pw = { open: true, show: false, password: '', error: '', sources: this.rows.filter(l => this.cfg.sources[l.key].on && l.due_rows > 0).map(l => l.key), days, estimates, loading: false };
       // the numbers shown are for the saved days; if nothing is due that way, every log is ticked so the days can simply be lowered
       if (!this.pw.sources.length) this.pw.sources = this.rows.map(l => l.key);
     },
@@ -520,4 +583,62 @@ html.dark .wl-input input { background: rgba(255, 255, 255, 0.06); border-color:
 .wl-pill { display: inline-block; min-width: 1.8rem; text-align: center; padding: 0.05rem 0.55rem; border-radius: 999px; font-weight: 900; font-size: 0.8rem; } .wl-pill.is-due { background: #fef3c7; color: #92400e; } .wl-pill.is-none { background: rgba(148, 163, 184, 0.16); color: #64748b; } html.dark .wl-pill.is-due { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
 .wl-mini { display: block; height: 0.32rem; margin-top: 0.3rem; border-radius: 999px; background: rgba(148, 163, 184, 0.22); overflow: hidden; } .wl-mini u { display: block; height: 100%; border-radius: 999px; }
 .wl-dlg-pick { gap: 0.45rem; }
+
+/* ---- the Run now window ---- */
+.wl-dlg-head { display: flex; align-items: center; gap: 0.75rem; } .wl-dlg-head b { display: block; font-size: 1.1rem; font-weight: 900; } .wl-dlg-head small { display: block; font-size: 0.74rem; font-weight: 600; color: #64748b; }
+.wl-dlg-badge { flex: none; width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: 0.95rem; color: #fff; background: linear-gradient(135deg, #14b8a6, #0f766e); box-shadow: 0 10px 18px -10px #0f766e; }
+.wl-dlg-text { margin: 0 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: #475569; } html.dark .wl-dlg-text { color: #cbd5e1; }
+.wl-dlg-list { list-style: none; margin: 0 0 0.8rem; padding: 0; display: grid; gap: 0.5rem; }
+.wl-dlg-list li { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.8rem; align-items: center; padding: 0.6rem 0.75rem 0.6rem 0.95rem; border-radius: 1rem; overflow: hidden; background: color-mix(in srgb, var(--tone) 7%, transparent); border: 1.5px solid color-mix(in srgb, var(--tone) 20%, transparent); transition: opacity 0.25s ease, border-color 0.25s ease, background 0.25s ease, transform 0.25s ease; animation: wl-li-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: var(--d); }
+.wl-dlg-list li::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--tone), var(--tone2)); } .wl-dlg-list li.is-off { opacity: 0.55; } .wl-dlg-list li.is-off::before { opacity: 0.35; } .wl-dlg-list li.has-due:not(.is-off) { border-color: color-mix(in srgb, var(--tone) 55%, transparent); background: color-mix(in srgb, var(--tone) 11%, transparent); }
+@keyframes wl-li-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.wl-dlg-pick { display: flex; align-items: center; gap: 0.55rem; cursor: pointer; min-width: 0; } .wl-dlg-pick b { font-size: 0.88rem; }
+.wl-chk-in { position: absolute; opacity: 0; width: 0; height: 0; } .wl-chk { flex: none; width: 1.35rem; height: 1.35rem; display: grid; place-items: center; border-radius: 0.45rem; border: 2px solid #cbd5e1; color: transparent; background: #fff; transition: all 0.2s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.wl-chk-in:checked + .wl-chk { color: #fff; border-color: transparent; background: linear-gradient(135deg, var(--tone), var(--tone2)); transform: scale(1.08); } .wl-chk-in:focus-visible + .wl-chk { outline: 3px solid color-mix(in srgb, var(--tone) 45%, transparent); outline-offset: 2px; }
+.wl-step { display: inline-flex; align-items: center; gap: 0.3rem; } .wl-step em { font-style: normal; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-left: 0.2rem; }
+.wl-step input { width: 3.4rem; text-align: center; border-radius: 0.65rem; border: 1.5px solid #e2e8f0; padding: 0.3rem 0.2rem; font-size: 0.9rem; font-weight: 800; background: #fff; -moz-appearance: textfield; } .wl-step input::-webkit-outer-spin-button, .wl-step input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } html.dark .wl-step input { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); color: #f1f5f9; }
+.wl-step-b { width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border: 0; border-radius: 0.55rem; cursor: pointer; color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent); transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease; } .wl-step-b:hover { color: #fff; background: var(--tone); transform: scale(1.1); } .wl-step-b:active { transform: scale(0.9); }
+.wl-dlg-est { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.6rem; font-size: 0.74rem; font-weight: 600; color: #64748b; } .wl-dlg-est.is-due { color: #b45309; }
+.wl-dlg-bar { flex: 0 0 5.5rem; height: 0.38rem; border-radius: 999px; background: color-mix(in srgb, var(--tone) 15%, transparent); overflow: hidden; } .wl-dlg-bar u { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tone), var(--tone2)); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.wl-dlg-total { display: flex; align-items: center; gap: 0.7rem; margin: 0 0 0.8rem; padding: 0.65rem 0.85rem; border-radius: 1rem; font-size: 0.82rem; font-weight: 600; color: #134e4a; background: linear-gradient(135deg, rgba(20, 184, 166, 0.16), rgba(99, 102, 241, 0.1)); } .wl-dlg-total.is-none { color: #92400e; background: rgba(245, 158, 11, 0.12); } html.dark .wl-dlg-total { color: #99f6e4; } html.dark .wl-dlg-total.is-none { color: #fcd34d; }
+.wl-dlg-total-ico { flex: none; width: 2.1rem; height: 2.1rem; display: grid; place-items: center; border-radius: 0.75rem; color: #fff; background: linear-gradient(135deg, #14b8a6, #0f766e); } .wl-dlg-total.is-none .wl-dlg-total-ico { background: linear-gradient(135deg, #f59e0b, #b45309); } .wl-dlg-total b { font-variant-numeric: tabular-nums; }
+.wl-pass { position: relative; } .wl-pass .wl-dlg-input { padding-left: 2.3rem; padding-right: 2.6rem; } .wl-pass-ico { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; } .wl-pass-eye { position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); width: 2rem; height: 2rem; display: grid; place-items: center; border: 0; border-radius: 0.6rem; cursor: pointer; color: #64748b; background: transparent; } .wl-pass-eye:hover { background: rgba(148, 163, 184, 0.2); color: #0f766e; }
+.wl-go { transition: transform 0.2s ease, box-shadow 0.2s ease; } .wl-go:hover:not(:disabled) { transform: translateY(-2px); }
+
+/* ---- the compression scene ---- */
+.wl-ov-card { animation: wl-pop 0.45s cubic-bezier(0.2, 1.2, 0.4, 1) both; } @keyframes wl-pop { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: none; } }
+.wlx-stage { position: relative; display: grid; grid-template-columns: 4rem minmax(0, 1fr) 4.4rem; align-items: center; gap: 0.5rem; height: 8rem; margin: 0 0 0.7rem; padding: 0.5rem 0.9rem; border-radius: 1.2rem; overflow: hidden; background: radial-gradient(circle at 12% 50%, rgba(99, 102, 241, 0.18), transparent 55%), radial-gradient(circle at 90% 50%, rgba(20, 184, 166, 0.2), transparent 55%), rgba(148, 163, 184, 0.08); }
+.wlx-st-db, .wlx-st-box { width: 100%; height: auto; filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.25)); } .wlx-stage.is-run .wlx-st-db { animation: wl-db 1.3s ease-in-out infinite; } @keyframes wl-db { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05, 0.96); } }
+.wlx-lane { position: relative; height: 100%; }
+.wlx-chipx { position: absolute; left: 0; top: 50%; width: 1.5rem; height: 0.95rem; margin-top: -0.475rem; border-radius: 0.3rem; background: #6366f1; opacity: 0; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.45) inset; animation: wl-flow 2.6s linear infinite; animation-delay: calc(var(--n) * -0.26s); }
+.wlx-stage:not(.is-run) .wlx-chipx { animation-play-state: paused; opacity: 0 !important; }
+@keyframes wl-flow {
+  0% { left: 0; opacity: 0; transform: scale(1, 1); background: #6366f1; }
+  8% { opacity: 1; }
+  38% { left: 38%; transform: scale(1, 1); background: #6366f1; }
+  50% { left: 47%; transform: scale(0.55, 1.25); background: #a78bfa; }
+  58% { left: 52%; transform: scale(0.3, 0.55); background: #2dd4bf; }
+  70% { left: 66%; transform: scale(0.34, 0.5); background: #14b8a6; opacity: 1; }
+  100% { left: 98%; transform: scale(0.28, 0.45); background: #0f766e; opacity: 0; }
+}
+.wlx-press { position: absolute; left: 50%; width: 1.1rem; margin-left: -0.55rem; border-radius: 0.5rem; background: linear-gradient(180deg, #94a3b8, #475569); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset; } .wlx-press-top { top: 0; height: 34%; border-top-left-radius: 0; border-top-right-radius: 0; } .wlx-press-bot { bottom: 0; height: 34%; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.wlx-stage.is-run .wlx-press-top { animation: wl-clamp-t 1.3s ease-in-out infinite; } .wlx-stage.is-run .wlx-press-bot { animation: wl-clamp-b 1.3s ease-in-out infinite; }
+@keyframes wl-clamp-t { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(46%); } } @keyframes wl-clamp-b { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-46%); } }
+.wlx-press-flash { position: absolute; left: 50%; top: 50%; width: 2.2rem; height: 2.2rem; margin: -1.1rem 0 0 -1.1rem; border-radius: 50%; background: radial-gradient(circle, rgba(94, 234, 212, 0.9), transparent 70%); opacity: 0; } .wlx-stage.is-run .wlx-press-flash { animation: wl-flash 1.3s ease-in-out infinite; } @keyframes wl-flash { 0%, 40%, 100% { opacity: 0; transform: scale(0.5); } 50% { opacity: 1; transform: scale(1.4); } }
+.wlx-st-boxwrap { position: relative; } .wlx-stage.is-run .wlx-st-box { animation: wl-bump 1.3s ease-in-out infinite; } @keyframes wl-bump { 0%, 55%, 100% { transform: scale(1); } 70% { transform: scale(1.09); } }
+.wlx-st-tick { position: absolute; left: 50%; top: 58%; width: 2.4rem; height: 2.4rem; margin: -1.2rem 0 0 -1.2rem; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #059669; box-shadow: 0 8px 14px -6px #059669; transform: scale(0); } .wlx-stage.is-done .wlx-st-tick { animation: wl-tick 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.1s forwards; } .wlx-stage.is-fail .wlx-st-tick { background: #dc2626; box-shadow: 0 8px 14px -6px #dc2626; animation: wl-tick 0.5s ease forwards; } @keyframes wl-tick { to { transform: scale(1); } }
+.wlx-stage.is-fail .wlx-st-box { filter: grayscale(1) drop-shadow(0 8px 10px rgba(15, 23, 42, 0.25)); }
+.wlx-stage.is-done .wlx-st-box { animation: wl-celebrate 0.7s cubic-bezier(0.3, 1.5, 0.5, 1); } @keyframes wl-celebrate { 0% { transform: scale(1); } 40% { transform: scale(1.2) rotate(-4deg); } 100% { transform: scale(1); } }
+.wlx-spark { position: absolute; left: 50%; top: 50%; width: 0.4rem; height: 0.4rem; margin: -0.2rem; border-radius: 50%; background: #fbbf24; opacity: 0; } .wlx-stage.is-done .wlx-spark { animation: wlx-spark 0.9s ease-out forwards; } .wlx-spark:nth-of-type(even) { background: #34d399; }
+@keyframes wlx-spark { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0.8rem) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(3.2rem) scale(0.3); } }
+.wlx-st-line { margin: 0 0 0.6rem; text-align: center; font-size: 0.82rem; font-weight: 700; color: #475569; } .wlx-st-line b { color: #0f766e; font-variant-numeric: tabular-nums; } html.dark .wlx-st-line { color: #cbd5e1; }
+.wl-ov-bar i { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 75%, transparent 75%); background-size: 1rem 1rem; animation: wl-stripes 0.8s linear infinite; } @keyframes wl-stripes { to { background-position: 1rem 0; } }
+@media (prefers-reduced-motion: reduce) { .wl-ov-card, .wl-dlg-list li, .wl-ov-bar i, .wlx-chipx, .wlx-press, .wlx-press-flash, .wlx-st-db, .wlx-st-box, .wlx-spark { animation: none !important; } .wlx-chipx { opacity: 0.6; left: 40%; } .wlx-st-tick { transform: scale(1); } }
+
+@media (max-width: 560px) {
+  .wl-dlg-list li { grid-template-columns: 1fr; padding-left: 0.85rem; } .wl-dlg-pick b { font-size: 0.86rem; } .wl-step { justify-content: flex-start; } .wl-step input { width: 4rem; }
+  .wl-dlg-est { flex-wrap: wrap; gap: 0.3rem 0.6rem; } .wl-dlg-bar { flex: 1 1 100%; }
+  .wl-dlg-head b { font-size: 1rem; } .wl-dlg-total { align-items: flex-start; }
+  .wl-go { width: 100%; justify-content: center; }
+}
 </style>
