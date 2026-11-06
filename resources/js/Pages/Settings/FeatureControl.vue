@@ -57,6 +57,9 @@
             <option value="">{{ $t('All Modules') }}</option>
             <option v-for="m in modules" :key="m" :value="m">{{ m }}</option>
           </css-select>
+          <button v-if="familyUnits.length" type="button" class="fc-fold-all" :class="{ 'is-open': allOpen }" @click="setAllOpen(!allOpen)">
+            <icons name="chevron-down" class="w-4 h-4" />{{ allOpen ? $t('Collapse all') : $t('Expand all') }}
+          </button>
         </div>
         <transition name="fc-fade">
           <p v-if="filtering" class="fc-count">
@@ -206,7 +209,6 @@ import { highlightText } from '@/Core/highlightText';
 import { Link } from '@inertiajs/vue3';
 
 const TONES = ['blue', 'emerald', 'violet', 'amber', 'cyan', 'rose', 'indigo'];
-const AUTO_OPEN_MAX = 8; // a family with more sub-functions than this starts folded (unless you are searching)
 
 export default {
   props: {
@@ -351,6 +353,13 @@ export default {
 
       return order.map(m => groups[m]).map(g => ({ ...g, tone: this.modules.indexOf(g.module) }));
     },
+    // the families on screen, and whether every one of them is open
+    familyUnits() {
+      return this.groupedFeatures.flatMap(g => g.units.filter(u => u.all));
+    },
+    allOpen() {
+      return this.familyUnits.length > 0 && this.familyUnits.every(u => this.isOpen(u));
+    },
     shownCount() {
       return this.groupedFeatures.reduce((n, g) => n + g.units.reduce((m, u) => m + 1 + u.kids.length, 0), 0);
     },
@@ -386,11 +395,15 @@ export default {
     featureName(key) { return (this.byKey[key] || {}).name || key; },
     clearFilters() { this.search = ''; this.statusFilter = 'all'; this.moduleFilter = ''; },
 
-    // folding of the families: open by default unless long; always open while filtering so the matches are visible
+    // folding of the families: folded by default; opened while searching or filtering so the matches are visible, unless the person chose otherwise
     isOpen(unit) {
-      if (this.filtering) return true;
       const k = unit.root.key;
-      return this.opened[k] != null ? this.opened[k] : unit.all <= AUTO_OPEN_MAX;
+      return this.opened[k] != null ? this.opened[k] : this.filtering;
+    },
+    setAllOpen(open) {
+      const o = {};
+      this.familyUnits.forEach(u => { o[u.root.key] = open; });
+      this.opened = { ...this.opened, ...o };
     },
     toggleOpen(unit) { this.opened = { ...this.opened, [unit.root.key]: !this.isOpen(unit) }; },
 
@@ -499,6 +512,14 @@ export default {
 .fc-seg-btn { position: relative; z-index: 1; min-height: 0 !important; padding: 7px 16px !important; border: 0 !important; border-radius: 11px !important; background: transparent !important; box-shadow: none !important; font-size: 0.8rem; font-weight: 700; color: var(--lg-mute); cursor: pointer; transition: color 0.25s ease; }
 .fc-seg-btn.is-on { color: #fff; }
 .fc-select { height: 42px; border-radius: 14px; border: 1px solid var(--lg-line); background: var(--lg-card); padding: 0 34px 0 12px; font-size: 0.85rem; color: var(--lg-ink); box-shadow: 0 6px 12px -10px rgba(15, 37, 64, 0.5); }
+.fc-fold-all { display: inline-flex; align-items: center; gap: 8px; height: 42px; min-height: 0 !important; padding: 0 18px !important; border: 0 !important; border-radius: 14px !important; color: #fff !important; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.02em; cursor: pointer; background: linear-gradient(145deg, #3b82f6, #1d4ed8) !important; box-shadow: 0 14px 22px -10px rgba(29, 78, 216, 0.75), 0 2px 4px rgba(15, 37, 64, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3); transition: transform 0.18s ease, box-shadow 0.25s ease, background 0.4s ease; }
+.fc-fold-all.is-open { background: linear-gradient(145deg, #8b5cf6, #5b21b6) !important; box-shadow: 0 14px 22px -10px rgba(91, 33, 182, 0.75), 0 2px 4px rgba(15, 37, 64, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.fc-fold-all:hover { transform: translateY(-2px); box-shadow: 0 20px 28px -10px rgba(29, 78, 216, 0.8), 0 2px 4px rgba(15, 37, 64, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.fc-fold-all.is-open:hover { box-shadow: 0 20px 28px -10px rgba(91, 33, 182, 0.8), 0 2px 4px rgba(15, 37, 64, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.fc-fold-all:active { transform: translateY(0) scale(0.97); }
+.fc-fold-all:focus-visible { outline: 3px solid rgba(59, 130, 246, 0.45); outline-offset: 3px; }
+.fc-fold-all svg { transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.5, 1); }
+.fc-fold-all.is-open svg { transform: rotate(180deg); }
 .fc-count { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; font-size: 0.8rem; color: var(--lg-mute); }
 .fc-count b { color: var(--lg-ink); font-variant-numeric: tabular-nums; }
 .fc-num { display: inline-block; animation: fc-pop 0.35s cubic-bezier(0.34, 1.56, 0.5, 1); }
