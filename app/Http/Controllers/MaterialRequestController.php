@@ -689,9 +689,9 @@ class MaterialRequestController extends Controller
                         $skipped['project']++;
                         continue;
                     }
-                    // the same moves the normal workflow allows: Approved or Partially Issued, on to Partially Issued / Fully Issued; a request already at the target stays
+                    // only requests that were not issued at all (still Approved) are moved; anything already Partially / Fully Issued is left as it is
                     $from = $mr->status;
-                    $movable = in_array($from, [MaterialRequest::STATUS_APPROVED, MaterialRequest::STATUS_PARTIALLY_ISSUED], true) && $from !== $target;
+                    $movable = $from === MaterialRequest::STATUS_APPROVED;
                     if (! $movable) {
                         $skipped['status']++;
                         continue;
@@ -719,7 +719,7 @@ class MaterialRequestController extends Controller
         $msg = __(':n request(s) moved to :status.', ['n' => $done, 'status' => __($target)]);
         $notes = [];
         if ($skipped['status']) {
-            $notes[] = __(':n not Approved or Partially Issued (or already :status)', ['n' => $skipped['status'], 'status' => __($target)]);
+            $notes[] = __(':n not Approved (only requests that were not issued at all are moved)', ['n' => $skipped['status']]);
         }
         if ($skipped['procedure']) {
             $notes[] = __(':n without the procurement procedures this needs (tick "Skip the procurement procedure check" to include them)', ['n' => $skipped['procedure']]);

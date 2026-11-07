@@ -48,7 +48,7 @@
       <transition name="mr-bulk">
         <div v-if="canForce && picked.length" class="mr-bulk print:hidden" role="region" :aria-label="$t('Selected requests')">
           <span class="mr-bulk-ico"><icons name="lock-closed" class="w-5 h-5" /></span>
-          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Mark them Partially or Fully Issued, or clear them in one step (Admin Force Clearance). Needs your Super Admin password.') }}</small></div>
+          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Mark the ones not issued at all as Partially or Fully Issued, or clear them in one step (Admin Force Clearance). Needs your Super Admin password.') }}</small></div>
           <button v-if="clearableIds.length > picked.length" type="button" class="lg-btn bulk-btn bulk-btn-all" @click="picked = [...clearableIds]"><icons name="collection" class="w-4 h-4" />{{ $t('Select all :n', { n: clearableIds.length }) }}</button>
           <button type="button" class="lg-btn bulk-btn bulk-btn-none" @click="picked = []"><icons name="x-circle" class="w-4 h-4" />{{ $t('Clear selection') }}</button>
           <button type="button" class="lg-btn bulk-btn bulk-btn-part" @click="askIssue('Partially Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Partially Issued') }}</button>
@@ -188,7 +188,7 @@
     <super-admin-password-modal
       :show="issueAsk"
       :title="issueStatus === 'Issued' ? $t('Mark as Fully Issued') : $t('Mark as Partially Issued')"
-      :content="$t(':n selected request(s): the Approved and Partially Issued ones are moved to :status, the others are skipped and counted. No notifications are sent.', { n: picked.length, status: issueStatus === 'Issued' ? $t('Fully Issued') : $t('Partially Issued') })"
+      :content="$t(':n selected request(s): only the Approved ones (not issued at all yet) are moved to :status, the others are skipped and counted. No notifications are sent.', { n: picked.length, status: issueStatus === 'Issued' ? $t('Fully Issued') : $t('Partially Issued') })"
       :lines="pickedNames"
       :confirm-text="issueStatus === 'Issued' ? $t('Mark Fully Issued') : $t('Mark Partially Issued')"
       :processing="issueBusy"
