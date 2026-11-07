@@ -2,31 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
-use App\Models\Item;
-use App\Models\User;
-use App\Models\Warehouse;
-use Illuminate\Http\Request;
-use Illuminate\Database\QueryException;
-use App\Models\MaterialRequest;
-use App\Models\MaterialRequestNotificationRule;
-use App\Support\MaterialRequestVisibility;
-use App\Models\MaterialRequestWorkflowStep;
-use App\Models\Contact;
-use App\Policies\MaterialRequestPolicy;
-use Illuminate\Validation\ValidationException;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Notifications\AppNotification;
-use App\Services\MaterialRequestMessenger;
-use App\Services\WimsConnect\CommunicationService;
 use App\Events\MaterialRequestStatusChanged;
-use App\Http\Resources\MaterialRequestResource;
-use App\Http\Requests\MaterialRequestStoreRequest;
 use App\Http\Requests\MaterialRequestStatusRequest;
+use App\Http\Requests\MaterialRequestStoreRequest;
 use App\Http\Requests\MaterialRequestUpdateRequest;
 use App\Http\Resources\MaterialRequestCollection;
-use Illuminate\Support\Facades\DB;
+use App\Http\Resources\MaterialRequestResource;
+use App\Models\Contact;
+use App\Models\Item;
+use App\Models\MaterialRequest;
+use App\Models\MaterialRequestNotificationRule;
+use App\Models\MaterialRequestWorkflowStep;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Notifications\AppNotification;
+use App\Policies\MaterialRequestPolicy;
+use App\Services\MaterialRequestMessenger;
+use App\Support\MaterialRequestVisibility;
 use App\Traits\GuardsCompletedWarehouse;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class MaterialRequestController extends Controller
 {
@@ -128,15 +127,11 @@ class MaterialRequestController extends Controller
             ->select('status', DB::raw('COUNT(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
-        // Quick requests waiting for approval (the Quick card), over the same visibility scope
-        $quickPending = MaterialRequestVisibility::scopeQueryFor(MaterialRequest::query(), $user)
-            ->where('quick', true)->where('status', MaterialRequest::STATUS_PENDING_APPROVAL)->count();
 
         return Inertia::render('MaterialRequest/Index', [
             'stats' => [
                 'total' => (int) $statusCounts->sum(),
                 'pending' => (int) ($statusCounts[MaterialRequest::STATUS_PENDING_APPROVAL] ?? 0),
-                'quick_pending' => $quickPending,
                 'approved' => (int) ($statusCounts[MaterialRequest::STATUS_APPROVED] ?? 0),
                 'rejected' => (int) ($statusCounts[MaterialRequest::STATUS_REJECTED] ?? 0),
                 'partially_issued' => (int) ($statusCounts[MaterialRequest::STATUS_PARTIALLY_ISSUED] ?? 0),
@@ -477,11 +472,11 @@ class MaterialRequestController extends Controller
 
         foreach ($afterItemIds->diff($beforeItemIds) as $id) {
             $new = $afterItemsById[$id];
-            $changes[] = 'Added item "' . ($itemNames[$id] ?? $id) . '" (qty ' . $new['quantity'] . ')';
+            $changes[] = 'Added item "'.($itemNames[$id] ?? $id).'" (qty '.$new['quantity'].')';
         }
 
         foreach ($beforeItemIds->diff($afterItemIds) as $id) {
-            $changes[] = 'Removed item "' . ($itemNames[$id] ?? $id) . '"';
+            $changes[] = 'Removed item "'.($itemNames[$id] ?? $id).'"';
         }
 
         foreach ($afterItemIds->intersect($beforeItemIds) as $id) {
@@ -490,15 +485,15 @@ class MaterialRequestController extends Controller
             $itemChanges = [];
 
             if ((float) $old->quantity !== (float) $new['quantity']) {
-                $itemChanges[] = 'quantity ' . $old->quantity . ' → ' . $new['quantity'];
+                $itemChanges[] = 'quantity '.$old->quantity.' → '.$new['quantity'];
             }
 
             if ($old->priority !== $new['priority']) {
-                $itemChanges[] = 'priority ' . $old->priority . ' → ' . $new['priority'];
+                $itemChanges[] = 'priority '.$old->priority.' → '.$new['priority'];
             }
 
             if ($itemChanges) {
-                $changes[] = '"' . ($itemNames[$id] ?? $id) . '" ' . implode(', ', $itemChanges);
+                $changes[] = '"'.($itemNames[$id] ?? $id).'" '.implode(', ', $itemChanges);
             }
         }
 
@@ -506,7 +501,7 @@ class MaterialRequestController extends Controller
             return 'Request details updated (no field changes detected).';
         }
 
-        return 'Request updated: ' . implode('; ', $changes) . '.';
+        return 'Request updated: '.implode('; ', $changes).'.';
     }
 
     public function destroy(Request $request, MaterialRequest $material_request)
@@ -557,12 +552,12 @@ class MaterialRequestController extends Controller
             if ($undelivered) {
                 $mode = MaterialRequestWorkflowStep::clearDeliveryMode(getAccountId(1));
                 if ($mode === 'block') {
-                    return back()->withErrors(['status' => __('This request cannot be cleared yet: :n item(s) are not Fully Delivered on site.', ['n' => count($undelivered)]) . ' ' . implode('; ', $undelivered)]);
+                    return back()->withErrors(['status' => __('This request cannot be cleared yet: :n item(s) are not Fully Delivered on site.', ['n' => count($undelivered)]).' '.implode('; ', $undelivered)]);
                 }
                 if ($mode === 'warn' && ! $request->boolean('confirm_undelivered')) {
                     return back()->withErrors(['undelivered' => json_encode($undelivered)]);
                 }
-                $clearNote = 'Cleared with ' . count($undelivered) . ' item(s) not fully delivered: ' . implode('; ', $undelivered) . '.';
+                $clearNote = 'Cleared with '.count($undelivered).' item(s) not fully delivered: '.implode('; ', $undelivered).'.';
             }
         }
 
@@ -594,7 +589,7 @@ class MaterialRequestController extends Controller
 
             $locked->logs()->create([
                 'status' => $targetStatus,
-                'remarks' => trim(($data['remarks'] ?? '') . ($clearNote ? ' ' . $clearNote : '')) ?: null,
+                'remarks' => trim(($data['remarks'] ?? '').($clearNote ? ' '.$clearNote : '')) ?: null,
                 'user_id' => $user->id,
             ]);
         });
@@ -637,13 +632,14 @@ class MaterialRequestController extends Controller
                     $warehouse = Warehouse::query()->find($mr->warehouse_id);
                     if (in_array($mr->status, self::FORCE_CLEAR_EXCLUDED, true) || ($warehouse && $warehouse->completed_at)) {
                         $skipped++;
+
                         continue;
                     }
                     $was = $mr->status;
                     $mr->forceFill(['status' => MaterialRequest::STATUS_CLEARED, 'cleared_by_user_id' => $user->id, 'cleared_at' => now(), 'force_cleared' => true])->save();
                     $mr->logs()->create([
                         'status' => MaterialRequest::STATUS_CLEARED,
-                        'remarks' => 'Admin Force Clearance: cleared from ' . $was . ' in one step, skipping the approval, issue and delivery steps and the normal clearing checks.',
+                        'remarks' => 'Admin Force Clearance: cleared from '.$was.' in one step, skipping the approval, issue and delivery steps and the normal clearing checks.',
                         'user_id' => $user->id,
                     ]);
                     log_activity('Admin Force Clearance', ['reference' => $mr->reference, 'from' => $was, 'to' => MaterialRequest::STATUS_CLEARED], $mr, 'Material Request');
@@ -654,7 +650,7 @@ class MaterialRequestController extends Controller
 
         $msg = __(':n request(s) cleared by Admin Force Clearance.', ['n' => $done]);
         if ($skipped) {
-            $msg .= ' ' . __(':n skipped (already Rejected, Cleared or Closed, or its project is completed).', ['n' => $skipped]);
+            $msg .= ' '.__(':n skipped (already Rejected, Cleared or Closed, or its project is completed).', ['n' => $skipped]);
         }
 
         return $done ? back()->with('message', $msg) : back()->with('error', $msg);
@@ -672,7 +668,7 @@ class MaterialRequestController extends Controller
         abort_unless($user && $user->hasRole('Super Admin'), 403);
         $data = $request->validate([
             'ids' => ['required', 'array', 'min:1', 'max:1000'], 'ids.*' => ['integer'],
-            'status' => ['required', 'in:' . MaterialRequest::STATUS_PARTIALLY_ISSUED . ',' . MaterialRequest::STATUS_ISSUED],
+            'status' => ['required', 'in:'.MaterialRequest::STATUS_PARTIALLY_ISSUED.','.MaterialRequest::STATUS_ISSUED],
             'skip_procedures' => ['nullable', 'boolean'],
             'password' => ['required', 'string'],
         ]);
@@ -691,6 +687,7 @@ class MaterialRequestController extends Controller
                     $warehouse = Warehouse::query()->find($mr->warehouse_id);
                     if ($warehouse && $warehouse->completed_at) {
                         $skipped['project']++;
+
                         continue;
                     }
                     // only requests that were not issued at all (still Approved) are moved; anything already Partially / Fully Issued is left as it is
@@ -698,6 +695,7 @@ class MaterialRequestController extends Controller
                     $movable = $from === MaterialRequest::STATUS_APPROVED;
                     if (! $movable) {
                         $skipped['status']++;
+
                         continue;
                     }
                     if (! $skipProcedures && ! $mr->quick) {
@@ -705,16 +703,17 @@ class MaterialRequestController extends Controller
                         $with = $mr->items()->whereNotNull('procedure')->count();
                         if ($with === 0 || ($target === MaterialRequest::STATUS_ISSUED && $with < $total)) {
                             $skipped['procedure']++;
+
                             continue;
                         }
                     }
                     $mr->forceFill(['status' => $target])->save();
                     $mr->logs()->create([
                         'status' => $target,
-                        'remarks' => 'Bulk update by a Super Admin: moved from ' . $from . ' to ' . $target . ($skipProcedures && ! $mr->quick ? ' (procurement procedure check skipped).' : '.'),
+                        'remarks' => 'Bulk update by a Super Admin: moved from '.$from.' to '.$target.($skipProcedures && ! $mr->quick ? ' (procurement procedure check skipped).' : '.'),
                         'user_id' => $user->id,
                     ]);
-                    log_activity('Bulk ' . $target, ['reference' => $mr->reference, 'from' => $from, 'to' => $target, 'procedure_check_skipped' => $skipProcedures], $mr, 'Material Request');
+                    log_activity('Bulk '.$target, ['reference' => $mr->reference, 'from' => $from, 'to' => $target, 'procedure_check_skipped' => $skipProcedures], $mr, 'Material Request');
                     $done++;
                 }
             });
@@ -732,7 +731,7 @@ class MaterialRequestController extends Controller
             $notes[] = __(':n in a completed project', ['n' => $skipped['project']]);
         }
         if ($notes) {
-            $msg .= ' ' . __('Skipped:') . ' ' . implode('; ', $notes) . '.';
+            $msg .= ' '.__('Skipped:').' '.implode('; ', $notes).'.';
         }
 
         return $done ? back()->with('message', $msg) : back()->with('error', $msg);
@@ -756,7 +755,7 @@ class MaterialRequestController extends Controller
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.id' => ['required', 'integer'],
-            'items.*.procedure' => ['nullable', 'string', 'in:' . implode(',', MaterialRequest::procedures())],
+            'items.*.procedure' => ['nullable', 'string', 'in:'.implode(',', MaterialRequest::procedures())],
             'items.*.contact_id' => ['nullable', 'integer'],
             'items.*.warehouse_id' => ['nullable', 'integer'],
             'items.*.note' => ['nullable', 'string', 'max:255'],
@@ -778,6 +777,7 @@ class MaterialRequestController extends Controller
             $item = $itemsById->get((int) $row['id']);
             if (! $item) {
                 $errors["items.$index.procedure"] = __('Invalid material request item.');
+
                 continue;
             }
 
@@ -803,7 +803,7 @@ class MaterialRequestController extends Controller
                     // Main Warehouse chosen: the quantity is validated against what that warehouse holds now. None at all is refused; less than asked is
                     // allowed (a Partially Issued request moves what there is) but the user is told.
                     $held = (float) DB::table('stocks')->where('warehouse_id', $warehouseId)->where('item_id', $item->item_id)->whereNull('variation_id')->whereNull('deleted_at')->sum('quantity');
-                    $name = item_text(optional($item->item)->name ?? '#' . $item->item_id, optional($item->item)->code);
+                    $name = item_text(optional($item->item)->name ?? '#'.$item->item_id, optional($item->item)->code);
                     $whName = optional(Warehouse::withoutGlobalScopes()->find($warehouseId))->name;
                     $fmt = fn ($v) => rtrim(rtrim(number_format($v, 4, '.', ''), '0'), '.') ?: '0';
                     if ($held <= 0.00005) {
@@ -841,12 +841,12 @@ class MaterialRequestController extends Controller
 
             $material_request->logs()->create([
                 'status' => 'Update Procedure',
-                'remarks' => 'Procurement procedures saved by ' . $user->name . ' (' . count($rows) . ' item' . (count($rows) === 1 ? '' : 's') . ').',
+                'remarks' => 'Procurement procedures saved by '.$user->name.' ('.count($rows).' item'.(count($rows) === 1 ? '' : 's').').',
                 'user_id' => $user->id,
             ]);
         });
 
-        return back()->with('message', __('Procurement procedures have been saved.') . ($stockWarnings ? ' ' . implode(' ', $stockWarnings) : ''));
+        return back()->with('message', __('Procurement procedures have been saved.').($stockWarnings ? ' '.implode(' ', $stockWarnings) : ''));
     }
 
     /**
@@ -867,7 +867,7 @@ class MaterialRequestController extends Controller
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.id' => ['required', 'integer'],
-            'items.*.delivery_status' => ['nullable', 'string', 'in:' . implode(',', MaterialRequest::deliveryStatuses())],
+            'items.*.delivery_status' => ['nullable', 'string', 'in:'.implode(',', MaterialRequest::deliveryStatuses())],
             'remarks' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -915,7 +915,7 @@ class MaterialRequestController extends Controller
 
             $material_request->logs()->create([
                 'status' => $logStatus,
-                'remarks' => $summary . ($remarks !== '' ? ' ' . $remarks : ''),
+                'remarks' => $summary.($remarks !== '' ? ' '.$remarks : ''),
                 'user_id' => $user->id,
             ]);
         });
@@ -925,7 +925,7 @@ class MaterialRequestController extends Controller
         }
 
         $fresh = $material_request->fresh(['user', 'warehouse']);
-        $this->notifyEvent($fresh, MaterialRequestNotificationRule::EVENT_DELIVERY, 'Delivery Confirmed on Site', $fresh->reference . ': ' . $user->name . ' updated the delivery status on site.', $user->id, $data['remarks'] ?? null);
+        $this->notifyEvent($fresh, MaterialRequestNotificationRule::EVENT_DELIVERY, 'Delivery Confirmed on Site', $fresh->reference.': '.$user->name.' updated the delivery status on site.', $user->id, $data['remarks'] ?? null);
         app(MaterialRequestMessenger::class)->dispatch($fresh, MaterialRequestNotificationRule::EVENT_DELIVERY, $user, $data['remarks'] ?? null, (string) $fresh->logs()->max('id'));
 
         return back()->with('message', __('Delivery status saved.'));
@@ -946,7 +946,7 @@ class MaterialRequestController extends Controller
 
         $pdf = Pdf::loadView('material-request-print', $payload)->setPaper('a4', 'portrait');
 
-        return $pdf->download('material-request-' . $material_request->reference . '.pdf');
+        return $pdf->download('material-request-'.$material_request->reference.'.pdf');
     }
 
     protected function printPayload(MaterialRequest $materialRequest, bool $isPdf = false): array
@@ -983,11 +983,11 @@ class MaterialRequestController extends Controller
     {
         // Query the raw table (not Eloquent) so soft-deleted records are included and their numbers are never reused.
         $maxSuffix = (int) DB::table('material_requests')
-            ->selectRaw("MAX(CAST(SUBSTRING(reference, 5) AS UNSIGNED)) as max_suffix")
+            ->selectRaw('MAX(CAST(SUBSTRING(reference, 5) AS UNSIGNED)) as max_suffix')
             ->where('reference', 'like', 'RMR-%')
             ->value('max_suffix');
 
-        return 'RMR-' . str_pad((string) ($maxSuffix + 1), 4, '0', STR_PAD_LEFT);
+        return 'RMR-'.str_pad((string) ($maxSuffix + 1), 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -1000,10 +1000,10 @@ class MaterialRequestController extends Controller
         $reference = $referenceOverride ?: $materialRequest->reference;
 
         $messages = [
-            'created' => $reference . ' submitted by ' . $actorName . '.',
-            'updated' => $reference . ' updated by ' . $actorName . '.',
-            'deleted' => $reference . ' deleted by ' . $actorName . '.',
-            'status_changed' => $reference . ' status changed to ' . $materialRequest->status . ' by ' . $actorName . '.',
+            'created' => $reference.' submitted by '.$actorName.'.',
+            'updated' => $reference.' updated by '.$actorName.'.',
+            'deleted' => $reference.' deleted by '.$actorName.'.',
+            'status_changed' => $reference.' status changed to '.$materialRequest->status.' by '.$actorName.'.',
         ];
 
         $recipients = MaterialRequestNotificationRule::recipientsFor(getAccountId(1), $action, $materialRequest, (int) $materialRequest->user_id);
@@ -1011,9 +1011,9 @@ class MaterialRequestController extends Controller
         foreach ($recipients as $recipient) {
             $recipient->notify(new AppNotification([
                 'module' => 'material_requests',
-                'type' => 'material_request_' . $action,
+                'type' => 'material_request_'.$action,
                 'title' => 'Material Request Notification',
-                'message' => $messages[$action] ?? ($reference . ' updated.'),
+                'message' => $messages[$action] ?? ($reference.' updated.'),
                 'status' => $materialRequest->status,
                 'reference' => $reference,
                 'url' => route('material-requests.show', $materialRequest->id),
@@ -1038,7 +1038,7 @@ class MaterialRequestController extends Controller
                 'module' => 'material_requests',
                 'type' => 'material_request_awaiting_approval',
                 'title' => $materialRequest->quick ? 'Quick Material Request Awaiting Approval' : 'Material Request Awaiting Approval',
-                'message' => $materialRequest->reference . ' was submitted by ' . $actorName . ' and is waiting for your approval.',
+                'message' => $materialRequest->reference.' was submitted by '.$actorName.' and is waiting for your approval.',
                 'status' => $materialRequest->status,
                 'reference' => $materialRequest->reference,
                 'url' => route('material-requests.show', $materialRequest->id),
@@ -1056,7 +1056,7 @@ class MaterialRequestController extends Controller
         foreach ($recipients as $recipient) {
             $recipient->notify(new AppNotification([
                 'module' => 'material_requests',
-                'type' => 'material_request_' . $eventKey,
+                'type' => 'material_request_'.$eventKey,
                 'title' => $title,
                 'message' => $message,
                 'status' => $materialRequest->status,

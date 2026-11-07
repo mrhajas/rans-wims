@@ -103,6 +103,19 @@
           <span>{{ $t('Tick each item as it arrives on site: one tick = Partially Delivered, two ticks = Fully Delivered. Add your remarks below and save. You can update this again whenever Procurement issues more.') }}</span>
         </p>
 
+        <div v-if="materialRequest.can_confirm_delivery && deliverableItems.length" class="mr-dv-bulk print:hidden">
+          <span class="mr-dv-bulk-lbl"><icons name="truck" class="w-4 h-4" />{{ $t('Mark every item at once') }}</span>
+          <div class="mr-dv-bulk-btns">
+            <button type="button" class="mr-dv-all mr-dv-all-part" :class="{ 'is-on': allDelivery === 'Partially Delivered' }" :aria-pressed="allDelivery === 'Partially Delivered'" @click="setAllDelivery('Partially Delivered')">
+              <icons name="tick" class="w-3.5 h-3.5" />{{ $t('Partial Delivered All') }}
+            </button>
+            <button type="button" class="mr-dv-all mr-dv-all-full" :class="{ 'is-on': allDelivery === 'Fully Delivered' }" :aria-pressed="allDelivery === 'Fully Delivered'" @click="setAllDelivery('Fully Delivered')">
+              <span class="mr-dv-all-ticks"><icons name="tick" class="w-3.5 h-3.5" /><icons name="tick" class="w-3.5 h-3.5 mr-dv-second" /></span>{{ $t('Full Delivered All') }}
+            </button>
+          </div>
+          <span v-if="deliveryDirty" class="mr-dv-bulk-hint">{{ $t('Not saved yet: add remarks if you like, then click "Save Delivery".') }}</span>
+        </div>
+
         <div v-if="showAvailability" class="mr-legend print:hidden">
           <span class="lg-chip lg-chip-green"><span class="mr-dot bg-emerald-500"></span>{{ $t('Available in Main Warehouse') }}</span>
           <span class="lg-chip lg-chip-amber"><span class="mr-dot bg-amber-500"></span>{{ $t('Available at Sites') }}</span>
@@ -565,6 +578,19 @@ export default {
   },
 
   computed: {
+    // items the site can tick as delivered (Procurement has set how they come)
+    deliverableItems() {
+      return (this.materialRequest.items || []).filter(item => item.has_procedure);
+    },
+    // the status every deliverable item shares, or null when they differ
+    allDelivery() {
+      const statuses = new Set(this.deliverableItems.map(item => this.delivery[item.id] || null));
+      return statuses.size === 1 ? [...statuses][0] : null;
+    },
+    // ticks changed since the page loaded
+    deliveryDirty() {
+      return this.deliverableItems.some(item => (this.delivery[item.id] || null) !== (item.delivery_status || null));
+    },
     // transfers made from the request: the quantities typed so far
     trEntered() {
       return Object.entries(this.trQty).filter(([, v]) => v !== '' && v !== null && Number(v) > 0).map(([k, v]) => ({ item_id: Number(k), qty: Number(v) }));
@@ -1085,6 +1111,13 @@ export default {
       });
       return map;
     },
+    // Ticks every item that can be delivered with the same status; pressing the active one again clears them all. Saved with "Save Delivery".
+    setAllDelivery(status) {
+      const next = this.allDelivery === status ? null : status;
+      this.deliverableItems.forEach(item => {
+        this.delivery[item.id] = next;
+      });
+    },
     setDelivery(itemId, status) {
       // Clicking the active tick again clears it.
       this.delivery[itemId] = this.delivery[itemId] === status ? null : status;
@@ -1232,6 +1265,22 @@ html.dark .mr-proc-err { color: #fda4af; }
 .mr-dv-full.is-on { background: linear-gradient(145deg, #10b981, #047857); box-shadow: 0 8px 14px -8px rgba(4, 120, 87, 0.9); }
 .mr-dv-second { margin-left: -7px; }
 .mr-dv-view { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.mr-dv-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 1rem; padding: 10px 12px; border-radius: 16px; background: var(--lg-soft); border: 1px solid var(--lg-line); }
+.mr-dv-bulk-lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 800; color: var(--lg-ink); }
+.mr-dv-bulk-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.mr-dv-all { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 9999px; font-size: 0.8rem; font-weight: 800; border: 1px solid var(--lg-line); background: var(--lg-card); color: var(--lg-ink); cursor: pointer; transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; }
+.mr-dv-all:hover { transform: translateY(-1px); }
+.mr-dv-all:active { transform: scale(0.97); }
+.mr-dv-all-part { color: #b45309; }
+.mr-dv-all-full { color: #047857; }
+.mr-dv-all-ticks { display: inline-flex; }
+.mr-dv-all-part.is-on { color: #fff; border-color: transparent; background: linear-gradient(145deg, #f59e0b, #b45309); box-shadow: 0 8px 14px -8px rgba(180, 83, 9, 0.9); }
+.mr-dv-all-full.is-on { color: #fff; border-color: transparent; background: linear-gradient(145deg, #34d399, #047857); box-shadow: 0 8px 14px -8px rgba(4, 120, 87, 0.9); }
+.mr-dv-bulk-hint { flex-basis: 100%; font-size: 0.76rem; font-weight: 600; color: #b45309; }
+html.dark .mr-dv-all-part:not(.is-on) { color: #fcd34d; }
+html.dark .mr-dv-all-full:not(.is-on) { color: #6ee7b7; }
+html.dark .mr-dv-bulk-hint { color: #fcd34d; }
+@media (max-width: 560px) { .mr-dv-bulk-btns { width: 100%; margin-left: 0; } .mr-dv-all { flex: 1; justify-content: center; } }
 .mr-dv-foot { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--lg-line); }
 .mr-dv-lbl { display: block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-faint); margin-bottom: 4px; }
 .mr-dv-text { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--lg-line); border-radius: 0.8rem; background: var(--lg-card); color: var(--lg-ink); font-size: 0.9rem; resize: vertical; }
