@@ -26,18 +26,20 @@ class AttendanceReportTest extends TestCase
         $this->assertSame('35h 12m', AttendanceReport::hm(2112));
     }
 
-    public function test_a_late_row_says_late_but_a_missing_clock_out_is_always_said(): void
+    public function test_late_is_its_own_column_and_the_status_keeps_saying_how_the_day_ended(): void
     {
         $row = new DigitalAttendanceRecord(['status' => 'CLOCKED_OUT']);
         $row->is_late = true;
-        $this->assertSame('Late', AttendanceReport::statusLabel($row));
+        $this->assertSame('Clocked Out', AttendanceReport::statusLabel($row));
+        $this->assertTrue(AttendanceReport::isLate($row));
 
         $row->is_late = false;
-        $this->assertSame('Clocked Out', AttendanceReport::statusLabel($row));
+        $this->assertFalse(AttendanceReport::isLate($row));
 
         $missing = new DigitalAttendanceRecord(['status' => 'MISSING_CLOCK_OUT']);
         $missing->is_late = true;
         $this->assertSame('Missing Clock Out', AttendanceReport::statusLabel($missing));
+        $this->assertFalse(AttendanceReport::isLate($missing), 'a missing clock-out is told by its status, not counted late as well');
     }
 
     public function test_only_the_report_filters_are_taken_from_the_input(): void

@@ -37,6 +37,11 @@
               <h2 class="lg-card-title">{{ $t('User') }}</h2>
               <p class="lg-card-sub">{{ $t('Name') }} / {{ $t('Username') }} / {{ $t('Email') }} / {{ $t('Phone') }}</p>
             </div>
+            <!-- Edit: keeps email and phone in step with the linked staff profile (default User to Staff; a detail the user lacks is brought in from the staff) -->
+            <span v-if="canSync" class="uf-sync-wrap ml-auto">
+              <button type="button" class="lg-btn lg-btn-soft" :disabled="contactDirty" :title="contactDirty ? $t('Save your changes to the email or phone first.') : ''" @click="syncOpen = true"><icons name="refresh" class="w-4 h-4" />{{ $t('Sync with staff') }}</button>
+              <small v-if="contactDirty" class="uf-sync-note">{{ $t('Save first') }}</small>
+            </span>
           </header>
           <div class="uf-photo">
             <div class="uf-photo-box">
@@ -58,6 +63,11 @@
             <div><text-input v-model="form.username" :error="$page.props.errors.username" :label="$t('Username')" /></div>
             <div><text-input type="email" v-model="form.email" :error="$page.props.errors.email" :label="$t('Email')" /></div>
             <div><text-input v-model="form.phone" :error="$page.props.errors.phone" :label="$t('Phone')" placeholder="0674020223 or +255674020223" /></div>
+          </div>
+          <!-- Add: borrow the email and phone of a staff profile that has no login yet (only fields that are still empty are filled) -->
+          <div v-if="!edit && staffChoices && staffChoices.length" class="uf-fill">
+            <auto-complete id="uf_fill_staff" v-model="fillStaffId" :label="$t('Fill email and phone from a staff profile')" :suggestions="staffChoices" value-key="id" label-key="label" clearable searchable />
+            <small>{{ $t('Only the empty email and phone boxes are filled. Link the profile to this login after saving.') }}</small>
           </div>
         </section>
 
@@ -246,6 +256,7 @@
       </form>
 
       <staff-link-panel v-if="edit && !edit.deleted_at && staffLink && staffLink.can.view" :link="staffLink" :user-id="edit.id" class="mt-4" />
+      <staff-sync-modal v-if="canSync" :show="syncOpen" :user-id="edit.id" @close="syncOpen = false" @done="onSynced" />
     </div>
 
     <!-- Delete User Confirmation Modal -->
@@ -354,6 +365,7 @@
 
 <script>
 import StaffLinkPanel from '@/Shared/User/StaffLinkPanel.vue';
+import StaffSyncModal from '@/Shared/User/StaffSyncModal.vue';
 import TakePhoto from '@/Shared/TakePhoto.vue';
 import Dialog from '@/Shared/Dialog.vue';
 import CheckBox from '@/Shared/CheckBox.vue';
@@ -373,11 +385,12 @@ import PasswordField from '@/Shared/PasswordField.vue';
 import { generatePassword } from '@/Core/passwordGen';
 
 export default {
-  props: ['edit', 'roles', 'warehouses', 'staffLink', 'faceEnrolled', 'passwordHint'],
+  props: ['edit', 'roles', 'warehouses', 'staffLink', 'staffChoices', 'faceEnrolled', 'passwordHint'],
 
   components: {
     TakePhoto,
     StaffLinkPanel,
+    StaffSyncModal,
     Dialog,
     CheckBox,
     FileInput,
@@ -409,6 +422,8 @@ export default {
         password: '',
       }),
       enableModal: false,
+      syncOpen: false,
+      fillStaffId: null,
       enableForm: this.$inertia.form({
         password: '',
       }),
@@ -431,6 +446,13 @@ export default {
   },
 
   watch: {
+    // Add: a staff profile was picked, so its email and phone fill the boxes that are still empty
+    fillStaffId(id) {
+      const staff = (this.staffChoices || []).find(c => c.id === id);
+      if (!staff) return;
+      if (!this.form.email && staff.email) this.form.email = staff.email;
+      if (!this.form.phone && staff.phone) this.form.phone = staff.phone;
+    },
     // typing a different password by hand hides the generated one
     'form.password'(v) { if (this.generated && v !== this.generated) this.generated = ''; },
     // Choosing Super Admin ticks every project / warehouse and both "all record" boxes (they can still be unticked afterwards).
@@ -445,6 +467,15 @@ export default {
   },
 
   computed: {
+    // the Sync button works on what is saved, so it waits while the email or phone in the form has been changed
+    canSync() {
+      return !!(this.edit && !this.edit.deleted_at && this.staffLink && this.staffLink.staff && this.staffLink.can.sync);
+    },
+    contactDirty() {
+      const norm = v => String(v || '').trim().toLowerCase();
+      const digits = v => String(v || '').replace(/\D/g, '').slice(-9);
+      return !!this.edit && (norm(this.form.email) !== norm(this.edit.email) || digits(this.form.phone) !== digits(this.edit.phone));
+    },
     // the photo shown: the one just taken, else the saved one
     photoUrl() {
       if (this.form.photo instanceof File) return this._photoUrl || (this._photoUrl = URL.createObjectURL(this.form.photo));
@@ -488,6 +519,14 @@ export default {
   },
 
   methods: {
+    // after a sync the user was reloaded: the form shows the new email and phone
+    onSynced() {
+      this.syncOpen = false;
+      this.$nextTick(() => {
+        this.form.email = this.edit.email;
+        this.form.phone = this.edit.phone;
+      });
+    },
     // fills both password boxes with a new password that follows the rule, and shows it (decrypting) so it can be copied
     generatePw() {
       const pw = generatePassword(10);
@@ -640,4 +679,8 @@ export default {
 .us-dot-green { background: #10b981; }
 .us-danger-soft { color: #b91c1c; }
 html.dark .us-danger-soft { color: #fca5a5; }
+.uf-sync-wrap { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.uf-sync-note { font-size: 0.68rem; color: #b45309; }
+.uf-fill { display: grid; gap: 4px; margin-top: 12px; }
+.uf-fill small { font-size: 0.74rem; color: var(--lg-mute, #64748b); }
 </style>

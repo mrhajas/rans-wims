@@ -40,13 +40,14 @@ class AttendanceReport
             'employee' => $employee,
             'period' => self::period($filters),
             'truncated' => $truncated,
+            'employee_rows' => self::perEmployee($records),
             'summary' => [
                 'employees' => $records->pluck('user_id')->unique()->count(),
                 'days' => $days,
                 'total_minutes' => $total,
                 'total_label' => self::hm($total),
                 'average_label' => self::hm($days ? intdiv($total, $days) : 0),
-                'late' => $records->where('is_late', true)->count(),
+                'late' => $records->filter(fn ($r) => self::isLate($r))->count(),
                 'missing' => $records->where('status', DigitalAttendanceRecord::STATUS_MISSING_CLOCK_OUT)->count(),
             ],
         ];
@@ -73,13 +74,31 @@ class AttendanceReport
         return $from ? 'From ' . $d($from) : ($to ? 'Up to ' . $d($to) : 'All dates');
     }
 
-    /** What a row's status is called in the report: Late wins over a normal finish, a missing clock-out is always said. */
+    /** What a row's status is called in the report. "Late" is its own column, so a late person who finished the day still reads Clocked Out. */
     public static function statusLabel(DigitalAttendanceRecord $r): string
     {
-        if ($r->status !== DigitalAttendanceRecord::STATUS_MISSING_CLOCK_OUT && $r->is_late) {
-            return 'Late';
-        }
-
         return ucwords(strtolower(str_replace('_', ' ', $r->status)));
+    }
+
+    /** True when the row counts as late (a record that is missing its clock-out is told by its status instead). */
+    public static function isLate(DigitalAttendanceRecord $r): bool
+    {
+        return (bool) $r->is_late && $r->status !== DigitalAttendanceRecord::STATUS_MISSING_CLOCK_OUT;
+    }
+
+    /** One line per employee: days, total and average hours, late and missing counts (for a report that covers several people). */
+    public static function perEmployee(\Illuminate\Support\Collection $records): array
+    {
+        return $records->groupBy('user_id')->map(function ($rows) {
+            $minutes = (int) $rows->sum(fn (DigitalAttendanceRecord $r) => (int) ($r->worked_minutes ?? $r->worked_minutes_live));
+            $days = $rows->count();
+
+            return [
+                'name' => optional($rows->first()->user)->name ?: '-',
+                'days' => $days, 'minutes' => $minutes, 'total' => self::hm($minutes), 'average' => self::hm($days ? intdiv($minutes, $days) : 0),
+                'late' => $rows->filter(fn ($r) => self::isLate($r))->count(),
+                'missing' => $rows->where('status', DigitalAttendanceRecord::STATUS_MISSING_CLOCK_OUT)->count(),
+            ];
+        })->sortBy(fn ($r) => mb_strtolower($r['name']))->values()->all();
     }
 }

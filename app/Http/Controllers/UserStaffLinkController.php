@@ -33,6 +33,8 @@ class UserStaffLinkController extends Controller
                 'view' => $viewer->can('read-staffs'),
                 'link' => $viewer->can('update-staffs'),
                 'convert' => $viewer->can('create-staffs'),
+                // the Sync button changes both records: the user (email, phone) and the staff profile (personal email, mobile)
+                'sync' => $viewer->can('update-users') && $viewer->can('update-staffs'),
             ],
             'staff' => $staff ? [
                 'id' => $staff->id,
@@ -136,6 +138,163 @@ class UserStaffLinkController extends Controller
         // Straight to the profile so HR can finish the details the user record could not provide.
         return redirect()->route('staffs.edit', $staff->id)
             ->with('message', __('Staff profile :ref created from the user. Complete the remaining details (join date, salary, bank …) and save.', ['ref' => $staff->staff_number]));
+    }
+
+    /** The two details both records keep. */
+    private const SYNC_FIELDS = [
+        'email' => ['label' => 'Email', 'user' => 'email', 'staff' => 'personal_email'],
+        'phone' => ['label' => 'Phone', 'user' => 'phone', 'staff' => 'mobile_no'],
+    ];
+
+    /** The value each side holds, in the form it is compared (email lower case; phone as +255XXXXXXXXX when it is a valid number). */
+    private static function syncValue(string $field, ?string $raw): ?string
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return null;
+        }
+
+        return $field === 'phone' ? (\App\Support\TzPhone::normalize($raw) ?? $raw) : mb_strtolower($raw);
+    }
+
+    /**
+     * What a sync would do, field by field. Directions:
+     *  - auto (the default): User -> Staff. The user's value is written to the staff profile; where the user has NOTHING and the staff profile has a value,
+     *    that value is brought into the user instead.
+     *  - user_to_staff: only User -> Staff.
+     *  - staff_to_user: only Staff -> User.
+     * An action is push (user value goes to the profile), pull (profile value goes to the user), same (already equal) or none (nothing on the side that would give).
+     */
+    public static function syncPlan(User $user, Staff $staff, string $direction = 'auto'): array
+    {
+        $rows = [];
+        foreach (self::SYNC_FIELDS as $key => $f) {
+            $uRaw = $key === 'phone' ? data_get($user->extra_attributes, 'phone') : $user->email;
+            $sRaw = $staff->{$f['staff']};
+            $u = self::syncValue($key, $uRaw);
+            $s = self::syncValue($key, $sRaw);
+
+            $action = 'none';
+            if ($u !== null && $s !== null && $u === $s) {
+                $action = 'same';
+            } elseif ($direction === 'staff_to_user') {
+                $action = $s !== null ? 'pull' : 'none';
+            } elseif ($u !== null) {
+                $action = 'push';
+            } elseif ($direction === 'auto' && $s !== null) {
+                $action = 'pull';
+            }
+
+            $reason = null;
+            $result = $action === 'push' ? $u : ($action === 'pull' ? $s : null);
+            if ($action === 'pull' && $key === 'email') {
+                if (! filter_var($s, FILTER_VALIDATE_EMAIL)) {
+                    [$action, $reason] = ['skip', __('The staff email is not a valid address.')];
+                } elseif (User::withTrashed()->where('email', $s)->where('id', '!=', $user->id)->exists()) {
+                    [$action, $reason] = ['skip', __('Another login already uses this email.')];
+                }
+            }
+            if ($action === 'pull' && $key === 'phone') {
+                $n = \App\Support\TzPhone::normalize($sRaw);
+                if (! $n) {
+                    [$action, $reason] = ['skip', __('The staff number is not a valid Tanzanian mobile number.')];
+                } else {
+                    $result = $n;
+                }
+            }
+            if ($action === 'push' && $key === 'phone' && ! \App\Support\TzPhone::isValid($uRaw)) {
+                [$action, $reason] = ['skip', __('The user phone is not a valid Tanzanian mobile number.')];
+            }
+            if ($action === 'push' && $key === 'email' && ! filter_var($u, FILTER_VALIDATE_EMAIL)) {
+                [$action, $reason] = ['skip', __('The user email is not a valid address.')];
+            }
+            if ($action === 'skip') {
+                $result = null;
+            }
+
+            $rows[] = ['key' => $key, 'label' => __($f['label']), 'user' => $uRaw ?: null, 'staff' => $sRaw ?: null, 'action' => $action, 'result' => $result, 'reason' => $reason];
+        }
+
+        return $rows;
+    }
+
+    private function syncGuard(Request $request, User $user): Staff
+    {
+        abort_unless($request->user()->can('update-users') && $request->user()->can('update-staffs'), 403);
+        if ($user->hasRole('Super Admin') && ! $request->user()->hasRole('Super Admin')) {
+            abort(403, __('Only a Super Admin can update a Super Admin account.'));
+        }
+        if ($user->id === $request->user()->id && ! \App\Services\Licensing\LicenceService::isManager($request->user())) {
+            abort(403, __('You should not update your own account.'));
+        }
+
+        $staff = Staff::where('user_id', $user->id)->first();
+        abort_unless($staff, 422, __('This user is not linked to a staff profile.'));
+
+        return $staff;
+    }
+
+    /** What the Sync button would do (shown before anything is changed). */
+    public function syncPreview(Request $request, User $user)
+    {
+        $staff = $this->syncGuard($request, $user);
+        $direction = in_array($request->query('direction'), ['auto', 'user_to_staff', 'staff_to_user'], true) ? $request->query('direction') : 'auto';
+
+        return response()->json([
+            'direction' => $direction,
+            'staff' => ['name' => $staff->name, 'staff_number' => $staff->staff_number],
+            'rows' => self::syncPlan($user, $staff, $direction),
+        ]);
+    }
+
+    /** Applies the sync: writes the user and / or the staff profile, tells the Recipients book, logs it. */
+    public function sync(Request $request, User $user)
+    {
+        $staff = $this->syncGuard($request, $user);
+        $direction = $request->validate(['direction' => 'nullable|in:auto,user_to_staff,staff_to_user'])['direction'] ?? 'auto';
+
+        $applied = DB::transaction(function () use ($user, $staff, $direction) {
+            $lockedUser = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $lockedStaff = Staff::whereKey($staff->id)->lockForUpdate()->firstOrFail();
+            $applied = [];
+
+            foreach (self::syncPlan($lockedUser, $lockedStaff, $direction) as $row) {
+                if ($row['action'] === 'push') {
+                    $lockedStaff->{self::SYNC_FIELDS[$row['key']]['staff']} = $row['result'];
+                } elseif ($row['action'] === 'pull') {
+                    if ($row['key'] === 'email') {
+                        $lockedUser->email = $row['result'];
+                    } else {
+                        $extra = (array) ($lockedUser->extra_attributes ?? []);
+                        $extra['phone'] = $row['result'];
+                        $lockedUser->extra_attributes = $extra;
+                    }
+                } else {
+                    continue;
+                }
+                $applied[] = ['field' => $row['label'], 'action' => $row['action'], 'from' => $row['action'] === 'push' ? 'user' : 'staff', 'old' => $row['action'] === 'push' ? $row['staff'] : $row['user'], 'new' => $row['result']];
+            }
+            if ($applied) {
+                $lockedStaff->save();
+                $lockedUser->save();
+            }
+
+            return $applied;
+        });
+
+        $summary = collect($applied)->map(fn ($a) => $a['field'] . ' ' . ($a['action'] === 'push' ? __('user to staff') : __('staff to user')))->implode(', ');
+        if ($applied) {
+            // the contact book (Recipients) follows the records it was pulled from
+            try {
+                \App\Services\WimsConnect\RecipientDirectory::syncUser($user->fresh());
+            } catch (\Throwable $e) {
+                report($e);
+            }
+            log_activity(__('Email / phone synced between user :user and staff profile :ref (:what).', ['user' => $user->name, 'ref' => $staff->staff_number, 'what' => $summary]), ['direction' => $direction, 'changes' => $applied], $user, 'User');
+            \App\Support\UserAudit::record($user, 'staff_sync', ['direction' => $direction, 'staff_number' => $staff->staff_number, 'changes' => $applied]);
+        }
+
+        return back()->with('message', $applied ? __('Synced: :what.', ['what' => $summary]) : __('Nothing to sync: the user and the staff profile already agree, or there is nothing to copy.'));
     }
 
     public function unlink(Request $request, User $user)

@@ -50,8 +50,8 @@
                     </button>
                   </div>
                 </td>
-                <td :data-label="$t('Clock In')">{{ r.clock_in_at ? $time(r.clock_in_at) : '—' }}<span v-if="r.sessions_count > 1" class="lg-subtext" style="display: inline"> ({{ $t('latest') }})</span></td>
-                <td :data-label="$t('Clock Out')">{{ r.clock_out_at ? $time(r.clock_out_at) : '—' }}</td>
+                <td :data-label="$t('Clock In')">{{ r.clock_in_at ? $time(r.clock_in_at) : '-' }}<span v-if="r.sessions_count > 1" class="lg-subtext" style="display: inline"> ({{ $t('latest') }})</span></td>
+                <td :data-label="$t('Clock Out')">{{ r.clock_out_at ? $time(r.clock_out_at) : '-' }}</td>
                 <td :data-label="$t('Worked')"><span class="lg-main hist-worked">{{ r.worked_label }}</span></td>
                 <td :data-label="$t('Status')">
                   <span class="lg-chip" :class="badgeClass(r)">{{ statusLabel(r) }}</span>

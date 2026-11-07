@@ -100,6 +100,7 @@ const WIMS_CONNECT_ENTRIES = [
   { route: 'wims-connect.index', title: 'WIMS Connect Overview (SMS, WhatsApp, Email)', icon: 'send', permission: 'read-wims-connect' },
   { route: 'wims-connect.bulk-connect.index', title: 'Send Bulk SMS', icon: 'forward', permission: 'read-wims-connect-bulk-connect' },
   { route: 'wims-connect.bulk-connect.history.index', title: 'Bulk Connect History', icon: 'clock', permission: 'read-wims-connect-bulk-connect' },
+  { route: 'wims-connect.test.index', title: 'Test Email / SMS (send a test message to a user)', icon: 'send', permission: 'send-wims-connect-test' },
   { route: 'wims-connect.recipients.index', title: 'WIMS Connect Recipients (Who Receives Messages)', icon: 'users', permission: 'manage-wims-connect' },
   { route: 'wims-connect.gateways.sms', title: 'SMS Gateway Settings (Beem)', icon: 'sms', permission: 'manage-wims-connect' },
 ];

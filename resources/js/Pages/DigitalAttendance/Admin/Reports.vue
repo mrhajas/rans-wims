@@ -11,9 +11,10 @@
       <stat-tiles :items="statTiles" />
 
       <div class="rep-toolbar">
-        <div class="rep-tabs">
-          <button v-for="t in tabs" :key="t.key" type="button" class="rep-tab" :class="{ 'rep-tab-active': tab === t.key }" @click="tab = t.key">
-            <icons :name="t.icon" class="w-3.5 h-3.5" />{{ $t(t.label) }}
+        <div ref="tabBar" class="rep-tabs" role="tablist">
+          <span class="rep-glider" :class="'tone-' + activeTone" :style="glider" aria-hidden="true"></span>
+          <button v-for="t in tabs" :key="t.key" :ref="el => (tabEls[t.key] = el)" type="button" role="tab" :aria-selected="tab === t.key" class="rep-tab" :class="['tone-' + t.tone, { 'rep-tab-active': tab === t.key }]" @click="tab = t.key">
+            <span class="rep-tab-ico"><icons :name="t.icon" class="w-3.5 h-3.5" /></span>{{ $t(t.label) }}
           </button>
         </div>
         <div class="rep-filters">
@@ -26,14 +27,22 @@
         </div>
       </div>
 
-      <p class="rep-scope"><icons name="info" class="w-3.5 h-3.5" />{{ $t('Print, PDF, Excel and Email follow what you see here:') }} <b>{{ periodText }}</b> &middot; <b>{{ employee ? employee.name : $t('All employees') }}</b><template v-if="search.trim()"> &middot; {{ $t('search') }}: <b>{{ search.trim() }}</b></template></p>
+      <div class="rep-scope">
+        <span class="rep-scope-lead"><icons name="info" class="w-3.5 h-3.5" />{{ $t('Print, PDF, Excel and Email follow what you see here:') }}</span>
+        <span class="rep-scope-chip"><icons name="calendar" class="w-3.5 h-3.5" />{{ periodText }}</span>
+        <span class="rep-scope-chip"><icons name="user" class="w-3.5 h-3.5" />{{ employee ? employee.name : $t('All employees') }}</span>
+        <span v-if="search.trim()" class="rep-scope-chip"><icons name="search" class="w-3.5 h-3.5" />{{ search.trim() }}</span>
+      </div>
+
+      <transition name="rep-swap" mode="out-in">
 
       <!-- Daily -->
-      <div v-if="tab === 'daily'" class="lg-card">
+      <div v-if="tab === 'daily'" key="daily" class="lg-card rep-card">
         <div class="lg-card-head">
           <span class="lg-card-ico lg-ico-emerald"><icons name="calendar" class="w-5 h-5" /></span>
           <div class="min-w-0">
             <div class="lg-card-title">{{ $t('Daily') }}</div>
+            <div class="lg-card-sub">{{ dayName(dailyDate) }} &middot; {{ filteredDailyRows.length }} {{ $t('records') }} &middot; {{ dailyTotal }}</div>
           </div>
           <date-picker v-model="dailyDate" class="ml-auto" @change="loadDaily" flush />
         </div>
@@ -45,6 +54,7 @@
               </tr>
             </thead>
             <tbody>
+              <template v-if="loading.daily && !dailyRows.length"><tr v-for="n in 4" :key="'s' + n" class="rep-skel-row"><td v-for="c in 5" :key="c"><span class="rep-skel"></span></td></tr></template>
               <tr v-for="r in filteredDailyRows" :key="r.id">
                 <td :data-label="$t('Employee')"><span class="lg-main">{{ r.user }}</span></td>
                 <td :data-label="$t('In')">{{ r.clock_in_label || '-' }}</td>
@@ -52,14 +62,14 @@
                 <td :data-label="$t('Hours')"><span class="lg-main rep-hours">{{ r.worked_label }}</span></td>
                 <td :data-label="$t('Status')"><span class="lg-chip" :class="statusClass(r.status)">{{ statusLabel(r.status) }}</span></td>
               </tr>
-              <tr v-if="!filteredDailyRows.length" class="lg-empty-row"><td colspan="5" class="lg-empty">{{ loading.daily ? $t('Loading...') : search ? $t('No employees match your search.') : $t('No records for this date.') }}</td></tr>
+              <tr v-if="!filteredDailyRows.length && !loading.daily" class="lg-empty-row"><td colspan="5" class="lg-empty">{{ loading.daily ? $t('Loading...') : search ? $t('No employees match your search.') : $t('No records for this date.') }}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Weekly -->
-      <div v-if="tab === 'weekly'" class="lg-card">
+      <div v-else-if="tab === 'weekly'" key="weekly" class="lg-card rep-card">
         <div class="lg-card-head">
           <span class="lg-card-ico lg-ico-indigo"><icons name="table" class="w-5 h-5" /></span>
           <div class="min-w-0">
@@ -77,35 +87,36 @@
             <thead>
               <tr>
                 <th>{{ $t('Employee') }}</th>
-                <th v-for="d in weekly.days" :key="d" class="text-center">{{ d.slice(5) }}</th>
+                <th v-for="d in weekly.days" :key="d" class="text-center rep-day" :class="{ 'is-weekend': isWeekend(d), 'is-today': d === todayStr }">
+                  <span>{{ dayName(d, true) }}</span><small>{{ d.slice(8) }}/{{ d.slice(5, 7) }}</small>
+                </th>
                 <th class="text-center">{{ $t('Total') }}</th>
               </tr>
             </thead>
             <tbody>
+              <template v-if="loading.weekly && !weekly.rows.length"><tr v-for="n in 4" :key="'s' + n" class="rep-skel-row"><td v-for="c in 9" :key="c"><span class="rep-skel"></span></td></tr></template>
               <tr v-for="row in filteredWeeklyRows" :key="row.user?.id">
                 <td><span class="lg-main">{{ row.user?.name }}</span></td>
                 <td
                   v-for="(d, i) in row.daily"
                   :key="i"
                   class="text-center"
-                  :class="{ 'lg-tip': d, 'tip-left': d && i < 3 }"
+                  :class="{ 'lg-tip': d, 'tip-left': d && i < 3, 'is-weekend': isWeekend(weekly.days[i]), 'is-today': weekly.days[i] === todayStr, 'rep-late': d && d.late, 'rep-miss': d && d.status === 'MISSING_CLOCK_OUT' }"
                   :data-tip="d ? cellTooltip(d) : null"
                 >
-                  <template v-if="d">
-                    {{ d.hours }}h<span v-if="d.sessions_count > 1" class="rep-cell-sessions">×{{ d.sessions_count }}</span>
-                  </template>
+                  <span v-if="d" class="rep-heat" :class="heatClass(d.hours)">{{ d.hours }}h<span v-if="d.sessions_count > 1" class="rep-cell-sessions">×{{ d.sessions_count }}</span></span>
                   <span v-else class="lg-subtext" style="display: inline">-</span>
                 </td>
                 <td class="text-center"><span class="lg-main rep-hours">{{ row.total_hours }}h</span></td>
               </tr>
-              <tr v-if="!filteredWeeklyRows.length" class="lg-empty-row"><td :colspan="weekly.days.length + 2" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No records for this week.') }}</td></tr>
+              <tr v-if="!filteredWeeklyRows.length && !loading.weekly" class="lg-empty-row"><td :colspan="weekly.days.length + 2" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No records for this week.') }}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Custom -->
-      <div v-if="tab === 'custom'" class="lg-card">
+      <div v-else-if="tab === 'custom'" key="custom" class="lg-card rep-card">
         <div class="lg-card-head">
           <span class="lg-card-ico lg-ico-amber"><icons name="adjustments" class="w-5 h-5" /></span>
           <div class="min-w-0">
@@ -113,11 +124,10 @@
           </div>
         </div>
         <div class="rep-range">
-          <label class="rep-range-l">{{ $t('From') }}</label>
-          <date-picker v-model="customFrom" flush />
-          <label class="rep-range-l">{{ $t('To') }}</label>
-          <date-picker v-model="customTo" flush />
-          <button type="button" class="lg-btn lg-btn-primary" @click="loadCustom"><icons name="refresh" class="w-4 h-4" />{{ $t('Run Report') }}</button>
+          <div class="rep-range-f"><label class="rep-range-l">{{ $t('From') }}</label><date-picker v-model="customFrom" flush /></div>
+          <span class="rep-range-arrow" aria-hidden="true"><icons name="forward" class="w-4 h-4" /></span>
+          <div class="rep-range-f"><label class="rep-range-l">{{ $t('To') }}</label><date-picker v-model="customTo" flush /></div>
+          <button type="button" class="lg-btn lg-btn-primary rep-run" :disabled="loading.custom" @click="loadCustom"><icons name="refresh" class="w-4 h-4" :class="{ 'rep-spin': loading.custom }" />{{ loading.custom ? $t('Loading...') : $t('Run Report') }}</button>
         </div>
         <div class="lg-table-wrap">
           <table class="lg-table lg-responsive">
@@ -127,22 +137,23 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in filteredCustomRows" :key="row.user?.id">
+              <template v-if="loading.custom"><tr v-for="n in 4" :key="'s' + n" class="rep-skel-row"><td v-for="c in 6" :key="c"><span class="rep-skel"></span></td></tr></template>
+              <tr v-for="row in filteredCustomRows" v-else :key="row.user?.id">
                 <td :data-label="$t('Employee')"><span class="lg-main">{{ row.user?.name }}</span></td>
                 <td :data-label="$t('Days')">{{ row.attendance_days }}</td>
                 <td :data-label="$t('Total')"><span class="lg-main rep-hours">{{ row.total_label }}</span></td>
-                <td :data-label="$t('Avg/Day')">{{ row.average_minutes }}m</td>
+                <td :data-label="$t('Avg/Day')">{{ row.average_label }}</td>
                 <td :data-label="$t('Late')"><span class="lg-chip" :class="row.late_count ? 'lg-chip-amber' : 'lg-chip-slate'">{{ row.late_count }}</span></td>
                 <td :data-label="$t('Missing')"><span class="lg-chip" :class="row.missing_count ? 'lg-chip-red' : 'lg-chip-slate'">{{ row.missing_count }}</span></td>
               </tr>
-              <tr v-if="!filteredCustomRows.length" class="lg-empty-row"><td colspan="6" class="lg-empty">{{ search && customRows.length ? $t('No employees match your search.') : $t('Choose a date range and run the report.') }}</td></tr>
+              <tr v-if="!filteredCustomRows.length && !loading.custom" class="lg-empty-row"><td colspan="6" class="lg-empty">{{ search && customRows.length ? $t('No employees match your search.') : $t('Choose a date range and run the report.') }}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Location -->
-      <div v-if="tab === 'location'" class="lg-card">
+      <div v-else-if="tab === 'location'" key="location" class="lg-card rep-card">
         <div class="lg-card-head">
           <span class="lg-card-ico lg-ico-sky"><icons name="map-pin" class="w-5 h-5" /></span>
           <div class="min-w-0">
@@ -157,6 +168,7 @@
               </tr>
             </thead>
             <tbody>
+              <template v-if="loading.location && !locationRows.length"><tr v-for="n in 4" :key="'s' + n" class="rep-skel-row"><td v-for="c in 7" :key="c"><span class="rep-skel"></span></td></tr></template>
               <tr v-for="r in filteredLocationRows" :key="r.id">
                 <td :data-label="$t('Employee')"><span class="lg-main">{{ r.user }}</span></td>
                 <td :data-label="$t('Date')">{{ r.date }}</td>
@@ -178,14 +190,14 @@
                 <td :data-label="$t('IP')"><span class="lg-mono">{{ r.clock_in_ip || '-' }}</span></td>
                 <td :data-label="$t('Device')">{{ r.clock_in_device }}</td>
               </tr>
-              <tr v-if="!filteredLocationRows.length" class="lg-empty-row"><td colspan="7" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No location data.') }}</td></tr>
+              <tr v-if="!filteredLocationRows.length && !loading.location" class="lg-empty-row"><td colspan="7" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No location data.') }}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Device -->
-      <div v-if="tab === 'device'" class="lg-card">
+      <div v-else-if="tab === 'device'" key="device" class="lg-card rep-card">
         <div class="lg-card-head">
           <span class="lg-card-ico lg-ico-violet"><icons name="mobile" class="w-5 h-5" /></span>
           <div class="min-w-0">
@@ -200,6 +212,7 @@
               </tr>
             </thead>
             <tbody>
+              <template v-if="loading.device && !deviceRows.length"><tr v-for="n in 4" :key="'s' + n" class="rep-skel-row"><td v-for="c in 6" :key="c"><span class="rep-skel"></span></td></tr></template>
               <tr v-for="(r, i) in filteredDeviceRows" :key="i">
                 <td :data-label="$t('Employee')"><span class="lg-main">{{ r.user }}</span></td>
                 <td :data-label="$t('Browser')">{{ r.browser }}</td>
@@ -208,11 +221,12 @@
                 <td :data-label="$t('Last Seen')">{{ r.last_seen || '-' }}</td>
                 <td :data-label="$t('Status')"><span class="lg-chip" :class="statusClass(r.status)">{{ statusLabel(r.status) }}</span></td>
               </tr>
-              <tr v-if="!filteredDeviceRows.length" class="lg-empty-row"><td colspan="6" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No device data.') }}</td></tr>
+              <tr v-if="!filteredDeviceRows.length && !loading.device" class="lg-empty-row"><td colspan="6" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No device data.') }}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
+      </transition>
     </div>
     <email-report-modal :show="emailOpen" :query="reportQuery" :employee="employee" :period-text="periodText" @close="emailOpen = false" />
   </admin-layout>
@@ -233,11 +247,11 @@ export default {
     return {
       tab: 'daily',
       tabs: [
-        { key: 'daily', label: 'Daily', icon: 'calendar' },
-        { key: 'weekly', label: 'Weekly', icon: 'table' },
-        { key: 'custom', label: 'Custom Range', icon: 'adjustments' },
-        { key: 'location', label: 'Location', icon: 'map-pin' },
-        { key: 'device', label: 'Device', icon: 'mobile' },
+        { key: 'daily', label: 'Daily', icon: 'calendar', tone: 'emerald' },
+        { key: 'weekly', label: 'Weekly', icon: 'table', tone: 'indigo' },
+        { key: 'custom', label: 'Custom Range', icon: 'adjustments', tone: 'amber' },
+        { key: 'location', label: 'Location', icon: 'map-pin', tone: 'sky' },
+        { key: 'device', label: 'Device', icon: 'mobile', tone: 'violet' },
       ],
       dailyDate: today,
       dailyRows: [],
@@ -251,7 +265,8 @@ export default {
       userId: null,
       weekStart: null,
       emailOpen: false,
-      loading: { daily: false },
+      loading: { daily: false, weekly: false, custom: false, location: false, device: false },
+      glider: { width: '0px', transform: 'translateX(0px)', opacity: 0 },
     };
   },
   computed: {
@@ -318,6 +333,18 @@ export default {
       }
       return [];
     },
+    activeTone() { return (this.tabs.find(t => t.key === this.tab) || {}).tone || 'emerald'; },
+    todayStr() { return new Date().toISOString().slice(0, 10); },
+    dailyTotal() {
+      const m = this.filteredDailyRows.reduce((t, r) => t + (r.minutes || 0), 0);
+      return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm';
+    },
+    weeklyDayTotals() {
+      return (this.weekly.days || []).map((_, i) => this.filteredWeeklyRows.reduce((t, row) => t + (row.daily[i] ? Number(row.daily[i].hours) : 0), 0));
+    },
+    weeklyGrand() {
+      return Math.round(this.filteredWeeklyRows.reduce((t, row) => t + Number(row.total_hours || 0), 0) * 10) / 10;
+    },
     searchTerm() { return this.search.trim().toLowerCase(); },
     filteredDailyRows() {
       if (!this.searchTerm) return this.dailyRows;
@@ -350,13 +377,24 @@ export default {
       if (this.deviceRows.length || this.tab === 'device') this.loadDevice();
     },
     tab(val) {
+      this.$nextTick(this.moveGlider);
       if (val === 'weekly' && !this.weekly.rows.length) this.loadWeekly();
       if (val === 'location' && !this.locationRows.length) this.loadLocation();
       if (val === 'device' && !this.deviceRows.length) this.loadDevice();
     },
   },
+  created() {
+    // the tab buttons, for measuring the highlight; deliberately not reactive
+    this.tabEls = {};
+  },
   mounted() {
     this.loadDaily();
+    this.$nextTick(this.moveGlider);
+    window.addEventListener('resize', this.moveGlider, { passive: true });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(this.moveGlider);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.moveGlider);
   },
   methods: {
     loadDaily() {
@@ -364,7 +402,8 @@ export default {
       axios.get(this.route('digital-attendance-reports.daily'), { params: { date: this.dailyDate, user_id: this.userId || undefined } }).then(res => (this.dailyRows = res.data.rows)).finally(() => (this.loading.daily = false));
     },
     loadWeekly() {
-      axios.get(this.route('digital-attendance-reports.weekly'), { params: { start: this.weekStart || undefined, user_id: this.userId || undefined } }).then(res => (this.weekly = res.data));
+      this.loading.weekly = true;
+      axios.get(this.route('digital-attendance-reports.weekly'), { params: { start: this.weekStart || undefined, user_id: this.userId || undefined } }).then(res => (this.weekly = res.data)).finally(() => (this.loading.weekly = false));
     },
     // a week back (-1), this week (0), a week on (1)
     moveWeek(step) {
@@ -377,13 +416,40 @@ export default {
       this.loadWeekly();
     },
     loadCustom() {
-      axios.get(this.route('digital-attendance-reports.custom'), { params: { from: this.customFrom, to: this.customTo, user_id: this.userId || undefined } }).then(res => (this.customRows = res.data.rows));
+      this.loading.custom = true;
+      axios.get(this.route('digital-attendance-reports.custom'), { params: { from: this.customFrom, to: this.customTo, user_id: this.userId || undefined } }).then(res => (this.customRows = res.data.rows)).finally(() => (this.loading.custom = false));
     },
     loadLocation() {
-      axios.get(this.route('digital-attendance-reports.location'), { params: { user_id: this.userId || undefined } }).then(res => (this.locationRows = res.data.rows));
+      this.loading.location = true;
+      axios.get(this.route('digital-attendance-reports.location'), { params: { user_id: this.userId || undefined } }).then(res => (this.locationRows = res.data.rows)).finally(() => (this.loading.location = false));
     },
     loadDevice() {
-      axios.get(this.route('digital-attendance-reports.device'), { params: { user_id: this.userId || undefined } }).then(res => (this.deviceRows = res.data.rows));
+      this.loading.device = true;
+      axios.get(this.route('digital-attendance-reports.device'), { params: { user_id: this.userId || undefined } }).then(res => (this.deviceRows = res.data.rows)).finally(() => (this.loading.device = false));
+    },
+    // slides the highlight under the active tab (and keeps that tab in view when the bar scrolls on phones)
+    moveGlider() {
+      const el = this.tabEls[this.tab];
+      if (!el) return;
+      this.glider = { width: el.offsetWidth + 'px', transform: `translateX(${el.offsetLeft}px)`, opacity: 1 };
+      const bar = this.$refs.tabBar;
+      if (bar && bar.scrollWidth > bar.clientWidth) bar.scrollTo({ left: el.offsetLeft - (bar.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' });
+    },
+    // weekly cell shade: short, part and full days
+    heatClass(hours) {
+      const h = Number(hours) || 0;
+      if (h >= 8) return 'rep-heat-full';
+      if (h >= 4) return 'rep-heat-mid';
+      return 'rep-heat-low';
+    },
+    // 2026-11-07 -> "Saturday" (short: "Sat")
+    dayName(iso, short = false) {
+      if (!iso) return '';
+      return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { weekday: short ? 'short' : 'long' });
+    },
+    isWeekend(iso) {
+      const d = iso ? new Date(iso + 'T00:00:00').getDay() : 1;
+      return d === 0 || d === 6;
     },
     // CLOCKED_IN -> Clocked in
     statusLabel(status) {
@@ -401,7 +467,7 @@ export default {
       parts.push(`${this.$t('In')}: ${d.clock_in || '-'}`);
       parts.push(`${this.$t('Out')}: ${d.clock_out || '-'}`);
       parts.push(`${this.$t('Worked')}: ${d.worked_label}`);
-      parts.push(this.statusLabel(d.status));
+      parts.push(this.statusLabel(d.status) + (d.late ? ' (' + this.$t('Late') + ')' : ''));
       if (d.sessions_count > 1) parts.push(`${d.sessions_count} ${this.$t('sessions')}`);
       return parts.join(' · ');
     },
@@ -418,16 +484,56 @@ export default {
 html.dark .rep-hours { color: #6ee7b7; }
 .rep-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem; }
 
-.rep-tabs { display: inline-flex; gap: 0.25rem; max-width: 100%; padding: 0.25rem; overflow-x: auto; border-radius: 9999px; background: var(--lg-card); border: 1px solid var(--lg-line); box-shadow: var(--lg-shadow); }
-.rep-tab { display: inline-flex; align-items: center; flex: none; gap: 0.35rem; padding: 0.45rem 0.95rem; border: 0; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; white-space: nowrap; color: var(--lg-mute); background: transparent; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; }
+.rep-tabs { position: relative; display: inline-flex; gap: 0.25rem; max-width: 100%; padding: 0.3rem; overflow-x: auto; scrollbar-width: none; border-radius: 9999px; background: var(--lg-card); border: 1px solid var(--lg-line); box-shadow: var(--lg-shadow); }
+.rep-tabs::-webkit-scrollbar { display: none; }
+.tone-emerald { --tone: #059669; --tone-2: #34d399; }
+.tone-indigo { --tone: #4f46e5; --tone-2: #818cf8; }
+.tone-amber { --tone: #d97706; --tone-2: #fbbf24; }
+.tone-sky { --tone: #0284c7; --tone-2: #38bdf8; }
+.tone-violet { --tone: #7c3aed; --tone-2: #a78bfa; }
+.rep-glider { position: absolute; top: 0.3rem; left: 0; bottom: 0.3rem; z-index: 0; border-radius: 9999px; background: linear-gradient(145deg, var(--tone-2), var(--tone)); box-shadow: 0 8px 18px -10px var(--tone); pointer-events: none; transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), width 0.45s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s, box-shadow 0.3s, opacity 0.2s; }
+.rep-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; flex: none; gap: 0.45rem; padding: 0.35rem 0.95rem 0.35rem 0.4rem; border: 0; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; white-space: nowrap; color: var(--lg-mute); background: transparent; transition: color 0.25s ease, background 0.2s ease; }
+.rep-tab-ico { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 9999px; color: var(--tone); background: color-mix(in srgb, var(--tone) 13%, transparent); transition: background 0.25s, color 0.25s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 .rep-tab:hover:not(.rep-tab-active) { background: var(--lg-soft); color: var(--lg-ink); }
-.rep-tab-active { color: #fff; background: linear-gradient(145deg, #2f6fb3, #0f2540); box-shadow: 0 8px 16px -10px rgba(15, 37, 64, 0.9); }
+.rep-tab:hover .rep-tab-ico { transform: scale(1.08); }
+.rep-tab:active .rep-tab-ico { transform: scale(0.92); }
+.rep-tab:focus-visible { outline: 2px solid var(--tone); outline-offset: 1px; }
+.rep-tab-active { color: #fff; }
+.rep-tab-active .rep-tab-ico { color: #fff; background: rgba(255, 255, 255, 0.2); }
+html.dark .rep-tab-ico { color: var(--tone-2); }
+html.dark .rep-tab-active .rep-tab-ico { color: #fff; }
+
+.rep-swap-enter-active, .rep-swap-leave-active { transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.rep-swap-enter-from { opacity: 0; transform: translateY(10px); }
+.rep-swap-leave-to { opacity: 0; transform: translateY(-6px); }
+
+.rep-skel-row td { padding-top: 0.85rem !important; padding-bottom: 0.85rem !important; }
+.rep-skel { display: block; height: 0.7rem; width: 70%; border-radius: 9999px; background: linear-gradient(90deg, var(--lg-soft) 25%, var(--lg-line) 50%, var(--lg-soft) 75%); background-size: 200% 100%; animation: rep-shimmer 1.2s linear infinite; }
+.rep-skel-row td:first-child .rep-skel { width: 85%; }
+@keyframes rep-shimmer { to { background-position: -200% 0; } }
+
+.rep-heat { display: inline-flex; align-items: center; justify-content: center; min-width: 3rem; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rep-heat-low { color: #b45309; background: rgba(245, 158, 11, 0.12); }
+.rep-heat-mid { color: #0369a1; background: rgba(14, 165, 233, 0.12); }
+.rep-heat-full { color: #047857; background: rgba(16, 185, 129, 0.14); }
+html.dark .rep-heat-low { color: #fcd34d; }
+html.dark .rep-heat-mid { color: #7dd3fc; }
+html.dark .rep-heat-full { color: #6ee7b7; }
+.rep-spin { animation: rep-rotate 0.8s linear infinite; }
+@keyframes rep-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .rep-glider, .rep-tab, .rep-tab-ico { transition: none; }
+  .rep-swap-enter-active, .rep-swap-leave-active { transition: none; }
+  .rep-skel, .rep-spin { animation: none; }
+}
 
 .rep-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .rep-employee { min-width: 15rem; margin: 0; }
 .rep-employee :deep(.mb-2) { margin-bottom: 0 !important; }
-.rep-scope { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: -0.35rem 0 1rem; font-size: 0.78rem; color: var(--lg-mute); }
-.rep-scope b { color: var(--lg-ink); }
+.rep-scope { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: -0.35rem 0 1rem; padding: 0.5rem 0.75rem; border-radius: 16px; font-size: 0.78rem; color: var(--lg-mute); background: var(--lg-soft); border: 1px solid var(--lg-line); }
+.rep-scope-lead { display: inline-flex; align-items: center; gap: 6px; }
+.rep-scope-chip { display: inline-flex; align-items: center; gap: 5px; padding: 0.2rem 0.6rem; border-radius: 9999px; font-weight: 700; color: var(--lg-ink); background: var(--lg-card); border: 1px solid var(--lg-line); animation: rep-chip-in 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes rep-chip-in { from { opacity: 0; transform: scale(0.9); } }
 .rep-week { display: inline-flex; align-items: center; gap: 6px; }
 .rep-prev { transform: rotate(90deg); }
 .rep-next { transform: rotate(-90deg); }
@@ -443,10 +549,23 @@ html.dark .rep-hours { color: #6ee7b7; }
 
 .rep-input { height: 2.5rem; padding: 0 0.85rem; font-size: 0.83rem; color: var(--lg-ink); background: var(--lg-card); border: 1px solid var(--lg-line); border-radius: 9999px; }
 .rep-input:focus { outline: none; border-color: #34d399; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15); }
-.rep-range { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
+.rep-range { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 1rem; padding: 0.75rem; border-radius: 16px; background: var(--lg-soft); border: 1px solid var(--lg-line); }
+.rep-range-f { display: grid; gap: 4px; }
+.rep-range-arrow { display: grid; place-items: center; height: 2.5rem; color: var(--lg-faint); }
+.rep-run { margin-left: auto; }
+@media (max-width: 560px) { .rep-range-arrow { display: none; } .rep-range-f, .rep-run { width: 100%; } .rep-run { justify-content: center; } }
 
 .rep-cell-sessions { display: inline-block; margin-left: 0.2rem; font-size: 0.66rem; font-weight: 800; color: #0369a1; }
 .rep-map-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #2563eb; font-weight: 600; }
 .rep-map-link:hover { text-decoration: underline; }
 html.dark .rep-map-link { color: #93c5fd; }
+.rep-day { line-height: 1.15; }
+.rep-day small { display: block; font-size: 0.66rem; font-weight: 600; color: var(--lg-faint); }
+.lg-table th.is-weekend, .lg-table td.is-weekend { background: rgba(148, 163, 184, 0.09); color: var(--lg-faint); }
+.lg-table th.is-today, .lg-table td.is-today { background: rgba(47, 143, 230, 0.1); box-shadow: inset 0 -2px 0 #2f8fe6; }
+.lg-table td.rep-late { color: #b45309; font-weight: 700; }
+.lg-table td.rep-miss { color: #b91c1c; font-weight: 800; }
+html.dark .lg-table td.rep-late { color: #fcd34d; }
+html.dark .lg-table td.rep-miss { color: #fca5a5; }
+.rep-total-row td { border-top: 2px solid var(--lg-line); background: var(--lg-soft); font-weight: 800; font-variant-numeric: tabular-nums; }
 </style>

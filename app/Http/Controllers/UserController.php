@@ -48,6 +48,11 @@ class UserController extends Controller
     public function create()
     {
         return Inertia::render('User/Form', [
+            // staff profiles without a login: the Add form can borrow their email and phone
+            'staffChoices' => auth()->user()->can('read-staffs')
+                ? \App\Models\Staff::whereNull('user_id')->where('status', '!=', 'Terminated')->orderBy('name')->get(['id', 'staff_number', 'name', 'position', 'personal_email', 'mobile_no'])
+                    ->map(fn ($s) => ['id' => $s->id, 'label' => $s->name . ' (' . $s->staff_number . ')' . ($s->position ? ' - ' . $s->position : ''), 'email' => $s->personal_email, 'phone' => $s->mobile_no])->values()
+                : [],
             'passwordHint' => \App\Support\PasswordPolicy::hint(),
             'roles'      => $this->selectableRoles(),
             'warehouses' => Warehouse::ofAccount()->active()->visible()->get(['id', 'name', 'status', 'completed_at']),

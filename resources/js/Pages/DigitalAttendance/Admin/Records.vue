@@ -36,15 +36,16 @@
               <td :data-label="$t('Employee')">
                 <div class="lg-person">
                   <span class="lg-avatar">{{ initials(r.user ? r.user.name : '') }}</span>
-                  <span class="lg-main">{{ r.user ? r.user.name : '—' }}</span>
+                  <span class="lg-main">{{ r.user ? r.user.name : '-' }}</span>
                 </div>
               </td>
-              <td :data-label="$t('Date')">{{ $date(r.attendance_date) }} <span v-if="r.sessions_count > 1" class="lg-chip lg-chip-cyan lg-tip tip-left" :data-tip="$t('Multiple sessions today')">&times;{{ r.sessions_count }}</span></td>
-              <td :data-label="$t('In')">{{ r.clock_in_label || '—' }}</td>
-              <td :data-label="$t('Out')">{{ r.clock_out_label || '—' }}</td>
+              <td :data-label="$t('Date')"><span class="rec-day">{{ weekday(r.attendance_date) }}</span> {{ $date(r.attendance_date) }} <span v-if="r.sessions_count > 1" class="lg-chip lg-chip-cyan lg-tip tip-left" :data-tip="$t('Multiple sessions today')">&times;{{ r.sessions_count }}</span></td>
+              <td :data-label="$t('In')">{{ r.clock_in_label || '-' }}</td>
+              <td :data-label="$t('Out')">{{ r.clock_out_label || '-' }}</td>
               <td :data-label="$t('Hours')"><span class="lg-main rec-hours">{{ r.worked_label }}</span></td>
               <td :data-label="$t('Status')">
-                <span class="lg-chip" :class="badgeClass(r)">{{ r.status.replace('_', ' ') }}</span>
+                <span class="lg-chip" :class="badgeClass(r)">{{ statusLabel(r.status) }}</span>
+                <span v-if="r.is_late && r.status !== 'MISSING_CLOCK_OUT' && r.status !== 'VOIDED'" class="lg-chip lg-chip-amber ml-1">{{ $t('Late') }}</span>
                 <span v-if="r.corrected" class="lg-chip lg-chip-slate ml-1">{{ $t('Corrected') }}</span>
               </td>
               <td :data-label="$t('Actions')" class="lg-sticky-end">
@@ -60,7 +61,8 @@
         </table>
       </div>
 
-      <pagination class="mt-6" :meta="records.meta" :links="records.links" />
+      <p v-if="records.meta && records.meta.total" class="rec-count">{{ $t('Showing') }} {{ records.meta.from }}-{{ records.meta.to }} {{ $t('of') }} {{ records.meta.total }}</p>
+      <pagination class="mt-2" :meta="records.meta" :links="records.links" />
     </div>
 
     <!-- Correct modal -->
@@ -72,7 +74,7 @@
             <div class="lg-card-title">{{ $t('Correct Attendance') }}</div>
             <div class="lg-card-sub truncate">{{ active.user ? active.user.name : '' }} &middot; {{ $date(active.attendance_date) }}</div>
           </div>
-          <span class="lg-chip ml-auto flex-none" :class="badgeClass(active)">{{ active.status.replace('_', ' ') }}</span>
+          <span class="lg-chip ml-auto flex-none" :class="badgeClass(active)">{{ statusLabel(active.status) }}</span>
         </div>
 
         <div class="rec-mbody">
@@ -137,15 +139,15 @@
             <div class="lg-card-title truncate">{{ detail.record.user ? detail.record.user.name : '' }}</div>
             <div class="lg-card-sub">{{ $date(detail.record.attendance_date) }}</div>
           </div>
-          <span class="lg-chip ml-auto flex-none" :class="badgeClass(detail.record)">{{ detail.record.status.replace('_', ' ') }}</span>
+          <span class="lg-chip ml-auto flex-none" :class="badgeClass(detail.record)">{{ statusLabel(detail.record.status) }}</span>
         </div>
 
         <div class="rec-mbody">
           <div class="rec-det-card">
             <div class="rec-det-title"><icons name="clock" class="w-3.5 h-3.5" /> {{ $t('Time') }}</div>
             <div class="grid grid-cols-2 gap-3 text-sm">
-              <div><dt class="rec-label">{{ $t('Clock In') }}</dt><dd class="font-semibold">{{ detail.record.clock_in_label || '—' }}</dd></div>
-              <div><dt class="rec-label">{{ $t('Clock Out') }}</dt><dd class="font-semibold">{{ detail.record.clock_out_label || '—' }}</dd></div>
+              <div><dt class="rec-label">{{ $t('Clock In') }}</dt><dd class="font-semibold">{{ detail.record.clock_in_label || '-' }}</dd></div>
+              <div><dt class="rec-label">{{ $t('Clock Out') }}</dt><dd class="font-semibold">{{ detail.record.clock_out_label || '-' }}</dd></div>
               <div><dt class="rec-label">{{ $t('Worked') }}</dt><dd class="font-semibold rec-hours">{{ detail.record.worked_label }}</dd></div>
               <div v-if="detail.record.sessions_count > 1"><dt class="rec-label">{{ $t('Sessions Today') }}</dt><dd class="font-semibold">{{ detail.record.sessions_count }}</dd></div>
             </div>
@@ -173,7 +175,7 @@
                 </dd>
               </div>
               <div class="flex items-center flex-wrap gap-2 pt-1">
-                <span class="lg-chip lg-chip-indigo lg-mono" style="text-transform: none"><icons name="wifi" class="w-3 h-3" /> {{ detail.record.clock_in_ip || '—' }}</span>
+                <span class="lg-chip lg-chip-indigo lg-mono" style="text-transform: none"><icons name="wifi" class="w-3 h-3" /> {{ detail.record.clock_in_ip || '-' }}</span>
                 <span v-if="detail.record.clock_out_ip" class="lg-chip lg-chip-indigo lg-mono" style="text-transform: none"><icons name="wifi" class="w-3 h-3" /> {{ detail.record.clock_out_ip }}</span>
               </div>
             </div>
@@ -188,7 +190,7 @@
           <div class="space-y-2 max-h-64 overflow-y-auto">
             <div v-for="e in detail.events" :key="e.id" class="rec-event-row">
               <div class="flex items-center justify-between gap-2">
-                <span class="font-semibold text-xs flex items-center gap-1.5"><icons :name="eventIcon(e.event_type)" class="w-3 h-3 opacity-50" /> {{ e.event_type.replace('_', ' ') }}</span>
+                <span class="font-semibold text-xs flex items-center gap-1.5"><icons :name="eventIcon(e.event_type)" class="w-3 h-3 opacity-50" /> {{ statusLabel(e.event_type) }}</span>
                 <span class="lg-subtext">{{ $datetime(e.created_at) }}</span>
               </div>
               <div class="text-xs mt-0.5 rec-muted">{{ e.description }}</div>
@@ -245,7 +247,7 @@ export default {
       return this.users.map(u => ({ id: u.id, label: u.name }));
     },
     statusOptions() {
-      return this.statuses.map(s => ({ id: s, label: s.replace('_', ' ') }));
+      return this.statuses.map(s => ({ id: s, label: this.statusLabel(s) }));
     },
   },
   watch: {
@@ -264,8 +266,16 @@ export default {
     badgeClass(r) {
       if (r.status === 'MISSING_CLOCK_OUT') return 'lg-chip-red';
       if (r.status === 'VOIDED') return 'lg-chip-slate';
-      if (r.is_late) return 'lg-chip-amber';
+      if (r.status === 'CLOCKED_IN') return 'lg-chip-blue';
       return 'lg-chip-green';
+    },
+    // CLOCKED_IN -> Clocked in
+    statusLabel(status) {
+      const t = String(status || '').toLowerCase().replace(/_/g, ' ');
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    },
+    weekday(iso) {
+      return iso ? new Date(String(iso).slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short' }) : '';
     },
     initials(name) {
       return (name || '?')
@@ -347,4 +357,6 @@ html.dark .rec-mhead-amber, html.dark .rec-mhead-red, html.dark .rec-mhead-blue 
 .rec-map-link:hover { text-decoration: underline; }
 html.dark .rec-map-link { color: #93c5fd; }
 .rec-event-row { padding: 0.55rem 0.8rem; border-radius: 12px; background: var(--lg-soft); border: 1px solid var(--lg-line); }
+.rec-day { display: inline-block; min-width: 2.2rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lg-faint); }
+.rec-count { margin: 0.75rem 0 0; font-size: 0.78rem; color: var(--lg-mute); }
 </style>

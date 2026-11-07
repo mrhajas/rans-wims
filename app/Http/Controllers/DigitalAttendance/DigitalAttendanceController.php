@@ -135,7 +135,7 @@ class DigitalAttendanceController extends Controller
 
         log_activity(__(':user printed their own Digital Attendance history.', ['user' => $request->user()->name]), [], $request->user(), 'DigitalAttendanceReport');
 
-        return view('digital-attendance-print', $this->myReportData($request, true));
+        return view('print.document', $this->myReportData($request, false) + ['autoPrint' => true]);
     }
 
     public function myPdf(Request $request)
@@ -144,31 +144,24 @@ class DigitalAttendanceController extends Controller
 
         log_activity(__(':user downloaded their own Digital Attendance history as PDF.', ['user' => $request->user()->name]), [], $request->user(), 'DigitalAttendanceReport');
 
-        $pdf = Pdf::loadView('digital-attendance-print', $this->myReportData($request, false));
-
-        return $pdf->download('my-attendance-' . now()->format('Ymd-His') . '.pdf');
+        return Pdf::loadView('print.document', $this->myReportData($request, true))->setPaper('a4')->download('my-attendance-' . now()->format('Ymd-His') . '.pdf');
     }
 
-    private function myReportData(Request $request, bool $autoPrint): array
+    /** The person's own attendance as the same WIMS report the administrators get (only ever their own rows). */
+    private function myReportData(Request $request, bool $isPdf): array
     {
-        $filters = [
+        $report = \App\Support\AttendanceReport::build([
             'user_id' => $request->user()->id,
             'date_from' => $request->query('date_from'),
             'date_to' => $request->query('date_to'),
-        ];
-
-        $records = DigitalAttendanceRecord::query()->with('user:id,name')->active()->filter($filters)->orderBy('attendance_date')->limit(1000)->get();
-        $totalMinutes = $records->sum(fn (DigitalAttendanceRecord $r) => $r->worked_minutes ?? 0);
+        ]);
 
         return [
-            'records' => $records,
-            'filters' => $filters,
-            'autoPrint' => $autoPrint,
-            'attendanceDays' => $records->pluck('attendance_date')->map(fn ($d) => $d->toDateString())->unique()->count(),
-            'totalLabel' => sprintf('%dh %02dm', intdiv($totalMinutes, 60), $totalMinutes % 60),
-            'averageLabel' => $records->count() > 0 ? sprintf('%02dh %02dm', intdiv((int) ($totalMinutes / $records->count()), 60), (int) ($totalMinutes / $records->count()) % 60) : '0h 00m',
-            'companyName' => optional($request->user()->account ?? null)->name,
-            'generatedBy' => optional($request->user())->name,
+            'doc' => \App\Support\PrintDocuments::attendanceReport($report, optional($request->user())->name),
+            'isPdf' => $isPdf,
+            'companyName' => optional($request->user()->account)->name,
+            'qr' => \App\Support\PrintQrCode::dataUri(route('digital-attendance.history')),
+            'pdfUrl' => route('digital-attendance.my-pdf', array_filter($request->only('date_from', 'date_to'))),
         ];
     }
 

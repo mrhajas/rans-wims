@@ -965,6 +965,14 @@ class SystemFeatureRegistry
                 'route_prefixes' => [],
                 'depends_on' => 'wims_connect',
             ],
+            'wims_connect_test' => [
+                'name' => __('WIMS Connect - Test Email / SMS'),
+                'description' => __('Send a test email or SMS to one user, after checking that WIMS holds their address or number.'),
+                'module' => __('WIMS Connect'),
+                'icon' => 'send',
+                'route_prefixes' => ['wims-connect.test.'],
+                'depends_on' => 'wims_connect',
+            ],
             'wims_connect_bulk_connect' => [
                 'name' => __('WIMS Connect - Bulk Connect'),
                 'description' => __('Ad-hoc bulk WhatsApp/Meta/SMS composition, scheduling, and delivery history.'),

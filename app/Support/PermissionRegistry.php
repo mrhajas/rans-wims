@@ -1304,6 +1304,13 @@ class PermissionRegistry
                 ],
             ],
 
+            'wims_connect_test' => [
+                'label' => __('WIMS Connect - Test Email / SMS'),
+                'abilities' => [
+                    'send-wims-connect-test' => __('Send a test email or SMS to a user (Test Email / SMS)'),
+                ],
+            ],
+
             'wims_connect_bulk_connect' => [
                 'label' => __('WIMS Connect - Bulk Connect'),
                 'abilities' => [

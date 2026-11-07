@@ -287,7 +287,7 @@
     @endforeach
 
     @if(!empty($doc['table']))
-    @php($T = $doc['table'])
+    @foreach(array_filter([$doc['summary_table'] ?? null, $doc['table']]) as $T)
     <div class="section-title">@include('print.icon', ['name' => 'package', 'color' => $AD, 'size' => 12]) &nbsp;{{ $T['title'] }}</div>
     @if(!empty($T['note']))<p style="margin:0 0 6px;font-size:9px;color:#64748b;">{{ $T['note'] }}</p>@endif
     <table class="items">
@@ -316,6 +316,7 @@
             @endif
         </tbody>
     </table>
+    @endforeach
     @elseif(empty($doc['image']) && empty($doc['labels']))
     <div class="section-title">@include('print.icon', ['name' => 'package', 'color' => $AD, 'size' => 12]) &nbsp;Items</div>
     <table class="items">

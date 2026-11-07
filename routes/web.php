@@ -1132,6 +1132,9 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('wims-connect/gateways/sms/balance', [Controllers\WimsConnectGatewayController::class, 'balance'])->middleware('throttle:20,1')->name('wims-connect.gateways.sms.balance');
     Route::put('wims-connect/gateways/{driver}', [Controllers\WimsConnectGatewayController::class, 'update'])->name('wims-connect.gateways.update');
     Route::post('wims-connect/gateways/{driver}/test', [Controllers\WimsConnectGatewayController::class, 'test'])->name('wims-connect.gateways.test');
+    // Test Email / SMS: one short test message to one person, by email or SMS, after checking WIMS holds an address for them
+    Route::get('wims-connect/test', [Controllers\WimsConnectTestController::class, 'index'])->name('wims-connect.test.index');
+    Route::post('wims-connect/test/send', [Controllers\WimsConnectTestController::class, 'send'])->middleware('throttle:20,1,wims-connect.test.send')->name('wims-connect.test.send');
 
     Route::get('wims-connect/recipients', [Controllers\WimsConnectRecipientController::class, 'index'])->name('wims-connect.recipients.index');
     Route::get('wims-connect/recipients/{user}', [Controllers\WimsConnectRecipientController::class, 'show'])->name('wims-connect.recipients.show');
@@ -1828,6 +1831,8 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::post('users/{user}/staff/link', [Controllers\UserStaffLinkController::class, 'link'])->name('users.staff.link');
     Route::post('users/{user}/staff/convert', [Controllers\UserStaffLinkController::class, 'convert'])->name('users.staff.convert');
     Route::delete('users/{user}/staff', [Controllers\UserStaffLinkController::class, 'unlink'])->name('users.staff.unlink');
+    Route::get('users/{user}/staff/sync', [Controllers\UserStaffLinkController::class, 'syncPreview'])->name('users.staff.sync.preview');
+    Route::post('users/{user}/staff/sync', [Controllers\UserStaffLinkController::class, 'sync'])->middleware('throttle:30,1,users.staff.sync')->name('users.staff.sync');
     Route::resource('staffs', Controllers\StaffController::class)->parameters(['staffs' => 'staff']);
 
     // Funds Allocation: dated allocation sheets (what is paid out, by category and payment method), approval,

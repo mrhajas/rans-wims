@@ -3820,6 +3820,15 @@ const menus = [
         lang: { main: 'Bulk Connect' },
       },
       {
+        name: 'wims-connect.test',
+        route: 'wims-connect.test.index',
+        icon: 'sms',
+        hidden: false,
+        sub_menu: false,
+        permissions: ['send-wims-connect-test'],
+        lang: { main: 'Test Email / SMS' },
+      },
+      {
         name: 'wims-connect.recipients',
         route: 'wims-connect.recipients.index',
         icon: 'users',

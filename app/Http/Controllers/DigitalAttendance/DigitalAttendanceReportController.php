@@ -76,6 +76,7 @@ class DigitalAttendanceReportController extends Controller
                     'clock_out' => optional($r->clock_out_at)->format('h:i A'),
                     'worked_label' => $r->worked_label,
                     'status' => $r->status,
+                    'late' => AttendanceReport::isLate($r),
                     'sessions_count' => $r->sessions_count,
                 ];
             });
@@ -134,6 +135,8 @@ class DigitalAttendanceReportController extends Controller
                 'total_minutes' => $totalMinutes,
                 'total_label' => sprintf('%dh %02dm', intdiv($totalMinutes, 60), $totalMinutes % 60),
                 'average_minutes' => $days > 0 ? (int) round($totalMinutes / $days) : 0,
+                'average_label' => AttendanceReport::hm($days > 0 ? (int) round($totalMinutes / $days) : 0),
+                'total_minutes_all' => $totalMinutes,
                 'late_count' => $userRecords->where('is_late', true)->count(),
                 'missing_count' => $userRecords->where('status', DigitalAttendanceRecord::STATUS_MISSING_CLOCK_OUT)->count(),
             ];
@@ -221,14 +224,19 @@ class DigitalAttendanceReportController extends Controller
         log_activity(__(':user exported the Digital Attendance report to Excel.', ['user' => $request->user()->name]), $report['filters'], $request->user(), 'DigitalAttendanceReport');
 
         return (new FastExcel($report['records']))->download('digital-attendance-' . now()->format('Ymd-His') . '.xlsx', function (DigitalAttendanceRecord $r) {
+            $minutes = (int) ($r->worked_minutes ?? $r->worked_minutes_live);
+
             return [
                 'Date' => $r->attendance_date->toDateString(),
+                'Day' => $r->attendance_date->format('D'),
                 'Employee' => optional($r->user)->name,
+                'Username' => optional($r->user)->username,
                 'Clock In' => optional($r->clock_in_at)->format('H:i:s'),
                 'Clock Out' => optional($r->clock_out_at)->format('H:i:s'),
                 'Worked' => $r->worked_label,
+                'Hours' => round($minutes / 60, 2),
+                'Late' => AttendanceReport::isLate($r) ? 'Yes' : 'No',
                 'Status' => AttendanceReport::statusLabel($r),
-                'Late' => $r->is_late ? 'Yes' : 'No',
                 'Clock-In IP' => $r->clock_in_ip,
                 'Clock-Out IP' => $r->clock_out_ip,
                 'Device' => trim(($r->clock_in_device ?? '') . ' / ' . ($r->clock_in_browser ?? ''), ' /'),
@@ -368,7 +376,9 @@ class DigitalAttendanceReportController extends Controller
                 'clock_in_label' => optional($r->clock_in_at)->format('H:i'),
                 'clock_out_label' => optional($r->clock_out_at)->format('H:i'),
                 'worked_label' => $r->worked_label,
+                'minutes' => (int) ($r->worked_minutes ?? $r->worked_minutes_live),
                 'status' => $r->status,
+                'late' => AttendanceReport::isLate($r),
             ])
             ->values()
             ->all();
