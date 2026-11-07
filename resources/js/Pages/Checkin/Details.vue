@@ -15,8 +15,14 @@
     </div>
 
     <div class="relative z-[1]">
-      <trashed-message v-if="checkin.draft == 1" class="mb-4 h-12 print:hidden" :action="false" icon="info">
+      <trashed-message v-if="statusOf === 'Draft'" class="mb-4 h-12 print:hidden" :action="false" icon="info">
         {{ $t('This record is still a draft.') }}
+      </trashed-message>
+      <trashed-message v-else-if="statusOf === 'Pending'" class="mb-4 h-12 print:hidden" :action="false" icon="info">
+        {{ $t('Waiting for a Super Admin to approve it. Its stock is added and its Goods Received Note is generated once it is approved.') }}
+      </trashed-message>
+      <trashed-message v-else-if="statusOf === 'Rejected'" class="mb-4 h-12 print:hidden" :action="false" icon="info">
+        {{ $t('Rejected') }}: {{ checkin.rejection_reason }} {{ $t('Correct it and save it again to submit it for approval.') }}
       </trashed-message>
       <trashed-message v-if="checkin.deleted_at" class="mb-4 h-12 print:hidden" :action="false">
         {{ $t('This record has been deleted.') }}
@@ -94,6 +100,22 @@
           </div>
         </section>
       </div>
+
+      <!-- Approval and Goods Received Note -->
+      <section class="lg-card dt-card dt-approval">
+        <header class="lg-card-head">
+          <span class="lg-card-ico lg-ico-emerald"><icons name="tick" class="w-5 h-5" /></span>
+          <div class="min-w-0 flex-1">
+            <h3 class="lg-card-title">{{ $t('Approval and Goods Received Note') }}</h3>
+            <p class="lg-card-sub">{{ statusOf === 'Approved' && checkin.grn_number ? checkin.grn_number : $t(statusOf === 'Pending' ? 'Pending approval' : statusOf) }}</p>
+          </div>
+          <span v-if="statusOf === 'Approved' && checkin.grn_number && $can('print-checkins')" class="dt-grn-actions print:hidden">
+            <a :href="route('checkins.grn.print', checkin.id)" target="_blank" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" />{{ $t('Print GRN') }}</a>
+            <a :href="route('checkins.grn.pdf', checkin.id)" class="lg-btn lg-btn-soft"><icons name="download" class="w-4 h-4" />{{ $t('Download GRN') }}</a>
+          </span>
+        </header>
+        <approval-trail :checkin="checkin" wide />
+      </section>
 
       <!-- Items -->
       <section class="lg-card dt-card">
@@ -202,11 +224,12 @@ import JsBarcode from 'jsbarcode';
 import Modal from '@/Jetstream/Modal.vue';
 import TrashedMessage from '@/Shared/TrashedMessage.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import ApprovalTrail from '@/Shared/Checkin/ApprovalTrail.vue';
 
 export default {
   props: { checkin: Object },
 
-  components: { Modal, TrashedMessage, StatTiles },
+  components: { Modal, TrashedMessage, StatTiles, ApprovalTrail },
 
   data() {
     return {
@@ -219,6 +242,10 @@ export default {
   },
 
   computed: {
+    // rows cached offline before approvals existed only carry the draft flag
+    statusOf() {
+      return this.checkin.status || (this.checkin.draft == 1 ? 'Draft' : 'Approved');
+    },
     // Sum of the line totals that are shown in the table (variation rows carry no price).
     grandTotal() {
       return ((this.checkin.items) || []).reduce((sum, row) => (row.variations.length ? sum : sum + Number(row.price || 0) * Number(row.quantity || 0)), 0);
@@ -281,6 +308,8 @@ html.dark .dt-hero { background: linear-gradient(135deg, rgba(28, 63, 102, 0.45)
 .dt-barcode svg { max-width: 100%; height: auto; }
 
 
+.dt-grn-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.dt-approval { margin-top: 1rem; }
 .dt-two { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
 .dt-two > .lg-card { min-width: 0; }
 .dt-kv-1 { grid-template-columns: minmax(0, 1fr) !important; }

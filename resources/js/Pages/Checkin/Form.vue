@@ -459,8 +459,8 @@
               <draft-switch
                 v-model:checked="form.draft"
                 :error="$page.props.errors.draft"
-                :draft-hint="$t('Saved as a draft: stock is not added yet. Switch to Final when the check-in is ready.')"
-                :final-hint="$t('Saved as final: the stock is added to the warehouse as soon as you save.')"
+                :draft-hint="$t('Saved as a draft: stock is not added yet and nothing is sent for approval. Switch to Final when the check-in is ready.')"
+                :final-hint="$t('Saved as final: it is sent to a Super Admin for approval. The stock is added and the Goods Received Note is generated once it is approved.')"
               />
             </div>
           </div>
@@ -689,7 +689,8 @@ export default {
         items: [],
         attachments: null,
         details: this.edit ? this.edit.details : null,
-        draft: this.edit ? this.edit.draft == 1 : false,
+        // a submitted (Pending) or Rejected check-in opens as Final so saving it again keeps it submitted; only a real Draft opens as Draft
+        draft: this.edit ? (this.edit.status ? this.edit.status === 'Draft' : this.edit.draft == 1) : false,
         reference: this.edit ? this.edit.reference : null,
         contact_id: this.edit ? this.edit.contact_id : null,
         date: this.edit ? this.edit.date : this.$formatJSDate(new Date()),

@@ -5,6 +5,8 @@
         <Link :href="route('checkins.index')" class="lg-btn lg-btn-soft"><icons name="list" class="w-4 h-4" />{{ $t('Checkins') }}</Link>
         <delivery-note-action :state="deliveryNote" />
         <gate-pass-action :state="gatePass" />
+        <approval-actions :adjustment="checkin" route-prefix="checkins" :approve-message="approveMessage(checkin)" :reject-hint="$t('No stock is added and the person who made it is told why. They can correct it and submit it again.')" />
+        <a v-if="grnReady && $can('print-checkins')" :href="route('checkins.grn.print', checkin.id)" target="_blank" class="lg-btn lg-btn-soft"><icons name="doc-text" class="w-4 h-4" />{{ $t('Goods Received Note') }} {{ checkin.grn_number }}</a>
         <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Print')" :aria-label="$t('Print')" @click="print()">
           <icons name="printer" class="w-4 h-4" />
         </button>
@@ -18,6 +20,7 @@
 
 <script>
 import CheckinDetails from './Details.vue';
+import ApprovalActions from '@/Shared/Adjustment/ApprovalActions.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import DeliveryNoteAction from '@/Shared/DeliveryNoteAction.vue';
@@ -26,8 +29,16 @@ import { printWithAnimation, printUrlInFrame, stockDocumentPrintSheet } from '@/
 
 export default {
   props: { checkin: Object, deliveryNote: Object, gatePass: Object },
-  components: { AdminLayout, CheckinDetails, PageHeader, DeliveryNoteAction, GatePassAction },
+  components: { AdminLayout, CheckinDetails, PageHeader, DeliveryNoteAction, GatePassAction, ApprovalActions },
+  computed: {
+    grnReady() {
+      return this.checkin.status === 'Approved' && !!this.checkin.grn_number;
+    },
+  },
   methods: {
+    approveMessage(checkin) {
+      return this.$t('Approve :ref? Its stock is added now, its Goods Received Note is generated and the person who made it is notified.', { ref: checkin.reference });
+    },
     print() {
       // Open the redesigned print document when the user may print checkins; otherwise fall back to the page print.
       if (this.$can('print-checkins')) {

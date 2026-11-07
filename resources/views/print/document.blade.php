@@ -249,7 +249,7 @@
         <div class="parent-chip">
             @include('print.icon', ['name' => 'link', 'color' => $AD, 'size' => 12])
             &nbsp;Generated from {{ $doc['parent']['label'] }} <strong>{{ $doc['parent']['reference'] }}</strong>
-            &nbsp;&middot;&nbsp; this document reflects the parent record and has no effect on stock.
+            &nbsp;&middot;&nbsp; {{ $doc['parent']['note'] ?? 'this document reflects the parent record and has no effect on stock.' }}
         </div>
     @endif
 

@@ -2047,6 +2047,11 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     // as the id parameter (same reasoning as staffs.print/staffs.pdf).
     Route::get('checkins/{checkin}/print', [Controllers\CheckinController::class, 'print'])->name('checkins.print');
     Route::get('checkins/{checkin}/pdf', [Controllers\CheckinController::class, 'pdf'])->name('checkins.pdf');
+    // Approval (Super Admin or "Approve / Reject Checkins") and the Goods Received Note it generates; the names carry print / pdf so each use lands in the Download / Print log
+    Route::put('checkins/{checkin}/approve', [Controllers\CheckinController::class, 'approve'])->whereNumber('checkin')->name('checkins.approve');
+    Route::put('checkins/{checkin}/reject', [Controllers\CheckinController::class, 'reject'])->whereNumber('checkin')->name('checkins.reject');
+    Route::get('checkins/{checkin}/grn/print', [Controllers\CheckinController::class, 'grn'])->whereNumber('checkin')->middleware('throttle:60,1,checkins.grn.print')->name('checkins.grn.print');
+    Route::get('checkins/{checkin}/grn/pdf', [Controllers\CheckinController::class, 'grnPdf'])->whereNumber('checkin')->middleware('throttle:30,1,checkins.grn.pdf')->name('checkins.grn.pdf');
     Route::get('checkouts/{checkout}/print', [Controllers\CheckoutController::class, 'print'])->name('checkouts.print');
     Route::get('checkouts/{checkout}/pdf', [Controllers\CheckoutController::class, 'pdf'])->name('checkouts.pdf');
     // the value report of an adjustment / super adjustment (unit prices, totals in value): names carry print / pdf / export so each use lands in the Download / Print log

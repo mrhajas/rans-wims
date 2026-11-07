@@ -35,7 +35,37 @@ class CheckinEventListener implements ShouldQueue
         }
 
         // after the stock work, so a notice can never get in its way
-        $this->alert('created', $event->checkin, __('Check-in Created'), $event->checkin->reference . ' was created' . ($event->checkin->draft ? ' as a draft' : '') . $this->forWarehouse($event->checkin) . '.', ['skip_actor' => true]);
+        $pending = $event->checkin->status === \App\Models\Checkin::STATUS_PENDING;
+        $this->alert('created', $event->checkin, __('Check-in Created'), $event->checkin->reference . ' was created' . ($pending ? ' and waits for approval' : ($event->checkin->draft ? ' as a draft' : '')) . $this->forWarehouse($event->checkin) . '.', ['skip_actor' => true]);
+        if ($pending) {
+            $this->pendingApproval($event->checkin);
+        }
+    }
+
+    /** The approvers are told that a check-in waits for them. */
+    private function pendingApproval($checkin): void
+    {
+        $checkin->loadMissing('user:id,name');
+        $this->alert('pending_approval', $checkin, __('Check-in Pending Approval'), $checkin->reference . ' was submitted by ' . optional($checkin->user)->name . $this->forWarehouse($checkin) . ' and waits for approval.');
+    }
+
+    /** Approval: the stock goes in (the check-in was not counted while it waited), the main-warehouse report goes out, the person who made it is told, with the GRN number. */
+    private function approved(CheckinEvent $event)
+    {
+        $checkin = $event->checkin;
+        if (! $checkin->draft && ($event->original === null || $event->original->draft)) {
+            $this->setStock($checkin);
+            $this->notifyMainWarehouseCheckinDone($checkin);
+        }
+        $checkin->loadMissing('approver:id,name');
+        $this->alert('approved', $checkin, __('Check-in Approved'), $checkin->reference . ' was approved by ' . (optional($checkin->approver)->name ?: 'Admin') . ($checkin->approved_by_role ? ' (' . $checkin->approved_by_role . ')' : '') . '. Goods Received Note ' . $checkin->grn_number . ' was generated.', ['skip_actor' => true, 'values' => ['document' => (string) $checkin->grn_number]]);
+    }
+
+    private function rejected(CheckinEvent $event)
+    {
+        $checkin = $event->checkin;
+        $checkin->loadMissing('rejecter:id,name');
+        $this->alert('rejected', $checkin, __('Check-in Rejected'), $checkin->reference . ' was rejected by ' . (optional($checkin->rejecter)->name ?: 'Admin') . '. Reason: ' . $checkin->rejection_reason, ['remarks' => (string) $checkin->rejection_reason, 'skip_actor' => true]);
     }
 
     private function deleted(CheckinEvent $event)
@@ -207,6 +237,11 @@ class CheckinEventListener implements ShouldQueue
         if ($event->original->draft && ! $event->checkin->draft) {
             $this->notifyMainWarehouseCheckinDone($event->checkin);
         }
+
+        // a draft was submitted, or an approved check-in was changed by someone who cannot approve it (it goes back to Pending)
+        if ($event->checkin->status === \App\Models\Checkin::STATUS_PENDING && $event->original->status !== \App\Models\Checkin::STATUS_PENDING) {
+            $this->pendingApproval($event->checkin);
+        }
     }
 
     private function notifyMainWarehouseCheckinDone($checkin): void
@@ -241,10 +276,10 @@ class CheckinEventListener implements ShouldQueue
     private function alert(string $event, $checkin, string $title, string $message, array $ctx = []): void
     {
         $checkin->loadMissing(['warehouse:id,name,status', 'items', 'user:id,name']);
-        \App\Services\Workflow\WorkflowMessenger::dispatch('checkins', $event, $checkin, auth()->user(), $ctx + [
+        \App\Services\Workflow\WorkflowMessenger::dispatch('checkins', $event, $checkin, auth()->user(), array_diff_key($ctx, ['values' => 1]) + [
             'account_id' => $checkin->account_id ?? 1, 'title' => $title, 'message' => $message, 'url' => route('checkins.show', $checkin->id),
             'owner_user_id' => (int) $checkin->user_id, 'warehouse_ids' => array_filter([$checkin->warehouse_id]),
-            'values' => ['reference' => $checkin->reference, 'warehouse' => optional($checkin->warehouse)->name ?? '', 'itemscount' => (string) $checkin->items->count()],
+            'values' => (array) ($ctx['values'] ?? []) + ['reference' => $checkin->reference, 'warehouse' => optional($checkin->warehouse)->name ?? '', 'itemscount' => (string) $checkin->items->count()],
         ]);
     }
 

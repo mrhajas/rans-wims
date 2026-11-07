@@ -43,7 +43,7 @@
         </span>
       </template>
       <template #content>
-        <p class="aa-hint">{{ $t('The stock stays untouched and the person who made it is told why.') }}</p>
+        <p class="aa-hint">{{ rejectHint || $t('The stock stays untouched and the person who made it is told why.') }}</p>
         <textarea v-model="reason" class="aa-textarea" rows="3" maxlength="1000" :placeholder="$t('Reason for rejecting…')"></textarea>
       </template>
       <template #footer>
@@ -71,6 +71,9 @@ export default {
     compact: { type: Boolean, default: false },
     // 'adjustments' (default) or 'super-adjustments': which pair of approve / reject routes to call.
     routePrefix: { type: String, default: 'adjustments' },
+    // modules with their own consequences (a check-in also generates its Goods Received Note) word the two questions themselves
+    approveMessage: { type: String, default: '' },
+    rejectHint: { type: String, default: '' },
   },
 
   emits: ['done'],
@@ -106,7 +109,7 @@ export default {
     async approve() {
       if (this.isSuper) { this.openApprove(); return; }
       const ok = await this.$confirm(
-        this.$t('Approve :ref? Its stock changes are applied now and the person who made it is notified.', { ref: this.adjustment.reference }),
+        this.approveMessage || this.$t('Approve :ref? Its stock changes are applied now and the person who made it is notified.', { ref: this.adjustment.reference }),
         { confirmText: this.$t('Approve') }
       );
       if (!ok) return;
@@ -138,7 +141,7 @@ export default {
 
 <style scoped>
 .aa-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.aa-actions.is-icons { gap: 6px; }
+.aa-actions.is-icons { gap: 6px; flex-wrap: nowrap; }
 .aa-ico { display: inline-flex; align-items: center; justify-content: center; }
 .aa-ico-ok { color: #047857; background: rgba(16, 185, 129, 0.14); }
 .aa-ico-ok:hover { background: rgba(16, 185, 129, 0.26); }

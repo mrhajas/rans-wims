@@ -33,15 +33,17 @@
           >
           </auto-complete>
           <auto-complete
-            id="draft"
+            id="status"
             position="left"
-            :label="$t('Draft')"
-            v-model="form.draft"
+            :label="$t('Status')"
+            v-model="form.status"
             class="mt-1 w-full"
             :suggestions="[
               { label: $t('All'), value: null },
-              { label: $t('Yes'), value: 'yes' },
-              { label: $t('No'), value: 'no' },
+              { label: $t('Pending approval'), value: 'Pending' },
+              { label: $t('Approved'), value: 'Approved' },
+              { label: $t('Rejected'), value: 'Rejected' },
+              { label: $t('Draft'), value: 'Draft' },
             ]"
           >
           </auto-complete>
@@ -53,6 +55,7 @@
             <th class="px-4 pt-6 pb-4 txn-no-th" data-nolabel>{{ $t('No') }}</th>
             <th class="px-6 pt-6 pb-4">{{ $t('Checkin') }}</th>
             <th class="px-6 pt-6 pb-4" data-nolabel>{{ $t('Relations') }}</th>
+            <th class="px-6 pt-6 pb-4">{{ $t('Approval') }}</th>
             <th class="px-6 pt-6 pb-4" colspan="2">{{ $t('Details') }}</th>
           </tr>
           <tr :key="checkin.id" v-for="(checkin, ci) in displayCheckins" class="txn-row hover:bg-gray-100 focus-within:bg-gray-100">
@@ -64,7 +67,7 @@
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
                     <hover-preview category="checkins" :id="checkin.id"><span class="lg-ref">{{ checkin.reference }}</span></hover-preview>
-                    <span class="lg-chip" :class="checkin.draft == 1 ? 'lg-chip-amber' : 'lg-chip-green'">{{ checkin.draft == 1 ? $t('Draft') : $t('Final') }}</span>
+                    <span class="lg-chip" :class="statusChip(rowStatus(checkin))">{{ statusLabel(rowStatus(checkin)) }}</span>
                   </div>
                   <div class="lg-subtext">{{ $t('Transaction Date') }}: {{ $date(checkin.date) }}</div>
                   <div class="lg-subtext">{{ $t('Date Created') }}: {{ checkin.created_at ? $datetime(checkin.created_at) : '-' }}</div>
@@ -74,7 +77,7 @@
               </div>
             </td>
             <td class="border-t" @click="goto(checkin.id)" :class="{ 'cursor-pointer': $can('read-checkins') }">
-              <div class="px-6 py-4">
+              <div class="px-4 py-4 min-w-[16rem] max-w-[20rem] whitespace-normal">
                 <div class="lg-meta">
                   <span class="lg-meta-k">{{ $t('Contact') }}</span>
                   <span>{{ checkin.contact.name }}</span>
@@ -87,6 +90,11 @@
                   <span class="lg-meta-k">{{ $t('User') }}</span>
                   <span>{{ checkin.user.name }}</span>
                 </div>
+              </div>
+            </td>
+            <td class="border-t" @click="goto(checkin.id)" :class="{ 'cursor-pointer': $can('read-checkins') }">
+              <div class="px-4 py-4">
+                <approval-trail :checkin="checkin" />
               </div>
             </td>
             <td class="border-t max-w-lg min-w-56" @click="goto(checkin.id)" :class="{ 'cursor-pointer': $can('read-checkins') }">
@@ -102,6 +110,10 @@
                   <Link :href="route('checkins.show', checkin.id)" class="txn-icon-btn lg-tip txn-icon-btn-blue" :data-tip="$t('View')" :aria-label="$t('View')">
                     <icons name="doc"></icons>
                   </Link>
+                  <approval-actions compact :adjustment="checkin" route-prefix="checkins" :approve-message="approveMessage(checkin)" :reject-hint="$t('No stock is added and the person who made it is told why. They can correct it and submit it again.')" @done="reload" />
+                  <a v-if="$can('print-checkins') && rowStatus(checkin) === 'Approved' && checkin.grn_number" :href="route('checkins.grn.print', checkin.id)" target="_blank" class="txn-icon-btn lg-tip txn-icon-btn-green" :data-tip="$t('Goods Received Note') + ' ' + checkin.grn_number" :aria-label="$t('Goods Received Note')">
+                    <icons name="doc-text"></icons>
+                  </a>
                   <a v-if="$can('print-checkins')" :href="route('checkins.print', checkin.id)" target="_blank" @click.exact.prevent="printRow(checkin)" class="txn-icon-btn lg-tip txn-icon-btn-teal" :data-tip="$t('Print')" :aria-label="$t('Print')">
                     <icons name="printer"></icons>
                   </a>
@@ -139,7 +151,7 @@
             </td>
           </tr>
           <tr v-if="displayCheckins.length === 0">
-            <td class="border-t px-6 py-4" colspan="5">{{ $t('There is no data to display.') }}</td>
+            <td class="border-t px-6 py-4" colspan="6">{{ $t('There is no data to display.') }}</td>
           </tr>
         </table>
       </div>
@@ -230,6 +242,8 @@ import mapValues from 'lodash/mapValues';
 import Dialog from '@/Shared/Dialog.vue';
 import Modal from '@/Jetstream/Modal.vue';
 import CheckinDetails from './Details.vue';
+import ApprovalTrail from '@/Shared/Checkin/ApprovalTrail.vue';
+import ApprovalActions from '@/Shared/Adjustment/ApprovalActions.vue';
 import HoverPreview from '@/Shared/HoverPreview/HoverPreview.vue';
 import TecButton from '@/Jetstream/Button.vue';
 import DeliveryNoteAction from '@/Shared/DeliveryNoteAction.vue';
@@ -262,6 +276,8 @@ export default {
     AutoComplete,
     SearchFilter,
     CheckinDetails,
+    ApprovalTrail,
+    ApprovalActions,
     HoverPreview,
     TecDropdownLink,
     TecSectionTitle,
@@ -288,6 +304,7 @@ export default {
       form: {
         search: this.filters.search,
         trashed: this.filters.trashed,
+        status: this.filters.status,
         view: this.filters.view || null,
       },
       offlineCheckins: null,
@@ -311,7 +328,9 @@ export default {
         tile(null, 'collection', 'navy', this.$t('Total checkins'), s.total),
         tile('today', 'clock', 'sky', this.$t('Created today'), s.today),
         tile('month', 'calendar', 'indigo', this.$t('This month'), s.month),
-        tile('drafts', 'doc-text', 'amber', this.$t('Drafts'), s.drafts),
+        tile('pending', 'clock', 'amber', this.$t('Pending approval'), s.pending ?? 0),
+        tile('rejected', 'cross', 'rose', this.$t('Rejected'), s.rejected ?? 0),
+        tile('drafts', 'doc-text', 'slate', this.$t('Drafts'), s.drafts),
       ];
     },
     displayCheckins() {
@@ -348,6 +367,23 @@ export default {
     // the animation first, then the browser's print dialog on this document (a middle click or Ctrl+click still opens the document itself)
     printRow(row) {
       printWithAnimation(stockDocumentPrintSheet(this, row, 'Check-in'), () => printUrlInFrame(this.route('checkins.print', row.id)));
+    },
+    // rows cached offline before approvals existed only carry the draft flag
+    rowStatus(checkin) {
+      return checkin.status || (checkin.draft == 1 ? 'Draft' : 'Approved');
+    },
+    statusLabel(status) {
+      return { Draft: this.$t('Draft'), Pending: this.$t('Pending approval'), Approved: this.$t('Approved'), Rejected: this.$t('Rejected') }[status] || status;
+    },
+    statusChip(status) {
+      return { Draft: 'lg-chip-slate', Pending: 'lg-chip-amber', Approved: 'lg-chip-green', Rejected: 'lg-chip-red' }[status] || 'lg-chip-slate';
+    },
+    // after approving / rejecting from the list: fetch the fresh rows and counts
+    reload() {
+      this.$inertia.reload({ only: ['checkins', 'stats'], preserveScroll: true });
+    },
+    approveMessage(checkin) {
+      return this.$t('Approve :ref? Its stock is added now, its Goods Received Note is generated and the person who made it is notified.', { ref: checkin.reference });
     },
     // Clicking a summary card filters the list to it; clicking the lit card (or the Total card) shows everything again.
     pickTile(tile) {
@@ -463,6 +499,7 @@ html.dark .lg-ref {
 }
 .lg-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 5px;
   font-size: 0.8rem;

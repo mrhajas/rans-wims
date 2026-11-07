@@ -19,7 +19,8 @@ class PermissionRegistry
                     'create-checkins' => __('create_x', ['x' => __('Checkins')]),
                     'update-checkins' => __('update_x', ['x' => __('Checkins')]),
                     'delete-checkins' => __('delete_x', ['x' => __('Checkins')]),
-                    'print-checkins' => __('Print / Download Checkins'),
+                    'approve-checkins' => __('Approve / Reject Checkins (generates the Goods Received Note)'),
+                    'print-checkins' => __('Print / Download Checkins and Goods Received Notes'),
                 ],
             ],
 
