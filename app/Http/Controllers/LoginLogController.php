@@ -12,19 +12,14 @@ use Rap2hpoutre\FastExcel\FastExcel;
 
 class LoginLogController extends Controller
 {
+    /** The filters of the list, which the Excel, print and PDF of the same list repeat. */
+    public const FILTERS = ['search', 'status', 'user_id', 'role', 'start_date', 'end_date', 'sort', 'sort_direction'];
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', LoginLog::class);
 
-        $filters = $request->all(
-            'search',
-            'status',
-            'role',
-            'start_date',
-            'end_date',
-            'sort',
-            'sort_direction'
-        );
+        $filters = $request->all(self::FILTERS);
 
         $query = LoginLog::query()->with('user:id,name,username')->filter($filters);
 
@@ -39,6 +34,8 @@ class LoginLogController extends Controller
             'filters' => $filters,
             'loginLogs' => $query->paginate()->withQueryString(),
             'roles' => Role::query()->orderBy('name')->pluck('name')->values(),
+            // the people who appear in the log (for the "filter by user" dropdown)
+            'users' => User::query()->whereIn('id', LoginLog::query()->whereNotNull('user_id')->select('user_id')->distinct())->orderBy('name')->get(['id', 'name', 'username']),
             'addressTabs' => $this->addressTabs($request),
             'canExport' => $request->user()->can('export-login-logs'),
             'canPrint' => $request->user()->can('print-login-logs'),
@@ -78,15 +75,7 @@ class LoginLogController extends Controller
     {
         $this->authorize('export', LoginLog::class);
 
-        $rows = LoginLog::query()->with('user:id,name,username')->filter($request->all(
-            'search',
-            'status',
-            'role',
-            'start_date',
-            'end_date',
-            'sort',
-            'sort_direction'
-        ))->limit(10000)->get();
+        $rows = LoginLog::query()->with('user:id,name,username')->filter($request->all(self::FILTERS))->limit(10000)->get();
 
         return (new FastExcel($rows))->download('login-logs-' . now()->format('Ymd-His') . '.xlsx', function (LoginLog $log) {
             return [
@@ -126,15 +115,7 @@ class LoginLogController extends Controller
 
     protected function viewData(Request $request, bool $autoPrint): array
     {
-        $filters = $request->all(
-            'search',
-            'status',
-            'role',
-            'start_date',
-            'end_date',
-            'sort',
-            'sort_direction'
-        );
+        $filters = $request->all(self::FILTERS);
 
         $logs = LoginLog::query()->with('user:id,name,username')->filter($filters)->limit(3000)->get();
 

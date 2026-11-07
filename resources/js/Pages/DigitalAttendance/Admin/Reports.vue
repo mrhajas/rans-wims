@@ -2,6 +2,7 @@
   <admin-layout :title="$t('Digital Attendance Reports')">
     <div class="lg-page px-4 md:px-0">
       <page-header icon="chart-bar" :title="$t('Digital Attendance Reports')" :subtitle="$t('Daily, weekly, custom-range, location and device views of attendance.')">
+        <button v-if="canEmail" type="button" class="lg-btn lg-btn-soft" @click="emailOpen = true"><icons name="email" class="w-4 h-4" />{{ $t('Email') }}</button>
         <a :href="printUrl" target="_blank" class="lg-btn lg-btn-soft"><icons name="printer" class="w-4 h-4" />{{ $t('Print') }}</a>
         <a :href="pdfUrl" class="lg-btn lg-btn-soft"><icons name="download" class="w-4 h-4" />{{ $t('PDF') }}</a>
         <a :href="exportUrl" class="lg-btn lg-btn-primary"><icons name="doc-text" class="w-4 h-4" />{{ $t('Excel') }}</a>
@@ -15,12 +16,17 @@
             <icons :name="t.icon" class="w-3.5 h-3.5" />{{ $t(t.label) }}
           </button>
         </div>
+        <div class="rep-filters">
+        <auto-complete v-model="userId" class="rep-employee" :suggestions="userOptions" :placeholder="$t('All employees')" searchable clearable />
         <div class="rep-search">
           <icons name="search" class="w-4 h-4 rep-search-icon" />
           <input v-model="search" type="text" :placeholder="$t('Search employee…')" class="rep-search-input" />
           <button v-if="search" type="button" class="rep-search-clear" @click="search = ''"><icons name="cross" class="w-3 h-3" /></button>
         </div>
+        </div>
       </div>
+
+      <p class="rep-scope"><icons name="info" class="w-3.5 h-3.5" />{{ $t('Print, PDF, Excel and Email follow what you see here:') }} <b>{{ periodText }}</b> &middot; <b>{{ employee ? employee.name : $t('All employees') }}</b><template v-if="search.trim()"> &middot; {{ $t('search') }}: <b>{{ search.trim() }}</b></template></p>
 
       <!-- Daily -->
       <div v-if="tab === 'daily'" class="lg-card">
@@ -41,12 +47,12 @@
             <tbody>
               <tr v-for="r in filteredDailyRows" :key="r.id">
                 <td :data-label="$t('Employee')"><span class="lg-main">{{ r.user }}</span></td>
-                <td :data-label="$t('In')">{{ r.clock_in_label || '—' }}</td>
-                <td :data-label="$t('Out')">{{ r.clock_out_label || '—' }}</td>
+                <td :data-label="$t('In')">{{ r.clock_in_label || '-' }}</td>
+                <td :data-label="$t('Out')">{{ r.clock_out_label || '-' }}</td>
                 <td :data-label="$t('Hours')"><span class="lg-main rep-hours">{{ r.worked_label }}</span></td>
-                <td :data-label="$t('Status')"><span class="lg-chip" :class="statusClass(r.status)">{{ r.status.replace('_', ' ') }}</span></td>
+                <td :data-label="$t('Status')"><span class="lg-chip" :class="statusClass(r.status)">{{ statusLabel(r.status) }}</span></td>
               </tr>
-              <tr v-if="!filteredDailyRows.length" class="lg-empty-row"><td colspan="5" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No records for this date.') }}</td></tr>
+              <tr v-if="!filteredDailyRows.length" class="lg-empty-row"><td colspan="5" class="lg-empty">{{ loading.daily ? $t('Loading...') : search ? $t('No employees match your search.') : $t('No records for this date.') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -59,6 +65,11 @@
           <div class="min-w-0">
             <div class="lg-card-title">{{ $t('Weekly') }}</div>
             <div class="lg-card-sub">{{ weekly.start }} {{ $t('to') }} {{ weekly.end }}</div>
+          </div>
+          <div class="rep-week ml-auto">
+            <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Previous week')" :aria-label="$t('Previous week')" @click="moveWeek(-1)"><icons name="chevron-down" class="w-4 h-4 rep-prev" /></button>
+            <button type="button" class="lg-btn lg-btn-soft" @click="moveWeek(0)">{{ $t('This week') }}</button>
+            <button type="button" class="lg-icon-btn lg-tip" :data-tip="$t('Next week')" :aria-label="$t('Next week')" @click="moveWeek(1)"><icons name="chevron-down" class="w-4 h-4 rep-next" /></button>
           </div>
         </div>
         <div class="lg-table-wrap">
@@ -83,7 +94,7 @@
                   <template v-if="d">
                     {{ d.hours }}h<span v-if="d.sessions_count > 1" class="rep-cell-sessions">×{{ d.sessions_count }}</span>
                   </template>
-                  <span v-else class="lg-subtext" style="display: inline">—</span>
+                  <span v-else class="lg-subtext" style="display: inline">-</span>
                 </td>
                 <td class="text-center"><span class="lg-main rep-hours">{{ row.total_hours }}h</span></td>
               </tr>
@@ -102,7 +113,9 @@
           </div>
         </div>
         <div class="rep-range">
+          <label class="rep-range-l">{{ $t('From') }}</label>
           <date-picker v-model="customFrom" flush />
+          <label class="rep-range-l">{{ $t('To') }}</label>
           <date-picker v-model="customTo" flush />
           <button type="button" class="lg-btn lg-btn-primary" @click="loadCustom"><icons name="refresh" class="w-4 h-4" />{{ $t('Run Report') }}</button>
         </div>
@@ -158,11 +171,11 @@
                     <icons name="map-pin" class="w-3.5 h-3.5" />
                     {{ r.clock_in_location_label || $t('Nearby location') }}
                   </a>
-                  <span v-else>—</span>
+                  <span v-else>-</span>
                 </td>
-                <td :data-label="$t('Coordinates')"><span class="lg-mono lg-subtext" style="display: inline">{{ r.clock_in_location || '—' }}</span></td>
-                <td :data-label="$t('Accuracy')">{{ r.clock_in_accuracy ? Math.round(r.clock_in_accuracy) + 'm' : '—' }}</td>
-                <td :data-label="$t('IP')"><span class="lg-mono">{{ r.clock_in_ip || '—' }}</span></td>
+                <td :data-label="$t('Coordinates')"><span class="lg-mono lg-subtext" style="display: inline">{{ r.clock_in_location || '-' }}</span></td>
+                <td :data-label="$t('Accuracy')">{{ r.clock_in_accuracy ? Math.round(r.clock_in_accuracy) + 'm' : '-' }}</td>
+                <td :data-label="$t('IP')"><span class="lg-mono">{{ r.clock_in_ip || '-' }}</span></td>
                 <td :data-label="$t('Device')">{{ r.clock_in_device }}</td>
               </tr>
               <tr v-if="!filteredLocationRows.length" class="lg-empty-row"><td colspan="7" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No location data.') }}</td></tr>
@@ -192,8 +205,8 @@
                 <td :data-label="$t('Browser')">{{ r.browser }}</td>
                 <td :data-label="$t('OS')">{{ r.os }}</td>
                 <td :data-label="$t('Device')">{{ r.device }}</td>
-                <td :data-label="$t('Last Seen')">{{ r.last_seen || '—' }}</td>
-                <td :data-label="$t('Status')"><span class="lg-chip" :class="statusClass(r.status)">{{ r.status.replace('_', ' ') }}</span></td>
+                <td :data-label="$t('Last Seen')">{{ r.last_seen || '-' }}</td>
+                <td :data-label="$t('Status')"><span class="lg-chip" :class="statusClass(r.status)">{{ statusLabel(r.status) }}</span></td>
               </tr>
               <tr v-if="!filteredDeviceRows.length" class="lg-empty-row"><td colspan="6" class="lg-empty">{{ search ? $t('No employees match your search.') : $t('No device data.') }}</td></tr>
             </tbody>
@@ -201,6 +214,7 @@
         </div>
       </div>
     </div>
+    <email-report-modal :show="emailOpen" :query="reportQuery" :employee="employee" :period-text="periodText" @close="emailOpen = false" />
   </admin-layout>
 </template>
 
@@ -208,10 +222,12 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PageHeader from '@/Shared/Page/PageHeader.vue';
 import StatTiles from '@/Shared/Page/StatTiles.vue';
+import AutoComplete from '@/Shared/AutoComplete.vue';
+import EmailReportModal from './EmailReportModal.vue';
 
 export default {
-  components: { AdminLayout, PageHeader, StatTiles },
-  props: { users: Array },
+  components: { AdminLayout, PageHeader, StatTiles, AutoComplete, EmailReportModal },
+  props: { users: Array, canEmail: { type: Boolean, default: false } },
   data() {
     const today = new Date().toISOString().slice(0, 10);
     return {
@@ -232,12 +248,34 @@ export default {
       locationRows: [],
       deviceRows: [],
       search: '',
+      userId: null,
+      weekStart: null,
+      emailOpen: false,
+      loading: { daily: false },
     };
   },
   computed: {
-    printUrl() { return this.route('digital-attendance-reports.print'); },
-    pdfUrl() { return this.route('digital-attendance-reports.pdf'); },
-    exportUrl() { return this.route('digital-attendance-reports.export'); },
+    // the filters of the tab on screen: the print, PDF, Excel and email of the report all use them
+    reportQuery() {
+      const q = {};
+      if (this.userId) q.user_id = this.userId;
+      if (this.search.trim()) q.search = this.search.trim();
+      if (this.tab === 'daily') q.date = this.dailyDate;
+      else if (this.tab === 'weekly' && this.weekly.start) Object.assign(q, { date_from: this.weekly.start, date_to: this.weekly.end });
+      else if (this.tab === 'custom') Object.assign(q, { date_from: this.customFrom, date_to: this.customTo });
+      return q;
+    },
+    printUrl() { return this.route('digital-attendance-reports.print', this.reportQuery); },
+    pdfUrl() { return this.route('digital-attendance-reports.pdf', this.reportQuery); },
+    exportUrl() { return this.route('digital-attendance-reports.export', this.reportQuery); },
+    userOptions() { return (this.users || []).map(u => ({ id: u.id, label: u.name + (u.username ? ' (' + u.username + ')' : '') })); },
+    employee() { return this.userId ? (this.users || []).find(u => u.id === this.userId) || null : null; },
+    periodText() {
+      const q = this.reportQuery;
+      if (q.date) return q.date;
+      if (q.date_from && q.date_to) return q.date_from === q.date_to ? q.date_from : q.date_from + ' ' + this.$t('to') + ' ' + q.date_to;
+      return this.$t('All dates');
+    },
     statTiles() {
       const sum = (rows, fn) => rows.reduce((t, r) => t + (Number(fn(r)) || 0), 0);
       if (this.tab === 'daily' && this.dailyRows.length) {
@@ -303,6 +341,14 @@ export default {
     },
   },
   watch: {
+    // another employee: every tab that was already loaded is loaded again for them
+    userId() {
+      this.loadDaily();
+      if (this.weekly.start || this.tab === 'weekly') this.loadWeekly();
+      if (this.customRows.length) this.loadCustom();
+      if (this.locationRows.length || this.tab === 'location') this.loadLocation();
+      if (this.deviceRows.length || this.tab === 'device') this.loadDevice();
+    },
     tab(val) {
       if (val === 'weekly' && !this.weekly.rows.length) this.loadWeekly();
       if (val === 'location' && !this.locationRows.length) this.loadLocation();
@@ -314,19 +360,35 @@ export default {
   },
   methods: {
     loadDaily() {
-      axios.get(this.route('digital-attendance-reports.daily'), { params: { date: this.dailyDate } }).then(res => (this.dailyRows = res.data.rows));
+      this.loading.daily = true;
+      axios.get(this.route('digital-attendance-reports.daily'), { params: { date: this.dailyDate, user_id: this.userId || undefined } }).then(res => (this.dailyRows = res.data.rows)).finally(() => (this.loading.daily = false));
     },
     loadWeekly() {
-      axios.get(this.route('digital-attendance-reports.weekly')).then(res => (this.weekly = res.data));
+      axios.get(this.route('digital-attendance-reports.weekly'), { params: { start: this.weekStart || undefined, user_id: this.userId || undefined } }).then(res => (this.weekly = res.data));
+    },
+    // a week back (-1), this week (0), a week on (1)
+    moveWeek(step) {
+      const base = this.weekly.start ? new Date(this.weekly.start + 'T00:00:00') : new Date();
+      if (step === 0) this.weekStart = null;
+      else {
+        base.setDate(base.getDate() + step * 7);
+        this.weekStart = base.toISOString().slice(0, 10);
+      }
+      this.loadWeekly();
     },
     loadCustom() {
-      axios.get(this.route('digital-attendance-reports.custom'), { params: { from: this.customFrom, to: this.customTo } }).then(res => (this.customRows = res.data.rows));
+      axios.get(this.route('digital-attendance-reports.custom'), { params: { from: this.customFrom, to: this.customTo, user_id: this.userId || undefined } }).then(res => (this.customRows = res.data.rows));
     },
     loadLocation() {
-      axios.get(this.route('digital-attendance-reports.location')).then(res => (this.locationRows = res.data.rows));
+      axios.get(this.route('digital-attendance-reports.location'), { params: { user_id: this.userId || undefined } }).then(res => (this.locationRows = res.data.rows));
     },
     loadDevice() {
-      axios.get(this.route('digital-attendance-reports.device')).then(res => (this.deviceRows = res.data.rows));
+      axios.get(this.route('digital-attendance-reports.device'), { params: { user_id: this.userId || undefined } }).then(res => (this.deviceRows = res.data.rows));
+    },
+    // CLOCKED_IN -> Clocked in
+    statusLabel(status) {
+      const t = String(status || '').toLowerCase().replace(/_/g, ' ');
+      return t.charAt(0).toUpperCase() + t.slice(1);
     },
     statusClass(status) {
       if (status === 'CLOCKED_IN') return 'lg-chip-green';
@@ -336,10 +398,10 @@ export default {
     },
     cellTooltip(d) {
       const parts = [];
-      parts.push(`${this.$t('In')}: ${d.clock_in || '—'}`);
-      parts.push(`${this.$t('Out')}: ${d.clock_out || '—'}`);
+      parts.push(`${this.$t('In')}: ${d.clock_in || '-'}`);
+      parts.push(`${this.$t('Out')}: ${d.clock_out || '-'}`);
       parts.push(`${this.$t('Worked')}: ${d.worked_label}`);
-      parts.push(d.status.replace('_', ' '));
+      parts.push(this.statusLabel(d.status));
       if (d.sessions_count > 1) parts.push(`${d.sessions_count} ${this.$t('sessions')}`);
       return parts.join(' · ');
     },
@@ -361,6 +423,15 @@ html.dark .rep-hours { color: #6ee7b7; }
 .rep-tab:hover:not(.rep-tab-active) { background: var(--lg-soft); color: var(--lg-ink); }
 .rep-tab-active { color: #fff; background: linear-gradient(145deg, #2f6fb3, #0f2540); box-shadow: 0 8px 16px -10px rgba(15, 37, 64, 0.9); }
 
+.rep-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.rep-employee { min-width: 15rem; margin: 0; }
+.rep-employee :deep(.mb-2) { margin-bottom: 0 !important; }
+.rep-scope { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: -0.35rem 0 1rem; font-size: 0.78rem; color: var(--lg-mute); }
+.rep-scope b { color: var(--lg-ink); }
+.rep-week { display: inline-flex; align-items: center; gap: 6px; }
+.rep-prev { transform: rotate(90deg); }
+.rep-next { transform: rotate(-90deg); }
+.rep-range-l { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lg-faint); }
 .rep-search { display: flex; align-items: center; gap: 0.5rem; min-width: 15rem; height: 2.6rem; padding: 0 0.85rem; border-radius: 9999px; background: var(--lg-card); border: 1px solid var(--lg-line); transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 @media (max-width: 480px) { .rep-search { min-width: 0; width: 100%; } }
 .rep-search:focus-within { border-color: #6ee7b7; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14); }

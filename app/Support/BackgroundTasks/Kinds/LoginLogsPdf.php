@@ -33,6 +33,7 @@ class LoginLogsPdf extends TaskKind
         $v = Validator::make((array) $request->input('params', []), [
             'search' => 'nullable|string|max:100',
             'status' => 'nullable|string|max:30',
+            'user_id' => 'nullable|integer',
             'role' => 'nullable|string|max:80',
             'start_date' => 'nullable|date_format:Y-m-d',
             'end_date' => 'nullable|date_format:Y-m-d',

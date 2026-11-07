@@ -60,6 +60,11 @@ class LoginLog extends Model
                 });
             })
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
+            // one person: their own attempts, plus the few that only carry their username (for example a wrong password is logged by username)
+            ->when($filters['user_id'] ?? null, function ($q, $id) {
+                $username = \App\Models\User::withTrashed()->whereKey($id)->value('username');
+                $q->where(fn ($w) => $w->where('user_id', $id)->when($username, fn ($x) => $x->orWhere('username', $username)));
+            })
             ->when($filters['role'] ?? null, fn ($q, $role) => $q->where('role', $role))
             ->when($filters['start_date'] ?? null, fn ($q, $d) => $q->whereDate('attempted_at', '>=', $d))
             ->when($filters['end_date'] ?? null, fn ($q, $d) => $q->whereDate('attempted_at', '<=', $d))

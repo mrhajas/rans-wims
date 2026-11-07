@@ -1434,6 +1434,7 @@ class PermissionRegistry
                     'view-digital-attendance-location' => __('View Attendance Location Data'),
                     'read-digital-attendance-reports' => __('View Digital Attendance Reports'),
                     'export-digital-attendance' => __('Export Digital Attendance Data'),
+                    'email-digital-attendance-reports' => __('Email Digital Attendance Reports (to the employee or to typed addresses)'),
                     'correct-digital-attendance' => __('Correct Attendance Records'),
                     'void-digital-attendance' => __('Void Attendance Records'),
                     'manage-digital-attendance-settings' => __('Manage Digital Attendance Settings'),

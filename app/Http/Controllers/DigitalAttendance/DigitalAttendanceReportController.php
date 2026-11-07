@@ -4,9 +4,15 @@ namespace App\Http\Controllers\DigitalAttendance;
 
 use App\Http\Controllers\Controller;
 use App\Models\DigitalAttendanceRecord;
+use App\Mail\ReportMail;
 use App\Models\User;
+use App\Support\AttendanceReport;
+use App\Support\PrintDocuments;
+use App\Support\PrintQrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Rap2hpoutre\FastExcel\FastExcel;
 
@@ -22,7 +28,9 @@ class DigitalAttendanceReportController extends Controller
         $this->authorize('read-digital-attendance-reports');
 
         return Inertia::render('DigitalAttendance/Admin/Reports', [
-            'users' => User::query()->orderBy('name')->get(['id', 'name']),
+            // an address is only sent to the page when this person may email the report (it is shown for the one employee chosen)
+            'users' => User::query()->orderBy('name')->get($request->user()->can('email-digital-attendance-reports') ? ['id', 'name', 'username', 'email'] : ['id', 'name', 'username']),
+            'canEmail' => $request->user()->can('email-digital-attendance-reports'),
         ]);
     }
 
@@ -31,7 +39,7 @@ class DigitalAttendanceReportController extends Controller
         $this->authorize('read-digital-attendance-reports');
 
         $date = $request->query('date', now()->toDateString());
-        $rows = $this->rowsFor(['date' => $date]);
+        $rows = $this->rowsFor(['date' => $date, 'user_id' => $request->query('user_id')]);
 
         return response()->json(['date' => $date, 'rows' => $rows]);
     }
@@ -47,6 +55,7 @@ class DigitalAttendanceReportController extends Controller
             ->with('user:id,name')
             ->active()
             ->whereBetween('attendance_date', [$start->toDateString(), $end->toDateString()])
+            ->when($request->query('user_id'), fn ($q, $id) => $q->where('user_id', $id))
             ->get()
             ->groupBy('user_id');
 
@@ -182,6 +191,7 @@ class DigitalAttendanceReportController extends Controller
         $records = DigitalAttendanceRecord::query()
             ->with('user:id,name,last_seen_at')
             ->active()
+            ->when($request->query('user_id'), fn ($q, $id) => $q->where('user_id', $id))
             ->where(function ($q) {
                 $q->where('status', DigitalAttendanceRecord::STATUS_CLOCKED_IN)
                     ->orWhere('attendance_date', now()->toDateString());
@@ -206,19 +216,18 @@ class DigitalAttendanceReportController extends Controller
     {
         $this->authorize('export-digital-attendance');
 
-        $filters = $this->reportFilters($request);
-        $rows = DigitalAttendanceRecord::query()->with('user:id,name,username')->active()->filter($filters)->limit(10000)->get();
+        $report = AttendanceReport::build($this->reportFilters($request));
 
-        log_activity(__(':user exported the Digital Attendance report to Excel.', ['user' => $request->user()->name]), $filters, $request->user(), 'DigitalAttendanceReport');
+        log_activity(__(':user exported the Digital Attendance report to Excel.', ['user' => $request->user()->name]), $report['filters'], $request->user(), 'DigitalAttendanceReport');
 
-        return (new FastExcel($rows))->download('digital-attendance-' . now()->format('Ymd-His') . '.xlsx', function (DigitalAttendanceRecord $r) {
+        return (new FastExcel($report['records']))->download('digital-attendance-' . now()->format('Ymd-His') . '.xlsx', function (DigitalAttendanceRecord $r) {
             return [
                 'Date' => $r->attendance_date->toDateString(),
                 'Employee' => optional($r->user)->name,
                 'Clock In' => optional($r->clock_in_at)->format('H:i:s'),
                 'Clock Out' => optional($r->clock_out_at)->format('H:i:s'),
                 'Worked' => $r->worked_label,
-                'Status' => $r->status,
+                'Status' => AttendanceReport::statusLabel($r),
                 'Late' => $r->is_late ? 'Yes' : 'No',
                 'Clock-In IP' => $r->clock_in_ip,
                 'Clock-Out IP' => $r->clock_out_ip,
@@ -231,25 +240,118 @@ class DigitalAttendanceReportController extends Controller
     {
         $this->authorize('read-digital-attendance-reports');
 
-        log_activity(__(':user printed the Digital Attendance report.', ['user' => $request->user()->name]), $this->reportFilters($request), $request->user(), 'DigitalAttendanceReport');
+        $report = AttendanceReport::build($this->reportFilters($request));
+        log_activity(__(':user printed the Digital Attendance report.', ['user' => $request->user()->name]), $report['filters'], $request->user(), 'DigitalAttendanceReport');
 
-        return view('digital-attendance-print', $this->viewData($request, true));
+        return view('print.document', $this->documentData($request, $report, false) + ['autoPrint' => true]);
     }
 
     public function pdf(Request $request)
     {
         $this->authorize('export-digital-attendance');
 
-        log_activity(__(':user downloaded the Digital Attendance report as PDF.', ['user' => $request->user()->name]), $this->reportFilters($request), $request->user(), 'DigitalAttendanceReport');
+        $report = AttendanceReport::build($this->reportFilters($request));
+        log_activity(__(':user downloaded the Digital Attendance report as PDF.', ['user' => $request->user()->name]), $report['filters'], $request->user(), 'DigitalAttendanceReport');
 
-        $pdf = Pdf::loadView('digital-attendance-print', $this->viewData($request, false));
+        return Pdf::loadView('print.document', $this->documentData($request, $report, true))->setPaper('a4')->download($this->fileName($report) . '.pdf');
+    }
 
-        return $pdf->download('digital-attendance-' . now()->format('Ymd-His') . '.pdf');
+    /**
+     * Sends the report (the same PDF the Download button makes, for the same filters) by e-mail: to the employee it is about (their own address on
+     * their profile) and/or to the addresses the sender typed.
+     */
+    public function email(Request $request)
+    {
+        $this->authorize('email-digital-attendance-reports');
+        $this->authorize('read-digital-attendance-reports');
+
+        $data = $request->validate([
+            'to_employee' => 'sometimes|boolean',
+            'addresses' => 'nullable|string|max:1000',
+            'user_id' => 'nullable|integer|exists:users,id',
+            'date' => 'nullable|date',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'status' => 'nullable|string|max:30',
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        $report = AttendanceReport::build($data);
+        $typed = collect(preg_split('/[\s,;]+/', (string) ($data['addresses'] ?? ''), -1, PREG_SPLIT_NO_EMPTY))->map(fn ($a) => mb_strtolower(trim($a)))->unique()->values();
+        $bad = $typed->reject(fn ($a) => filter_var($a, FILTER_VALIDATE_EMAIL));
+        if ($bad->isNotEmpty()) {
+            return response()->json(['message' => __('These are not valid email addresses: :list', ['list' => $bad->implode(', ')])], 422);
+        }
+        if ($typed->count() > 10) {
+            return response()->json(['message' => __('Please send to 10 addresses or fewer at a time.')], 422);
+        }
+
+        $recipients = $typed;
+        if (! empty($data['to_employee'])) {
+            $employee = $report['employee'];
+            if (! $employee) {
+                return response()->json(['message' => __('Choose an employee first to send the report to them.')], 422);
+            }
+            if (! filter_var($employee->email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json(['message' => __(':name has no email address on their profile.', ['name' => $employee->name])], 422);
+            }
+            $recipients = $recipients->push(mb_strtolower($employee->email))->unique()->values();
+        }
+        if ($recipients->isEmpty()) {
+            return response()->json(['message' => __('Choose who should receive it: the employee, or type an email address.')], 422);
+        }
+        if ($report['summary']['days'] === 0) {
+            return response()->json(['message' => __('There are no attendance records for these filters, so there is nothing to send.')], 422);
+        }
+
+        @ini_set('memory_limit', '512M');
+        $pdf = Pdf::loadView('print.document', $this->documentData($request, $report, true))->setPaper('a4')->output();
+        $title = 'Attendance report, ' . $report['period'] . ($report['employee'] ? ' - ' . $report['employee']->name : '');
+
+        $sent = [];
+        $failed = [];
+        foreach ($recipients as $address) {
+            try {
+                Mail::to($address)->send(new ReportMail($title, $pdf, $this->fileName($report) . '.pdf', optional($request->user()->account)->name));
+                $sent[] = $address;
+            } catch (\Throwable $e) {
+                $failed[] = $address;
+                Log::error('Attendance report email failed', ['email' => $address, 'error' => $e->getMessage()]);
+            }
+        }
+
+        log_activity(__(':user emailed the Digital Attendance report.', ['user' => $request->user()->name]), ['filters' => $report['filters'], 'sent' => $sent, 'failed' => $failed], $request->user(), 'DigitalAttendanceReport');
+
+        if (! $sent) {
+            return response()->json(['message' => __('The email could not be sent. Please try again, or check the mail settings.')], 500);
+        }
+
+        return response()->json([
+            'status' => $failed ? 'partial' : 'ok',
+            'sent' => $sent, 'failed' => $failed,
+            'message' => __('Sent to :list', ['list' => implode(', ', $sent)]) . ($failed ? ' ' . __('Could not send to: :list', ['list' => implode(', ', $failed)]) : ''),
+        ]);
     }
 
     private function reportFilters(Request $request): array
     {
-        return $request->all('user_id', 'status', 'date', 'date_from', 'date_to', 'search');
+        return $request->all(AttendanceReport::FILTERS);
+    }
+
+    private function fileName(array $report): string
+    {
+        return 'attendance-' . now()->format('Ymd-His') . ($report['employee'] ? '-' . \Illuminate\Support\Str::slug($report['employee']->name) : '');
+    }
+
+    private function documentData(Request $request, array $report, bool $isPdf): array
+    {
+        return [
+            'doc' => PrintDocuments::attendanceReport($report, optional($request->user())->name),
+            'isPdf' => $isPdf,
+            'companyName' => optional($request->user()->account)->name,
+            'qr' => PrintQrCode::dataUri(route('digital-attendance-reports.hub')),
+            'pdfUrl' => route('digital-attendance-reports.pdf', $report['filters']),
+        ];
     }
 
     private function rowsFor(array $filters): array
@@ -270,23 +372,5 @@ class DigitalAttendanceReportController extends Controller
             ])
             ->values()
             ->all();
-    }
-
-    private function viewData(Request $request, bool $autoPrint): array
-    {
-        $filters = $this->reportFilters($request);
-        $records = DigitalAttendanceRecord::query()->with('user:id,name')->active()->filter($filters)->orderBy('attendance_date')->limit(3000)->get();
-        $totalMinutes = $records->sum(fn (DigitalAttendanceRecord $r) => $r->worked_minutes ?? 0);
-
-        return [
-            'records' => $records,
-            'filters' => $filters,
-            'autoPrint' => $autoPrint,
-            'attendanceDays' => $records->count(),
-            'totalLabel' => sprintf('%dh %02dm', intdiv($totalMinutes, 60), $totalMinutes % 60),
-            'averageLabel' => $records->count() > 0 ? sprintf('%02dh %02dm', intdiv((int) ($totalMinutes / $records->count()), 60), (int) ($totalMinutes / $records->count()) % 60) : '0h 00m',
-            'companyName' => optional($request->user()->account ?? null)->name,
-            'generatedBy' => optional($request->user())->name,
-        ];
     }
 }

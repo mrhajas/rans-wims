@@ -34,6 +34,7 @@
       <section class="lg-card lg-filters relative z-20 print:hidden">
         <search-filter v-model="form.search" :dropdown="false" @reset="reset" />
         <div class="lg-grid">
+          <auto-complete v-model="form.user_id" :suggestions="userOptions" :placeholder="$t('All Users')" searchable clearable />
           <auto-complete v-model="form.status" :suggestions="statusOptions" :placeholder="$t('All Status')" clearable />
           <auto-complete v-model="form.role" :suggestions="roleOptions" :placeholder="$t('All Roles')" clearable />
           <date-picker v-model="form.start_date" :placeholder="$t('Date From')" clearable />
@@ -136,6 +137,7 @@ export default {
   props: {
     filters: Object,
     roles: Array,
+    users: { type: Array, default: () => [] },
     loginLogs: Object,
     addressTabs: { type: Object, default: null },
     canExport: Boolean,
@@ -147,6 +149,7 @@ export default {
     return {
       form: {
         search: this.filters.search ?? null,
+        user_id: this.filters.user_id ? Number(this.filters.user_id) : null,
         status: this.filters.status ?? null,
         role: this.filters.role ?? null,
         start_date: this.filters.start_date ?? null,
@@ -164,6 +167,10 @@ export default {
         { id: 'success', label: this.$t('Success') },
         { id: 'failed', label: this.$t('Failed') },
       ];
+    },
+    // searchable by name or username
+    userOptions() {
+      return this.users.map(u => ({ id: u.id, label: u.name + (u.username ? ' (' + u.username + ')' : '') }));
     },
     roleOptions() {
       return this.roles.map(role => ({ id: role, label: role }));

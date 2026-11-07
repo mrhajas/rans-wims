@@ -1784,6 +1784,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('digital-attendance/reports/export', [Controllers\DigitalAttendance\DigitalAttendanceReportController::class, 'export'])->name('digital-attendance-reports.export');
     Route::get('digital-attendance/reports/print', [Controllers\DigitalAttendance\DigitalAttendanceReportController::class, 'print'])->name('digital-attendance-reports.print');
     Route::get('digital-attendance/reports/pdf', [Controllers\DigitalAttendance\DigitalAttendanceReportController::class, 'pdf'])->name('digital-attendance-reports.pdf');
+    Route::post('digital-attendance/reports/email', [Controllers\DigitalAttendance\DigitalAttendanceReportController::class, 'email'])->middleware('throttle:15,1,digital-attendance-reports.email')->name('digital-attendance-reports.email');
 
     // Digital Attendance — settings.
     Route::get('digital-attendance/settings', [Controllers\DigitalAttendance\DigitalAttendanceSettingsController::class, 'edit'])->name('digital-attendance-settings.edit');
