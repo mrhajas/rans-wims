@@ -1205,6 +1205,7 @@ Route::middleware(['auth:sanctum', 'system.lockdown', 'feature.gate', 'log.downl
     Route::get('download-print-logs', [Controllers\DownloadPrintLogController::class, 'index'])->name('download-print-logs.index');
     Route::get('download-print-logs/print', [Controllers\DownloadPrintLogController::class, 'print'])->name('download-print-logs.print');
     Route::get('download-print-logs/pdf', [Controllers\DownloadPrintLogController::class, 'pdf'])->name('download-print-logs.pdf');
+    Route::post('material-requests/bulk-issue', [Controllers\MaterialRequestController::class, 'bulkIssue'])->middleware('throttle:10,1,material-requests.bulk-issue')->name('material-requests.bulk-issue');
     Route::post('material-requests/force-clear', [Controllers\MaterialRequestController::class, 'forceClear'])->middleware('throttle:10,1,material-requests.force-clear')->name('material-requests.force-clear');
     Route::post('material-requests/{material_request}/create-transfers', [Controllers\MaterialRequestController::class, 'createTransfers'])->whereNumber('material_request')->middleware('throttle:20,1,material-requests.create-transfers')->name('material-requests.create-transfers');
     Route::patch('material-requests/{material_request}/status', [Controllers\MaterialRequestController::class, 'updateStatus'])

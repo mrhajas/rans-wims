@@ -48,9 +48,11 @@
       <transition name="mr-bulk">
         <div v-if="canForce && picked.length" class="mr-bulk print:hidden" role="region" :aria-label="$t('Selected requests')">
           <span class="mr-bulk-ico"><icons name="lock-closed" class="w-5 h-5" /></span>
-          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Admin Force Clearance clears them in one step, skipping approval, issue and delivery. Needs your Super Admin password.') }}</small></div>
+          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Mark them Partially or Fully Issued, or clear them in one step (Admin Force Clearance). Needs your Super Admin password.') }}</small></div>
           <button v-if="clearableIds.length > picked.length" type="button" class="lg-btn bulk-btn bulk-btn-all" @click="picked = [...clearableIds]"><icons name="collection" class="w-4 h-4" />{{ $t('Select all :n', { n: clearableIds.length }) }}</button>
           <button type="button" class="lg-btn bulk-btn bulk-btn-none" @click="picked = []"><icons name="x-circle" class="w-4 h-4" />{{ $t('Clear selection') }}</button>
+          <button type="button" class="lg-btn bulk-btn bulk-btn-part" @click="askIssue('Partially Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Partially Issued') }}</button>
+          <button type="button" class="lg-btn bulk-btn bulk-btn-full" @click="askIssue('Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Fully Issued') }}</button>
           <button type="button" class="lg-btn mr-bulk-go" @click="askForce"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Clear Selected') }}</button>
         </div>
       </transition>
@@ -183,6 +185,19 @@
       @confirm="forceClear"
       @close="forceAsk = false"
     />
+    <super-admin-password-modal
+      :show="issueAsk"
+      :title="issueStatus === 'Issued' ? $t('Mark as Fully Issued') : $t('Mark as Partially Issued')"
+      :content="$t(':n selected request(s): the Approved and Partially Issued ones are moved to :status, the others are skipped and counted. No notifications are sent.', { n: picked.length, status: issueStatus === 'Issued' ? $t('Fully Issued') : $t('Partially Issued') })"
+      :lines="pickedNames"
+      :confirm-text="issueStatus === 'Issued' ? $t('Mark Fully Issued') : $t('Mark Partially Issued')"
+      :processing="issueBusy"
+      :error="issueError"
+      @confirm="bulkIssue"
+      @close="issueAsk = false"
+    >
+      <label class="mr-skip"><input v-model="skipProcedures" type="checkbox" /><span><b>{{ $t('Skip the procurement procedure check') }}</b><small>{{ $t('Normally at least one item needs a procurement procedure (every item for Fully Issued). Tick this to move older requests that never had them set.') }}</small></span></label>
+    </super-admin-password-modal>
     <reminder-modal :show="reminderId !== null" :request-id="reminderId" @close="reminderId = null" @sent="onReminderSent" @read="onRemindersRead" />
   </admin-layout>
 </template>
@@ -234,6 +249,11 @@ export default {
       picked: [],
       forceAsk: false,
       forceBusy: false,
+      issueAsk: false,
+      issueBusy: false,
+      issueError: '',
+      issueStatus: 'Issued',
+      skipProcedures: false,
       forceError: '',
       form: {
         search: this.filters.search,
@@ -336,6 +356,22 @@ export default {
     },
     toggleAll() {
       this.picked = this.allPicked ? this.picked.filter(id => !this.pickable.some(m => m.id === id)) : [...new Set([...this.picked, ...this.pickable.map(m => m.id)])];
+    },
+    askIssue(status) {
+      this.issueStatus = status;
+      this.issueError = '';
+      this.skipProcedures = false;
+      this.issueAsk = true;
+    },
+    bulkIssue(password) {
+      this.issueBusy = true;
+      this.issueError = '';
+      this.$inertia.post(route('material-requests.bulk-issue'), { ids: this.picked, status: this.issueStatus, skip_procedures: this.skipProcedures, password }, {
+        preserveScroll: true,
+        onSuccess: () => { this.issueAsk = false; this.picked = []; },
+        onError: e => { this.issueError = e.password || e.ids || Object.values(e)[0] || this.$t('That did not work.'); },
+        onFinish: () => (this.issueBusy = false),
+      });
     },
     askForce() {
       this.forceError = '';
@@ -511,6 +547,11 @@ tr.is-picked td { background: rgba(251, 146, 60, 0.1); }
 .bulk-btn { border: 0; color: #fff; }
 .bulk-btn-all { background: linear-gradient(145deg, #60a5fa, #1d4ed8); box-shadow: 0 10px 18px -8px rgba(29, 78, 216, 0.85), 0 2px 4px rgba(15, 23, 42, 0.15); }
 .bulk-btn-none { background: linear-gradient(145deg, #fb7185, #be123c); box-shadow: 0 10px 18px -8px rgba(190, 18, 60, 0.8), 0 2px 4px rgba(15, 23, 42, 0.15); }
+.bulk-btn-part { background: linear-gradient(145deg, #fbbf24, #d97706); box-shadow: 0 10px 18px -8px rgba(217, 119, 6, 0.85), 0 2px 4px rgba(15, 23, 42, 0.15); }
+.bulk-btn-full { background: linear-gradient(145deg, #34d399, #047857); box-shadow: 0 10px 18px -8px rgba(4, 120, 87, 0.85), 0 2px 4px rgba(15, 23, 42, 0.15); }
+.mr-skip { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 8px; padding: 10px 12px; border-radius: 12px; cursor: pointer; background: rgba(251, 146, 60, 0.1); font-size: 0.84rem; color: #7c2d12; }
+.mr-skip input { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+.mr-skip small { display: block; margin-top: 2px; font-size: 0.74rem; opacity: 0.85; font-weight: 400; }
 .bulk-btn:hover { transform: translateY(-1px); }
 .mr-bulk-go { color: #fff; background: linear-gradient(145deg, #fb923c, #c2410c); box-shadow: 0 10px 18px -10px rgba(194, 65, 12, 0.9); }
 .mr-bulk-enter-active, .mr-bulk-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; } .mr-bulk-enter-from, .mr-bulk-leave-to { opacity: 0; transform: translateY(-8px); }

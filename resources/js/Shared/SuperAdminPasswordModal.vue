@@ -10,6 +10,7 @@
       </div>
       <p class="text-sm text-gray-600 mb-2">{{ content }}</p>
       <ul v-if="lines && lines.length" class="sap-lines"><li v-for="l in lines" :key="l">{{ l }}</li></ul>
+      <slot />
       <!-- its own form, with the account name beside the password: the browser's saved-password helper then fills THESE two fields and never the page's search box behind the dialog -->
       <form autocomplete="on" @submit.prevent="confirm">
         <input type="text" name="username" class="sap-hidden" :value="username" autocomplete="username" tabindex="-1" aria-hidden="true" readonly />

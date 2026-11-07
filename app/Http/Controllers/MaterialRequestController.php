@@ -657,6 +657,84 @@ class MaterialRequestController extends Controller
     }
 
     /**
+     * Bulk Partially Issued / Fully Issued: a Super Admin ticks all or some requests and moves them to Partially Issued or Fully Issued in one go (Super Admin password).
+     * Only Approved and Partially Issued requests move, as in the normal workflow. The procurement-procedure rule (at least one item with a procedure for Partially
+     * Issued, every item for Fully Issued) applies unless the Super Admin chooses to skip it, which is meant for cleaning up old requests. Each request gets a status
+     * log line and an activity entry; no notifications are sent (a back-office action, like Admin Force Clearance).
+     */
+    public function bulkIssue(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasRole('Super Admin'), 403);
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:1000'], 'ids.*' => ['integer'],
+            'status' => ['required', 'in:' . MaterialRequest::STATUS_PARTIALLY_ISSUED . ',' . MaterialRequest::STATUS_ISSUED],
+            'skip_procedures' => ['nullable', 'boolean'],
+            'password' => ['required', 'string'],
+        ]);
+        if (! \Illuminate\Support\Facades\Hash::check($data['password'], (string) $user->password)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['password' => __('That password is incorrect.')]);
+        }
+
+        $target = $data['status'];
+        $skipProcedures = (bool) ($data['skip_procedures'] ?? false);
+        $done = 0;
+        $skipped = ['status' => 0, 'procedure' => 0, 'project' => 0];
+
+        foreach (array_chunk(array_unique($data['ids']), 100) as $chunk) {
+            DB::transaction(function () use ($chunk, $user, $target, $skipProcedures, &$done, &$skipped) {
+                foreach (MaterialRequest::query()->whereIn('id', $chunk)->lockForUpdate()->get() as $mr) {
+                    $warehouse = Warehouse::query()->find($mr->warehouse_id);
+                    if ($warehouse && $warehouse->completed_at) {
+                        $skipped['project']++;
+                        continue;
+                    }
+                    // the same moves the normal workflow allows: Approved or Partially Issued, on to Partially Issued / Fully Issued; a request already at the target stays
+                    $from = $mr->status;
+                    $movable = in_array($from, [MaterialRequest::STATUS_APPROVED, MaterialRequest::STATUS_PARTIALLY_ISSUED], true) && $from !== $target;
+                    if (! $movable) {
+                        $skipped['status']++;
+                        continue;
+                    }
+                    if (! $skipProcedures && ! $mr->quick) {
+                        $total = $mr->items()->count();
+                        $with = $mr->items()->whereNotNull('procedure')->count();
+                        if ($with === 0 || ($target === MaterialRequest::STATUS_ISSUED && $with < $total)) {
+                            $skipped['procedure']++;
+                            continue;
+                        }
+                    }
+                    $mr->forceFill(['status' => $target])->save();
+                    $mr->logs()->create([
+                        'status' => $target,
+                        'remarks' => 'Bulk update by a Super Admin: moved from ' . $from . ' to ' . $target . ($skipProcedures && ! $mr->quick ? ' (procurement procedure check skipped).' : '.'),
+                        'user_id' => $user->id,
+                    ]);
+                    log_activity('Bulk ' . $target, ['reference' => $mr->reference, 'from' => $from, 'to' => $target, 'procedure_check_skipped' => $skipProcedures], $mr, 'Material Request');
+                    $done++;
+                }
+            });
+        }
+
+        $msg = __(':n request(s) moved to :status.', ['n' => $done, 'status' => __($target)]);
+        $notes = [];
+        if ($skipped['status']) {
+            $notes[] = __(':n not Approved or Partially Issued (or already :status)', ['n' => $skipped['status'], 'status' => __($target)]);
+        }
+        if ($skipped['procedure']) {
+            $notes[] = __(':n without the procurement procedures this needs (tick "Skip the procurement procedure check" to include them)', ['n' => $skipped['procedure']]);
+        }
+        if ($skipped['project']) {
+            $notes[] = __(':n in a completed project', ['n' => $skipped['project']]);
+        }
+        if ($notes) {
+            $msg .= ' ' . __('Skipped:') . ' ' . implode('; ', $notes) . '.';
+        }
+
+        return $done ? back()->with('message', $msg) : back()->with('error', $msg);
+    }
+
+    /**
      * Procurement: set the procedure of each item (and, depending on it, the supplier, the project / warehouse the
      * stock comes from, or a free-text note). Items can be saved in batches — only rows that carry a procedure
      * are touched. Setting procedures no longer "clears" the request; clearing is the final Super Admin step.
