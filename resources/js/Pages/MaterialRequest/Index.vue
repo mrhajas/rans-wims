@@ -48,11 +48,11 @@
       <transition name="mr-bulk">
         <div v-if="canForce && picked.length" class="mr-bulk print:hidden" role="region" :aria-label="$t('Selected requests')">
           <span class="mr-bulk-ico"><icons name="lock-closed" class="w-5 h-5" /></span>
-          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Mark the ones not issued at all as Partially or Fully Issued, or clear them in one step (Admin Force Clearance). Needs your Super Admin password.') }}</small></div>
+          <div class="mr-bulk-text"><b>{{ picked.length }}</b> {{ $t('request(s) selected') }}<small>{{ $t('Clear them in one step (Admin Force Clearance); Partially / Fully Issued show only when every selected request was not issued at all. Needs your Super Admin password.') }}</small></div>
           <button v-if="clearableIds.length > picked.length" type="button" class="lg-btn bulk-btn bulk-btn-all" @click="picked = [...clearableIds]"><icons name="collection" class="w-4 h-4" />{{ $t('Select all :n', { n: clearableIds.length }) }}</button>
           <button type="button" class="lg-btn bulk-btn bulk-btn-none" @click="picked = []"><icons name="x-circle" class="w-4 h-4" />{{ $t('Clear selection') }}</button>
-          <button type="button" class="lg-btn bulk-btn bulk-btn-part" @click="askIssue('Partially Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Partially Issued') }}</button>
-          <button type="button" class="lg-btn bulk-btn bulk-btn-full" @click="askIssue('Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Fully Issued') }}</button>
+          <button v-if="canMarkIssued" type="button" class="lg-btn bulk-btn bulk-btn-part" @click="askIssue('Partially Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Partially Issued') }}</button>
+          <button v-if="canMarkIssued" type="button" class="lg-btn bulk-btn bulk-btn-full" @click="askIssue('Issued')"><icons name="tick" class="w-4 h-4" />{{ $t('Fully Issued') }}</button>
           <button type="button" class="lg-btn mr-bulk-go" @click="askForce"><icons name="lock-closed" class="w-4 h-4" />{{ $t('Clear Selected') }}</button>
         </div>
       </transition>
@@ -241,6 +241,7 @@ export default {
     materialRequests: Object,
     stats: { type: Object, default: null },
     clearable: { type: Object, default: () => ({}) },
+    notIssuedIds: { type: Array, default: () => [] },
   },
 
   data() {
@@ -274,6 +275,11 @@ export default {
     },
     pickable() {
       return (this.materialRequests.data || []).filter(m => this.isClearable(m));
+    },
+    // Partially / Fully Issued only make sense for requests that were not issued at all: one issued (or any other status) in the selection hides both buttons
+    canMarkIssued() {
+      const ok = new Set(this.notIssuedIds || []);
+      return this.picked.length > 0 && this.picked.every(id => ok.has(id));
     },
     clearableIds() {
       return Object.keys(this.clearable || {}).map(Number);

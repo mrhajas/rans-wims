@@ -160,6 +160,10 @@ class MaterialRequestController extends Controller
             'clearable' => $user->hasRole('Super Admin')
                 ? MaterialRequest::query()->whereNotIn('status', self::FORCE_CLEAR_EXCLUDED)->orderBy('id')->limit(1000)->pluck('reference', 'id')->all()
                 : (object) [],
+            // Super Admin: the ids that were not issued at all (still Approved); Partially / Fully Issued buttons only show when everything selected is in here
+            'notIssuedIds' => $user->hasRole('Super Admin')
+                ? MaterialRequest::query()->where('status', MaterialRequest::STATUS_APPROVED)->orderBy('id')->limit(5000)->pluck('id')->all()
+                : [],
         ]);
     }
 
